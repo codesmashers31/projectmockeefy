@@ -1,0 +1,46 @@
+import express from "express";
+import {
+  bulkUpsertPricingRules,
+  getRulesByCategory,
+  calculatePrice,
+  getCalculatePrice,
+  listSkillsWithPricing,
+  updateSkillBasePrice,
+  getPricingMatrix,
+  bulkUpdateMatrix,
+  resetPricingDefaults,
+  getPricingHistory,
+} from "../controllers/pricingController.js";
+
+const router = express.Router();
+
+// Get pricing rules matrix
+router.get("/", getPricingMatrix);
+
+// Bulk Update Pricing Matrix
+router.post("/bulk-update", bulkUpdateMatrix);
+
+// Reset pricing defaults
+router.post("/reset", resetPricingDefaults);
+
+// Price change history logs
+router.get("/history", getPricingHistory);
+
+// Bulk Upsert Rules (legacy)
+router.post("/bulk", bulkUpsertPricingRules);
+
+// Get Rules by Category (with optional skillId or base=true query params)
+router.get("/category/:categoryId", getRulesByCategory);
+
+// Calculate Price (legacy POST)
+router.post("/calculate", calculatePrice);
+
+// Category-based pricing only: expertId + duration (+ optional level override)
+// GET /api/pricing/calculate-price?expertId=xxx&duration=30&level=Intermediate
+router.get("/calculate-price", getCalculatePrice);
+
+// ----- Admin: skill base prices -----
+router.get("/skills", listSkillsWithPricing);
+router.put("/skills/:skillId", updateSkillBasePrice);
+
+export default router;
