@@ -4,7 +4,7 @@ const hostname = typeof window !== "undefined" ? window.location.hostname : "loc
 
 const raw = import.meta.env.VITE_API_URL;
 // Must match your Render backend URL. Set VITE_API_URL in Vercel env so the client connects to Render for API + WebSocket.
-const prodDefault = "https://projectb-yqmq.onrender.com";
+const prodDefault = "https://projectmockeefy.onrender.com";
 
 function normalizeBaseUrl(url: string): string {
     return url.replace(/\/api\/?$/, "").replace(/\/+$/, "").trim() || url;

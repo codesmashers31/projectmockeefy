@@ -71,6 +71,9 @@ const allowedOrigins = [
   "https://www.mockeefy.com",
   "https://mockeefy.onrender.com",
   "https://projectb-yqmq.onrender.com",
+  "https://projectmockeefy.onrender.com",
+  "https://projectmockeefy.vercel.app",
+  "https://www.projectmockeefy.vercel.app",
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
