@@ -14,15 +14,19 @@ import {
   Sparkles,
   Star,
   Briefcase,
-  GraduationCap
+  GraduationCap,
+  Lightbulb,
+  Zap,
+  Check
 } from "lucide-react";
 import axios from '../lib/axios';
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { useUserProfile } from "../hooks/useUserProfile";
-import { ProUpgradeCard } from "./ProUpgradeCard";
 import Avatar from "./ui/avatar";
+import { useCertification } from "../hooks/useCertification";
+import { toast } from "sonner";
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -30,6 +34,30 @@ const Sidebar = () => {
   const location = useLocation();
   const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
   const [nextSession, setNextSession] = useState<any>(null);
+  
+  const { data: certData } = useCertification();
+  const completed = certData?.completedSessions ?? 0;
+  const target = certData?.targetSessions ?? 3;
+  const isEligible = certData?.isEligibleForCertificate ?? false;
+  const hasCert = (certData?.certifications?.length ?? 0) > 0;
+  const step1Done = completed >= target;
+  const step2Active = step1Done && (hasCert || isEligible);
+  const step3Active = hasCert;
+
+  const handleGetCertificate = async () => {
+    const userId = (user as any)?._id ?? user?.id;
+    if (!userId) return;
+    try {
+      const res = await axios.post("/api/certifications/issue", { userId });
+      if (res.data?.success) {
+        toast.success("Certificate issued!");
+        navigate("/certificates");
+        window.location.reload();
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Could not issue certificate.");
+    }
+  };
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -70,20 +98,21 @@ const Sidebar = () => {
   const NavItem = ({ icon: Icon, label, path, active }: any) => (
     <button
       onClick={() => navigate(path)}
-      className={`w-full flex items-center justify-between px-4 py-2.5 mb-2 rounded-full text-[13px] font-semibold transition-all duration-200 group tracking-tight border ${
+      className={`w-full flex items-center justify-between px-2.5 py-2 mb-1 rounded-2xl text-[13px] font-semibold transition-all duration-200 group tracking-tight border ${
         active
-          ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
-          : "bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:text-blue-600"
+          ? "bg-gradient-to-r from-blue-50 to-indigo-50/60 border-blue-100 text-blue-700 shadow-sm"
+          : "bg-transparent border-transparent text-slate-600 hover:bg-slate-50 hover:border-slate-100"
       }`}
     >
-      <div className="flex items-center gap-3">
-        <Icon 
-          size={15} 
-          className={active ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"} 
-        />
+      <div className="flex items-center gap-2.5">
+        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
+          active ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30" : "bg-slate-100 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500"
+        }`}>
+          <Icon size={14} strokeWidth={active ? 2.5 : 2} />
+        </div>
         <span>{label}</span>
       </div>
-      <ChevronRight size={14} className={active ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"} />
+      <ChevronRight size={13} className={`transition-all duration-200 ${active ? "text-blue-400 translate-x-0" : "text-slate-300 -translate-x-0.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0"}`} />
     </button>
   );
 
@@ -97,21 +126,31 @@ const Sidebar = () => {
     <div className="w-full max-w-[240px] mx-auto space-y-4 font-sans">
 
       {/* CARD 1: IDENTITY & STATS */}
-      <div 
+      <div
         onClick={() => navigate("/profile")}
-        className="bg-white rounded-[24px] p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] cursor-pointer hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.08)] transition-all duration-300 group/profile-card border border-slate-100 flex flex-col gap-4"
+        className="relative bg-white rounded-[24px] p-4 pt-5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] cursor-pointer hover:shadow-[0_12px_32px_-10px_rgba(0,79,203,0.18)] hover:-translate-y-0.5 transition-all duration-300 group/profile-card border border-slate-100 flex flex-col gap-4 overflow-hidden"
       >
+        {/* Decorative gradient glow */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-100 via-indigo-100 to-transparent opacity-60 blur-2xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-[#f0f5ff] to-transparent pointer-events-none" />
+
         {/* Top Section */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
             {/* Avatar & Progress Ring */}
-            <div className="relative shrink-0 w-[54px] h-[54px] flex items-center justify-center">
+            <div className="relative shrink-0 w-[56px] h-[56px] flex items-center justify-center">
               <svg className="absolute top-0 left-0 w-full h-full transform -rotate-90" viewBox="0 0 64 64">
-                <circle cx="32" cy="32" r={28} fill="none" stroke="#f8fafc" strokeWidth="4" />
+                <defs>
+                  <linearGradient id="sidebarRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#004fcb" />
+                    <stop offset="100%" stopColor="#6366f1" />
+                  </linearGradient>
+                </defs>
+                <circle cx="32" cy="32" r={28} fill="none" stroke="#f1f5f9" strokeWidth="4" />
                 <circle
                   cx="32" cy="32" r={28}
                   fill="none"
-                  stroke="#3b82f6"
+                  stroke="url(#sidebarRing)"
                   strokeWidth="4"
                   strokeDasharray={2 * Math.PI * 28}
                   strokeDashoffset={(2 * Math.PI * 28) - ((displayProfile.profileCompletion || 0) / 100) * (2 * Math.PI * 28)}
@@ -119,22 +158,22 @@ const Sidebar = () => {
                   className="transition-all duration-1000 ease-out"
                 />
               </svg>
-              <div className="w-[42px] h-[42px] rounded-full border-[2.5px] border-white absolute bg-[#f0f5ff] text-blue-600 flex items-center justify-center font-bold text-lg overflow-hidden">
+              <div className="w-[44px] h-[44px] rounded-full border-[2.5px] border-white absolute bg-gradient-to-br from-[#eaf1ff] to-[#dfe8ff] text-blue-600 flex items-center justify-center font-bold text-lg overflow-hidden shadow-sm">
                 {((user as any)?.profileImage || (displayProfile as any)?.profileImage) ? (
                   <img src={getProfileImageUrl((user as any)?.profileImage || (displayProfile as any)?.profileImage)} className="w-full h-full object-cover" alt="avatar" />
                 ) : (
                   (displayProfile.name || "B").charAt(0).toUpperCase()
                 )}
               </div>
-              <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white z-10" />
+              <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white z-10 shadow-sm" />
             </div>
 
             {/* Name and Badge */}
-            <div className="flex flex-col gap-1 mt-0.5">
+            <div className="flex flex-col gap-1.5 mt-0.5 min-w-0">
               <h3 className="text-[17px] font-bold text-[#0f172a] truncate tracking-tight group-hover/profile-card:text-blue-600 transition-colors">
                 {displayProfile.name}
               </h3>
-              <span className="px-2.5 py-1 rounded-full bg-[#f4f6ff] text-[9px] font-bold text-[#1e293b] tracking-wide inline-flex items-center gap-1.5 leading-none w-fit">
+              <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-[#eef2ff] to-[#f0f5ff] border border-indigo-100/70 text-[9px] font-bold text-[#3730a3] tracking-wide inline-flex items-center gap-1.5 leading-none w-fit">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#6366f1] shrink-0" />
                 {roleLine.toUpperCase()}
               </span>
@@ -142,38 +181,44 @@ const Sidebar = () => {
           </div>
 
           {/* Edit Button */}
-          <div className="w-8 h-8 rounded-full bg-[#f4f7ff] border border-[#e0e7ff] text-blue-600 transition-all duration-300 flex items-center justify-center shrink-0 shadow-sm group-hover/profile-card:bg-blue-600 group-hover/profile-card:text-white group-hover/profile-card:border-blue-600">
+          <div className="w-8 h-8 rounded-full bg-[#f4f7ff] border border-[#e0e7ff] text-blue-600 transition-all duration-300 flex items-center justify-center shrink-0 shadow-sm group-hover/profile-card:bg-blue-600 group-hover/profile-card:text-white group-hover/profile-card:border-blue-600 group-hover/profile-card:rotate-12">
             <Pencil size={12} strokeWidth={2.5} />
           </div>
         </div>
 
+        {/* Completion progress label */}
+        <div className="relative z-10 -mt-2 flex items-center justify-between px-0.5">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Profile strength</span>
+          <span className="text-[10px] font-black text-blue-600">{displayProfile.profileCompletion || 0}%</span>
+        </div>
+
         {/* Bottom Stats Section */}
-        <div className="grid grid-cols-3 gap-0 relative pt-1">
+        <div className="grid grid-cols-3 gap-0 relative z-10 pt-1 border-t border-slate-50">
           {/* Stat 1 */}
-          <div className="flex flex-col items-center justify-center relative group/stat">
-             <div className="w-8 h-8 rounded-full bg-[#f4f7ff] text-blue-500 flex items-center justify-center mb-1.5 transition-colors group-hover/stat:bg-blue-100">
+          <div className="flex flex-col items-center justify-center relative group/stat pt-3">
+             <div className="w-8 h-8 rounded-xl bg-[#f4f7ff] text-blue-500 flex items-center justify-center mb-1.5 transition-all group-hover/stat:bg-blue-600 group-hover/stat:text-white group-hover/stat:scale-105">
                 <Star size={14} strokeWidth={2} />
              </div>
              <span className="text-[13px] font-extrabold text-[#0f172a] leading-none mb-1">4.8</span>
              <span className="text-[10px] text-slate-500 font-medium">Rating</span>
              {/* Vertical Divider */}
-             <div className="absolute right-0 top-[15%] h-[70%] w-[1px] bg-slate-100" />
+             <div className="absolute right-0 top-[30%] h-[55%] w-[1px] bg-slate-100" />
           </div>
 
           {/* Stat 2 */}
-          <div className="flex flex-col items-center justify-center relative group/stat">
-             <div className="w-8 h-8 rounded-full bg-[#f4f7ff] text-blue-500 flex items-center justify-center mb-1.5 transition-colors group-hover/stat:bg-blue-100">
+          <div className="flex flex-col items-center justify-center relative group/stat pt-3">
+             <div className="w-8 h-8 rounded-xl bg-[#f4f7ff] text-blue-500 flex items-center justify-center mb-1.5 transition-all group-hover/stat:bg-blue-600 group-hover/stat:text-white group-hover/stat:scale-105">
                 <Briefcase size={14} strokeWidth={2} />
              </div>
              <span className="text-[13px] font-extrabold text-[#0f172a] leading-none mb-1">{displayProfile.sessionsCount || 0}</span>
              <span className="text-[10px] text-slate-500 font-medium">Interviews</span>
              {/* Vertical Divider */}
-             <div className="absolute right-0 top-[15%] h-[70%] w-[1px] bg-slate-100" />
+             <div className="absolute right-0 top-[30%] h-[55%] w-[1px] bg-slate-100" />
           </div>
 
           {/* Stat 3 */}
-          <div className="flex flex-col items-center justify-center group/stat overflow-hidden">
-             <div className="w-8 h-8 rounded-full bg-[#f4f7ff] text-blue-500 flex items-center justify-center mb-1.5 transition-colors group-hover/stat:bg-blue-100 shrink-0">
+          <div className="flex flex-col items-center justify-center group/stat overflow-hidden pt-3">
+             <div className="w-8 h-8 rounded-xl bg-[#f4f7ff] text-blue-500 flex items-center justify-center mb-1.5 transition-all group-hover/stat:bg-blue-600 group-hover/stat:text-white group-hover/stat:scale-105 shrink-0">
                 <GraduationCap size={14} strokeWidth={2} />
              </div>
              <span className="text-[13px] font-extrabold text-[#0f172a] leading-none mb-1 capitalize truncate w-full text-center px-1">
@@ -186,6 +231,7 @@ const Sidebar = () => {
 
       {/* CARD 2: NAVIGATION */}
       <div className="bg-white rounded-[24px] border border-slate-100 p-3 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] space-y-1">
+        <p className="px-3 pb-1 pt-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Menu</p>
         <NavItem icon={User} label="Overview" path="/" active={location.pathname === "/" || location.pathname === "/dashboard"} />
         <NavItem icon={UserCircle} label="Profile" path="/profile" active={location.pathname === "/profile"} />
         <NavItem icon={Calendar} label="Sessions" path="/my-sessions" active={location.pathname === "/my-sessions"} />
@@ -194,14 +240,120 @@ const Sidebar = () => {
         <NavItem icon={Award} label="Certificates" path="/certificates" active={location.pathname === "/certificates"} />
       </div>
 
-      {/* CARD 3: UPGRADE */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-1 shadow-sm overflow-hidden">
-        <ProUpgradeCard />
+      {/* CARD 3: PREMIUM PLAN */}
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_8px_24px_-8px_rgba(0,79,203,0.12)] transition-shadow duration-300">
+        <div className="px-5 py-4 border-b border-slate-50">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Premium — ₹159</p>
+        </div>
+        <div className="p-3.5 space-y-2">
+          <button
+            onClick={() => navigate('/my-sessions')}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50/50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm">
+              <BookOpen className="w-4 h-4 text-gray-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold text-gray-900">My bookings</p>
+              <p className="text-[11px] font-medium text-gray-500 mt-0.5">View, join, and review</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+          </button>
+          <button
+            onClick={() => navigate('/tips')}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50/50 hover:bg-amber-50 border border-transparent hover:border-amber-100 transition-all text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm">
+              <Lightbulb className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold text-gray-900">Interview tips</p>
+              <p className="text-[11px] font-medium text-gray-500 mt-0.5">Get hired faster</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+          </button>
+          <button
+            onClick={() => navigate('/plans')}
+            className="group w-full flex items-center gap-3 p-3.5 rounded-2xl bg-blue-50/50 hover:bg-blue-600 hover:text-white border border-transparent hover:border-blue-600 transition-all text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-white border border-blue-100 flex items-center justify-center shrink-0 group-hover:border-transparent shadow-sm">
+              <Zap className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold text-gray-900 group-hover:text-white">Plans & pricing</p>
+              <p className="text-[11px] font-medium text-gray-500 group-hover:text-blue-100 mt-0.5">Unlimited mocks</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-white shrink-0" />
+          </button>
+        </div>
+      </div>
+
+      {/* CARD 3B: CERTIFICATION PATH */}
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] p-5 hover:shadow-[0_8px_24px_-8px_rgba(0,79,203,0.12)] transition-shadow duration-300">
+        <div className="flex items-center gap-2.5 mb-6">
+          <div className="w-8 h-8 rounded-xl bg-[#f4f7ff] text-blue-600 flex items-center justify-center shrink-0">
+            <Briefcase className="w-4 h-4" />
+          </div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Path to certificate</p>
+        </div>
+        <div className="space-y-5">
+          <div className="flex gap-4 items-start relative">
+            {/* Connecting line */}
+            <div className="absolute left-[13px] top-7 bottom-[-20px] w-[2px] bg-gray-100" />
+            
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 shrink-0 z-10 ${step1Done ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+              1
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5 pb-2">
+              <p className="text-sm font-bold text-gray-900">Complete 3 mock interviews</p>
+              <p className="text-xs text-gray-500 font-medium mt-1">{completed} of {target} sessions done</p>
+            </div>
+            {step1Done && <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" strokeWidth={3} />}
+          </div>
+          <div className="flex gap-4 items-start relative">
+            <div className="absolute left-[13px] top-7 bottom-[-20px] w-[2px] bg-gray-100" />
+            
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 shrink-0 z-10 ${step2Active ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+              2
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5 pb-2">
+              <p className="text-sm font-bold text-gray-900">Earn your certificate</p>
+              <p className="text-xs text-gray-500 font-medium mt-1">{hasCert ? "Certificate issued" : isEligible ? "Ready to claim" : "Available after step 1"}</p>
+            </div>
+            {(hasCert || isEligible) && <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" strokeWidth={3} />}
+          </div>
+          <div className="flex gap-4 items-start">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 shrink-0 z-10 ${step3Active ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+              3
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <p className="text-sm font-bold text-gray-900">Get referred to companies</p>
+              <p className="text-xs text-gray-500 font-medium mt-1">500+ hiring companies in Pipeline Hub</p>
+            </div>
+            {step3Active && <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" strokeWidth={3} />}
+          </div>
+          {isEligible ? (
+            <button
+              onClick={handleGetCertificate}
+              className="w-full mt-6 flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[13px] font-bold transition-all shadow-sm"
+            >
+              <Award size={16} /> Get your certificate
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate(hasCert ? '/certificates' : '/tips')}
+              className="w-full mt-6 flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[13px] font-bold transition-all shadow-sm"
+            >
+              {hasCert ? "View certificates" : "Open Pipeline Hub"} <ChevronRight size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* CARD 4: UPCOMING */}
       {nextSession && (
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-[0_10px_28px_-10px_rgba(16,185,129,0.25)] transition-shadow duration-300">
+          <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-emerald-50 opacity-70 blur-2xl pointer-events-none" />
           <div className="flex items-center justify-between mb-4 relative z-10">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -212,7 +364,7 @@ const Sidebar = () => {
             </span>
           </div>
           <div className="flex items-center gap-3 mb-5 relative z-10">
-            <div className="w-10 h-10 rounded-xl border border-gray-100 p-0.5">
+            <div className="w-10 h-10 rounded-xl border border-gray-100 p-0.5 shadow-sm">
               <img
                 src={getProfileImageUrl(nextSession.expertDetails?.profileImage)}
                 className="w-full h-full rounded-lg object-cover"
@@ -226,7 +378,7 @@ const Sidebar = () => {
           </div>
           <button
             onClick={() => navigate('/my-sessions')}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-[11px] font-bold tracking-wide hover:bg-blue-700 transition-all shadow-sm flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-[11px] font-bold tracking-wide hover:bg-blue-700 transition-all shadow-sm flex items-center justify-center gap-2 relative z-10 active:scale-[0.98]"
           >
             <Video size={14} strokeWidth={3} />
             Join Studio

@@ -20,14 +20,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebar
     const showRightSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
 
     return (
-        <div className="min-h-screen bg-white flex flex-col font-sans text-gray-900">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50/70 to-white flex flex-col font-sans text-gray-900">
             {/* Top Navigation - Sticky */}
             <div className="sticky top-0 z-50">
                 <Navigation />
             </div>
 
             {/* Unified Container: Left Sidebar (only on Overview) | Main | Right Sidebar */}
-            <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-4 lg:px-5 pt-2 sm:pt-3 pb-12 sm:pb-20 transition-all duration-300">
+            <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-4 lg:px-5 pt-4 sm:pt-5 pb-12 sm:pb-20 transition-all duration-300">
                 <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start w-full">
 
                     {/* Left Sidebar - only on Overview (/) ; on Sessions/Profile only main content (experts etc.) shows */}

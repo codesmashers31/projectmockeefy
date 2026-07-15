@@ -181,16 +181,13 @@ const TechSkillIcon = ({ skill }: { skill: string }) => {
     );
   }
 
-  // Fallback to letters
+  // Fallback to letters - kept within one cohesive blue/slate family so a row of mixed skills
+  // never looks like a scattered rainbow of clashing hues.
   const colors = [
     "bg-blue-100 text-blue-700 border-blue-200",
-    "bg-rose-100 text-rose-700 border-rose-200",
-    "bg-emerald-100 text-emerald-700 border-emerald-200",
-    "bg-amber-100 text-amber-700 border-amber-200",
-    "bg-purple-100 text-purple-700 border-purple-200",
-    "bg-cyan-100 text-cyan-700 border-cyan-200",
-    "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
-    "bg-orange-100 text-orange-700 border-orange-200",
+    "bg-indigo-100 text-indigo-700 border-indigo-200",
+    "bg-slate-100 text-slate-600 border-slate-200",
+    "bg-sky-100 text-sky-700 border-sky-200",
   ];
   let hash = 0;
   for (let c = 0; c < skill.length; c++) hash = skill.charCodeAt(c) + ((hash << 5) - hash);
@@ -206,7 +203,18 @@ const TechSkillIcon = ({ skill }: { skill: string }) => {
   );
 };
 
-export const MentorJobCard = React.memo(({ mentor }: { mentor: MentorProfile }) => {
+interface MentorJobCardProps {
+    mentor: MentorProfile;
+    /**
+     * Tri-state, only meaningful inside a centered-snap carousel:
+     * - `undefined` (default): plain grid/list usage - full-strength appearance, unchanged from before.
+     * - `true`: this card is the carousel's centered/focused card - subtle scale + ring highlight.
+     * - `false`: this card is an inactive neighbor inside a carousel - slightly receded so the centered card pops.
+     */
+    isActive?: boolean;
+}
+
+export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProps) => {
     const navigate = useNavigate();
     const [avatarFailed, setAvatarFailed] = useState(false);
     const [isSaved, setIsSaved] = useState(() => {
@@ -307,41 +315,60 @@ export const MentorJobCard = React.memo(({ mentor }: { mentor: MentorProfile }) 
 
 
 
+    const isTopRated = mentor.rating >= 4.8;
+
     return (
-      <div 
+      <div
         onClick={handleCardClick}
-        className="bg-white border border-slate-200 rounded-3xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] w-full max-w-[280px] sm:max-w-[290px] flex flex-col items-center relative hover:shadow-[0_12px_35px_rgba(124,58,237,0.08)] hover:border-purple-300 transition-all duration-300 font-sans cursor-pointer h-full justify-between gap-3.5"
+        className={`relative bg-white border rounded-[28px] p-4 flex flex-col items-center transition-all duration-300 font-sans cursor-pointer h-full justify-between gap-3.5 overflow-hidden group/card w-full max-w-[280px] sm:max-w-[290px] shadow-none hover:border-slate-300 ${
+          isActive === true
+            ? "border-slate-300 scale-[1.02] z-10"
+            : isActive === false
+              ? "border-slate-200 scale-[0.97] opacity-80 hover:opacity-100 hover:scale-100"
+              : "border-slate-200"
+        }`}
       >
+        {/* Glassmorphism glow on hover */}
+        <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent blur-2xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-slate-50/70 to-transparent pointer-events-none rounded-t-[28px]" />
+
+        {/* Top Rated ribbon */}
+        {isTopRated && (
+          <div className="absolute top-0 right-8 z-20 px-2.5 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-black uppercase tracking-widest rounded-b-lg shadow-md">
+            Top Rated
+          </div>
+        )}
+
         {/* Heart button */}
         <button
           onClick={toggleSave}
-          className="absolute top-3.5 right-3.5 transition-transform hover:scale-110 focus:outline-none z-30"
+          className="absolute top-3.5 right-3.5 z-30 w-8 h-8 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 shadow-sm flex items-center justify-center transition-all hover:scale-110 hover:bg-white focus:outline-none"
           aria-label="Save mentor"
         >
           <HeartIcon filled={isSaved} />
         </button>
 
         {/* Available Today / Available This Week Badge */}
-        <div className="absolute top-3.5 left-3.5 inline-flex items-center gap-1 bg-[#f0fdf4] border border-[#dcfce7] text-[#166534] text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+        <div className="absolute top-3.5 left-3.5 z-10 inline-flex items-center gap-1 bg-[#f0fdf4]/90 backdrop-blur-sm border border-[#dcfce7] text-[#166534] text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-sm">
           {mentor.activeTime?.toLowerCase().includes("week") ? (
             <>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0 animate-pulse" />
               Available This Week
             </>
           ) : (
             <>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0 animate-pulse" />
               Available Today
             </>
           )}
         </div>
 
         {/* Top Spacer to push content below absolute tags */}
-        <div className="w-full pt-5 flex flex-col items-center">
+        <div className="relative z-10 w-full pt-5 flex flex-col items-center">
           {/* Avatar Container */}
           <div className="relative shrink-0 mb-2.5">
             <div
-              className="w-[84px] h-[84px] rounded-full overflow-hidden border-[3px] border-[#DBEAFE]"
+              className="w-[84px] h-[84px] rounded-full overflow-hidden border-[3px] border-[#DBEAFE] shadow-sm transition-transform duration-300 group-hover/card:scale-[1.04]"
             >
               {showPlaceholder ? (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-xl uppercase">
@@ -356,7 +383,7 @@ export const MentorJobCard = React.memo(({ mentor }: { mentor: MentorProfile }) 
                 />
               )}
             </div>
-            <span className="absolute bottom-0.5 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+            <span className="absolute bottom-0.5 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" />
           </div>
 
           {/* Name & Verified Badge */}
@@ -384,19 +411,18 @@ export const MentorJobCard = React.memo(({ mentor }: { mentor: MentorProfile }) 
           </div>
 
           {/* Category & Level Badges */}
-          <div className="flex items-center justify-center gap-2 mb-3.5 flex-wrap px-2">
+          <div className="flex items-center justify-center gap-1.5 mb-3.5 flex-wrap px-2">
             {mentor.category && (
-              <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 bg-purple-50 text-purple-600 border border-purple-100 rounded-md shrink-0">
-                {mentor.category} Category
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 bg-slate-50 text-slate-500 border border-slate-200 rounded-full shrink-0">
+                {mentor.category}
               </span>
             )}
             {mentor.level && (
-              <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md shrink-0">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full shrink-0">
                 {mentor.level}
               </span>
             )}
           </div>
-
 
 
           {/* Metrics box (Centered divided box) */}
@@ -418,7 +444,7 @@ export const MentorJobCard = React.memo(({ mentor }: { mentor: MentorProfile }) 
         </div>
 
         {/* Pricing + CTA + Next Available Column */}
-        <div className="w-full flex flex-col items-center">
+        <div className="relative z-10 w-full flex flex-col items-center">
           {/* Pricing & Duration */}
           <div className="text-left w-full mb-2.5 px-1">
             <div className="flex items-center gap-1.5 mb-1 text-slate-500 font-semibold text-xs">
@@ -437,7 +463,7 @@ export const MentorJobCard = React.memo(({ mentor }: { mentor: MentorProfile }) 
           {/* CTA Book Session button */}
           <button
             onClick={handleBookNow}
-            className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-bold text-sm py-2.5 rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform mb-2.5"
+            className="w-full bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white font-bold text-sm py-2.5 rounded-xl transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 flex items-center justify-center gap-1.5 active:scale-[0.98] mb-2.5"
           >
             Book Session <ChevronRightIcon size={14} />
           </button>

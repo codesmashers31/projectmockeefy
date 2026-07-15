@@ -1,9 +1,10 @@
-import { useRef, useState, useEffect } from "react";
-import { 
-  ChevronRight, ChevronLeft, Code, Terminal, Globe, 
-  Smartphone, Cloud, Database, ShieldCheck, CheckSquare, 
-  Users, Network, Cpu, Sparkles, UserCheck, Briefcase, 
-  Palette, Award, Layers 
+import { useCallback, useEffect, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
+import {
+  ChevronRight, ChevronLeft, Code, Terminal, Globe,
+  Smartphone, Cloud, Database, ShieldCheck, CheckSquare,
+  Users, Network, Cpu, Sparkles, UserCheck, Briefcase,
+  Palette, Award, Layers
 } from "lucide-react";
 import { MentorJobCard, MentorProfile } from "./MentorJobCard";
 
@@ -13,7 +14,7 @@ interface CategorySectionProps {
     onSeeAll?: () => void;
 }
 
-const getCategoryIconDetails = (title: string) => {
+export const getCategoryIconDetails = (title: string) => {
   const t = title.toLowerCase().trim();
   if (t === "it" || t === "top rated experts") {
     return { icon: <Award className="w-5 h-5 text-amber-500" />, bg: "bg-amber-50 border-amber-100/50" };
@@ -67,76 +68,63 @@ const getCategoryIconDetails = (title: string) => {
 };
 
 export const CategorySection = ({ title, profiles, onSeeAll }: CategorySectionProps) => {
-    const rowRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
-    const [showLeftArrow, setShowLeftArrow] = useState(false);
-    const [showRightArrow, setShowRightArrow] = useState(true);
-    const [activeDot, setActiveDot] = useState(0);
+    const [emblaRef, emblaApi] = useEmblaCarousel({
+        align: "start",
+        containScroll: "trimSnaps",
+        loop: false,
+        dragFree: false,
+        skipSnaps: false,
+    });
+    const [prevBtnEnabled, setPrevBtnEnabled] = useState(false);
+    const [nextBtnEnabled, setNextBtnEnabled] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [scrollProgress, setScrollProgress] = useState(0);
 
-    const checkScroll = () => {
-        if (rowRef.current) {
-            const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
-            setShowLeftArrow(scrollLeft > 0);
-            setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
-            
-            if (scrollWidth > clientWidth) {
-                const percentage = scrollLeft / (scrollWidth - clientWidth);
-                const dotIndex = Math.min(4, Math.round(percentage * 4));
-                setActiveDot(dotIndex);
-            }
-        }
-    };
+    const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi]);
+    const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi]);
+
+    const onSelect = useCallback((api: any) => {
+        setPrevBtnEnabled(api.canScrollPrev());
+        setNextBtnEnabled(api.canScrollNext());
+        setSelectedIndex(api.selectedScrollSnap());
+    }, []);
+
+    const onScroll = useCallback((api: any) => {
+        setScrollProgress(Math.min(1, Math.max(0, api.scrollProgress())) * 100);
+    }, []);
 
     useEffect(() => {
-        checkScroll();
-        window.addEventListener('resize', checkScroll);
-        return () => window.removeEventListener('resize', checkScroll);
-    }, [profiles]);
+        if (!emblaApi) return;
+        onSelect(emblaApi);
+        emblaApi.on("select", onSelect);
+        emblaApi.on("reInit", onSelect);
+        emblaApi.on("scroll", onScroll);
+    }, [emblaApi, onSelect, onScroll]);
 
-    const scroll = (direction: 'left' | 'right') => {
-        if (rowRef.current) {
-            const scrollAmount = 320;
-            rowRef.current.scrollBy({
-                left: direction === 'left' ? -scrollAmount : scrollAmount,
-                behavior: 'smooth'
-            });
-            setTimeout(checkScroll, 350);
-        }
-    };
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-        if (!rowRef.current) return;
-        setIsDragging(true);
-        setStartX(e.pageX - rowRef.current.offsetLeft);
-        setScrollLeft(rowRef.current.scrollLeft);
-    };
-
-    const handleMouseLeave = () => setIsDragging(false);
-    const handleMouseUp = () => setIsDragging(false);
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging || !rowRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - rowRef.current.offsetLeft;
-        const walk = (x - startX) * 1.5;
-        rowRef.current.scrollLeft = scrollLeft - walk;
-        checkScroll();
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "ArrowLeft") scrollPrev();
+        if (e.key === "ArrowRight") scrollNext();
     };
 
     const iconDetails = getCategoryIconDetails(title);
 
     return (
-        <section className="relative w-auto mb-10 transition-all duration-300 group/section">
-            {/* Header - Mockup Style */}
-            <div className="flex items-center justify-between mb-5 text-left">
+        <section
+            className="relative w-auto mb-10 bg-white border border-slate-200 rounded-[28px] p-5 sm:p-7 outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/60 focus-visible:ring-offset-2 transition-all duration-300 group/section"
+            role="region"
+            aria-roledescription="carousel"
+            aria-label={`${title} experts`}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5 text-left gap-4">
                 <div className="flex items-center gap-3.5 min-w-0">
                     <div className={`w-11 h-11 rounded-2xl ${iconDetails.bg} flex items-center justify-center shrink-0 shadow-sm border`}>
                         {iconDetails.icon}
                     </div>
                     <div className="min-w-0">
-                        <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-none">
+                        <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight leading-none truncate">
                             {title === "IT" ? "Top Rated Experts" : `${title} Experts`}
                         </h2>
                         <span className="block text-xs text-slate-500 font-medium mt-2.5 truncate">
@@ -144,69 +132,60 @@ export const CategorySection = ({ title, profiles, onSeeAll }: CategorySectionPr
                         </span>
                     </div>
                 </div>
+
+                {/* Carousel Controls */}
+                <div className="flex gap-2 shrink-0">
+                    <button
+                        onClick={scrollPrev}
+                        disabled={!prevBtnEnabled}
+                        aria-label="Previous"
+                        className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all ${
+                            prevBtnEnabled
+                                ? "border-slate-200 bg-white text-slate-600 hover:text-[#4F46E5] hover:border-indigo-200 shadow-sm hover:shadow active:scale-90 cursor-pointer"
+                                : "border-slate-100 text-slate-300 cursor-default"
+                        }`}
+                    >
+                        <ChevronLeft size={16} strokeWidth={2.5} />
+                    </button>
+                    <button
+                        onClick={scrollNext}
+                        disabled={!nextBtnEnabled}
+                        aria-label="Next"
+                        className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all ${
+                            nextBtnEnabled
+                                ? "border-slate-200 bg-white text-slate-600 hover:text-[#4F46E5] hover:border-indigo-200 shadow-sm hover:shadow active:scale-90 cursor-pointer"
+                                : "border-slate-100 text-slate-300 cursor-default"
+                        }`}
+                    >
+                        <ChevronRight size={16} strokeWidth={2.5} />
+                    </button>
+                </div>
             </div>
 
-            {/* Scroll Wrapper */}
-            <div className="relative pt-2 pb-2 w-full">
-                {/* Horizontal scroll on all devices */}
+            {/* Carousel */}
+            <div className="relative">
+                <div className="overflow-hidden -mx-1 sm:-mx-2" ref={emblaRef}>
+                    <div className="flex py-3">
+                        {profiles.map((profile, index) => (
+                            <div
+                                key={profile.id}
+                                className="flex-[0_0_82%] sm:flex-[0_0_340px] min-w-0 flex justify-center px-2 sm:px-3"
+                            >
+                                <MentorJobCard mentor={profile} isActive={index === selectedIndex} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Removed edge fades to eliminate white overlay and shadow lines */}
+            </div>
+
+            {/* Scroll progress bar */}
+            <div className="mt-4 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div
-                    ref={rowRef}
-                    className={`
-                        flex flex-row gap-8 overflow-x-auto pb-2.5 scrollbar-hide snap-x snap-mandatory
-                        ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}
-                    `}
-                    onMouseDown={handleMouseDown}
-                    onMouseLeave={handleMouseLeave}
-                    onMouseUp={handleMouseUp}
-                    onMouseMove={handleMouseMove}
-                    onScroll={checkScroll}
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
-                >
-                    {profiles.map((profile) => (
-                        <div key={profile.id} className="snap-start shrink-0 w-[280px] sm:w-[290px] flex">
-                            <MentorJobCard mentor={profile} />
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Bottom Controls (Arrows + Dots) */}
-            <div className="flex justify-center items-center gap-5 mt-4 pb-3">
-                <button
-                    onClick={() => scroll('left')}
-                    className={`
-                        w-9 h-9 rounded-full border border-slate-200 bg-white
-                        flex items-center justify-center text-slate-600 hover:text-[#4F46E5] hover:border-indigo-200 transition-all shadow-sm hover:shadow
-                        ${!showLeftArrow ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:scale-105 active:scale-95'}
-                    `}
-                    disabled={!showLeftArrow}
-                    aria-label="Previous"
-                >
-                    <ChevronLeft size={16} strokeWidth={2.5} />
-                </button>
-
-                {/* Dots indicator */}
-                <div className="flex justify-center items-center gap-1.5">
-                    {[0, 1, 2, 3, 4].map((index) => (
-                        <span
-                            key={index}
-                            className={`h-2 rounded-full transition-all duration-300 ${activeDot === index ? "w-4 bg-indigo-600" : "w-2 bg-gray-200"}`}
-                        />
-                    ))}
-                </div>
-
-                <button
-                    onClick={() => scroll('right')}
-                    className={`
-                        w-9 h-9 rounded-full border border-slate-200 bg-white
-                        flex items-center justify-center text-slate-600 hover:text-[#4F46E5] hover:border-indigo-200 transition-all shadow-sm hover:shadow
-                        ${!showRightArrow ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:scale-105 active:scale-95'}
-                    `}
-                    disabled={!showRightArrow}
-                    aria-label="Next"
-                >
-                    <ChevronRight size={16} strokeWidth={2.5} />
-                </button>
+                    className="h-full bg-gradient-to-r from-indigo-500 to-blue-600 rounded-full transition-[width] duration-150 ease-out"
+                    style={{ width: `${Math.max(8, scrollProgress)}%` }}
+                />
             </div>
         </section>
     );

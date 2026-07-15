@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { MentorJobCard, MentorProfile } from "./MentorJobCard";
 import { CategorySection } from "./CategorySection";
 import { AlertCircle, Search, X, ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
@@ -8,6 +8,12 @@ import { useQuery } from "@tanstack/react-query";
 import { calculateAge, calculateProfessionalExperience, getCurrentCompany, getJobTitle } from "../lib/expertUtils";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { SuccessStoriesCarousel } from "./SuccessStoriesCarousel";
+import { PromoBanners } from "./PromoBanners";
+import { StickyBookCTA } from "./StickyBookCTA";
+import { ExpertsCarousel } from "./ExpertsCarousel";
+
+const FAANG_COMPANIES = ["google", "amazon", "apple", "meta", "facebook", "netflix", "microsoft"];
 
 const CoachSessionCard = React.memo(function CoachSessionCard() {
   // Query experts
@@ -133,6 +139,13 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
+  // Additional advanced filters: company, expert level, max price
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [maxPriceFilter, setMaxPriceFilter] = useState<number | null>(null);
+
+  const listingSectionRef = useRef<HTMLDivElement>(null);
+
   // Active filter count logic
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -141,8 +154,11 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     if (maxExperience < 15) count++;
     if (availabilityFilter !== "All") count++;
     if (sortOption !== "recommended") count++;
+    if (selectedCompanies.length > 0) count++;
+    if (selectedLevels.length > 0) count++;
+    if (maxPriceFilter !== null) count++;
     return count;
-  }, [selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption]);
+  }, [selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption, selectedCompanies, selectedLevels, maxPriceFilter]);
 
   const isFilteringActive = useMemo(() => {
     return searchQuery.trim() !== "" || activeFilterCount > 0;
@@ -172,6 +188,9 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     setMaxExperience(15);
     setAvailabilityFilter("All");
     setSortOption("recommended");
+    setSelectedCompanies([]);
+    setSelectedLevels([]);
+    setMaxPriceFilter(null);
   };
 
   // Toggle Category Selection
@@ -185,6 +204,20 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
   const toggleSkill = (skill: string) => {
     setSelectedSkills(prev =>
       prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  };
+
+  // Toggle Company Selection
+  const toggleCompany = (company: string) => {
+    setSelectedCompanies(prev =>
+      prev.includes(company) ? prev.filter(c => c !== company) : [...prev, company]
+    );
+  };
+
+  // Toggle Expert Level Selection
+  const toggleLevel = (level: string) => {
+    setSelectedLevels(prev =>
+      prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
     );
   };
 
@@ -235,6 +268,24 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
       list = list.filter(p => p.activeTime?.toLowerCase().includes("today") || p.activeTime?.toLowerCase().includes("week"));
     }
 
+    // 5b. Company filter
+    if (selectedCompanies.length > 0) {
+      list = list.filter(p => p.company && selectedCompanies.includes(p.company));
+    }
+
+    // 5c. Expert Level filter
+    if (selectedLevels.length > 0) {
+      list = list.filter(p => p.level && selectedLevels.includes(p.level));
+    }
+
+    // 5d. Max Price filter
+    if (maxPriceFilter !== null) {
+      list = list.filter(p => {
+        const effectivePrice = p.minPrice ?? parseInt((p.price || "0").toString().replace(/[^\d]/g, "")) ?? 0;
+        return effectivePrice <= maxPriceFilter;
+      });
+    }
+
     // 6. Sorting logic
     if (sortOption === "price-asc") {
       list.sort((a, b) => parseInt(a.price || "0") - parseInt(b.price || "0"));
@@ -245,7 +296,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     }
 
     return list;
-  }, [allProfiles, searchQuery, selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption]);
+  }, [allProfiles, searchQuery, selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption, selectedCompanies, selectedLevels, maxPriceFilter]);
 
   // Group experts by category
   const groupedByCategory = useMemo(() => {
@@ -264,13 +315,91 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     return uniqueCategories.filter(cat => groupedByCategory[cat] && groupedByCategory[cat].length > 0);
   }, [uniqueCategories, groupedByCategory]);
 
+  // Unique companies present in the verified experts dataset (for the Company filter)
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set<string>();
+    allProfiles.forEach(p => { if (p.company && p.company.trim()) set.add(p.company.trim()); });
+    return Array.from(set).sort();
+  }, [allProfiles]);
+
+  // Unique expert levels present in the dataset (for the Expert Level filter)
+  const uniqueLevels = useMemo(() => {
+    const set = new Set<string>();
+    allProfiles.forEach(p => { if (p.level && p.level.trim()) set.add(p.level.trim()); });
+    return Array.from(set).sort();
+  }, [allProfiles]);
+
+  // Price bounds derived from live data, used to bound the Max Price slider
+  const priceBounds = useMemo(() => {
+    const prices = allProfiles
+      .map(p => p.minPrice ?? parseInt((p.price || "0").toString().replace(/[^\d]/g, ""), 10))
+      .filter(n => typeof n === "number" && !isNaN(n) && n > 0);
+    if (prices.length === 0) return { min: 0, max: 5000 };
+    return { min: Math.min(...prices), max: Math.max(...prices) };
+  }, [allProfiles]);
+
+  // Featured carousel rails - all derived client-side from allProfiles (no new API calls)
+  const topRatedProfiles = useMemo(() => {
+    return [...allProfiles].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 10);
+  }, [allProfiles]);
+
+  const mostBookedProfiles = useMemo(() => {
+    return [...allProfiles].sort((a, b) => (b.totalSessions || 0) - (a.totalSessions || 0)).slice(0, 10);
+  }, [allProfiles]);
+
+  const faangProfiles = useMemo(() => {
+    return allProfiles.filter(p => {
+      const company = (p.company || "").toLowerCase();
+      return FAANG_COMPANIES.some(f => company.includes(f));
+    }).slice(0, 10);
+  }, [allProfiles]);
+
+  const recentlyAvailableProfiles = useMemo(() => {
+    const today = allProfiles.filter(p => p.activeTime?.toLowerCase().includes("today"));
+    return (today.length > 0 ? today : allProfiles).slice(0, 10);
+  }, [allProfiles]);
+
+  const featuredProfiles = useMemo(() => {
+    const highlyRated = allProfiles.filter(p => p.isVerified && (p.rating || 0) >= 4.5);
+    return (highlyRated.length >= 4 ? highlyRated : allProfiles).slice(0, 10);
+  }, [allProfiles]);
+
   const toggleDropdown = (dropdown: string) => {
     setActiveDropdown(prev => prev === dropdown ? null : dropdown);
   };
 
+  const handleStickyBookNow = () => {
+    listingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <div className="w-full bg-white border border-slate-200/80 rounded-[24px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col">
-      
+    <>
+      {/* 3. Featured Experts Carousels */}
+      {featuredProfiles.length > 0 && (
+        <ExpertsCarousel title="Featured Experts" subtitle="Hand-picked, highly rated mentors" profiles={featuredProfiles} />
+      )}
+      {topRatedProfiles.length > 0 && (
+        <ExpertsCarousel title="Top Rated Experts" subtitle="Highest rated by candidates" profiles={topRatedProfiles} />
+      )}
+
+      {/* 7. Promotional Banner Section */}
+      <PromoBanners />
+
+      {mostBookedProfiles.length > 0 && (
+        <ExpertsCarousel title="Most Booked Experts" subtitle="In highest demand right now" profiles={mostBookedProfiles} />
+      )}
+      {faangProfiles.length > 0 && (
+        <ExpertsCarousel title="FAANG Experts" subtitle="From Google, Amazon, Meta, Apple, Netflix & Microsoft" profiles={faangProfiles} />
+      )}
+      {recentlyAvailableProfiles.length > 0 && (
+        <ExpertsCarousel title="Recently Available Experts" subtitle="Open for sessions today" profiles={recentlyAvailableProfiles} />
+      )}
+
+      {/* 6. Expert Success Stories Carousel */}
+      <SuccessStoriesCarousel />
+
+    <div ref={listingSectionRef} className="w-full bg-white border border-slate-200/80 rounded-[24px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col scroll-mt-24">
+
       {/* Search Bar - Fixed at top of card */}
       <div className="shrink-0 bg-white z-30 px-6 md:px-8 py-3 border-b border-slate-200/50">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -594,6 +723,79 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
                   )}
                 </div>
               </div>
+
+              {/* 6. Expert Level */}
+              {uniqueLevels.length > 0 && (
+                <div className="space-y-2.5">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Expert Level</label>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueLevels.map(level => {
+                      const isSelected = selectedLevels.includes(level);
+                      return (
+                        <button
+                          key={level}
+                          onClick={() => toggleLevel(level)}
+                          className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[#4F46E5] bg-indigo-50/50 text-[#4F46E5]'
+                              : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 7. Company */}
+              {uniqueCompanies.length > 0 && (
+                <div className="space-y-2.5">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Company</label>
+                  <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto p-0.5">
+                    {uniqueCompanies.map(company => {
+                      const isSelected = selectedCompanies.includes(company);
+                      return (
+                        <button
+                          key={company}
+                          onClick={() => toggleCompany(company)}
+                          className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[#4F46E5] bg-indigo-50/50 text-[#4F46E5]'
+                              : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          {company}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 8. Price Range */}
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-baseline">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Max Price</label>
+                  <span className="text-xs font-bold text-[#4F46E5] bg-indigo-50 px-2 py-0.5 rounded-md">
+                    Up to ₹{(maxPriceFilter ?? priceBounds.max).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={priceBounds.min}
+                  max={priceBounds.max}
+                  step={Math.max(1, Math.round((priceBounds.max - priceBounds.min) / 50) || 1)}
+                  value={maxPriceFilter ?? priceBounds.max}
+                  onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
+                  className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-[#4F46E5]"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                  <span>₹{priceBounds.min.toLocaleString("en-IN")}</span>
+                  <span>₹{priceBounds.max.toLocaleString("en-IN")}+</span>
+                </div>
+              </div>
             </div>
 
             {/* Modal Footer */}
@@ -616,6 +818,10 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
         </div>
       )}
     </div>
+
+      {/* 8. Sticky CTA Section */}
+      <StickyBookCTA onBookNow={handleStickyBookNow} />
+    </>
   );
 });
 

@@ -4,10 +4,15 @@ import { Button } from "./ui/button";
 import { useAuth } from "../context/AuthContext";
 import PricingIllustration from "../assets/Pricing plans-pana.svg";
 
-export const ProUpgradeCard = () => {
+interface ProUpgradeCardProps {
+    /** Compact variant with no illustration - used in narrow sticky sidebars so the card never outgrows the viewport. */
+    compact?: boolean;
+}
+
+export const ProUpgradeCard = ({ compact = false }: ProUpgradeCardProps) => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    
+
     if (user?.isPremium) {
         return (
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-blue-100 p-5 shadow-sm group">
@@ -29,14 +34,39 @@ export const ProUpgradeCard = () => {
         );
     }
 
+    if (compact) {
+        return (
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#fcfdfd] to-[#f4f7ff] border border-slate-200 p-4 shadow-sm group">
+                <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-blue-100/50 blur-2xl pointer-events-none" />
+                <div className="relative z-10 flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-1.5">
+                        <Crown className="w-3.5 h-3.5 text-[#004fcb] fill-current" />
+                        <span className="font-extrabold text-[10px] tracking-widest uppercase text-blue-700">Premium</span>
+                    </div>
+                    <span className="text-[10px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">₹159/mo</span>
+                </div>
+                <h3 className="relative z-10 font-extrabold text-gray-900 text-[13.5px] leading-tight mb-1.5">3 free mocks + certification</h3>
+                <p className="relative z-10 text-[11px] text-gray-500 font-medium leading-relaxed mb-3.5">
+                    Unlock verified badges and priority matching.
+                </p>
+                <Button
+                    onClick={() => navigate('/payment', { state: { upgradeType: 'premium' } })}
+                    className="relative z-10 w-full bg-[#004fcb] text-white hover:bg-blue-700 border-0 font-bold text-xs h-9 shadow-sm transition-all rounded-xl"
+                >
+                    Upgrade Now
+                </Button>
+            </div>
+        );
+    }
+
     return (
         <div className="relative overflow-hidden rounded-2xl bg-[#fcfdfd] border border-slate-200 p-0 shadow-sm flex flex-col group">
-            
+
             {/* Header / Illustration Area */}
             <div className="relative h-[160px] w-full bg-gradient-to-b from-[#f4f7fb] to-white flex items-center justify-center overflow-hidden pt-4 pb-2">
-                <img 
-                    src={PricingIllustration} 
-                    alt="Premium Plan Illustration" 
+                <img
+                    src={PricingIllustration}
+                    alt="Premium Plan Illustration"
                     className="relative z-10 w-full h-full object-contain transform scale-110"
                 />
             </div>

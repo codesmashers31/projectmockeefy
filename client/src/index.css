@@ -45,7 +45,13 @@
         width: 100%;
         min-height: 100vh;
         box-sizing: border-box;
-        overflow-x: clip;
+        /* Do NOT set overflow-x here: per the CSS overflow spec, once one axis is
+           non-"visible", the browser silently promotes the other axis to "auto",
+           turning body into its own scroll container in addition to html. That
+           second scroll container breaks position:sticky for the dashboard side
+           nav / info panel (they'd stick relative to the wrong ancestor).
+           overflow-x: clip on <html> above is already enough to stop horizontal
+           bleed, so body should stay fully "visible". */
         scrollbar-gutter: stable;
     }
 

@@ -42,9 +42,9 @@ const InfoPanel = ({ fullWidth }: InfoPanelProps) => {
     <div className={`space-y-4 font-sans ${fullWidth ? "w-full max-w-full" : "max-w-[280px]"}`}>
 
       {/* Book experts & related – no AI/Intelligence */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">Book & practice</h2>
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-[0_8px_24px_-8px_rgba(0,79,203,0.12)] transition-shadow duration-300">
+        <div className="px-5 py-4 border-b border-slate-50">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Premium — ₹159</p>
         </div>
         <div className="p-3.5 space-y-2">
           <button
@@ -90,10 +90,12 @@ const InfoPanel = ({ fullWidth }: InfoPanelProps) => {
       </div>
 
       {/* Interview → Certificate (3 completed = certificate) */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] p-6 hover:shadow-[0_8px_24px_-8px_rgba(0,79,203,0.12)] transition-shadow duration-300">
         <div className="flex items-center gap-2.5 mb-6">
-          <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
-          <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">Path to certificate</h2>
+          <div className="w-8 h-8 rounded-xl bg-[#f4f7ff] text-blue-600 flex items-center justify-center shrink-0">
+            <Briefcase className="w-4 h-4" />
+          </div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Path to certificate</p>
         </div>
         <div className="space-y-5">
           <div className="flex gap-4 items-start relative">
