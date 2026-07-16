@@ -8,12 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { calculateAge, calculateProfessionalExperience, getCurrentCompany, getJobTitle } from "../lib/expertUtils";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { SuccessStoriesCarousel } from "./SuccessStoriesCarousel";
-import { PromoBanners } from "./PromoBanners";
-import { StickyBookCTA } from "./StickyBookCTA";
 import { ExpertsCarousel } from "./ExpertsCarousel";
-
-const FAANG_COMPANIES = ["google", "amazon", "apple", "meta", "facebook", "netflix", "microsoft"];
 
 const CoachSessionCard = React.memo(function CoachSessionCard() {
   // Query experts
@@ -338,27 +333,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     return { min: Math.min(...prices), max: Math.max(...prices) };
   }, [allProfiles]);
 
-  // Featured carousel rails - all derived client-side from allProfiles (no new API calls)
-  const topRatedProfiles = useMemo(() => {
-    return [...allProfiles].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 10);
-  }, [allProfiles]);
-
-  const mostBookedProfiles = useMemo(() => {
-    return [...allProfiles].sort((a, b) => (b.totalSessions || 0) - (a.totalSessions || 0)).slice(0, 10);
-  }, [allProfiles]);
-
-  const faangProfiles = useMemo(() => {
-    return allProfiles.filter(p => {
-      const company = (p.company || "").toLowerCase();
-      return FAANG_COMPANIES.some(f => company.includes(f));
-    }).slice(0, 10);
-  }, [allProfiles]);
-
-  const recentlyAvailableProfiles = useMemo(() => {
-    const today = allProfiles.filter(p => p.activeTime?.toLowerCase().includes("today"));
-    return (today.length > 0 ? today : allProfiles).slice(0, 10);
-  }, [allProfiles]);
-
+  // Featured Experts rail — highly rated verified experts, derived client-side (no extra API calls)
   const featuredProfiles = useMemo(() => {
     const highlyRated = allProfiles.filter(p => p.isVerified && (p.rating || 0) >= 4.5);
     return (highlyRated.length >= 4 ? highlyRated : allProfiles).slice(0, 10);
@@ -368,39 +343,14 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     setActiveDropdown(prev => prev === dropdown ? null : dropdown);
   };
 
-  const handleStickyBookNow = () => {
-    listingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
     <>
-      {/* 3. Featured Experts Carousels */}
-      {featuredProfiles.length > 0 && (
-        <ExpertsCarousel title="Featured Experts" subtitle="Hand-picked, highly rated mentors" profiles={featuredProfiles} />
-      )}
-      {topRatedProfiles.length > 0 && (
-        <ExpertsCarousel title="Top Rated Experts" subtitle="Highest rated by candidates" profiles={topRatedProfiles} />
-      )}
+    <div ref={listingSectionRef} className="w-full scroll-mt-24">
 
-      {/* 7. Promotional Banner Section */}
-      <PromoBanners />
+      {/* Main column: search bar + results */}
+      <div className="w-full bg-white border border-slate-200/80 rounded-[24px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col">
 
-      {mostBookedProfiles.length > 0 && (
-        <ExpertsCarousel title="Most Booked Experts" subtitle="In highest demand right now" profiles={mostBookedProfiles} />
-      )}
-      {faangProfiles.length > 0 && (
-        <ExpertsCarousel title="FAANG Experts" subtitle="From Google, Amazon, Meta, Apple, Netflix & Microsoft" profiles={faangProfiles} />
-      )}
-      {recentlyAvailableProfiles.length > 0 && (
-        <ExpertsCarousel title="Recently Available Experts" subtitle="Open for sessions today" profiles={recentlyAvailableProfiles} />
-      )}
-
-      {/* 6. Expert Success Stories Carousel */}
-      <SuccessStoriesCarousel />
-
-    <div ref={listingSectionRef} className="w-full bg-white border border-slate-200/80 rounded-[24px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col scroll-mt-24">
-
-      {/* Search Bar - Fixed at top of card */}
+      {/* Search Bar */}
       <div className="shrink-0 bg-white z-30 px-6 md:px-8 py-3 border-b border-slate-200/50">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="relative w-full sm:max-w-md">
@@ -413,15 +363,15 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[#4F46E5] placeholder-slate-400 font-semibold"
             />
             {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery("")} 
+              <button
+                onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
             {activeFilterCount > 0 && (
               <button
@@ -429,16 +379,16 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
                 className="flex items-center gap-1.5 px-3.5 py-2.5 border border-red-100 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-200 transition-colors shadow-sm cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Reset Filters
+                Reset
               </button>
             )}
-            
+
             <button
               onClick={() => setIsFilterModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm cursor-pointer ml-auto sm:ml-0"
             >
               <SlidersHorizontal className="w-4 h-4 text-[#4F46E5]" />
-              Advanced Filters
+              Filters
               {activeFilterCount > 0 && (
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#4F46E5] text-white text-[10px] font-black">
                   {activeFilterCount}
@@ -450,10 +400,29 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 p-6 md:px-8 pb-6 md:pb-8 pt-4">
-        <div className="w-full space-y-8">
-          
-        {/* Experts Grid Container */}
+      <div className="flex-1 p-4 sm:p-5">
+        <div className="w-full space-y-6">
+
+        {/* Featured Experts carousel */}
+        {!isFilteringActive && featuredProfiles.length > 0 && (
+          <ExpertsCarousel title="Featured Experts" subtitle="Hand-picked, highly rated mentors" profiles={featuredProfiles} />
+        )}
+
+        {/* Promo banner */}
+        {!isFilteringActive && (
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-[24px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/40 blur-2xl pointer-events-none" />
+            <div className="relative z-10">
+              <p className="text-sm font-bold text-gray-900">Get 3x more callbacks with Mockeefy Premium</p>
+              <p className="text-xs text-gray-600 mt-1">Priority booking, unlimited mocks, and expert feedback for ₹159</p>
+            </div>
+            <button className="relative z-10 shrink-0 px-5 py-2.5 bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-500/20 hover:shadow-lg transition-all">
+              Upgrade now
+            </button>
+          </div>
+        )}
+
+        {/* Experts List Container */}
         <div>
           {isExpertsLoading || isCategoriesLoading ? (
             <div className="space-y-6">
@@ -479,17 +448,15 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
                 <p className="text-sm font-bold text-slate-500">No experts matching your active filters.</p>
               </div>
             ) : (
-              <div className="w-full space-y-6">
+              <div className="w-full space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider">
                     Search Results ({filteredProfiles.length} experts found)
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 justify-items-center">
-                  {filteredProfiles.map((mentor) => (
-                    <MentorJobCard key={mentor.id} mentor={mentor} />
-                  ))}
-                </div>
+                {filteredProfiles.map((mentor) => (
+                  <MentorJobCard key={mentor.id} mentor={mentor} />
+                ))}
               </div>
             )
           ) : activeCategoriesWithData.length === 0 ? (
@@ -497,7 +464,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               <p className="text-sm font-bold text-slate-500">No experts found.</p>
             </div>
           ) : (
-            <div className="w-full space-y-8">
+            <div className="w-full space-y-4">
               {activeCategoriesWithData.map((cat) => (
                 <CategorySection
                   key={cat}
@@ -510,8 +477,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
         </div>
 
         {/* Bottom Trust Signals Bar */}
-        <div className="mt-12 bg-slate-50/60 border border-slate-100 rounded-3xl p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.02)]">
-          {/* Signal 1 */}
+        <div className="mt-4 bg-slate-50/60 border border-slate-100 rounded-3xl p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.02)]">
           <div className="flex items-center gap-3.5 text-left">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -524,8 +490,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               <p className="text-xs text-slate-500 font-medium mt-1">100% Background Verified</p>
             </div>
           </div>
-          
-          {/* Signal 2 */}
           <div className="flex items-center gap-3.5 text-left">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -542,8 +506,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               <p className="text-xs text-slate-500 font-medium mt-1">From FAANG & Top Companies</p>
             </div>
           </div>
-
-          {/* Signal 3 */}
           <div className="flex items-center gap-3.5 text-left">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -558,8 +520,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               <p className="text-xs text-slate-500 font-medium mt-1">Successful Career Transitions</p>
             </div>
           </div>
-
-          {/* Signal 4 */}
           <div className="flex items-center gap-3.5 text-left">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -576,7 +536,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
         </div>
       </div>
 
-      {/* Advanced Filters Modal Overlay */}
+      {/* Advanced Filters Modal Overlay (mobile/tablet) */}
       {isFilterModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[28px] w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-slate-100/50 animate-in zoom-in-95 duration-200">
@@ -817,10 +777,8 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
           </div>
         </div>
       )}
+      </div>
     </div>
-
-      {/* 8. Sticky CTA Section */}
-      <StickyBookCTA onBookNow={handleStickyBookNow} />
     </>
   );
 });

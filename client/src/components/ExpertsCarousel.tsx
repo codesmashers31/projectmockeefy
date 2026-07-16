@@ -54,7 +54,7 @@ export const ExpertsCarousel = ({ title, subtitle, profiles, onSeeAll }: Experts
 
     return (
         <div
-            className="relative group mb-8 bg-white border border-slate-200 rounded-[28px] p-5 sm:p-7 outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/60 focus-visible:ring-offset-2 transition-shadow duration-300"
+            className="relative outline-none"
             role="region"
             aria-roledescription="carousel"
             aria-label={title || "Expert carousel"}
@@ -62,12 +62,12 @@ export const ExpertsCarousel = ({ title, subtitle, profiles, onSeeAll }: Experts
             onKeyDown={handleKeyDown}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-5 px-0.5">
+            <div className="flex items-center justify-between mb-5">
                 <div className="flex flex-col gap-0.5 min-w-0">
                     {title ? (
                         <>
                             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight truncate">{title}</h2>
-                            <p className="text-xs text-slate-500 font-semibold tracking-normal">{subtitle || "Top rated mentors"}</p>
+                            <p className="text-xs text-slate-500 font-semibold">{subtitle || "Top rated mentors"}</p>
                         </>
                     ) : (
                         <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
@@ -80,9 +80,9 @@ export const ExpertsCarousel = ({ title, subtitle, profiles, onSeeAll }: Experts
                     {onSeeAll && (
                         <button
                             onClick={onSeeAll}
-                            className="hidden sm:flex text-sm font-bold text-indigo-600 hover:text-indigo-700 items-center gap-1 transition-colors group/btn px-3 py-1.5 rounded-full hover:bg-indigo-50"
+                            className="hidden sm:flex text-sm font-bold text-indigo-600 hover:text-indigo-700 items-center gap-1 transition-colors px-3 py-1.5 rounded-full hover:bg-indigo-50"
                         >
-                            View all <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
+                            View all <ChevronRight className="w-4 h-4" />
                         </button>
                     )}
 
@@ -117,21 +117,17 @@ export const ExpertsCarousel = ({ title, subtitle, profiles, onSeeAll }: Experts
             </div>
 
             {/* Carousel Container */}
-            <div className="relative">
-                <div className="overflow-hidden -mx-1 sm:-mx-2" ref={emblaRef}>
-                    <div className="flex py-3">
-                        {profiles.map((profile, index) => (
-                            <div
-                                key={profile.id}
-                                className="flex-[0_0_82%] sm:flex-[0_0_340px] min-w-0 flex justify-center px-2 sm:px-3"
-                            >
-                                <MentorJobCard mentor={profile} isActive={index === selectedIndex} />
-                            </div>
-                        ))}
-                    </div>
+            <div className="overflow-hidden -mx-1 sm:-mx-2" ref={emblaRef}>
+                <div className="flex py-2">
+                    {profiles.map((profile) => (
+                        <div
+                            key={profile.id}
+                            className="flex-[0_0_85%] sm:flex-[0_0_300px] min-w-0 flex justify-center px-2"
+                        >
+                            <MentorJobCard mentor={profile} />
+                        </div>
+                    ))}
                 </div>
-
-                {/* Removed edge fades to eliminate white overlay and shadow lines */}
             </div>
 
             {/* Scroll progress bar */}

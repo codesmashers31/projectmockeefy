@@ -112,97 +112,6 @@ const CompanyLogo = ({ company }: { company: string }) => {
   return null;
 };
 
-const TechSkillIcon = ({ skill }: { skill: string }) => {
-  const [imgError, setImgError] = useState(false);
-  
-  const getIconUrl = (name: string) => {
-    const n = name.toLowerCase().trim();
-    const map: Record<string, string> = {
-      "react": "react/react-original.svg",
-      "react.js": "react/react-original.svg",
-      "reactjs": "react/react-original.svg",
-      "node": "nodejs/nodejs-original.svg",
-      "node.js": "nodejs/nodejs-original.svg",
-      "nodejs": "nodejs/nodejs-original.svg",
-      "javascript": "javascript/javascript-original.svg",
-      "js": "javascript/javascript-original.svg",
-      "typescript": "typescript/typescript-original.svg",
-      "ts": "typescript/typescript-original.svg",
-      "vue": "vuejs/vuejs-original.svg",
-      "vue.js": "vuejs/vuejs-original.svg",
-      "angular": "angular/angular-original.svg",
-      "python": "python/python-original.svg",
-      "java": "java/java-original.svg",
-      "c#": "csharp/csharp-original.svg",
-      "c++": "cplusplus/cplusplus-original.svg",
-      "aws": "amazonwebservices/amazonwebservices-original-wordmark.svg",
-      "docker": "docker/docker-original.svg",
-      "kubernetes": "kubernetes/kubernetes-plain.svg",
-      "html": "html5/html5-original.svg",
-      "css": "css3/css3-original.svg",
-      "mongodb": "mongodb/mongodb-original.svg",
-      "mysql": "mysql/mysql-original.svg",
-      "postgresql": "postgresql/postgresql-original.svg",
-      "sql": "azuresqldatabase/azuresqldatabase-original.svg",
-      "next.js": "nextjs/nextjs-original.svg",
-      "nextjs": "nextjs/nextjs-original.svg",
-      "tailwind": "tailwindcss/tailwindcss-original.svg",
-      "figma": "figma/figma-original.svg",
-      "git": "git/git-original.svg",
-      "go": "go/go-original.svg",
-      "rust": "rust/rust-plain.svg",
-      "php": "php/php-original.svg",
-      "ruby": "ruby/ruby-original.svg",
-      "spring": "spring/spring-original.svg"
-    };
-    
-    if (map[n]) {
-      return `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${map[n]}`;
-    }
-    
-    // Attempt a direct guess for others
-    const simple = n.replace(/[^a-z0-9]/g, '');
-    return `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${simple}/${simple}-original.svg`;
-  };
-
-  if (!imgError) {
-    return (
-      <div 
-        className="inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-white bg-white shadow-sm relative z-[1] hover:z-10 hover:scale-110 transition-transform cursor-help overflow-hidden"
-        title={skill}
-      >
-        <img 
-          src={getIconUrl(skill)} 
-          alt={skill} 
-          className="w-4 h-4 object-contain"
-          onError={() => setImgError(true)}
-        />
-      </div>
-    );
-  }
-
-  // Fallback to letters - kept within one cohesive blue/slate family so a row of mixed skills
-  // never looks like a scattered rainbow of clashing hues.
-  const colors = [
-    "bg-blue-100 text-blue-700 border-blue-200",
-    "bg-indigo-100 text-indigo-700 border-indigo-200",
-    "bg-slate-100 text-slate-600 border-slate-200",
-    "bg-sky-100 text-sky-700 border-sky-200",
-  ];
-  let hash = 0;
-  for (let c = 0; c < skill.length; c++) hash = skill.charCodeAt(c) + ((hash << 5) - hash);
-  const colorClass = colors[Math.abs(hash) % colors.length];
-
-  return (
-    <div 
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-sm text-[11px] font-black relative z-[1] hover:z-10 hover:scale-110 transition-transform cursor-help ${colorClass}`}
-      title={skill}
-    >
-      {skill.charAt(0).toUpperCase()}
-    </div>
-  );
-};
-
 interface MentorJobCardProps {
     mentor: MentorProfile;
     /**
@@ -320,167 +229,128 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
     return (
       <div
         onClick={handleCardClick}
-        className={`relative bg-white border rounded-[28px] p-4 flex flex-col items-center transition-all duration-300 font-sans cursor-pointer h-full justify-between gap-3.5 overflow-hidden group/card w-full max-w-[280px] sm:max-w-[290px] shadow-none hover:border-slate-300 ${
-          isActive === true
-            ? "border-slate-300 scale-[1.02] z-10"
-            : isActive === false
-              ? "border-slate-200 scale-[0.97] opacity-80 hover:opacity-100 hover:scale-100"
-              : "border-slate-200"
-        }`}
+        className="group/card relative flex flex-col gap-4 w-full bg-white border border-slate-200/70 rounded-[24px] px-5 py-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 transition-all duration-300 font-sans cursor-pointer overflow-hidden"
       >
-        {/* Glassmorphism glow on hover */}
+        {/* Decorative gradient glow on hover */}
         <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent blur-2xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
-        <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-slate-50/70 to-transparent pointer-events-none rounded-t-[28px]" />
 
-        {/* Top Rated ribbon */}
-        {isTopRated && (
-          <div className="absolute top-0 right-8 z-20 px-2.5 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-black uppercase tracking-widest rounded-b-lg shadow-md">
-            Top Rated
-          </div>
-        )}
-
-        {/* Heart button */}
+        {/* Save button */}
         <button
           onClick={toggleSave}
-          className="absolute top-3.5 right-3.5 z-30 w-8 h-8 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 shadow-sm flex items-center justify-center transition-all hover:scale-110 hover:bg-white focus:outline-none"
+          className="absolute top-3.5 right-3.5 z-10 w-8 h-8 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 shadow-sm flex items-center justify-center transition-all hover:scale-110 hover:bg-white focus:outline-none"
           aria-label="Save mentor"
         >
           <HeartIcon filled={isSaved} />
         </button>
 
-        {/* Available Today / Available This Week Badge */}
-        <div className="absolute top-3.5 left-3.5 z-10 inline-flex items-center gap-1 bg-[#f0fdf4]/90 backdrop-blur-sm border border-[#dcfce7] text-[#166534] text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-sm">
-          {mentor.activeTime?.toLowerCase().includes("week") ? (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0 animate-pulse" />
-              Available This Week
-            </>
-          ) : (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0 animate-pulse" />
-              Available Today
-            </>
-          )}
+        {/* Avatar */}
+        <div className="relative shrink-0 z-10">
+          <div className="w-14 h-14 rounded-full overflow-hidden border-[3px] border-[#DBEAFE] shadow-sm transition-transform duration-300 group-hover/card:scale-[1.04]">
+            {showPlaceholder ? (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-lg uppercase">
+                {(mentor.name || 'E').trim().charAt(0).toUpperCase()}
+              </div>
+            ) : (
+              <img
+                src={mentor.avatar}
+                alt={mentor.name}
+                className="w-full h-full object-cover bg-white"
+                onError={() => setAvatarFailed(true)}
+              />
+            )}
+          </div>
+          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" />
         </div>
 
-        {/* Top Spacer to push content below absolute tags */}
-        <div className="relative z-10 w-full pt-5 flex flex-col items-center">
-          {/* Avatar Container */}
-          <div className="relative shrink-0 mb-2.5">
-            <div
-              className="w-[84px] h-[84px] rounded-full overflow-hidden border-[3px] border-[#DBEAFE] shadow-sm transition-transform duration-300 group-hover/card:scale-[1.04]"
-            >
-              {showPlaceholder ? (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-xl uppercase">
-                  {(mentor.name || 'E').trim().charAt(0).toUpperCase()}
-                </div>
-              ) : (
-                <img
-                  src={mentor.avatar}
-                  alt={mentor.name}
-                  className="w-full h-full object-cover bg-white"
-                  onError={() => setAvatarFailed(true)}
-                />
-              )}
-            </div>
-            <span className="absolute bottom-0.5 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" />
-          </div>
-
-          {/* Name & Verified Badge */}
-          <div className="flex items-center justify-center gap-1.5 mb-0.5 w-full px-2">
-            <span className="text-[16px] font-bold text-gray-900 leading-tight truncate">{mentor.name}</span>
+        {/* Main info */}
+        <div className="relative z-10 flex-1 min-w-0 pr-6">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[15px] font-bold text-gray-900 truncate">{mentor.name}</span>
             {mentor.isVerified && <VerifiedIcon />}
-          </div>
-
-          {/* Role */}
-          <p className="text-[11px] text-gray-500 font-semibold mb-1 truncate max-w-full px-2">{mentor.role}</p>
-          
-          {/* Company */}
-          <div className="flex items-center justify-center gap-1.5 mb-2 max-w-full px-2">
-            {mentor.company && (
-              <>
-                <CompanyLogo company={mentor.company} />
-                <span className="text-xs font-bold text-gray-600 truncate">{mentor.company}</span>
-              </>
+            {isTopRated && (
+              <span className="text-[9px] font-black uppercase tracking-widest text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 shadow-sm">
+                Top Rated
+              </span>
             )}
             {isExAmazon && (
-              <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full shrink-0">
+              <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
                 Ex-Amazon
               </span>
             )}
           </div>
 
-          {/* Category & Level Badges */}
-          <div className="flex items-center justify-center gap-1.5 mb-3.5 flex-wrap px-2">
+          <p className="text-[13px] text-gray-600 font-medium mt-0.5 truncate flex items-center gap-1.5">
+            {mentor.role}
+            {mentor.company && (
+              <>
+                <span className="text-gray-300">·</span>
+                <CompanyLogo company={mentor.company} />
+                <span>{mentor.company}</span>
+              </>
+            )}
+          </p>
+
+          <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[12px] text-gray-500 font-medium">
+            <span className="flex items-center gap-1">
+              <StarIcon size={12} />
+              <span className="text-gray-800 font-bold">{mentor.rating > 0 ? mentor.rating.toFixed(1) : "4.9"}</span>
+              ({mentor.reviews || 8})
+            </span>
+            <span className="flex items-center gap-1">
+              <PeopleIcon />
+              {mentor.totalSessions || 50}+ sessions
+            </span>
+            <span className="flex items-center gap-1 text-emerald-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              {mentor.activeTime?.toLowerCase().includes("week") ? "Available This Week" : "Available Today"}
+            </span>
             {mentor.category && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 bg-slate-50 text-slate-500 border border-slate-200 rounded-full shrink-0">
+              <span className="text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                 {mentor.category}
               </span>
             )}
             {mentor.level && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full shrink-0">
+              <span className="text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                 {mentor.level}
               </span>
             )}
           </div>
 
-
-          {/* Metrics box (Centered divided box) */}
-          <div className="flex items-center justify-center gap-4 py-2 border-t border-b border-slate-100 w-full px-1">
-            <div className="flex items-center gap-1 text-xs text-gray-500 font-semibold">
-              <StarIcon size={14} />
-              <span className="text-gray-900 font-bold">{mentor.rating > 0 ? mentor.rating.toFixed(1) : "4.9"}</span>
-              <span className="text-gray-400">({mentor.reviews || 8})</span>
-            </div>
-            
-            <div className="w-px h-3 bg-slate-200" />
-            
-            <div className="flex items-center gap-1 text-xs text-gray-500 font-semibold">
-              <PeopleIcon />
-              <span className="text-gray-900 font-bold">{mentor.totalSessions || 50}+</span>
-              <span className="text-gray-400">Sessions</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pricing + CTA + Next Available Column */}
-        <div className="relative z-10 w-full flex flex-col items-center">
-          {/* Pricing & Duration */}
-          <div className="text-left w-full mb-2.5 px-1">
-            <div className="flex items-center gap-1.5 mb-1 text-slate-500 font-semibold text-xs">
-              <ClockIcon />
-              <span>{sessionDurationText}</span>
-            </div>
-            <div className="flex items-baseline gap-1.5 flex-nowrap w-full overflow-hidden">
-              <span className="text-xl font-extrabold text-gray-900 shrink-0">{cleanPrice}</span>
-              <span className="text-[11px] text-gray-400 line-through font-medium shrink truncate">{originalPrice}</span>
-              <span className="text-[9px] font-bold px-2 py-0.5 bg-[#FEE2E2] text-[#DC2626] rounded-md shrink-0">
-                {discountPercent}% OFF
-              </span>
-            </div>
-          </div>
-
-          {/* CTA Book Session button */}
-          <button
-            onClick={handleBookNow}
-            className="w-full bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white font-bold text-sm py-2.5 rounded-xl transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 flex items-center justify-center gap-1.5 active:scale-[0.98] mb-2.5"
-          >
-            Book Session <ChevronRightIcon size={14} />
-          </button>
-
-          {/* Tech Stack Icons (Replaced Next Available Bar) */}
-          <div className="w-full flex items-center justify-center mt-1">
-            <div className="flex -space-x-2.5 p-1">
-              {(mentor.skills || []).slice(0, 5).map((skill, i) => (
-                <TechSkillIcon key={i} skill={skill} />
+          {(mentor.skills && mentor.skills.length > 0) && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {mentor.skills.slice(0, 6).map((skill, i) => (
+                <span key={i} className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
+                  {skill}
+                </span>
               ))}
-              {mentor.skills && mentor.skills.length > 5 && (
-                 <div className="inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-sm text-[10px] font-bold bg-slate-100 text-slate-600 relative z-[1]">
-                   +{mentor.skills.length - 5}
-                 </div>
+              {mentor.skills.length > 6 && (
+                <span className="text-[11px] font-semibold text-slate-400 px-1 py-0.5">
+                  +{mentor.skills.length - 6} more
+                </span>
               )}
             </div>
+          )}
+        </div>
+
+        {/* Pricing + CTA */}
+        <div className="relative z-10 shrink-0 flex flex-col items-start text-left w-full gap-1.5 pt-3 border-t border-slate-100 justify-between">
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+            <ClockIcon />
+            <span>{sessionDurationText}</span>
           </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg font-extrabold text-gray-900">{cleanPrice}</span>
+            <span className="text-[11px] text-gray-400 line-through font-medium">{originalPrice}</span>
+            <span className="text-[9px] font-bold px-2 py-0.5 bg-[#FEE2E2] text-[#DC2626] rounded-full shrink-0">
+              {discountPercent}% OFF
+            </span>
+          </div>
+          <button
+            onClick={handleBookNow}
+            className="w-full mt-1 px-4 py-2.5 bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+          >
+            Book Session <ChevronRightIcon size={12} />
+          </button>
         </div>
       </div>
     );
