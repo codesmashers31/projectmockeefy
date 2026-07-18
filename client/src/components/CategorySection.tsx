@@ -97,7 +97,7 @@ export const CategorySection = ({ title, profiles }: CategorySectionProps) => {
                     <span className="text-xs text-slate-400 font-semibold">({profiles.length})</span>
                 </div>
                 {/* Scroll controls */}
-                <div className="hidden md:flex gap-1.5">
+                <div className="flex gap-1.5">
                     <button
                         onClick={scrollLeft}
                         className="w-8 h-8 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"

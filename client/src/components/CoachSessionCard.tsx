@@ -457,6 +457,74 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
         </div>
       )}
 
+      {/* Tabs Carousel Section */}
+      {!isFilteringActive && (
+        <div className="mb-8 text-left">
+          <div className="flex items-center justify-between mb-4.5 border-b border-slate-100 pb-2">
+            <div className="flex gap-6">
+              {["Featured", "Top Rated", "Available Today", "New"].map((tab) => {
+                const active = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`font-black text-sm pb-2.5 transition-all cursor-pointer relative ${
+                      active
+                        ? "text-[#141A33] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#2F5FFF]"
+                        : "text-[#8B93B2] hover:text-slate-600"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Scroll Controls (always visible!) */}
+            <div className="flex gap-1.5">
+              <button
+                onClick={scrollTabLeft}
+                className="w-8 h-8 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
+              </button>
+              <button
+                onClick={scrollTabRight}
+                className="w-8 h-8 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+              </button>
+            </div>
+          </div>
+          
+          <div
+            ref={tabCarouselRef}
+            className="flex gap-4.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {isExpertsLoading ? (
+              <div className="flex gap-4.5 w-full">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="min-w-[320px] md:min-w-[360px] h-[340px] bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
+                ))}
+              </div>
+            ) : tabExperts.length === 0 ? (
+              allProfiles.slice(0, 5).map((mentor) => (
+                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                  <MentorJobCard mentor={mentor} />
+                </div>
+              ))
+            ) : (
+              tabExperts.map((mentor) => (
+                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                  <MentorJobCard mentor={mentor} />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+
       {/* Experts List Container */}
       <div className="mt-2">
         {isExpertsLoading || isCategoriesLoading ? (
