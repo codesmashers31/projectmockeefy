@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ChevronDown, Terminal, Globe,
   Smartphone, Cloud, Database, ShieldCheck, CheckSquare,
   Users, Network, Cpu, Sparkles, UserCheck, Briefcase,
-  Palette, Award, Layers
+  Palette, Award, Layers, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { MentorJobCard, MentorProfile } from "./MentorJobCard";
 
@@ -69,43 +69,62 @@ export const getCategoryIconDetails = (title: string) => {
 const PAGE_SIZE = 5;
 
 export const CategorySection = ({ title, profiles }: CategorySectionProps) => {
-    const [expanded, setExpanded] = useState(false);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const iconDetails = getCategoryIconDetails(title);
-    const visibleProfiles = expanded ? profiles : profiles.slice(0, PAGE_SIZE);
-    const hasMore = profiles.length > PAGE_SIZE;
+
+    const scrollLeft = () => {
+        scrollContainerRef.current?.scrollBy({ left: -400, behavior: 'smooth' });
+    };
+
+    const scrollRight = () => {
+        scrollContainerRef.current?.scrollBy({ left: 400, behavior: 'smooth' });
+    };
 
     return (
         <section
-            className="w-full mb-6 bg-white border border-slate-200 rounded-[28px] p-5 sm:p-7 shadow-sm"
+            className="w-full mb-6 bg-white border border-slate-200/80 rounded-[28px] p-5 sm:p-7 shadow-sm"
             aria-label={`${title} experts`}
         >
             {/* Header */}
-            <div className="flex items-center gap-3.5 mb-5 text-left">
-                <div className={`w-11 h-11 rounded-2xl ${iconDetails.bg} flex items-center justify-center shrink-0 shadow-sm border`}>
-                    {iconDetails.icon}
+            <div className="flex items-center justify-between mb-5 text-left">
+                <div className="flex items-center gap-3.5">
+                    <div className={`w-11 h-11 rounded-2xl ${iconDetails.bg} flex items-center justify-center shrink-0 shadow-sm border`}>
+                        {iconDetails.icon}
+                    </div>
+                    <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">
+                        {title === "IT" ? "Top Rated Experts" : `${title} Experts`}
+                    </h2>
+                    <span className="text-xs text-slate-400 font-semibold">({profiles.length})</span>
                 </div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">
-                    {title === "IT" ? "Top Rated Experts" : `${title} Experts`}
-                </h2>
-                <span className="text-xs text-slate-400 font-semibold">({profiles.length})</span>
+                {/* Scroll controls */}
+                <div className="hidden md:flex gap-1.5">
+                    <button
+                        onClick={scrollLeft}
+                        className="w-8 h-8 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+                    >
+                        <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
+                    </button>
+                    <button
+                        onClick={scrollRight}
+                        className="w-8 h-8 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+                    >
+                        <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+                    </button>
+                </div>
             </div>
 
-            {/* List */}
-            <div className="flex flex-col gap-4">
-                {visibleProfiles.map((profile) => (
-                    <MentorJobCard key={profile.id} mentor={profile} />
+            {/* List - Horizontal scrollable */}
+            <div
+                ref={scrollContainerRef}
+                className="flex gap-4.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth snap-x snap-mandatory"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+                {profiles.map((profile) => (
+                    <div key={profile.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                        <MentorJobCard mentor={profile} />
+                    </div>
                 ))}
             </div>
-
-            {hasMore && (
-                <button
-                    onClick={() => setExpanded(prev => !prev)}
-                    className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 border border-slate-200 rounded-xl hover:bg-indigo-50 transition-colors"
-                >
-                    {expanded ? "Show less" : `Show ${profiles.length - PAGE_SIZE} more`}
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
-                </button>
-            )}
         </section>
     );
 };
