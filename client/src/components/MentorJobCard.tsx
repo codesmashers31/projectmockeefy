@@ -228,7 +228,7 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
     return (
       <div
         onClick={handleCardClick}
-        className="group/card relative flex flex-col gap-3.5 w-full bg-white border border-slate-200/80 rounded-[28px] p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
+        className="group/card relative flex flex-col gap-3.5 w-full h-full bg-white border border-slate-200/80 rounded-[28px] p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
       >
         {/* Top Row: Status pill & Save heart */}
         <div className="flex items-center justify-between z-10">
@@ -337,7 +337,7 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         )}
 
         {/* Next Available slot box */}
-        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-3.5 py-2.5 z-10 text-left">
+        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-3.5 py-2.5 z-10 text-left mt-auto">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#2F5FFF]" />
             <div className="leading-tight">

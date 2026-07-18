@@ -509,13 +509,13 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               </div>
             ) : tabExperts.length === 0 ? (
               allProfiles.slice(0, 5).map((mentor) => (
-                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start flex">
                   <MentorJobCard mentor={mentor} />
                 </div>
               ))
             ) : (
               tabExperts.map((mentor) => (
-                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start flex">
                   <MentorJobCard mentor={mentor} />
                 </div>
               ))
