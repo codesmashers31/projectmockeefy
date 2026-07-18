@@ -228,7 +228,7 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
     return (
       <div
         onClick={handleCardClick}
-        className="group/card relative flex flex-col gap-3.5 w-full h-full bg-white border border-slate-200/80 rounded-[28px] p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
+        className="group/card relative flex flex-col gap-3 w-full h-full bg-white border border-slate-200/80 rounded-[24px] p-4.5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
       >
         {/* Decorative gradient glow on hover */}
         <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent blur-2xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -349,7 +349,7 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         )}
 
         {/* Next Available slot box */}
-        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-3.5 py-2.5 z-10 text-left mt-auto">
+        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-3 py-2 z-10 text-left mt-auto">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#2F5FFF]" />
             <div className="leading-tight">
@@ -366,15 +366,15 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         </div>
 
         {/* Pricing + CTA Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-1.5 pt-3.5 border-t border-slate-100 z-10 text-left">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-1 pt-2.5 border-t border-slate-100/75 z-10 text-left">
           {/* Pricing Details */}
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex items-center gap-1 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
               <Clock className="w-3.5 h-3.5 text-[#2F5FFF]" />
               <span>{sessionDurationText}</span>
             </div>
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-[20px] font-black text-slate-900 leading-none">{cleanPrice}</span>
+              <span className="text-[19px] font-black text-slate-900 leading-none">{cleanPrice}</span>
               <span className="text-xs text-slate-400 line-through font-bold">{originalPrice}</span>
               <span className="text-[9px] font-black px-2 py-0.5 bg-red-50 text-red-600 border border-red-100 rounded-full shrink-0">
                 {discountPercent}% OFF
@@ -383,16 +383,16 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
           </div>
 
           {/* Buttons */}
-          <div className="flex flex-col gap-1.5 shrink-0 sm:w-[150px]">
+          <div className="flex gap-2 shrink-0 sm:w-auto">
             <button
               onClick={handleBookNow}
-              className="w-full px-4 py-2.5 bg-[#2F5FFF] hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-sm shadow-blue-500/10"
+              className="flex-1 sm:flex-initial px-3.5 py-2 bg-[#2F5FFF] hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-sm shadow-blue-500/10 whitespace-nowrap"
             >
               Book Session <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
             <button
               onClick={handleCardClick}
-              className="w-full px-4 py-2.5 bg-white border border-[#2F5FFF]/30 hover:border-[#2F5FFF] hover:bg-slate-50 text-[#2F5FFF] font-extrabold text-xs rounded-xl flex items-center justify-center transition-all active:scale-[0.98]"
+              className="flex-1 sm:flex-initial px-3.5 py-2 bg-white border border-[#2F5FFF]/30 hover:border-[#2F5FFF] hover:bg-slate-50 text-[#2F5FFF] font-extrabold text-xs rounded-xl flex items-center justify-center transition-all active:scale-[0.98] whitespace-nowrap"
             >
               View Profile
             </button>
@@ -400,7 +400,7 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         </div>
 
         {/* Footer placement success line */}
-        <div className="mt-1.5 pt-3 border-t border-slate-100 z-10 text-left">
+        <div className="mt-1 pt-2.5 border-t border-slate-100/75 z-10 text-left">
           <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-extrabold">
             <Check className="w-4 h-4 text-emerald-600 stroke-[3.5] shrink-0" />
             <span>Placed {mentor.totalSessions > 0 ? mentor.totalSessions * 2 + 20 : "120"}+ Candidates</span>
