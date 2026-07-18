@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { MentorJobCard, MentorProfile } from "./MentorJobCard";
 import { CategorySection } from "./CategorySection";
-import { AlertCircle, Search, X, ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, Search, X, ChevronDown, RotateCcw, SlidersHorizontal, Crown, Zap, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { useQuery } from "@tanstack/react-query";
@@ -139,7 +139,13 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [maxPriceFilter, setMaxPriceFilter] = useState<number | null>(null);
 
+  // New design states and refs
+  const [activeTab, setActiveTab] = useState<string>("Featured");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+
   const listingSectionRef = useRef<HTMLDivElement>(null);
+  const tabCarouselRef = useRef<HTMLDivElement>(null);
+  const allCarouselRef = useRef<HTMLDivElement>(null);
 
   // Active filter count logic
   const activeFilterCount = useMemo(() => {
@@ -239,6 +245,11 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
       });
     }
 
+    // 1b. Category pill filter
+    if (selectedCategory !== "All") {
+      list = list.filter(p => p.category === selectedCategory);
+    }
+
     // 2. Categories checkbox filters
     if (selectedCategories.length > 0) {
       list = list.filter(p => p.category && selectedCategories.includes(p.category));
@@ -291,7 +302,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     }
 
     return list;
-  }, [allProfiles, searchQuery, selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption, selectedCompanies, selectedLevels, maxPriceFilter]);
+  }, [allProfiles, searchQuery, selectedCategory, selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption, selectedCompanies, selectedLevels, maxPriceFilter]);
 
   // Group experts by category
   const groupedByCategory = useMemo(() => {
@@ -333,11 +344,35 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     return { min: Math.min(...prices), max: Math.max(...prices) };
   }, [allProfiles]);
 
-  // Featured Experts rail — highly rated verified experts, derived client-side (no extra API calls)
-  const featuredProfiles = useMemo(() => {
-    const highlyRated = allProfiles.filter(p => p.isVerified && (p.rating || 0) >= 4.5);
-    return (highlyRated.length >= 4 ? highlyRated : allProfiles).slice(0, 10);
-  }, [allProfiles]);
+  // Tab filtered Experts (Featured, Top Rated, Available Today, New)
+  const tabExperts = useMemo(() => {
+    let list = allProfiles.filter(p => p.isVerified);
+    if (activeTab === "Top Rated") {
+      return [...list].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 10);
+    } else if (activeTab === "Available Today") {
+      const todayProfiles = list.filter(p => p.activeTime?.toLowerCase().includes("today"));
+      return todayProfiles.length > 0 ? todayProfiles.slice(0, 10) : list.slice(0, 10);
+    } else if (activeTab === "New") {
+      return [...list].reverse().slice(0, 10);
+    } else {
+      // "Featured"
+      return list.filter(p => (p.rating || 0) >= 4.5).slice(0, 10);
+    }
+  }, [allProfiles, activeTab]);
+
+  const scrollTabLeft = () => {
+    tabCarouselRef.current?.scrollBy({ left: -400, behavior: "smooth" });
+  };
+  const scrollTabRight = () => {
+    tabCarouselRef.current?.scrollBy({ left: 400, behavior: "smooth" });
+  };
+
+  const scrollAllLeft = () => {
+    allCarouselRef.current?.scrollBy({ left: -400, behavior: "smooth" });
+  };
+  const scrollAllRight = () => {
+    allCarouselRef.current?.scrollBy({ left: 400, behavior: "smooth" });
+  };
 
   const toggleDropdown = (dropdown: string) => {
     setActiveDropdown(prev => prev === dropdown ? null : dropdown);
@@ -347,194 +382,206 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     <>
     <div ref={listingSectionRef} className="w-full scroll-mt-24">
 
-      {/* Main column: search bar + results */}
-      <div className="w-full bg-white border border-slate-200/80 rounded-[24px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col">
-
-      {/* Search Bar */}
-      <div className="shrink-0 bg-white z-30 px-6 md:px-8 py-3 border-b border-slate-200/50">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search experts by name, role, company, skills..."
-              className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[#4F46E5] placeholder-slate-400 font-semibold"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
-            {activeFilterCount > 0 && (
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 border border-red-100 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-200 transition-colors shadow-sm cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset
-              </button>
-            )}
-
+      {/* Search and Filters Row */}
+      <div className="flex gap-3 mb-6">
+        <div className="flex-1 flex items-center gap-2.5 bg-white border border-slate-200/85 rounded-2xl px-4 py-3 shadow-sm">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search experts by name, role, company, skills..."
+            className="w-full bg-transparent border-none outline-none text-sm text-[#141A33] placeholder-slate-400 font-semibold"
+          />
+          {searchQuery && (
             <button
-              onClick={() => setIsFilterModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm cursor-pointer ml-auto sm:ml-0"
+              onClick={() => setSearchQuery("")}
+              className="text-slate-400 hover:text-slate-600 focus:outline-none"
             >
-              <SlidersHorizontal className="w-4 h-4 text-[#4F46E5]" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#4F46E5] text-white text-[10px] font-black">
-                  {activeFilterCount}
-                </span>
-              )}
+              <X className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Content Area */}
-      <div className="flex-1 p-4 sm:p-5">
-        <div className="w-full space-y-6">
-
-        {/* Featured Experts carousel */}
-        {!isFilteringActive && featuredProfiles.length > 0 && (
-          <ExpertsCarousel title="Featured Experts" subtitle="Hand-picked, highly rated mentors" profiles={featuredProfiles} />
-        )}
-
-        {/* Promo banner */}
-        {!isFilteringActive && (
-          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-[24px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/40 blur-2xl pointer-events-none" />
-            <div className="relative z-10">
-              <p className="text-sm font-bold text-gray-900">Get 3x more callbacks with Mockeefy Premium</p>
-              <p className="text-xs text-gray-600 mt-1">Priority booking, unlimited mocks, and expert feedback for ₹159</p>
-            </div>
-            <button className="relative z-10 shrink-0 px-5 py-2.5 bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-500/20 hover:shadow-lg transition-all">
-              Upgrade now
-            </button>
-          </div>
-        )}
-
-        {/* Experts List Container */}
-        <div>
-          {isExpertsLoading || isCategoriesLoading ? (
-            <div className="space-y-6">
-              {[1, 2].map(i => (
-                <div key={i} className="bg-white border border-slate-200/60 rounded-[24px] p-6 space-y-4 animate-pulse">
-                  <div className="h-4 bg-slate-100 rounded w-48 mb-6"></div>
-                  <div className="flex gap-4 overflow-hidden">
-                    <div className="w-[300px] h-80 bg-slate-50 rounded-2xl shrink-0"></div>
-                    <div className="w-[300px] h-80 bg-slate-50 rounded-2xl shrink-0"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : isExpertsError ? (
-            <div className="text-center py-20 bg-rose-50/50 rounded-2xl border border-rose-100/50">
-              <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-4" />
-              <h3 className="text-sm font-black text-rose-900 uppercase tracking-widest">Handshake Error</h3>
-              <p className="text-[10px] text-rose-500 font-bold uppercase mt-1">{expertsError instanceof Error ? expertsError.message : "Failure Connecting"}</p>
-            </div>
-          ) : isFilteringActive ? (
-            filteredProfiles.length === 0 ? (
-              <div className="text-center py-16 bg-slate-50/50 rounded-[24px] border border-slate-200/50">
-                <p className="text-sm font-bold text-slate-500">No experts matching your active filters.</p>
-              </div>
-            ) : (
-              <div className="w-full space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider">
-                    Search Results ({filteredProfiles.length} experts found)
-                  </h3>
-                </div>
-                {filteredProfiles.map((mentor) => (
-                  <MentorJobCard key={mentor.id} mentor={mentor} />
-                ))}
-              </div>
-            )
-          ) : activeCategoriesWithData.length === 0 ? (
-            <div className="text-center py-16 bg-slate-50/50 rounded-[24px] border border-slate-200/50">
-              <p className="text-sm font-bold text-slate-500">No experts found.</p>
-            </div>
-          ) : (
-            <div className="w-full space-y-4">
-              {activeCategoriesWithData.map((cat) => (
-                <CategorySection
-                  key={cat}
-                  title={cat}
-                  profiles={groupedByCategory[cat]}
-                />
-              ))}
-            </div>
           )}
         </div>
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200/85 rounded-2xl text-sm font-bold text-[#141A33] hover:bg-slate-50 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-[#4F46E5]" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#4F46E5] text-white text-[10px] font-black">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </div>
 
-        {/* Bottom Trust Signals Bar */}
-        <div className="mt-4 bg-slate-50/60 border border-slate-100 rounded-3xl p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.02)]">
-          <div className="flex items-center gap-3.5 text-left">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="m9 11 2 2 4-4" stroke="currentColor" strokeWidth="2.5" />
-              </svg>
+      {/* PROMO BANNER */}
+      {!isFilteringActive && (
+        <div className="mb-6 bg-gradient-to-br from-[#FFF6EA] to-[#FFEBD6] border border-[#FCE3C2] rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-stretch md:items-center gap-7 shadow-sm">
+          <div className="flex-1 min-w-[200px] text-left">
+            <div className="text-sm text-[#8A5A1E] font-bold">With</div>
+            <div className="flex items-center gap-2.5 my-1">
+              <span className="font-extrabold text-3xl text-[#B5651D] tracking-tight">PRO</span>
+              <div className="w-7 h-7 rounded-full bg-[#D9720C] flex items-center justify-center">
+                <Crown className="w-4 h-4 text-white fill-white" />
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 leading-tight">Verified Experts</p>
-              <p className="text-xs text-slate-500 font-medium mt-1">100% Background Verified</p>
-            </div>
+            <div className="font-black text-[15px] text-[#141A33] mb-4">you get booked faster</div>
+            <button className="inline-flex bg-[#D9720C] hover:bg-[#C2620A] text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all shadow-md shadow-amber-600/10 active:scale-[0.98]">
+              Become a Pro
+            </button>
           </div>
-          <div className="flex items-center gap-3.5 text-left">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                <path d="M4 22h16" />
-                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 leading-tight">Top Professionals</p>
-              <p className="text-xs text-slate-500 font-medium mt-1">From FAANG & Top Companies</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3.5 text-left">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 leading-tight">Trusted by 10K+ Users</p>
-              <p className="text-xs text-slate-500 font-medium mt-1">Successful Career Transitions</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3.5 text-left">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 leading-tight">Secure Sessions</p>
-              <p className="text-xs text-slate-500 font-medium mt-1">Safe & Private 1:1 Sessions</p>
+          <div className="hidden md:block w-px self-stretch bg-[#F1D3AC]" />
+          <div className="flex-[1.4] min-w-[260px] text-left">
+            <div className="font-black text-sm text-[#141A33] mb-3.5">What you will get</div>
+            <div className="space-y-2">
+              {["Hidden expert invitations", "AI-enhanced profile", "Auto-match with mentors"].map((f, i) => (
+                <div key={i} className="flex items-center justify-between py-1 border-b border-[#F1D3AC]/30 last:border-0">
+                  <span className="flex-1 text-[13px] text-[#4A5170] font-bold flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-[#D9720C] fill-[#D9720C]" />
+                    {f}
+                  </span>
+                  <span className="text-[#C7B79A] font-bold mx-2">—</span>
+                  <span className="w-14 h-6.5 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                    <Check className="w-3.5 h-3.5 text-[#D9720C] stroke-[3]" />
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tabs Carousel Section */}
+      {!isFilteringActive && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4.5">
+            <div className="flex gap-5 border-b border-slate-100 w-full md:w-auto">
+              {["Featured", "Top Rated", "Available Today", "New"].map((tab) => {
+                const active = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`font-extrabold text-sm pb-2.5 transition-all cursor-pointer ${
+                      active
+                        ? "text-[#141A33] border-b-[2.5px] border-[#2F5FFF]"
+                        : "text-[#8B93B2] border-b-[2.5px] border-transparent hover:text-slate-600"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="hidden md:flex gap-2">
+              <button
+                onClick={scrollTabLeft}
+                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
+              </button>
+              <button
+                onClick={scrollTabRight}
+                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+              </button>
+            </div>
+          </div>
+          
+          <div
+            ref={tabCarouselRef}
+            className="flex gap-4.5 overflow-x-auto pb-4 scrollbar-none scroll-smooth snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {isExpertsLoading ? (
+              <div className="flex gap-4.5 w-full">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="min-w-[320px] md:min-w-[360px] h-[340px] bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
+                ))}
+              </div>
+            ) : tabExperts.length === 0 ? (
+              <div className="w-full text-center py-10 bg-slate-50/50 border border-slate-100 rounded-3xl text-sm font-bold text-slate-400">
+                No experts available in this category today.
+              </div>
+            ) : (
+              tabExperts.map((mentor) => (
+                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                  <MentorJobCard mentor={mentor} />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* All Experts Section */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4.5">
+          <h2 className="font-extrabold text-[20px] text-[#141A33] text-left">
+            All Experts <span className="text-[#8B93B2] text-sm font-bold ml-1">({filteredProfiles.length})</span>
+          </h2>
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-none">
+            {categoriesList.map((cat) => {
+              const active = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap cursor-pointer transition-all border ${
+                    active
+                      ? "bg-[#2F5FFF] text-white border-[#2F5FFF]"
+                      : "bg-white text-[#4A5170] border-slate-200/80 hover:bg-slate-50"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+            <div className="hidden md:flex gap-1.5 ml-2.5">
+              <button
+                onClick={scrollAllLeft}
+                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
+              </button>
+              <button
+                onClick={scrollAllRight}
+                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          ref={allCarouselRef}
+          className="flex gap-4.5 overflow-x-auto pb-4 scrollbar-none scroll-smooth snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {isExpertsLoading ? (
+            <div className="flex gap-4.5 w-full">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="min-w-[320px] md:min-w-[360px] h-[340px] bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
+              ))}
+            </div>
+          ) : filteredProfiles.length === 0 ? (
+            <div className="w-full text-center py-16 bg-slate-50/50 border border-slate-200/50 rounded-3xl text-sm font-bold text-slate-400">
+              No experts match your search — try a different keyword or filter.
+            </div>
+          ) : (
+            filteredProfiles.map((mentor) => (
+              <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
+                <MentorJobCard mentor={mentor} />
+              </div>
+            ))
+          )}
         </div>
       </div>
+
 
       {/* Advanced Filters Modal Overlay (mobile/tablet) */}
       {isFilterModalOpen && (
@@ -778,7 +825,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
         </div>
       )}
       </div>
-    </div>
     </>
   );
 });
