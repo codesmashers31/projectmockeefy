@@ -457,134 +457,64 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
         </div>
       )}
 
-      {/* Tabs Carousel Section */}
-      {!isFilteringActive && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4.5">
-            <div className="flex gap-5 border-b border-slate-100 w-full md:w-auto">
-              {["Featured", "Top Rated", "Available Today", "New"].map((tab) => {
-                const active = activeTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`font-extrabold text-sm pb-2.5 transition-all cursor-pointer ${
-                      active
-                        ? "text-[#141A33] border-b-[2.5px] border-[#2F5FFF]"
-                        : "text-[#8B93B2] border-b-[2.5px] border-transparent hover:text-slate-600"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="hidden md:flex gap-2">
-              <button
-                onClick={scrollTabLeft}
-                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
-              </button>
-              <button
-                onClick={scrollTabRight}
-                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
-              </button>
-            </div>
-          </div>
-          
-          <div
-            ref={tabCarouselRef}
-            className="flex gap-4.5 overflow-x-auto pb-4 scrollbar-none scroll-smooth snap-x snap-mandatory"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {isExpertsLoading ? (
-              <div className="flex gap-4.5 w-full">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="min-w-[320px] md:min-w-[360px] h-[340px] bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
-                ))}
-              </div>
-            ) : tabExperts.length === 0 ? (
-              <div className="w-full text-center py-10 bg-slate-50/50 border border-slate-100 rounded-3xl text-sm font-bold text-slate-400">
-                No experts available in this category today.
-              </div>
-            ) : (
-              tabExperts.map((mentor) => (
-                <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
-                  <MentorJobCard mentor={mentor} />
+      {/* Experts List Container */}
+      <div className="mt-2">
+        {isExpertsLoading || isCategoriesLoading ? (
+          <div className="space-y-6">
+            {[1, 2].map((i) => (
+              <div key={i} className="space-y-4 animate-pulse">
+                <div className="h-4.5 bg-slate-100 rounded w-48 mb-4"></div>
+                <div className="flex gap-4.5 overflow-hidden">
+                  <div className="w-[300px] h-80 bg-slate-50 border border-slate-100 rounded-3xl shrink-0"></div>
+                  <div className="w-[300px] h-80 bg-slate-50 border border-slate-100 rounded-3xl shrink-0"></div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
-        </div>
-      )}
-
-      {/* All Experts Section */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4.5">
-          <h2 className="font-extrabold text-[20px] text-[#141A33] text-left">
-            All Experts <span className="text-[#8B93B2] text-sm font-bold ml-1">({filteredProfiles.length})</span>
-          </h2>
-          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-none">
-            {categoriesList.map((cat) => {
-              const active = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap cursor-pointer transition-all border ${
-                    active
-                      ? "bg-[#2F5FFF] text-white border-[#2F5FFF]"
-                      : "bg-white text-[#4A5170] border-slate-200/80 hover:bg-slate-50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-            <div className="hidden md:flex gap-1.5 ml-2.5">
-              <button
-                onClick={scrollAllLeft}
-                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
-              </button>
-              <button
-                onClick={scrollAllRight}
-                className="w-9 h-9 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
-              </button>
-            </div>
+        ) : isExpertsError ? (
+          <div className="text-center py-20 bg-rose-50/50 rounded-[24px] border border-rose-100/50">
+            <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-4" />
+            <h3 className="text-sm font-black text-rose-900 uppercase tracking-widest">Handshake Error</h3>
+            <p className="text-[10px] text-rose-500 font-bold uppercase mt-1">
+              {expertsError instanceof Error ? expertsError.message : "Failure Connecting"}
+            </p>
           </div>
-        </div>
-
-        <div
-          ref={allCarouselRef}
-          className="flex gap-4.5 overflow-x-auto pb-4 scrollbar-none scroll-smooth snap-x snap-mandatory"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          {isExpertsLoading ? (
-            <div className="flex gap-4.5 w-full">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="min-w-[320px] md:min-w-[360px] h-[340px] bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
-              ))}
-            </div>
-          ) : filteredProfiles.length === 0 ? (
-            <div className="w-full text-center py-16 bg-slate-50/50 border border-slate-200/50 rounded-3xl text-sm font-bold text-slate-400">
-              No experts match your search — try a different keyword or filter.
+        ) : isFilteringActive ? (
+          filteredProfiles.length === 0 ? (
+            <div className="text-center py-16 bg-slate-50/50 rounded-[24px] border border-slate-200/50">
+              <p className="text-sm font-bold text-slate-500">No experts matching your active filters.</p>
             </div>
           ) : (
-            filteredProfiles.map((mentor) => (
-              <div key={mentor.id} className="min-w-[320px] md:min-w-[360px] max-w-[320px] md:max-w-[360px] snap-start">
-                <MentorJobCard mentor={mentor} />
+            <div className="w-full space-y-4 text-left">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider">
+                  Search Results ({filteredProfiles.length} experts found)
+                </h3>
               </div>
-            ))
-          )}
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredProfiles.map((mentor) => (
+                  <MentorJobCard key={mentor.id} mentor={mentor} />
+                ))}
+              </div>
+            </div>
+          )
+        ) : activeCategoriesWithData.length === 0 ? (
+          <div className="text-center py-16 bg-slate-50/50 rounded-[24px] border border-slate-200/50">
+            <p className="text-sm font-bold text-slate-500">No experts found.</p>
+          </div>
+        ) : (
+          <div className="w-full space-y-8 text-left">
+            {activeCategoriesWithData.map((cat) => (
+              <CategorySection
+                key={cat}
+                title={cat}
+                profiles={groupedByCategory[cat]}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
 
 
       {/* Advanced Filters Modal Overlay (mobile/tablet) */}
