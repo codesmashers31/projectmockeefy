@@ -43,14 +43,6 @@ const InfoPanel = ({ fullWidth }: InfoPanelProps) => {
   return (
     <div className={`space-y-4 font-sans ${fullWidth ? "w-full max-w-full" : "max-w-[280px]"}`}>
       <AdCard
-        onClick={() => navigate('/plans')}
-        tag="Sponsored"
-        icon={<Zap className="w-4 h-4 text-blue-600" />}
-        title="Go Premium — ₹159"
-        subtitle="Unlimited mock interviews, priority booking"
-        cta="Upgrade now"
-      />
-      <AdCard
         onClick={() => navigate('/certificates')}
         tag="Mockeefy"
         icon={<Award className="w-4 h-4 text-amber-500" />}
