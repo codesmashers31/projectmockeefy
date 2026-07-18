@@ -268,12 +268,12 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
           </div>
 
           {/* Name & Job Details */}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 text-left">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[17px] font-black text-slate-900 leading-tight">{mentor.name}</span>
+              <span className="text-[17px] font-black text-slate-900 leading-tight truncate max-w-[170px]" title={mentor.name}>{mentor.name}</span>
               {mentor.isVerified && <VerifiedIcon />}
             </div>
-            <p className="text-[13px] text-slate-500 font-bold mt-1 tracking-tight">{mentor.role}</p>
+            <p className="text-[13px] text-slate-500 font-bold mt-1 tracking-tight truncate w-full" title={mentor.role}>{mentor.role}</p>
             {mentor.company && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-200/70 rounded-lg shadow-sm">
@@ -335,14 +335,14 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         {/* Skills Tags */}
         {mentor.skills && mentor.skills.length > 0 && (
           <div className="flex flex-wrap gap-1.5 z-10">
-            {mentor.skills.slice(0, 5).map((skill, i) => (
+            {mentor.skills.slice(0, 3).map((skill, i) => (
               <span key={i} className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200/50 rounded-full px-2.5 py-0.5">
                 {skill}
               </span>
             ))}
-            {mentor.skills.length > 5 && (
+            {mentor.skills.length > 3 && (
               <span className="text-[11px] font-extrabold text-[#2F5FFF] px-1 py-0.5">
-                +{mentor.skills.length - 5} more
+                +{mentor.skills.length - 3} more
               </span>
             )}
           </div>
