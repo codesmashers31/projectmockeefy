@@ -120,8 +120,11 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
       const filtered = categoriesArray.filter(cat => cat !== "IT");
       return ["IT", ...filtered];
     }
-    return categoriesArray;
   }, [allProfiles]);
+
+  const categoriesList = useMemo(() => {
+    return ["All", ...uniqueCategories];
+  }, [uniqueCategories]);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
