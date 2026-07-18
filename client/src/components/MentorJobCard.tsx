@@ -365,38 +365,35 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
           </button>
         </div>
 
-        {/* Pricing + CTA Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-1 pt-2.5 border-t border-slate-100/75 z-10 text-left">
-          {/* Pricing Details */}
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              <Clock className="w-3.5 h-3.5 text-[#2F5FFF]" />
-              <span>{sessionDurationText}</span>
-            </div>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-[19px] font-black text-slate-900 leading-none">{cleanPrice}</span>
-              <span className="text-xs text-slate-400 line-through font-bold">{originalPrice}</span>
-              <span className="text-[9px] font-black px-2 py-0.5 bg-red-50 text-red-600 border border-red-100 rounded-full shrink-0">
-                {discountPercent}% OFF
-              </span>
-            </div>
+        {/* Pricing Details Row (Full Width) */}
+        <div className="flex items-center justify-between border-t border-slate-100/70 pt-2.5 z-10 text-left">
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            <Clock className="w-3.5 h-3.5 text-[#2F5FFF]" />
+            <span>{sessionDurationText}</span>
           </div>
+          <div className="flex items-baseline gap-1.5 flex-wrap justify-end">
+            <span className="text-[19px] font-black text-slate-900 leading-none">{cleanPrice}</span>
+            <span className="text-xs text-slate-400 line-through font-bold">{originalPrice}</span>
+            <span className="text-[9.5px] font-black px-2 py-0.5 bg-red-50 text-red-600 border border-red-100 rounded-full shrink-0">
+              {discountPercent}% OFF
+            </span>
+          </div>
+        </div>
 
-          {/* Buttons */}
-          <div className="flex gap-2 shrink-0 sm:w-auto">
-            <button
-              onClick={handleBookNow}
-              className="flex-1 sm:flex-initial px-3.5 py-2 bg-[#2F5FFF] hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-sm shadow-blue-500/10 whitespace-nowrap"
-            >
-              Book Session <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-            </button>
-            <button
-              onClick={handleCardClick}
-              className="flex-1 sm:flex-initial px-3.5 py-2 bg-white border border-[#2F5FFF]/30 hover:border-[#2F5FFF] hover:bg-slate-50 text-[#2F5FFF] font-extrabold text-xs rounded-xl flex items-center justify-center transition-all active:scale-[0.98] whitespace-nowrap"
-            >
-              View Profile
-            </button>
-          </div>
+        {/* CTA Buttons Row (Full Width side-by-side) */}
+        <div className="flex gap-2.5 z-10 w-full">
+          <button
+            onClick={handleBookNow}
+            className="flex-1 px-4 py-2.5 bg-[#2F5FFF] hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] shadow-sm shadow-blue-500/10 whitespace-nowrap"
+          >
+            Book Session <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+          </button>
+          <button
+            onClick={handleCardClick}
+            className="flex-1 px-4 py-2.5 bg-white border border-[#2F5FFF]/35 hover:border-[#2F5FFF] hover:bg-slate-50 text-[#2F5FFF] font-extrabold text-xs rounded-xl flex items-center justify-center transition-all active:scale-[0.98] whitespace-nowrap"
+          >
+            View Profile
+          </button>
         </div>
 
         {/* Footer placement success line */}
