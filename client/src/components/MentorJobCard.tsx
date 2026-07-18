@@ -230,6 +230,9 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         onClick={handleCardClick}
         className="group/card relative flex flex-col gap-3.5 w-full h-full bg-white border border-slate-200/80 rounded-[28px] p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
       >
+        {/* Decorative gradient glow on hover */}
+        <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent blur-2xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
         {/* Top Row: Status pill & Save heart */}
         <div className="flex items-center justify-between z-10">
           <span className="inline-flex items-center gap-1.5 bg-[#E8FBF1] text-[#0E9D5C] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#0E9D5C]/10">
@@ -296,27 +299,36 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 py-3.5 border-y border-slate-100/80 z-10 text-center">
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100/50 flex items-center justify-center text-[#2F5FFF]">
+        <div className="grid grid-cols-3 gap-1 py-3.5 border-y border-slate-100/80 z-10 text-left">
+          {/* Exp */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#2F5FFF] shrink-0 border border-blue-100/50">
               <Briefcase className="w-4 h-4" />
             </div>
-            <span className="text-[11px] text-slate-800 font-extrabold mt-1">{mentor.experience || "Fresher"}</span>
-            <span className="text-[9px] text-slate-400 font-bold">Years Exp.</span>
+            <div className="leading-tight">
+              <div className="text-xs font-black text-slate-800">{mentor.experience || "Fresher"}</div>
+              <div className="text-[9px] text-slate-400 font-bold mt-0.5 whitespace-nowrap">Years Exp.</div>
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-1 border-x border-slate-100">
-            <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100/50 flex items-center justify-center text-[#2F5FFF]">
+          {/* Sessions */}
+          <div className="flex items-center gap-2 border-l border-slate-100/80 pl-2">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-[#0E9D5C] shrink-0 border border-emerald-100/50">
               <Users className="w-4 h-4" />
             </div>
-            <span className="text-[11px] text-slate-800 font-extrabold mt-1">{mentor.totalSessions || 0}+</span>
-            <span className="text-[9px] text-slate-400 font-bold">Sessions</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100/50 flex items-center justify-center text-[#2F5FFF]">
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <div className="leading-tight">
+              <div className="text-xs font-black text-slate-800">{mentor.totalSessions || 0}+</div>
+              <div className="text-[9px] text-slate-400 font-bold mt-0.5">Sessions</div>
             </div>
-            <span className="text-[11px] text-slate-800 font-extrabold mt-1">{mentor.rating > 0 ? mentor.rating.toFixed(1) : "4.9"}</span>
-            <span className="text-[9px] text-slate-400 font-bold">({mentor.reviews || 8} Reviews)</span>
+          </div>
+          {/* Rating */}
+          <div className="flex items-center gap-2 border-l border-slate-100/80 pl-2">
+            <div className="w-8 h-8 rounded-full bg-amber-50/70 flex items-center justify-center text-[#D9720C] shrink-0 border border-amber-100/50">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+            </div>
+            <div className="leading-tight">
+              <div className="text-xs font-black text-slate-800">{mentor.rating > 0 ? mentor.rating.toFixed(1) : "4.9"}</div>
+              <div className="text-[9px] text-slate-400 font-bold mt-0.5">({mentor.reviews || 8} Reviews)</div>
+            </div>
           </div>
         </div>
 
