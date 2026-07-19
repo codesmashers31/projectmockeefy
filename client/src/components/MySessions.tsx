@@ -528,120 +528,93 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
         {activeView === 'overview' && (
           <div className="space-y-6">
-            {/* SESSIONS LIST - Clear layout, Join Now only when joinable */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 md:px-8 py-6 md:py-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-2.5">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
-                    <h1 className="text-xl font-bold text-gray-900 leading-none">My Bookings</h1>
-                  </div>
-                  <p className="text-[11px] font-medium text-gray-500 mt-1">All bookings — view and join sessions</p>
+            {/* Header - simple, flat title row with icon */}
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                    <span className="w-1 h-1 rounded-full bg-blue-500"></span>
-                    <span className="text-[8px] font-black tracking-tight uppercase">Bookings</span>
-                  </div>
-
-                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</span>
-                    <span className="text-[11px] font-black text-gray-700 tabular-nums">{sortedSessions.length}</span>
-                  </div>
+                <div>
+                  <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Bookings</h1>
+                  <p className="text-xs font-semibold text-gray-500 mt-1">All bookings — view and join sessions</p>
                 </div>
               </div>
 
-              {/* Card Grid Layout */}
-              <div className="p-5 sm:p-7 bg-slate-50/30">
-                {loading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <div key={`skeleton-${index}`} className="h-[210px] bg-white border border-slate-200/60 rounded-2xl animate-pulse" />
-                    ))}
-                  </div>
-                ) : pagedSessions.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
-                    {pagedSessions.map(session => (
-                      <SessionCard
-                        key={session.id}
-                        session={session}
-                        now={now}
-                        getDisplayStatus={getDisplayStatus}
-                        getSessionTimeAndCountdown={getSessionTimeAndCountdown}
-                        setCertificateModalSession={setCertificateModalSession}
-                        setReviewModalSession={setReviewModalSession}
-                        handleRequestFeedback={handleRequestFeedback}
-                        handleJoin={handleJoin}
-                        getCompletedCountForCategory={getCompletedCountForCategory}
-                        navigate={navigate}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-16 text-center bg-white border border-slate-200/80 rounded-2xl p-6">
-                    <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-900 font-bold text-[15px]">No bookings yet</p>
-                    <p className="text-gray-500 text-xs font-medium mt-1 max-w-xs mx-auto">Your bookings will show here after you book a session.</p>
-                    <button type="button" onClick={() => navigate("/book-session")} className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
-                      Book a session
-                    </button>
-                  </div>
-                )}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-100 bg-blue-50 text-[10px] font-black text-blue-700 uppercase tracking-wider">
+                  Bookings
+                </span>
+                <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/50 text-xs font-bold text-slate-600">
+                  Total: {sortedSessions.length}
+                </span>
               </div>
+            </div>
 
-              {/* Unified Pagination footer */}
-              {!loading && sortedSessions.length > 0 && (
-                <div className="flex items-center justify-between px-6 py-5 border-t border-slate-100 bg-white">
-                  <div className="text-[10px] font-bold text-slate-500">
-                    Showing <span className="text-slate-700 tabular-nums">{pageStartIdx + 1}</span>–<span className="text-slate-700 tabular-nums">{pageEndIdx}</span> of{" "}
-                    <span className="text-slate-700 tabular-nums">{sortedSessions.length}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page <= 1}
-                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
-                    >
-                      Prev
-                    </button>
-                    <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-700 tabular-nums">
-                      Page {page} / {totalPages}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page >= totalPages}
-                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
-                    >
-                      Next
-                    </button>
-                  </div>
+            {/* List - directly rendered grid, no extra white card container! */}
+            <div>
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={`skeleton-${index}`} className="h-[210px] bg-white border border-slate-200/60 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              ) : pagedSessions.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                  {pagedSessions.map(session => (
+                    <SessionCard
+                      key={session.id}
+                      session={session}
+                      now={now}
+                      getDisplayStatus={getDisplayStatus}
+                      getSessionTimeAndCountdown={getSessionTimeAndCountdown}
+                      setCertificateModalSession={setCertificateModalSession}
+                      setReviewModalSession={setReviewModalSession}
+                      handleRequestFeedback={handleRequestFeedback}
+                      handleJoin={handleJoin}
+                      getCompletedCountForCategory={getCompletedCountForCategory}
+                      navigate={navigate}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="py-16 text-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                  <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-900 font-bold text-[15px]">No bookings yet</p>
+                  <p className="text-gray-500 text-xs font-medium mt-1 max-w-xs mx-auto">Your bookings will show here after you book a session.</p>
+                  <button type="button" onClick={() => navigate("/book-session")} className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
+                    Book a session
+                  </button>
                 </div>
               )}
             </div>
 
-            {/* Saved Experts Preview (Optional, max 4) */}
-            {savedExperts.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Bookmark size={16} className="text-elite-blue" />
-                    <h3 className="font-elite text-sm">Saved Experts</h3>
-                  </div>
-                  <button onClick={() => setActiveView('saved')} className="text-[10px] font-bold text-elite-blue hover:underline">View All</button>
+            {/* Pagination footer */}
+            {!loading && sortedSessions.length > 0 && (
+              <div className="flex items-center justify-between px-2 py-4 mt-4 border-t border-slate-200">
+                <div className="text-[10px] font-bold text-slate-500">
+                  Showing <span className="text-slate-700 tabular-nums">{pageStartIdx + 1}</span>–<span className="text-slate-700 tabular-nums">{pageEndIdx}</span> of{" "}
+                  <span className="text-slate-700 tabular-nums">{sortedSessions.length}</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {savedExperts.slice(0, 4).map(expert => (
-                    <div key={expert.expertID} className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
-                      <img src={expert.avatar} className="w-8 h-8 rounded-lg bg-slate-200 object-cover" />
-                      <div className="min-w-0">
-                        <p className="font-bold text-[11px] truncate">{expert.name}</p>
-                        <p className="text-[9px] text-slate-400 truncate">{expert.role}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
+                  >
+                    Prev
+                  </button>
+                  <div className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[10px] font-black text-slate-700 tabular-nums">
+                    Page {page} / {totalPages}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             )}
@@ -651,43 +624,43 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
         {/* SAVED EXPERTS VIEW */}
         {activeView === 'saved' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 md:px-8 py-6 md:py-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-2.5">
-                  <Bookmark className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <h2 className="text-xl font-bold text-gray-900 leading-none">Saved Experts Library</h2>
-                    <p className="text-[11px] font-medium text-gray-500 mt-1">
-                      Track your shortlisted mentors and book quickly when ready.
-                    </p>
-                  </div>
+            {/* Header - simple, flat title row with icon */}
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                  <Bookmark className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-100 bg-blue-50 text-[11px] font-bold text-blue-700">
-                  {savedExperts.length} Saved
-                </span>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Saved Experts Library</h2>
+                  <p className="text-xs font-semibold text-gray-500 mt-1">
+                    Track your shortlisted mentors and book quickly when ready.
+                  </p>
+                </div>
               </div>
-
-              <div className="p-5 sm:p-7 bg-slate-50/30">
-                {savedExperts.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
-                    {savedExperts.map((expert) => (
-                      <div key={expert.expertID} className="flex animate-in fade-in duration-300">
-                        <MentorJobCard mentor={expert} />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-20 text-center flex flex-col items-center shadow-sm">
-                    <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
-                      <Bookmark className="w-8 h-8 text-gray-300" />
-                    </div>
-                    <h3 className="text-gray-900 font-bold mb-1">No Saved Experts</h3>
-                    <p className="text-gray-500 text-sm font-medium max-w-xs mx-auto">Start saving mentors from the discovery feed to build your personal shortlist.</p>
-                    <button onClick={() => navigate('/')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all cursor-pointer">Browse Mentors</button>
-                  </div>
-                )}
-              </div>
+              <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-100 bg-blue-50 text-[10px] font-black text-blue-700 uppercase tracking-wider">
+                {savedExperts.length} Saved
+              </span>
             </div>
+
+            {/* List - directly rendered grid, no extra white card container! */}
+            {savedExperts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                {savedExperts.map((expert) => (
+                  <div key={expert.expertID} className="flex animate-in fade-in duration-300">
+                    <MentorJobCard mentor={expert} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 p-20 text-center flex flex-col items-center shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                  <Bookmark className="w-8 h-8 text-gray-300" />
+                </div>
+                <h3 className="text-gray-900 font-bold mb-1">No Saved Experts</h3>
+                <p className="text-gray-500 text-sm font-medium max-w-xs mx-auto">Start saving mentors from the discovery feed to build your personal shortlist.</p>
+                <button onClick={() => navigate('/')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all cursor-pointer">Browse Mentors</button>
+              </div>
+            )}
           </div>
         )}
 
