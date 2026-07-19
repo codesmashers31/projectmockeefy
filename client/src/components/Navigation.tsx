@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from '../lib/axios';
-import { useIsFetching } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   Users,
@@ -85,8 +85,25 @@ const Navigation = () => {
   const { user, token, logout } = useAuth();
   const { data: userProfile } = useUserProfile();
   const profileImage = user?.profileImage || userProfile?.profileImage;
-  const isFetching = useIsFetching();
-  const showSkeletons = isFetching > 0 && location.pathname === "/";
+  const { status: expertsStatus } = useQuery({
+    queryKey: ["experts"],
+    enabled: false,
+  });
+  const { status: categoriesStatus } = useQuery({
+    queryKey: ["categories"],
+    enabled: false,
+  });
+  const userId = user?.id || user?._id || user?.userId;
+  const { status: profileStatus } = useQuery({
+    queryKey: ["userProfile", userId],
+    enabled: !!userId,
+  });
+
+  const isExpertsLoading = expertsStatus === "pending";
+  const isCategoriesLoading = categoriesStatus === "pending";
+  const isProfileLoading = !!userId && profileStatus === "pending";
+
+  const showSkeletons = location.pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading);
 
   // Fetch Notifications
   const fetchNotifications = async () => {

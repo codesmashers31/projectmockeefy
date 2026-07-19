@@ -5,7 +5,7 @@ import Sidebar, { SkeletonSidebar } from "./Sidebar";
 import InfoPanel, { SkeletonInfoPanel } from "./InfoPanel";
 import Footer from "./Footer";
 import { useAuth } from "../context/AuthContext";
-import { useIsFetching } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -15,9 +15,26 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebars = false }) => {
     const { pathname } = useLocation();
     const { isLoading, user } = useAuth();
-    const isFetching = useIsFetching();
-    const showSkeletons = isLoading || (pathname === "/" && isFetching > 0);
-    const isLoggedIn = !!user?.id;
+    const { status: expertsStatus } = useQuery({
+        queryKey: ["experts"],
+        enabled: false,
+    });
+    const { status: categoriesStatus } = useQuery({
+        queryKey: ["categories"],
+        enabled: false,
+    });
+    const userId = user?.id || user?._id || user?.userId;
+    const { status: profileStatus } = useQuery({
+        queryKey: ["userProfile", userId],
+        enabled: !!userId,
+    });
+
+    const isExpertsLoading = expertsStatus === "pending";
+    const isCategoriesLoading = categoriesStatus === "pending";
+    const isProfileLoading = !!userId && profileStatus === "pending";
+
+    const showSkeletons = isLoading || (pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
+    const isLoggedIn = !!user;
     const showLeftSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
     const showRightSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
 

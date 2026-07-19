@@ -22,12 +22,24 @@ import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { useUserProfile } from "../hooks/useUserProfile";
 import Avatar from "./ui/avatar";
+import { useQuery } from "@tanstack/react-query";
 
 const Sidebar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
+
+  const { status: expertsStatus } = useQuery({
+    queryKey: ["experts"],
+    enabled: false,
+  });
+  const { status: categoriesStatus } = useQuery({
+    queryKey: ["categories"],
+    enabled: false,
+  });
+  const isExpertsLoading = expertsStatus === "pending";
+  const isCategoriesLoading = categoriesStatus === "pending";
   const [nextSession, setNextSession] = useState<any>(null);
 
   useEffect(() => {
@@ -91,7 +103,9 @@ const Sidebar = () => {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - ((displayProfile.profileCompletion || 0) / 100) * circumference;
 
-  if (isProfileLoading) return <SkeletonSidebar />;
+  if (isProfileLoading || (location.pathname === "/" && (isExpertsLoading || isCategoriesLoading))) {
+    return <SkeletonSidebar />;
+  }
 
   return (
     <div className="w-full max-w-[240px] mx-auto space-y-4 font-sans">
