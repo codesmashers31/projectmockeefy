@@ -57,7 +57,7 @@ export default function UserProfile() {
       <div className="w-full space-y-6 relative z-10">
         
         {/* Header Section: Title, Completion, Resume Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="space-y-1.5">
             <h1 className="text-xl font-bold text-gray-900 leading-tight">
               Profile Settings

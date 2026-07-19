@@ -120,7 +120,7 @@ export default function CertificationsSection({ profileData, onUpdate }: Certifi
 
     return (
         <div className="space-y-10 animate-in fade-in duration-500 max-w-4xl">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4 mb-2">
                 <div className="flex items-center gap-3">
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 tracking-tight">Certifications</h2>

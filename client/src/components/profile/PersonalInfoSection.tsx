@@ -218,7 +218,7 @@ export default function PersonalInfoSection({ profileData, onUpdate }: PersonalI
 
     return (
         <div className="space-y-10 animate-in fade-in duration-500 max-w-4xl">
-            <div>
+            <div className="border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
                         <User className="w-4.5 h-4.5" />

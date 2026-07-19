@@ -97,7 +97,7 @@ export default function ExperienceSection({ profileData, onUpdate }: ExperienceS
 
     return (
         <div className="space-y-10 animate-in fade-in duration-500 max-w-4xl">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">Work Experience</h2>
                     <p className="text-sm font-medium text-slate-500 mt-1">Your professional background</p>

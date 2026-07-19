@@ -86,7 +86,7 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
 
     return (
         <div className="space-y-10 animate-in fade-in duration-500 max-w-4xl">
-            <div>
+            <div className="border-b border-slate-200 pb-4">
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Skills & Languages</h2>
                 <p className="text-sm font-medium text-slate-500 mt-1">Add your technical skills, soft skills, and languages</p>
             </div>

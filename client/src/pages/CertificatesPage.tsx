@@ -331,23 +331,28 @@ export default function CertificatesPage() {
   }, [user]);
 
   return (
-    <div className="flex flex-col gap-8 pb-10 w-full">
-      {/* Main Certificates List Card */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] overflow-hidden">
-        <div className="px-6 md:px-8 py-6 md:py-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2.5">
-              <Award className="w-4 h-4 text-blue-600" />
-              <h1 className="font-elite leading-none text-gray-900">My Certificates</h1>
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full space-y-6 relative z-10">
+        {/* Header - simple, flat title row with icon */}
+        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+              <Award className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-[10px] text-gray-500 font-medium">Completed sessions — view verified certificates</p>
+            <div>
+              <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Certificates</h1>
+              <p className="text-xs font-semibold text-gray-500 mt-1">Completed sessions — view verified certificates</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-              <span className="w-1 h-1 rounded-full bg-blue-500"></span>
-              <span className="text-[8px] font-black tracking-tight uppercase">Verified</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-100 bg-blue-50 text-[10px] font-black text-blue-700 uppercase tracking-wider">
+              Verified
+            </span>
           </div>
         </div>
 
@@ -492,7 +497,6 @@ export default function CertificatesPage() {
             </button>
           </div>
         )}
-      </div>
 
       {/* Certificate View Modal */}
       {(selectedSession || isMasterSelected) && (
@@ -679,6 +683,7 @@ export default function CertificatesPage() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
