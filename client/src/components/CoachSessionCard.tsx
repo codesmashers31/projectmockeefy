@@ -1,14 +1,162 @@
 import React, { useMemo, useRef, useState } from "react";
 import { MentorJobCard, MentorProfile } from "./MentorJobCard";
-import { CategorySection } from "./CategorySection";
-import { AlertCircle, Search, X, ChevronDown, RotateCcw, SlidersHorizontal, Crown, Zap, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { 
+  AlertCircle, Search, X, SlidersHorizontal, Crown, Zap, Check, ChevronLeft, ChevronRight,
+  Award, Layers, Terminal, Globe, Smartphone, Cloud, Cpu, ShieldCheck, Database, CheckSquare, 
+  Users, Network, Sparkles, UserCheck, Briefcase, Palette, Clock, Calendar
+} from "lucide-react";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { useQuery } from "@tanstack/react-query";
 import { calculateAge, calculateProfessionalExperience, getCurrentCompany, getJobTitle } from "../lib/expertUtils";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
-import { ExpertsCarousel } from "./ExpertsCarousel";
+import ExpertCard from "./ExpertCard";
+
+const categoryDescriptions: Record<string, string> = {
+  "IT": "Learn from industry-leading software engineers, architects, and tech leaders.",
+  "MERN Stack": "Master React, Node.js, Express, and MongoDB with hands-on developers.",
+  "Software Engineering": "Improve your coding skills, system design, and ace your coding interviews.",
+  "Web Development": "Build modern, fast, and responsive websites using modern frontend frameworks.",
+  "Mobile Development": "Develop premium iOS and Android applications using React Native, Flutter, or native swift/kotlin.",
+  "DevOps & Cloud": "Deploy and scale your applications with Docker, Kubernetes, AWS, and GCP.",
+  "Data Science & ML": "Deep dive into Python, data analytics, neural networks, and AI modeling.",
+  "Cyber Security": "Protect applications, audit security vulnerability, and manage IAM access controls.",
+  "Database Administration": "Optimize your database queries, indexing strategies, and database schemas.",
+  "QA & Testing": "Write automated test suites, run selenium/cypress, and configure CI/CD pipelines.",
+  "Agile & Scrum": "Learn scrum master methodologies, project delivery, and team management.",
+  "System Design": "Design scalable microservices, load balancers, caching layers, and database sharding.",
+  "Generative AI": "Build apps with LLMs, prompt engineering, OpenAI, and LangChain.",
+  "HR & Recruitment": "Ace your behavioral interviews, polish your resume, and negotiate your salary.",
+  "Business & Management": "Learn startup operations, product launch strategies, and sales pipelines.",
+  "UI/UX Design": "Create stunning user experiences, mockups, color palettes, and Figma layouts."
+};
+
+const getCategoryDescription = (cat: string) => {
+  const t = cat.toLowerCase().trim();
+  for (const [key, desc] of Object.entries(categoryDescriptions)) {
+    if (t.includes(key.toLowerCase()) || key.toLowerCase().includes(t)) {
+      return desc;
+    }
+  }
+  return "Connect with handpicked industry experts for personalized mock interviews and mentorship.";
+};
+
+const getCategoryIconDetails = (title: string) => {
+  const t = title.toLowerCase().trim();
+  if (t === "it" || t === "top rated experts") {
+    return { icon: <Award className="w-5 h-5 text-amber-500" />, bg: "bg-amber-50 border-amber-100/50" };
+  }
+  if (t.includes("mern") || t.includes("full stack")) {
+    return { icon: <Layers className="w-5 h-5 text-indigo-600" />, bg: "bg-indigo-50 border-indigo-100/50" };
+  }
+  if (t.includes("software")) {
+    return { icon: <Terminal className="w-5 h-5 text-blue-600" />, bg: "bg-blue-50 border-blue-100/50" };
+  }
+  if (t.includes("web")) {
+    return { icon: <Globe className="w-5 h-5 text-emerald-600" />, bg: "bg-emerald-50 border-emerald-100/50" };
+  }
+  if (t.includes("mobile")) {
+    return { icon: <Smartphone className="w-5 h-5 text-purple-600" />, bg: "bg-purple-50 border-purple-100/50" };
+  }
+  if (t.includes("devops") || t.includes("cloud")) {
+    return { icon: <Cloud className="w-5 h-5 text-cyan-600" />, bg: "bg-cyan-50 border-cyan-100/50" };
+  }
+  if (t.includes("data science") || t.includes("ml")) {
+    return { icon: <Cpu className="w-5 h-5 text-teal-600" />, bg: "bg-teal-50 border-teal-100/50" };
+  }
+  if (t.includes("cyber") || t.includes("security")) {
+    return { icon: <ShieldCheck className="w-5 h-5 text-rose-600" />, bg: "bg-rose-50 border-rose-100/50" };
+  }
+  if (t.includes("database") || t.includes("db")) {
+    return { icon: <Database className="w-5 h-5 text-slate-600" />, bg: "bg-slate-50 border-slate-200/50" };
+  }
+  if (t.includes("qa") || t.includes("test")) {
+    return { icon: <CheckSquare className="w-5 h-5 text-amber-600" />, bg: "bg-amber-50 border-amber-100/50" };
+  }
+  if (t.includes("agile") || t.includes("project")) {
+    return { icon: <Users className="w-5 h-5 text-orange-600" />, bg: "bg-orange-50 border-orange-100/50" };
+  }
+  if (t.includes("system design")) {
+    return { icon: <Network className="w-5 h-5 text-violet-600" />, bg: "bg-violet-50 border-violet-100/50" };
+  }
+  if (t.includes("ai")) {
+    return { icon: <Sparkles className="w-5 h-5 text-pink-600" />, bg: "bg-pink-50 border-pink-100/50" };
+  }
+  if (t.includes("hr")) {
+    return { icon: <UserCheck className="w-5 h-5 text-pink-500" />, bg: "bg-pink-50 border-pink-100/50" };
+  }
+  if (t.includes("business")) {
+    return { icon: <Briefcase className="w-5 h-5 text-blue-700" />, bg: "bg-blue-50 border-blue-100/50" };
+  }
+  if (t.includes("design")) {
+    return { icon: <Palette className="w-5 h-5 text-fuchsia-600" />, bg: "bg-fuchsia-50 border-fuchsia-100/50" };
+  }
+  return { icon: <Award className="w-5 h-5 text-indigo-600" />, bg: "bg-indigo-50 border-indigo-100/50" };
+};
+
+/** One backend category section: header + count + arrows + horizontal carousel of MentorJobCards */
+const CategoryRow: React.FC<{ title: string; profiles: MentorProfile[] }> = ({ title, profiles }) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const scroll = (dir: -1 | 1) => rowRef.current?.scrollBy({ left: dir * 400, behavior: "smooth" });
+  const iconDetails = getCategoryIconDetails(title);
+  const desc = getCategoryDescription(title);
+  const displayTitle = title === "IT" ? "Top Rated Experts" : `${title} Experts`;
+
+  return (
+    <section className="w-full mb-6 bg-white border border-slate-200/80 rounded-[28px] p-5 sm:p-7 shadow-sm text-left">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
+        <div className="flex items-start gap-4">
+          <div className={`w-11 h-11 rounded-2xl ${iconDetails.bg} flex items-center justify-center shrink-0 shadow-sm border`}>
+            {iconDetails.icon}
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight m-0">
+                {displayTitle}
+              </h2>
+              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-slate-50 border border-slate-200/60 text-[10px] font-extrabold text-slate-500">
+                {profiles.length} Experts
+              </span>
+            </div>
+            <p className="text-[12.5px] text-slate-500 font-medium mt-1 leading-relaxed max-w-2xl">
+              {desc}
+            </p>
+          </div>
+        </div>
+        {/* Scroll controls */}
+        <div className="flex gap-1.5 shrink-0 self-center md:self-start">
+          <button
+            onClick={() => scroll(-1)}
+            className="w-8.5 h-8.5 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer transition-colors focus:outline-none"
+            aria-label={`Scroll ${displayTitle} left`}
+          >
+            <ChevronLeft className="w-4 h-4 stroke-[2.2]" />
+          </button>
+          <button
+            onClick={() => scroll(1)}
+            className="w-8.5 h-8.5 rounded-full bg-white border border-slate-200/80 flex items-center justify-center hover:bg-slate-50 text-slate-500 shadow-sm cursor-pointer transition-colors focus:outline-none"
+            aria-label={`Scroll ${displayTitle} right`}
+          >
+            <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+          </button>
+        </div>
+      </div>
+
+      {/* List - Horizontal scrollable */}
+      <div
+        ref={rowRef}
+        className="flex gap-4.5 overflow-x-auto pt-3 pb-4 px-1 scrollbar-none scroll-smooth snap-x snap-mandatory"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {profiles.map((mentor) => (
+          <div key={mentor.id} className="min-w-[85%] max-w-[85%] md:min-w-[calc(50%-9px)] md:max-w-[calc(50%-9px)] snap-start flex animate-in fade-in duration-300">
+            <MentorJobCard mentor={mentor} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 const CoachSessionCard = React.memo(function CoachSessionCard() {
   // Query experts
@@ -123,10 +271,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     return categoriesArray;
   }, [allProfiles]);
 
-  const categoriesList = useMemo(() => {
-    return ["All", ...uniqueCategories];
-  }, [uniqueCategories]);
-
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -135,7 +279,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
   const [maxExperience, setMaxExperience] = useState<number>(15);
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("All"); // "All", "Today", "Week"
   const [sortOption, setSortOption] = useState<string>("recommended");
-  const [showAllSkills, setShowAllSkills] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   // Additional advanced filters: company, expert level, max price
@@ -145,11 +288,9 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
 
   // New design states and refs
   const [activeTab, setActiveTab] = useState<string>("Featured");
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
   const listingSectionRef = useRef<HTMLDivElement>(null);
   const tabCarouselRef = useRef<HTMLDivElement>(null);
-  const allCarouselRef = useRef<HTMLDivElement>(null);
 
   // Active filter count logic
   const activeFilterCount = useMemo(() => {
@@ -168,21 +309,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
   const isFilteringActive = useMemo(() => {
     return searchQuery.trim() !== "" || activeFilterCount > 0;
   }, [searchQuery, activeFilterCount]);
-
-  // Quick Dropdown Toolbar states
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
-  // Close toolbar dropdowns on click outside
-  React.useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest(".relative")) {
-        setActiveDropdown(null);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
 
   // Clear all filters
   const handleReset = () => {
@@ -249,11 +375,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
       });
     }
 
-    // 1b. Category pill filter
-    if (selectedCategory !== "All") {
-      list = list.filter(p => p.category === selectedCategory);
-    }
-
     // 2. Categories checkbox filters
     if (selectedCategories.length > 0) {
       list = list.filter(p => p.category && selectedCategories.includes(p.category));
@@ -306,24 +427,39 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     }
 
     return list;
-  }, [allProfiles, searchQuery, selectedCategory, selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption, selectedCompanies, selectedLevels, maxPriceFilter]);
+  }, [allProfiles, searchQuery, selectedCategories, selectedSkills, maxExperience, availabilityFilter, sortOption, selectedCompanies, selectedLevels, maxPriceFilter]);
 
-  // Group experts by category
+  // Backend category order (from /api/categories); fallback to categories found in expert data
+  const backendCategoryOrder = useMemo(() => {
+    let raw: any[] = [];
+    if (categoriesData?.success && Array.isArray(categoriesData?.data)) {
+      raw = categoriesData.data;
+    } else if (Array.isArray(categoriesData)) {
+      raw = categoriesData;
+    }
+    return raw
+      .map((c: any) => (typeof c === "string" ? c : c?.name))
+      .filter(Boolean) as string[];
+  }, [categoriesData]);
+
+  // Group experts by category (backend-driven listing)
   const groupedByCategory = useMemo(() => {
     const groups: { [key: string]: MentorProfile[] } = {};
     filteredProfiles.forEach((profile) => {
       const cat = profile.category || "IT";
-      if (!groups[cat]) {
-        groups[cat] = [];
-      }
+      if (!groups[cat]) groups[cat] = [];
       groups[cat].push(profile);
     });
     return groups;
   }, [filteredProfiles]);
 
+  // Categories that actually have experts, ordered by the backend category list
   const activeCategoriesWithData = useMemo(() => {
-    return uniqueCategories.filter(cat => groupedByCategory[cat] && groupedByCategory[cat].length > 0);
-  }, [uniqueCategories, groupedByCategory]);
+    const present = Object.keys(groupedByCategory);
+    const ordered = backendCategoryOrder.filter((c) => present.includes(c));
+    const rest = present.filter((c) => !ordered.includes(c)).sort();
+    return [...ordered, ...rest];
+  }, [groupedByCategory, backendCategoryOrder]);
 
   // Unique companies present in the verified experts dataset (for the Company filter)
   const uniqueCompanies = useMemo(() => {
@@ -369,17 +505,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
   };
   const scrollTabRight = () => {
     tabCarouselRef.current?.scrollBy({ left: 400, behavior: "smooth" });
-  };
-
-  const scrollAllLeft = () => {
-    allCarouselRef.current?.scrollBy({ left: -400, behavior: "smooth" });
-  };
-  const scrollAllRight = () => {
-    allCarouselRef.current?.scrollBy({ left: 400, behavior: "smooth" });
-  };
-
-  const toggleDropdown = (dropdown: string) => {
-    setActiveDropdown(prev => prev === dropdown ? null : dropdown);
   };
 
   return (
@@ -482,38 +607,68 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
               {expertsError instanceof Error ? expertsError.message : "Failure Connecting"}
             </p>
           </div>
-        ) : isFilteringActive ? (
-          filteredProfiles.length === 0 ? (
-            <div className="text-center py-16 bg-slate-50/50 rounded-[24px] border border-slate-200/50">
-              <p className="text-sm font-bold text-slate-500">No experts matching your active filters.</p>
-            </div>
-          ) : (
-            <div className="w-full space-y-4 text-left">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider">
-                  Search Results ({filteredProfiles.length} experts found)
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredProfiles.map((mentor) => (
-                  <MentorJobCard key={mentor.id} mentor={mentor} />
-                ))}
-              </div>
-            </div>
-          )
-        ) : activeCategoriesWithData.length === 0 ? (
-          <div className="text-center py-16 bg-slate-50/50 rounded-[24px] border border-slate-200/50">
-            <p className="text-sm font-bold text-slate-500">No experts found.</p>
-          </div>
         ) : (
-          <div className="w-full space-y-8 text-left">
-            {activeCategoriesWithData.map((cat) => (
-              <CategorySection
-                key={cat}
-                title={cat}
-                profiles={groupedByCategory[cat]}
-              />
-            ))}
+          <div className="w-full text-left space-y-8">
+
+            {/* FEATURED TABS CAROUSEL — hidden while searching/filtering */}
+            {!isFilteringActive && tabExperts.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-3.5">
+                  <div className="flex gap-6 overflow-x-auto">
+                    {["Featured", "Top Rated", "Available Today", "New"].map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`font-extrabold text-[15.5px] pb-2.5 border-b-[2.5px] whitespace-nowrap transition-colors cursor-pointer focus:outline-none ${
+                          activeTab === tab
+                            ? "text-[#141A33] border-[#2F5FFF]"
+                            : "text-[#8B93B2] border-transparent hover:text-[#4A5170]"
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2.5">
+                    <button
+                      onClick={scrollTabLeft}
+                      className="w-9 h-9 rounded-full bg-white border border-[#E3E8F5] flex items-center justify-center cursor-pointer text-[#4A5170] hover:bg-slate-50 transition-colors focus:outline-none"
+                      aria-label="Scroll featured experts left"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={scrollTabRight}
+                      className="w-9 h-9 rounded-full bg-white border border-[#E3E8F5] flex items-center justify-center cursor-pointer text-[#4A5170] hover:bg-slate-50 transition-colors focus:outline-none"
+                      aria-label="Scroll featured experts right"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div
+                  ref={tabCarouselRef}
+                  className="flex gap-[18px] overflow-x-auto pb-1.5 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {tabExperts.map((mentor) => (
+                    <div key={mentor.id} className="min-w-[330px] max-w-[330px] sm:min-w-[420px] sm:max-w-[420px]">
+                      <ExpertCard mentor={mentor} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CATEGORY-BASED LISTING (backend categories) */}
+            {activeCategoriesWithData.length === 0 ? (
+              <div className="text-center py-[60px] text-[#8B93B2] font-bold">
+                No experts match your search — try a different keyword.
+              </div>
+            ) : (
+              activeCategoriesWithData.map((cat) => (
+                <CategoryRow key={cat} title={cat} profiles={groupedByCategory[cat]} />
+              ))
+            )}
           </div>
         )}
       </div>
