@@ -262,64 +262,74 @@ const Navigation = () => {
             {/* Center: Nav pill (includes More) */}
             <div className="hidden md:flex flex-1 items-center justify-center">
               <div className="flex items-center gap-1">
-                {navItems.map((item) => {
-                  const isActive = location.pathname === item.href || (location.pathname.startsWith(item.href) && item.href !== "/");
+                {showSkeletons ? (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-32 h-[38px] rounded-2xl border border-slate-100/50 shimmer-shining" />
+                    <div className="w-28 h-[38px] rounded-2xl border border-slate-100/50 shimmer-shining" />
+                    <div className="w-20 h-[38px] rounded-2xl border border-slate-100/50 shimmer-shining" />
+                  </div>
+                ) : (
+                  <>
+                    {navItems.map((item) => {
+                      const isActive = location.pathname === item.href || (location.pathname.startsWith(item.href) && item.href !== "/");
 
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${isActive
-                        ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${isActive
+                            ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                            }`}
+                          onClick={closeAllDropdowns}
+                        >
+                          <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-500"}`}>
+                            {item.icon}
+                          </span>
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+
+                    {/* More dropdown */}
+                    <div className="relative" ref={moreMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMoreOpen((v) => !v);
+                          setIsProfileMenuOpen(false);
+                          setIsNotificationOpen(false);
+                        }}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${
+                          isMoreOpen
+                            ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
                         }`}
-                      onClick={closeAllDropdowns}
-                    >
-                      <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-500"}`}>
-                        {item.icon}
-                      </span>
-                      {item.name}
-                    </Link>
-                  );
-                })}
+                      >
+                        More
+                        <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? "rotate-180" : ""}`} />
+                      </button>
 
-                {/* More dropdown */}
-                <div className="relative" ref={moreMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreOpen((v) => !v);
-                      setIsProfileMenuOpen(false);
-                      setIsNotificationOpen(false);
-                    }}
-                    className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${
-                      isMoreOpen
-                        ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    More
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {isMoreOpen && (
-                    <div className="absolute left-0 top-full mt-3 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="p-1.5 space-y-0.5">
-                        {moreItems.map((item) => (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
-                            onClick={closeAllDropdowns}
-                          >
-                            <span className="mr-3 text-slate-400">{item.icon}</span>
-                            {item.name}
-                          </Link>
-                        ))}
-                      </div>
+                      {isMoreOpen && (
+                        <div className="absolute left-0 top-full mt-3 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                          <div className="p-1.5 space-y-0.5">
+                            {moreItems.map((item) => (
+                              <Link
+                                key={item.name}
+                                to={item.href}
+                                className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
+                                onClick={closeAllDropdowns}
+                              >
+                                <span className="mr-3 text-slate-400">{item.icon}</span>
+                                {item.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
 
