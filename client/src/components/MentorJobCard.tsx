@@ -228,10 +228,11 @@ export const MentorJobCard = React.memo(({ mentor, isActive }: MentorJobCardProp
     return (
       <div
         onClick={handleCardClick}
-        className="group/card relative flex flex-col gap-3 w-full h-full bg-white border border-slate-200/80 rounded-[24px] p-4.5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
+        className="group/card relative flex flex-col gap-3 w-full h-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[24px] p-4.5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2F5FFF]/35 transition-all duration-300 font-sans cursor-pointer overflow-hidden text-left"
       >
-        {/* Decorative gradient glow on hover */}
-        <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent blur-2xl opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        {/* Decorative gradient glow */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-2xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
 
         {/* Top Row: Status pill & Save heart */}
         <div className="flex items-center justify-between z-10">

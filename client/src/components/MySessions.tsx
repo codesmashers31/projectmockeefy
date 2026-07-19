@@ -226,7 +226,10 @@ const SessionCard: React.FC<{
   const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left h-full">
+    <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left h-full overflow-hidden">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
       {/* Top Header: Category & Status */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black bg-blue-50 text-[#004fcb] border border-blue-100 uppercase tracking-tight">
@@ -675,7 +678,10 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             {sessions.filter(s => s.status === 'Completed').length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                 {sessions.filter(s => s.status === 'Completed').map(session => (
-                  <div key={session.id} className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between text-left h-full">
+                  <div key={session.id} className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between text-left h-full overflow-hidden">
+                    {/* Decorative gradient glow */}
+                    <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-2xl pointer-events-none" />
+                    <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
                     <div>
                       <div className="w-12 h-12 rounded-xl bg-blue-50/50 border border-blue-100 flex items-center justify-center text-blue-600 mb-4 shadow-sm">
                         <Award size={22} />
