@@ -580,27 +580,27 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
 
       {/* PROMO BANNER */}
       {!isFilteringActive && (
-        <div className="relative mb-6 bg-gradient-to-br from-indigo-950 via-[#101530] to-slate-950 border border-indigo-500/20 rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-center gap-6 sm:gap-8 shadow-xl overflow-hidden text-white">
+        <div className="relative mb-6 bg-gradient-to-br from-[#0b3cc1] via-[#004fcb] to-[#1d4ed8] border border-blue-400/20 rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-center gap-6 sm:gap-8 shadow-xl overflow-hidden text-white">
           {/* Decorative absolute glow */}
-          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
           
           <div className="flex-1 min-w-[240px] text-left relative z-10">
-            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-full">
+            <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest bg-amber-400/20 border border-amber-300/30 px-2.5 py-1 rounded-full">
               Premium Upgrade
             </span>
             <div className="flex items-center gap-2.5 my-3">
-              <span className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-amber-200 via-amber-300 to-amber-500 text-transparent bg-clip-text">
+              <span className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-amber-200 via-amber-300 to-amber-100 text-transparent bg-clip-text">
                 Mockeefy PRO
               </span>
-              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
                 <Crown className="w-4 h-4 text-slate-950 fill-slate-955" />
               </div>
             </div>
-            <p className="font-bold text-[14px] text-indigo-200/90 mb-5 leading-relaxed">
+            <p className="font-bold text-[14px] text-blue-100/90 mb-5 leading-relaxed">
               Get booked by candidates up to 5x faster, get instant payouts, and unlock premium AI profile metrics.
             </p>
-            <button className="inline-flex bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
+            <button className="inline-flex bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-955 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
               Become a Pro
             </button>
           </div>
@@ -609,10 +609,10 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
             <ProIllustration />
           </div>
 
-          <div className="hidden md:block w-px self-stretch bg-indigo-900/40" />
+          <div className="hidden md:block w-px self-stretch bg-blue-400/20" />
 
           <div className="flex-[1.2] w-full min-w-[280px] text-left relative z-10">
-            <div className="font-black text-xs text-indigo-300 uppercase tracking-wider mb-4">
+            <div className="font-black text-xs text-blue-200 uppercase tracking-wider mb-4">
               Premium benefits you will unlock
             </div>
             <div className="space-y-3">
@@ -621,18 +621,18 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
                 { f: "AI-enhanced profile rating", d: "Ranks at the top of candidate mentor searches" },
                 { f: "Auto-match with top mentors", d: "Get matched with corporate interview pipelines" }
               ].map((item, i) => (
-                <div key={i} className="flex items-start justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md shadow-sm">
+                <div key={i} className="flex items-start justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md shadow-sm">
                   <div className="flex-1 min-w-0">
                     <span className="text-[13px] text-white font-extrabold flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                      <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
                       {item.f}
                     </span>
-                    <p className="text-[10px] text-indigo-300/80 font-semibold mt-0.5 pl-5">
+                    <p className="text-[10px] text-blue-200/80 font-semibold mt-0.5 pl-5">
                       {item.d}
                     </p>
                   </div>
-                  <span className="w-6.5 h-6.5 rounded-lg bg-[#4f46e5]/40 border border-[#818cf8]/20 flex items-center justify-center shadow-sm shrink-0 ml-2">
-                    <Check className="w-3.5 h-3.5 text-amber-400 stroke-[3]" />
+                  <span className="w-6.5 h-6.5 rounded-lg bg-blue-600/40 border border-blue-400/20 flex items-center justify-center shadow-sm shrink-0 ml-2">
+                    <Check className="w-3.5 h-3.5 text-amber-300 stroke-[3]" />
                   </span>
                 </div>
               ))}
