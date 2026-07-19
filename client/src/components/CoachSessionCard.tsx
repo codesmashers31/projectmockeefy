@@ -158,6 +158,39 @@ const CategoryRow: React.FC<{ title: string; profiles: MentorProfile[] }> = ({ t
   );
 };
 
+const ProIllustration = () => (
+  <svg className="w-28 h-28 text-amber-400/85 animate-bounce shrink-0" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animationDuration: '3s' }}>
+    {/* Background Glow Ring */}
+    <circle cx="60" cy="60" r="45" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" className="animate-spin" style={{ animationDuration: '15s' }} />
+    <circle cx="60" cy="60" r="38" stroke="url(#goldGradient)" strokeWidth="0.5" strokeOpacity="0.5" />
+    
+    {/* Floating stars */}
+    <path d="M60 22L62.5 29H69.5L64 33L66.5 40L60 36L53.5 40L56 33L50.5 29H57.5L60 22Z" fill="url(#goldGradient)" className="animate-pulse" />
+    <path d="M28 55L29.5 59H33.5L30 61.5L31.5 65.5L28 63L24.5 65.5L26 61.5L22.5 59H26.5L28 55Z" fill="url(#goldGradient)" opacity="0.6" />
+    <path d="M92 65L93.5 69H97.5L94 71.5L95.5 75.5L92 73L88.5 75.5L90 71.5L86.5 69H90.5L92 65Z" fill="url(#goldGradient)" opacity="0.8" />
+    
+    {/* Main Crown */}
+    <g transform="translate(36, 42)">
+      {/* Crown base */}
+      <path d="M6 28C6 28 12 30 24 30C36 30 42 28 42 28L45 22L36 24L24 12L12 24L3 22L6 28Z" fill="url(#goldGradient)" filter="drop-shadow(0px 4px 8px rgba(217, 114, 12, 0.3))" />
+      {/* Crown jewels */}
+      <circle cx="24" cy="12" r="2.5" fill="#FFF" />
+      <circle cx="12" cy="24" r="2" fill="#FFF" />
+      <circle cx="36" cy="24" r="2" fill="#FFF" />
+      <circle cx="24" cy="23" r="3" fill="#D9720C" />
+    </g>
+    
+    {/* Gradients */}
+    <defs>
+      <linearGradient id="goldGradient" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#FBBF24" />
+        <stop offset="50%" stopColor="#F59E0B" />
+        <stop offset="100%" stopColor="#D9720C" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 const CoachSessionCard = React.memo(function CoachSessionCard() {
   // Query experts
   const {
@@ -545,6 +578,69 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     <>
     <div ref={listingSectionRef} className="w-full scroll-mt-24">
 
+      {/* PROMO BANNER */}
+      {!isFilteringActive && (
+        <div className="relative mb-6 bg-gradient-to-br from-indigo-950 via-[#101530] to-slate-950 border border-indigo-500/20 rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-center gap-6 sm:gap-8 shadow-xl overflow-hidden text-white">
+          {/* Decorative absolute glow */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          
+          <div className="flex-1 min-w-[240px] text-left relative z-10">
+            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-full">
+              Premium Upgrade
+            </span>
+            <div className="flex items-center gap-2.5 my-3">
+              <span className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-amber-200 via-amber-300 to-amber-500 text-transparent bg-clip-text">
+                Mockeefy PRO
+              </span>
+              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
+                <Crown className="w-4 h-4 text-slate-950 fill-slate-955" />
+              </div>
+            </div>
+            <p className="font-bold text-[14px] text-indigo-200/90 mb-5 leading-relaxed">
+              Get booked by candidates up to 5x faster, get instant payouts, and unlock premium AI profile metrics.
+            </p>
+            <button className="inline-flex bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
+              Become a Pro
+            </button>
+          </div>
+
+          <div className="hidden md:flex items-center justify-center shrink-0 z-10">
+            <ProIllustration />
+          </div>
+
+          <div className="hidden md:block w-px self-stretch bg-indigo-900/40" />
+
+          <div className="flex-[1.2] w-full min-w-[280px] text-left relative z-10">
+            <div className="font-black text-xs text-indigo-300 uppercase tracking-wider mb-4">
+              Premium benefits you will unlock
+            </div>
+            <div className="space-y-3">
+              {[
+                { f: "Hidden expert invitations", d: "Instantly match hidden premium client sessions" },
+                { f: "AI-enhanced profile rating", d: "Ranks at the top of candidate mentor searches" },
+                { f: "Auto-match with top mentors", d: "Get matched with corporate interview pipelines" }
+              ].map((item, i) => (
+                <div key={i} className="flex items-start justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md shadow-sm">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[13px] text-white font-extrabold flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                      {item.f}
+                    </span>
+                    <p className="text-[10px] text-indigo-300/80 font-semibold mt-0.5 pl-5">
+                      {item.d}
+                    </p>
+                  </div>
+                  <span className="w-6.5 h-6.5 rounded-lg bg-[#4f46e5]/40 border border-[#818cf8]/20 flex items-center justify-center shadow-sm shrink-0 ml-2">
+                    <Check className="w-3.5 h-3.5 text-amber-400 stroke-[3]" />
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search and Filters Row */}
       <div className="flex gap-3 mb-6">
         <div className="flex-1 flex items-center gap-2.5 bg-white border border-slate-200/85 rounded-2xl px-4 py-3 shadow-sm">
@@ -578,43 +674,6 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
           )}
         </button>
       </div>
-
-      {/* PROMO BANNER */}
-      {!isFilteringActive && (
-        <div className="mb-6 bg-gradient-to-br from-[#FFF6EA] to-[#FFEBD6] border border-[#FCE3C2] rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-stretch md:items-center gap-7 shadow-sm">
-          <div className="flex-1 min-w-[200px] text-left">
-            <div className="text-sm text-[#8A5A1E] font-bold">With</div>
-            <div className="flex items-center gap-2.5 my-1">
-              <span className="font-extrabold text-3xl text-[#B5651D] tracking-tight">PRO</span>
-              <div className="w-7 h-7 rounded-full bg-[#D9720C] flex items-center justify-center">
-                <Crown className="w-4 h-4 text-white fill-white" />
-              </div>
-            </div>
-            <div className="font-black text-[15px] text-[#141A33] mb-4">you get booked faster</div>
-            <button className="inline-flex bg-[#D9720C] hover:bg-[#C2620A] text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all shadow-md shadow-amber-600/10 active:scale-[0.98]">
-              Become a Pro
-            </button>
-          </div>
-          <div className="hidden md:block w-px self-stretch bg-[#F1D3AC]" />
-          <div className="flex-[1.4] min-w-[260px] text-left">
-            <div className="font-black text-sm text-[#141A33] mb-3.5">What you will get</div>
-            <div className="space-y-2">
-              {["Hidden expert invitations", "AI-enhanced profile", "Auto-match with mentors"].map((f, i) => (
-                <div key={i} className="flex items-center justify-between py-1 border-b border-[#F1D3AC]/30 last:border-0">
-                  <span className="flex-1 text-[13px] text-[#4A5170] font-bold flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-[#D9720C] fill-[#D9720C]" />
-                    {f}
-                  </span>
-                  <span className="text-[#C7B79A] font-bold mx-2">—</span>
-                  <span className="w-14 h-6.5 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                    <Check className="w-3.5 h-3.5 text-[#D9720C] stroke-[3]" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
 
 
