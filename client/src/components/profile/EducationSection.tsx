@@ -103,7 +103,10 @@ export default function EducationSection({ profileData, onUpdate }: EducationSec
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {education.map((edu, index) => (
-                        <div key={index} className="border border-slate-200 bg-white rounded-[28px] p-5 relative shadow-sm hover:shadow-md transition-all group">
+                        <div key={index} className="relative bg-gradient-to-b from-[#f0f5ff]/40 via-white to-white border border-slate-200 rounded-[28px] p-5 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+                            {/* Decorative gradient glow */}
+                            <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/30 via-indigo-100/25 to-transparent blur-2xl pointer-events-none" />
+                            <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#f0f5ff]/40 to-transparent pointer-events-none" />
                             <button
                                 onClick={() => removeEducation(index)}
                                 className="absolute top-3 right-3 p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-2xl transition-colors opacity-0 group-hover:opacity-100"

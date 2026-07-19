@@ -160,7 +160,10 @@ export default function ExperienceSection({ profileData, onUpdate }: ExperienceS
             ) : experienceLevel !== "Fresher" ? (
                 <div className="space-y-4">
                     {experience.map((exp, index) => (
-                        <div key={index} className="border border-slate-200/80 bg-white rounded-[28px] p-4 relative shadow-sm hover:shadow-md transition-all group">
+                        <div key={index} className="relative bg-gradient-to-b from-[#f0f5ff]/40 via-white to-white border border-slate-200/80 rounded-[28px] p-4 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+                            {/* Decorative gradient glow */}
+                            <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/30 via-indigo-100/25 to-transparent blur-2xl pointer-events-none" />
+                            <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#f0f5ff]/40 to-transparent pointer-events-none" />
                             <button
                                 onClick={() => removeExperience(index)}
                                 className="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-2xl transition-colors opacity-0 group-hover:opacity-100"

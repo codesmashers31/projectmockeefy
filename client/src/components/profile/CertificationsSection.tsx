@@ -238,7 +238,10 @@ export default function CertificationsSection({ profileData, onUpdate }: Certifi
                         </div>
                     ) : (
                         certifications.map((cert, index) => (
-                            <div key={index} className="group flex items-start justify-between p-5 bg-white border border-slate-200 rounded-[28px] hover:border-blue-100 hover:shadow-sm transition-all">
+                            <div key={index} className="relative group flex items-start justify-between p-5 bg-gradient-to-b from-[#f0f5ff]/40 via-white to-white border border-slate-200 rounded-[28px] hover:border-blue-100 hover:shadow-sm transition-all overflow-hidden">
+                                {/* Decorative gradient glow */}
+                                <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/30 via-indigo-100/25 to-transparent blur-2xl pointer-events-none" />
+                                <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#f0f5ff]/40 to-transparent pointer-events-none" />
                                 <div className="flex gap-4">
                                     <div className="mt-1 p-2 bg-blue-50 rounded-2xl text-[#004fcb]">
                                         <Award className="w-5 h-5" />
