@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { MentorJobCard } from "./MentorJobCard";
 
 // --- Types ---
 type ReviewInfo = {
@@ -666,52 +667,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                 </span>
               </div>
 
-              <div className="p-6 md:p-7 bg-gray-50/50">
+              <div className="p-5 sm:p-7 bg-slate-50/30">
                 {savedExperts.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                     {savedExperts.map((expert) => (
-                      <div key={expert.expertID} className="relative">
-                        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all">
-                          <div className="flex justify-between items-start">
-                            <div className="flex gap-3">
-                              <img src={expert.avatar} className="w-12 h-12 rounded-xl object-cover bg-gray-100 border border-gray-100" />
-                              <div>
-                                <h3 className="font-bold text-[15px] text-gray-900 leading-tight">{expert.name}</h3>
-                                <p className="text-[12px] text-gray-500 font-medium mt-0.5">{expert.role}</p>
-                                <p className="text-[10px] font-medium text-gray-400">{expert.company}</p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const updated = savedExperts.filter(e => e.expertID !== expert.expertID);
-                                setSavedExperts(updated);
-                                localStorage.setItem("savedExperts", JSON.stringify(updated));
-                                window.dispatchEvent(new Event("storage"));
-                              }}
-                              className="p-1.5 bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Remove from saved"
-                            >
-                              <Check size={16} strokeWidth={3} />
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-3 text-[11px] text-slate-500 bg-slate-50/50 p-2 rounded-lg">
-                            <div className="flex items-center gap-1"><Star size={12} className="text-amber-500 fill-current" /> <span className="font-bold text-slate-700">{expert.rating.toFixed(1)}</span></div>
-                            <div className="w-px h-3 bg-slate-200"></div>
-                            <div>{expert.experience} Exp</div>
-                            <div className="w-px h-3 bg-slate-200"></div>
-                            <div>{expert.totalSessions}+ Sessions</div>
-                          </div>
-
-                          <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-50">
-                            <div>
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Session Fee</p>
-                              <span className="font-bold text-[16px] text-gray-900">{expert.price || "₹99"}</span>
-                            </div>
-                            <button onClick={() => navigate('/book-session', { state: { expertId: expert.expertID, profile: expert } })} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[11px] font-bold hover:bg-blue-700 transition-all shadow-sm">Book Now</button>
-                          </div>
-                        </div>
+                      <div key={expert.expertID} className="flex animate-in fade-in duration-300">
+                        <MentorJobCard mentor={expert} />
                       </div>
                     ))}
                   </div>
@@ -722,7 +683,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     </div>
                     <h3 className="text-gray-900 font-bold mb-1">No Saved Experts</h3>
                     <p className="text-gray-500 text-sm font-medium max-w-xs mx-auto">Start saving mentors from the discovery feed to build your personal shortlist.</p>
-                    <button onClick={() => navigate('/')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all">Browse Mentors</button>
+                    <button onClick={() => navigate('/')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all cursor-pointer">Browse Mentors</button>
                   </div>
                 )}
               </div>
