@@ -71,9 +71,9 @@ const InfoPanel = ({ fullWidth }: InfoPanelProps) => {
 };
 
 export const SkeletonInfoPanel = () => (
-  <div className="space-y-4 animate-pulse">
-    <div className="h-32 bg-white rounded-2xl border border-slate-100"></div>
-    <div className="h-32 bg-white rounded-2xl border border-slate-100"></div>
+  <div className="space-y-4">
+    <div className="h-32 rounded-[24px] border border-slate-100 shimmer-shining"></div>
+    <div className="h-32 rounded-[24px] border border-slate-100 shimmer-shining"></div>
   </div>
 );
 

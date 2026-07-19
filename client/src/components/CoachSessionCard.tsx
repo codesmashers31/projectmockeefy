@@ -507,6 +507,40 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     tabCarouselRef.current?.scrollBy({ left: 400, behavior: "smooth" });
   };
 
+  if (isExpertsLoading || isCategoriesLoading) {
+    return (
+      <div className="w-full text-left space-y-6 animate-in fade-in duration-300">
+        {/* Search bar skeleton */}
+        <div className="flex gap-4.5 items-center mb-6">
+          <div className="flex-1 h-12 rounded-2xl shimmer-shining border border-slate-100/50" />
+          <div className="w-28 h-12 rounded-2xl shimmer-shining border border-slate-100/50" />
+        </div>
+
+        {/* Promo banner skeleton */}
+        <div className="h-48 sm:h-56 rounded-3xl shimmer-shining border border-slate-100/50" />
+
+        {/* Category list row skeletons */}
+        {[1, 2].map((i) => (
+          <div key={i} className="w-full bg-white border border-slate-200/80 rounded-[28px] p-5 sm:p-7 space-y-5">
+            {/* Category header skeleton */}
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-2xl shimmer-shining border border-slate-100/50 shrink-0" />
+              <div className="space-y-2">
+                <div className="h-5 w-44 rounded-lg shimmer-shining" />
+                <div className="h-3 w-72 rounded-lg shimmer-shining" />
+              </div>
+            </div>
+            {/* Category cards carousel skeleton */}
+            <div className="flex gap-4.5 overflow-hidden pt-3">
+              <div className="min-w-[85%] md:min-w-[calc(50%-9px)] h-[240px] rounded-[24px] border border-slate-100/50 shimmer-shining shrink-0" />
+              <div className="min-w-[85%] md:min-w-[calc(50%-9px)] h-[240px] rounded-[24px] border border-slate-100/50 shimmer-shining shrink-0" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <>
     <div ref={listingSectionRef} className="w-full scroll-mt-24">
@@ -588,17 +622,7 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
       {/* Experts List Container */}
       <div className="mt-2">
         {isExpertsLoading || isCategoriesLoading ? (
-          <div className="space-y-6">
-            {[1, 2].map((i) => (
-              <div key={i} className="space-y-4 animate-pulse">
-                <div className="h-4.5 bg-slate-100 rounded w-48 mb-4"></div>
-                <div className="flex gap-4.5 overflow-hidden">
-                  <div className="w-[300px] h-80 bg-slate-50 border border-slate-100 rounded-3xl shrink-0"></div>
-                  <div className="w-[300px] h-80 bg-slate-50 border border-slate-100 rounded-3xl shrink-0"></div>
-                </div>
-              </div>
-            ))}
-          </div>
+          null
         ) : isExpertsError ? (
           <div className="text-center py-20 bg-rose-50/50 rounded-[24px] border border-rose-100/50">
             <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-4" />

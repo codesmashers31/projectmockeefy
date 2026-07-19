@@ -5,6 +5,7 @@ import Sidebar, { SkeletonSidebar } from "./Sidebar";
 import InfoPanel, { SkeletonInfoPanel } from "./InfoPanel";
 import Footer from "./Footer";
 import { useAuth } from "../context/AuthContext";
+import { useIsFetching } from "@tanstack/react-query";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -14,7 +15,8 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebars = false }) => {
     const { pathname } = useLocation();
     const { isLoading, user } = useAuth();
-    const showSkeletons = isLoading;
+    const isFetching = useIsFetching();
+    const showSkeletons = isLoading || (pathname === "/" && isFetching > 0);
     const isLoggedIn = !!user?.id;
     const showLeftSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
     const showRightSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
