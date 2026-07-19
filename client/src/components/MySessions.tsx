@@ -206,6 +206,140 @@ function getSessionTimeAndCountdown(session: Session, now: Date): { timeLabel: s
   return { timeLabel, countdown: `Starts in ${m}:${s.toString().padStart(2, '0')}`, joinable: false };
 }
 
+const SessionCard: React.FC<{
+  session: Session;
+  now: Date;
+  getDisplayStatus: (s: Session) => string;
+  getSessionTimeAndCountdown: (s: Session, n: Date) => { timeLabel: string; countdown: string | null; joinable: boolean };
+  setCertificateModalSession: (s: Session) => void;
+  setReviewModalSession: (s: Session) => void;
+  handleRequestFeedback: (id: string) => void;
+  handleJoin: (s: Session) => void;
+  getCompletedCountForCategory: (cat: string) => number;
+  navigate: any;
+}> = ({
+  session, now, getDisplayStatus, getSessionTimeAndCountdown, setCertificateModalSession, setReviewModalSession, handleRequestFeedback, handleJoin, getCompletedCountForCategory, navigate
+}) => {
+  const displayStatus = getDisplayStatus(session);
+  const { timeLabel, countdown, joinable } = getSessionTimeAndCountdown(session, now);
+  const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+  return (
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left h-full">
+      {/* Top Header: Category & Status */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black bg-blue-50 text-[#004fcb] border border-blue-100 uppercase tracking-tight">
+          {session.category || "IT"}
+        </span>
+        {countdown ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black uppercase tracking-tight">
+            <Clock className="w-3 h-3" />
+            {countdown}
+          </span>
+        ) : (
+          <StatusBadge status={displayStatus} />
+        )}
+      </div>
+
+      {/* Profile Details */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 p-0.5 shadow-sm shrink-0 overflow-hidden">
+          <SessionAvatar name={session.expert} profileImage={session.profileImage} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-black text-slate-800 text-sm truncate leading-tight">
+            {session.expert}
+          </p>
+          <p className="text-[11.5px] text-slate-500 font-bold truncate mt-0.5">
+            {session.role || "Senior Expert"}
+          </p>
+        </div>
+      </div>
+
+      {/* Date & Time */}
+      <div className="bg-slate-50 border border-slate-100/50 rounded-xl p-2.5 flex items-center justify-between text-slate-700 text-xs mb-4.5 mt-auto">
+        <div className="flex items-center gap-1.5 font-extrabold text-slate-800">
+          <Calendar className="w-3.5 h-3.5 text-[#004fcb]" />
+          <span>{dateStr}</span>
+        </div>
+        <div className="flex items-center gap-1.5 font-bold text-slate-500">
+          <Clock className="w-3.5 h-3.5 text-slate-400" />
+          <span>{timeLabel}</span>
+        </div>
+      </div>
+
+      {/* CTA Actions */}
+      <div className="flex items-center gap-2 w-full pt-3.5 border-t border-slate-100">
+        {displayStatus === 'Completed' ? (
+          <>
+            {session.candidateReview ? (
+              session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
+                <button
+                  onClick={() => setCertificateModalSession(session)}
+                  className="flex-1 py-2 px-3 border border-slate-200 hover:border-[#004fcb] hover:text-[#004fcb] text-slate-600 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-white"
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  <span>Certificate</span>
+                </button>
+              ) : null
+            ) : (
+              <button
+                onClick={() => setReviewModalSession(session)}
+                className="flex-1 py-2 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Review</span>
+              </button>
+            )}
+
+            {session.expertReview ? (
+              <button
+                onClick={() => setCertificateModalSession(session)}
+                className="flex-1 py-2 px-3 border border-indigo-200 hover:border-indigo-600 hover:text-indigo-600 text-indigo-700 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-indigo-50/30"
+              >
+                <MessageSquare className="w-3.5 h-3.5 animate-pulse" />
+                <span>Feedback</span>
+              </button>
+            ) : session.feedbackRequested ? (
+              <button
+                disabled
+                className="flex-1 py-2 px-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 cursor-not-allowed"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Requested</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => handleRequestFeedback(session.sessionId)}
+                className="flex-1 py-2 px-3 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Request</span>
+              </button>
+            )}
+          </>
+        ) : joinable ? (
+          <button
+            onClick={() => handleJoin(session)}
+            className="w-full py-2 bg-[#2F5FFF] hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+          >
+            Join Now <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+          </button>
+        ) : countdown ? (
+          <span className="w-full py-2 text-center text-xs font-black text-amber-700 rounded-xl bg-amber-50 border border-amber-200 inline-flex items-center justify-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            {countdown}
+          </span>
+        ) : (
+          <span className="w-full py-2 text-center text-xs font-black text-slate-400 rounded-xl bg-slate-50 border border-slate-100 inline-flex items-center justify-center">
+            {displayStatus === 'Expired' ? 'Expired' : displayStatus}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' | 'jobs' | 'saved' } = {}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -417,154 +551,47 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                 </div>
               </div>
 
-              {/* Desktop: table */}
-              <div className="overflow-x-auto hidden md:block">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50/50 border-b border-gray-100">
-                      <th className="px-6 md:px-8 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Session</th>
-                      <th className="px-6 md:px-8 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest hidden sm:table-cell">Date & time</th>
-                      <th className="px-6 md:px-8 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Status</th>
-                      <th className="px-6 md:px-8 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Action</th>
-                    </tr>
-                  </thead>
-                  {loading ? (
-                    <MySessionsSkeletonDesktop />
-                  ) : (
-                    <tbody className="divide-y divide-gray-50">
-                      {pagedSessions.length > 0 ? (
-                      pagedSessions.map(session => {
-                        const displayStatus = getDisplayStatus(session);
-                        const { timeLabel, countdown, joinable } = getSessionTimeAndCountdown(session, now);
-                        return (
-                          <tr key={session.id} className="group hover:bg-gray-50/50 transition-colors align-middle">
-                            <td className="px-6 md:px-8 py-5 align-middle">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden border border-gray-100 p-0.5 shadow-sm shrink-0">
-                                  <SessionAvatar name={session.expert} profileImage={session.profileImage} />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-bold text-slate-900 text-sm truncate">Your session with {session.expert}</p>
-                                  <div className="flex flex-col gap-1 items-start mt-1">
-                                    <span className="text-xs text-slate-600 font-semibold truncate max-w-[200px]">
-                                      Interview
-                                    </span>
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-[#004fcb] border border-blue-100 uppercase">
-                                      {session.category}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 md:px-8 py-5 hidden sm:table-cell align-middle whitespace-nowrap">
-                              <p className="text-sm font-bold text-slate-700">{session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</p>
-                              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                                <Clock size={12} className="text-slate-400" />
-                                {timeLabel}
-                              </p>
-                            </td>
-                            <td className="px-6 md:px-8 py-5 align-middle whitespace-nowrap">
-                              {countdown ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                                  <Clock size={12} />
-                                  {countdown}
-                                </span>
-                              ) : (
-                                <StatusBadge status={displayStatus} />
-                              )}
-                            </td>
-                            <td className="px-6 md:px-8 py-5 text-right align-middle">
-                              <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                                {displayStatus === 'Completed' ? (
-                                  <>
-                                    {session.candidateReview ? (
-                                      session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
-                                        <button
-                                          onClick={() => setCertificateModalSession(session)}
-                                          className="px-4 py-2 border border-slate-200 hover:border-elite-blue hover:text-elite-blue text-slate-600 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
-                                        >
-                                          <Award size={14} />
-                                          <span>View Certificate</span>
-                                        </button>
-                                      ) : null
-                                    ) : (
-                                      <button
-                                        onClick={() => setReviewModalSession(session)}
-                                        className="px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
-                                      >
-                                        <MessageSquare size={14} />
-                                        <span>Give Review</span>
-                                      </button>
-                                    )}
-
-                                    {session.expertReview ? (
-                                      <button
-                                        onClick={() => setCertificateModalSession(session)}
-                                        className="px-4 py-2 border border-indigo-200 hover:border-indigo-600 hover:text-indigo-600 text-indigo-700 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-indigo-50/30"
-                                      >
-                                        <MessageSquare size={14} />
-                                        <span>View Feedback</span>
-                                      </button>
-                                    ) : session.feedbackRequested ? (
-                                      <button
-                                        disabled
-                                        className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-400 rounded-lg text-xs font-bold flex items-center gap-2 cursor-not-allowed"
-                                      >
-                                        <Clock size={14} />
-                                        <span>Feedback Requested</span>
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() => handleRequestFeedback(session.sessionId)}
-                                        className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
-                                      >
-                                        <Send size={14} />
-                                        <span>Request Feedback</span>
-                                      </button>
-                                    )}
-                                  </>
-                                ) : joinable ? (
-                                  <button
-                                    onClick={() => handleJoin(session)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[13px] font-bold transition-all shadow-sm active:scale-95"
-                                  >
-                                    Join Now <ChevronRight size={14} strokeWidth={3} />
-                                  </button>
-                                ) : countdown ? (
-                                  <span className="text-[10px] font-semibold text-amber-700 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 inline-flex items-center gap-1.5">
-                                    <Clock size={12} />
-                                    {countdown}
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-semibold text-slate-400 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
-                                    {displayStatus === 'Expired' ? 'Expired' : displayStatus}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                      ) : (
-                        <tr>
-                          <td colSpan={4} className="px-6 py-16 text-center">
-                            <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                            <p className="text-gray-900 font-bold text-[15px]">No bookings yet</p>
-                            <p className="text-gray-500 text-xs font-medium mt-1 max-w-xs mx-auto">Your bookings will show here after you book a session.</p>
-                            <button type="button" onClick={() => navigate("/book-session")} className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm">
-                              Book a session
-                            </button>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  )}
-                </table>
+              {/* Card Grid Layout */}
+              <div className="p-5 sm:p-7 bg-slate-50/30">
+                {loading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div key={`skeleton-${index}`} className="h-[210px] bg-white border border-slate-200/60 rounded-2xl animate-pulse" />
+                    ))}
+                  </div>
+                ) : pagedSessions.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                    {pagedSessions.map(session => (
+                      <SessionCard
+                        key={session.id}
+                        session={session}
+                        now={now}
+                        getDisplayStatus={getDisplayStatus}
+                        getSessionTimeAndCountdown={getSessionTimeAndCountdown}
+                        setCertificateModalSession={setCertificateModalSession}
+                        setReviewModalSession={setReviewModalSession}
+                        handleRequestFeedback={handleRequestFeedback}
+                        handleJoin={handleJoin}
+                        getCompletedCountForCategory={getCompletedCountForCategory}
+                        navigate={navigate}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-16 text-center bg-white border border-slate-200/80 rounded-2xl p-6">
+                    <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-900 font-bold text-[15px]">No bookings yet</p>
+                    <p className="text-gray-500 text-xs font-medium mt-1 max-w-xs mx-auto">Your bookings will show here after you book a session.</p>
+                    <button type="button" onClick={() => navigate("/book-session")} className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
+                      Book a session
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Pagination footer (desktop) */}
+              {/* Unified Pagination footer */}
               {!loading && sortedSessions.length > 0 && (
-                <div className="hidden md:flex items-center justify-between px-6 md:px-8 py-4 md:py-5 border-t border-slate-100 bg-white">
+                <div className="flex items-center justify-between px-6 py-5 border-t border-slate-100 bg-white">
                   <div className="text-[10px] font-bold text-slate-500">
                     Showing <span className="text-slate-700 tabular-nums">{pageStartIdx + 1}</span>–<span className="text-slate-700 tabular-nums">{pageEndIdx}</span> of{" "}
                     <span className="text-slate-700 tabular-nums">{sortedSessions.length}</span>
@@ -574,7 +601,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page <= 1}
-                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all"
+                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                     >
                       Prev
                     </button>
@@ -585,132 +612,11 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                       type="button"
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page >= totalPages}
-                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all"
+                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                     >
                       Next
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* Mobile: card layout */}
-              <div className="md:hidden divide-y divide-slate-100">
-                {loading ? (
-                  <MySessionsSkeletonMobile />
-                ) : pagedSessions.length > 0 ? (
-                  pagedSessions.map(session => {
-                    const displayStatus = getDisplayStatus(session);
-                    const { timeLabel, countdown, joinable } = getSessionTimeAndCountdown(session, now);
-                    return (
-                      <div key={session.id} className="p-4 hover:bg-slate-50/50 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-200/60 shrink-0">
-                            <SessionAvatar name={session.expert} profileImage={session.profileImage} className="rounded-xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-slate-900 text-sm">Your session with {session.expert}</p>
-                            <div className="flex flex-col gap-1 items-start mt-1">
-                              <span className="text-xs text-slate-600 font-semibold truncate">
-                                Interview
-                              </span>
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-[#004fcb] border border-blue-100 uppercase">
-                                {session.category}
-                              </span>
-                            </div>
-                            {session.startTime && (
-                              <p className="text-xs text-slate-500 mt-2 flex items-center gap-1 whitespace-nowrap">
-                                <Clock size={12} className="text-slate-400" />
-                                {new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · {timeLabel}
-                              </p>
-                            )}
-                            <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-                              {countdown ? (
-                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
-                                  <Clock size={12} /> {countdown}
-                                </span>
-                              ) : (
-                                <StatusBadge status={displayStatus} />
-                              )}
-                              {displayStatus === 'Completed' ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {session.candidateReview ? (
-                                    session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
-                                      <button onClick={() => setCertificateModalSession(session)} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold flex items-center gap-1.5">
-                                        <Award size={12} /> View Certificate
-                                      </button>
-                                    ) : null
-                                  ) : (
-                                    <button onClick={() => setReviewModalSession(session)} className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
-                                      <MessageSquare size={12} /> Give Review
-                                    </button>
-                                  )}
-
-                                  {session.expertReview ? (
-                                    <button onClick={() => setCertificateModalSession(session)} className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
-                                      <MessageSquare size={12} /> View Feedback
-                                    </button>
-                                  ) : session.feedbackRequested ? (
-                                    <button disabled className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-400 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-not-allowed">
-                                      <Clock size={12} /> Feedback Requested
-                                    </button>
-                                  ) : (
-                                    <button onClick={() => handleRequestFeedback(session.sessionId)} className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
-                                      <Send size={12} /> Request Feedback
-                                    </button>
-                                  )}
-                                </div>
-                              ) : joinable ? (
-                                <button
-                                  onClick={() => handleJoin(session)}
-                                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[13px] font-bold shadow-sm"
-                                >
-                                  Join Now <ChevronRight size={14} />
-                                </button>
-                              ) : countdown ? (
-                                <span className="text-xs font-semibold text-amber-700 flex items-center gap-1"><Clock size={12} /> {countdown}</span>
-                              ) : (
-                                <span className="text-xs font-semibold text-slate-400">{displayStatus === 'Expired' ? 'Expired' : displayStatus}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-8 text-center">
-                    <Briefcase className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-900 text-[15px] font-bold">No bookings yet</p>
-                    <p className="text-gray-500 text-xs mt-1 font-medium">Your bookings will show here after you book a session.</p>
-                    <button type="button" onClick={() => navigate("/book-session")} className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm">
-                      Book a session
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Pagination footer (mobile) */}
-              {!loading && sortedSessions.length > 0 && (
-                <div className="md:hidden px-4 py-4 border-t border-slate-100 bg-white flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold disabled:opacity-50"
-                  >
-                    Prev
-                  </button>
-                  <div className="text-xs font-bold text-slate-600 tabular-nums">
-                    {pageStartIdx + 1}-{pageEndIdx} / {sortedSessions.length}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold disabled:opacity-50"
-                  >
-                    Next
-                  </button>
                 </div>
               )}
             </div>
@@ -833,43 +739,29 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             </div>
 
             {sessions.filter(s => s.status === 'Completed').length > 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-50/50 border-b border-gray-100">
-                    <tr>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Certificate Details</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Date Issued</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {sessions.filter(s => s.status === 'Completed').map(session => (
-                      <tr key={session.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                              <Award size={20} />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-gray-900 text-[15px]">Certificate of Completion</h3>
-                              <p className="text-xs font-medium text-gray-500 mt-0.5">{session.category} Simulation with {session.expert}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <p className="text-sm font-bold text-gray-700">{new Date(session.startTime!).toLocaleDateString()}</p>
-                          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-0.5">Verified</p>
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <button className="px-4 py-2 border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 rounded-lg text-[13px] font-bold transition-all flex items-center gap-2 ml-auto shadow-sm">
-                            <span>Download PDF</span>
-                            <ChevronRight size={14} strokeWidth={3} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                {sessions.filter(s => s.status === 'Completed').map(session => (
+                  <div key={session.id} className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between text-left h-full">
+                    <div>
+                      <div className="w-12 h-12 rounded-xl bg-blue-50/50 border border-blue-100 flex items-center justify-center text-blue-600 mb-4 shadow-sm">
+                        <Award size={22} />
+                      </div>
+                      <h3 className="font-black text-slate-800 text-[15px] leading-tight">Certificate of Completion</h3>
+                      <p className="text-xs font-semibold text-slate-500 mt-1">{session.category} Simulation with {session.expert}</p>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date Issued</p>
+                        <p className="text-xs font-bold text-gray-700 mt-0.5">{new Date(session.startTime!).toLocaleDateString()}</p>
+                      </div>
+                      <button className="px-4 py-2 border border-slate-200 hover:border-blue-600 hover:text-blue-600 text-slate-600 rounded-xl text-xs font-black transition-all flex items-center gap-1 bg-white cursor-pointer shadow-sm">
+                        <span>Download PDF</span>
+                        <ChevronRight size={13} strokeWidth={3} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-20 text-center flex flex-col items-center">
