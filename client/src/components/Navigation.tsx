@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from '../lib/axios';
+import { useIsFetching } from "@tanstack/react-query";
 import {
   Bell,
   Users,
@@ -84,6 +85,8 @@ const Navigation = () => {
   const { user, token, logout } = useAuth();
   const { data: userProfile } = useUserProfile();
   const profileImage = user?.profileImage || userProfile?.profileImage;
+  const isFetching = useIsFetching();
+  const showSkeletons = isFetching > 0 && location.pathname === "/";
 
   // Fetch Notifications
   const fetchNotifications = async () => {
@@ -306,163 +309,185 @@ const Navigation = () => {
             {/* Right side: Actions */}
             <div className="hidden md:flex items-center space-x-1 lg:space-x-3">
 
-              {/* Notifications */}
-              <div className="relative" ref={notificationRef}>
-                <button
-                  onClick={() => {
-                    setIsNotificationOpen(!isNotificationOpen);
-                    setIsProfileMenuOpen(false);
-                    if (!isNotificationOpen) fetchNotifications();
-                  }}
-                  className="p-2.5 text-gray-500 hover:text-blue-600 rounded-2xl hover:bg-blue-50/50 transition-all active:scale-95 relative"
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2 bg-blue-600 text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-black border-2 border-white">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {isNotificationOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                      <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="text-xs text-elite-blue hover:text-blue-700 font-semibold">
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-10 text-center">
-                          <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-3">
-                            <Bell className="w-5 h-5 text-slate-200" />
-                          </div>
-                          <p className="text-slate-400 text-[10px] font-bold tracking-tight">All Clear</p>
-                        </div>
-                      ) : (
-                        notifications.map((notification) => (
-                          <div
-                            key={notification._id}
-                            className={`px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 cursor-pointer transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
-                            onClick={() => markAsRead(notification._id)}
-                          >
-                            <p className="font-black text-slate-800 text-[11px] tracking-tight">{notification.title}</p>
-                            <p className="text-slate-500 text-[10px] mt-1 line-clamp-2 leading-relaxed">{notification.message}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="h-6 w-px bg-slate-200 mx-2"></div>
-
-              {/* Profile / Auth */}
-              {user ? (
-                <div className="relative" ref={profileMenuRef}>
-                  <button
-                    onClick={() => {
-                      setIsProfileMenuOpen(!isProfileMenuOpen);
-                      setIsNotificationOpen(false);
-                    }}
-                    className="flex items-center space-x-2.5 pl-2 pr-1.5 py-1.5 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-200 group"
-                  >
-                    <div className="flex flex-col text-right hidden lg:block">
-                      <p className="text-sm font-semibold text-slate-900 leading-none tracking-tight">
-                        {user.name?.split(" ")[0] || "User"}
-                      </p>
-                      {user.isPremium ? (
-                        <div className="flex items-center justify-end mt-1 gap-1 text-[11px] font-bold text-[#004fcb]">
-                          <Crown size={10} /> Premium
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-slate-500 mt-1">Member</p>
-                      )}
-                    </div>
-                    <div className="w-9 h-9 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-100 transition-all">
-                      <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
-                    </div>
-                    <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isProfileMenuOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {isProfileMenuOpen && (
-                    <div className="absolute right-0 top-full mt-3 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="px-4 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shadow-sm">
-                          <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-slate-900 text-sm truncate tracking-tight">{user.name}</p>
-                            {user.isPremium && (
-                              <Crown size={12} className="text-[#004fcb] shrink-0 fill-current opacity-80" />
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5 tracking-tighter">{user.email}</p>
-                        </div>
-                      </div>
-                      <div className="p-1.5 space-y-0.5">
-                        {profileMenuItems.map((item) => (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
-                            onClick={closeAllDropdowns}
-                          >
-                            <span className="mr-3 text-slate-400 transition-colors group-hover:text-elite-blue">{item.icon}</span>
-                            {item.name}
-                          </Link>
-                        ))}
-                      </div>
-                      <div className="border-t border-slate-100 mt-1.5 px-1.5 py-1.5">
-                        <button
-                          onClick={() => { logout(); closeAllDropdowns(); }}
-                          className="flex w-full items-center px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-medium transition-all"
-                        >
-                          <LogOut size={16} className="mr-3" />
-                          Sign out
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            {/* Right side: Actions */}
+            <div className="hidden md:flex items-center space-x-1 lg:space-x-3">
+              {showSkeletons ? (
+                <div className="flex items-center space-x-3">
+                  {/* Notifications button skeleton */}
+                  <div className="w-10 h-10 rounded-2xl border border-slate-100/50 shimmer-shining shrink-0" />
+                  <div className="h-6 w-px bg-slate-200 mx-2" />
+                  {/* Profile dropdown skeleton */}
+                  <div className="w-32 h-10 rounded-2xl border border-slate-100/50 shimmer-shining shrink-0" />
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <Link to="/signin">
-                    <Button variant="ghost" className="text-[15px] font-semibold text-gray-700 hover:text-blue-700 hover:bg-blue-50/50 rounded-2xl px-5 h-10">Log in</Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold rounded-2xl transition-all shadow-sm shadow-blue-500/20 border-0">Get started</Button>
-                  </Link>
-                </div>
+                <>
+                  {/* Notifications */}
+                  <div className="relative" ref={notificationRef}>
+                    <button
+                      onClick={() => {
+                        setIsNotificationOpen(!isNotificationOpen);
+                        setIsProfileMenuOpen(false);
+                        if (!isNotificationOpen) fetchNotifications();
+                      }}
+                      className="p-2.5 text-gray-500 hover:text-blue-600 rounded-2xl hover:bg-blue-50/50 transition-all active:scale-95 relative"
+                    >
+                      <Bell size={18} />
+                      {unreadCount > 0 && (
+                        <span className="absolute top-2 right-2 bg-blue-600 text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-black border-2 border-white">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {isNotificationOpen && (
+                      <div className="absolute right-0 top-full mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                          <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Notifications</h3>
+                          {unreadCount > 0 && (
+                            <button onClick={markAllRead} className="text-xs text-elite-blue hover:text-blue-700 font-semibold">
+                              Mark all read
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                            <div className="p-10 text-center">
+                              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-3">
+                                <Bell className="w-5 h-5 text-slate-200" />
+                              </div>
+                              <p className="text-slate-400 text-[10px] font-bold tracking-tight">All Clear</p>
+                            </div>
+                          ) : (
+                            notifications.map((notification) => (
+                              <div
+                                key={notification._id}
+                                className={`px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 cursor-pointer transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
+                                onClick={() => markAsRead(notification._id)}
+                              >
+                                <p className="font-black text-slate-800 text-[11px] tracking-tight">{notification.title}</p>
+                                <p className="text-slate-500 text-[10px] mt-1 line-clamp-2 leading-relaxed">{notification.message}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="h-6 w-px bg-slate-200 mx-2"></div>
+
+                  {/* Profile / Auth */}
+                  {user ? (
+                    <div className="relative" ref={profileMenuRef}>
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(!isProfileMenuOpen);
+                          setIsNotificationOpen(false);
+                        }}
+                        className="flex items-center space-x-2.5 pl-2 pr-1.5 py-1.5 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-200 group"
+                      >
+                        <div className="flex flex-col text-right hidden lg:block">
+                          <p className="text-sm font-semibold text-slate-900 leading-none tracking-tight">
+                            {user.name?.split(" ")[0] || "User"}
+                          </p>
+                          {user.isPremium ? (
+                            <div className="flex items-center justify-end mt-1 gap-1 text-[11px] font-bold text-[#004fcb]">
+                              <Crown size={10} /> Premium
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-slate-500 mt-1">Member</p>
+                          )}
+                        </div>
+                        <div className="w-9 h-9 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-100 transition-all">
+                          <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
+                        </div>
+                        <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isProfileMenuOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {isProfileMenuOpen && (
+                        <div className="absolute right-0 top-full mt-3 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                          <div className="px-4 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shadow-sm">
+                              <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
+                            </div>
+                            <div className="overflow-hidden">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-slate-900 text-sm truncate tracking-tight">{user.name}</p>
+                                {user.isPremium && (
+                                  <Crown size={12} className="text-[#004fcb] shrink-0 fill-current opacity-80" />
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 truncate mt-0.5 tracking-tighter">{user.email}</p>
+                            </div>
+                          </div>
+                          <div className="p-1.5 space-y-0.5">
+                            {profileMenuItems.map((item) => (
+                              <Link
+                                key={item.name}
+                                to={item.href}
+                                className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
+                                onClick={closeAllDropdowns}
+                              >
+                                <span className="mr-3 text-slate-400 transition-colors group-hover:text-elite-blue">{item.icon}</span>
+                                {item.name}
+                              </Link>
+                            ))}
+                          </div>
+                          <div className="border-t border-slate-100 mt-1.5 px-1.5 py-1.5">
+                            <button
+                              onClick={() => { logout(); closeAllDropdowns(); }}
+                              className="flex w-full items-center px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-medium transition-all"
+                            >
+                              <LogOut size={16} className="mr-3" />
+                              Sign out
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Link to="/signin">
+                        <Button variant="ghost" className="text-[15px] font-semibold text-gray-700 hover:text-blue-700 hover:bg-blue-50/50 rounded-2xl px-5 h-10">Log in</Button>
+                      </Link>
+                      <Link to="/signup">
+                        <Button className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold rounded-2xl transition-all shadow-sm shadow-blue-500/20 border-0">Get started</Button>
+                      </Link>
+                    </div>
+                  )}
+                </>
               )}
+            </div>
             </div>
 
             {/* Mobile Toggle */}
             <div className="md:hidden flex items-center gap-1.5">
-              {user && (
+              {showSkeletons ? (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-9 h-9 rounded-xl border border-slate-100/50 shimmer-shining shrink-0" />
+                  <div className="w-9 h-9 rounded-xl border border-slate-100/50 shimmer-shining shrink-0" />
+                </div>
+              ) : (
                 <>
-                  <Link 
-                    to="/notifications" 
-                    className="p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-50 relative transition-all active:scale-95 flex items-center justify-center"
-                    aria-label="Notifications"
-                  >
-                    <Bell size={19} />
-                    {unreadCount > 0 && (
-                      <span className="absolute top-1 right-1 bg-elite-blue text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border border-white">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </Link>
+                  {user && (
+                    <Link 
+                      to="/notifications" 
+                      className="p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-50 relative transition-all active:scale-95 flex items-center justify-center"
+                      aria-label="Notifications"
+                    >
+                      <Bell size={19} />
+                      {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 bg-elite-blue text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border border-white">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
+                  <button onClick={toggleMenu} className="p-2 text-slate-900 hover:bg-slate-50 rounded-xl transition-colors">
+                    {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                  </button>
                 </>
               )}
-              <button onClick={toggleMenu} className="p-2 text-slate-900 hover:bg-slate-50 rounded-xl transition-colors">
-                {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
-              </button>
             </div>
           </div>
         </div>
