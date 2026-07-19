@@ -103,8 +103,17 @@ export default function TipsPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleGetTips = async () => {
     setLoading(true);
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
     setSubmitted(true);
     setTips(null);
     try {
@@ -121,6 +130,7 @@ export default function TipsPage() {
       console.error(e);
     } finally {
       setLoading(false);
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
     }
   };
 

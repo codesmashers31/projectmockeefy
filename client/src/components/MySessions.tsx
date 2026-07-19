@@ -413,6 +413,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   }, [activeView, sessions]);
 
   const fetchSessions = async () => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
     const userId = user?.id || user?._id;
     if (!userId) return;
     try {
@@ -443,6 +444,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
     } finally {
       setLoading(false);
       setRefreshing(false);
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
     }
   };
 

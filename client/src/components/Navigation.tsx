@@ -103,7 +103,29 @@ const Navigation = () => {
   const isCategoriesLoading = categoriesStatus === "pending";
   const isProfileLoading = !!userId && profileStatus === "pending";
 
-  const showSkeletons = location.pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+
+  useEffect(() => {
+    const handleLoadingChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setIsPageLoading(!!customEvent.detail?.loading);
+    };
+    window.addEventListener("page-loading-state", handleLoadingChange);
+    return () => {
+      window.removeEventListener("page-loading-state", handleLoadingChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const routes = ["/my-sessions", "/saved-experts", "/tips", "/certificates", "/profile"];
+    if (routes.includes(location.pathname)) {
+      setIsPageLoading(true);
+    } else {
+      setIsPageLoading(false);
+    }
+  }, [location.pathname]);
+
+  const showSkeletons = isPageLoading || (location.pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
 
   // Fetch Notifications
   const fetchNotifications = async () => {

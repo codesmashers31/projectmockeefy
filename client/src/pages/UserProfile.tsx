@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   User,
   Briefcase,
@@ -35,6 +35,14 @@ export default function UserProfile() {
     },
     enabled: !!userId,
   });
+
+  useState(() => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+  });
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: isLoading } }));
+  }, [isLoading]);
 
   const tabs = [
     { id: "personal", label: "Personal", icon: User },

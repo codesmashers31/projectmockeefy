@@ -304,6 +304,7 @@ export default function CertificatesPage() {
       const userId = (user as any)?.id || (user as any)?._id;
       if (!userId) return;
       setLoading(true);
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
       try {
         const res = await axios.get(`/api/sessions/candidate/${userId}`);
         const raw = Array.isArray(res.data) ? res.data : [];
@@ -324,6 +325,7 @@ export default function CertificatesPage() {
         setSessions([]);
       } finally {
         setLoading(false);
+        window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
       }
     };
 

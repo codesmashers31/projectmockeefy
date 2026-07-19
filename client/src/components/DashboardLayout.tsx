@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from "react-router-dom";
 import Navigation from "./Navigation";
 import Sidebar, { SkeletonSidebar } from "./Sidebar";
@@ -33,7 +33,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebar
     const isCategoriesLoading = categoriesStatus === "pending";
     const isProfileLoading = !!userId && profileStatus === "pending";
 
-    const showSkeletons = isLoading || (pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
+    const [isPageLoading, setIsPageLoading] = useState(false);
+
+    useEffect(() => {
+        const handleLoadingChange = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            setIsPageLoading(!!customEvent.detail?.loading);
+        };
+        window.addEventListener("page-loading-state", handleLoadingChange);
+        return () => {
+            window.removeEventListener("page-loading-state", handleLoadingChange);
+        };
+    }, []);
+
+    useEffect(() => {
+        const routes = ["/my-sessions", "/saved-experts", "/tips", "/certificates", "/profile"];
+        if (routes.includes(pathname)) {
+            setIsPageLoading(true);
+        } else {
+            setIsPageLoading(false);
+        }
+    }, [pathname]);
+
+    const showSkeletons = isLoading || isPageLoading || (pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
     const isLoggedIn = !!user;
     const showLeftSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
     const showRightSidebar = !hideSidebars && (isLoggedIn || showSkeletons);
