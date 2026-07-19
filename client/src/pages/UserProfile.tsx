@@ -41,8 +41,12 @@ export default function UserProfile() {
   });
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: isLoading } }));
-  }, [isLoading]);
+    if (!userId) {
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
+    } else {
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: isLoading } }));
+    }
+  }, [isLoading, userId]);
 
   const tabs = [
     { id: "personal", label: "Personal", icon: User },

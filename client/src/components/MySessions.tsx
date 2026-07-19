@@ -413,9 +413,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   }, [activeView, sessions]);
 
   const fetchSessions = async () => {
-    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
     const userId = user?.id || user?._id;
-    if (!userId) return;
+    if (!userId) {
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
+      return;
+    }
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
     try {
       const res = await axios.get(`/api/sessions/candidate/${userId}`);
       if (res.data) {

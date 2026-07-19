@@ -302,7 +302,10 @@ export default function CertificatesPage() {
   useEffect(() => {
     const fetchSessions = async () => {
       const userId = (user as any)?.id || (user as any)?._id;
-      if (!userId) return;
+      if (!userId) {
+        window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
+        return;
+      }
       setLoading(true);
       window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
       try {
