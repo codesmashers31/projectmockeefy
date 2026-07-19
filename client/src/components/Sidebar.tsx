@@ -54,14 +54,7 @@ const Sidebar = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const routes = ["/my-sessions", "/saved-experts", "/tips", "/certificates", "/profile"];
-    if (routes.includes(location.pathname)) {
-      setIsPageLoading(true);
-    } else {
-      setIsPageLoading(false);
-    }
-  }, [location.pathname]);
+
 
   const [nextSession, setNextSession] = useState<any>(null);
 

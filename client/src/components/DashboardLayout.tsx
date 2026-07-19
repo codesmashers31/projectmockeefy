@@ -46,14 +46,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebar
         };
     }, []);
 
-    useEffect(() => {
-        const routes = ["/my-sessions", "/saved-experts", "/tips", "/certificates", "/profile"];
-        if (routes.includes(pathname)) {
-            setIsPageLoading(true);
-        } else {
-            setIsPageLoading(false);
-        }
-    }, [pathname]);
+
 
     const showSkeletons = isLoading || isPageLoading || (pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
     const isLoggedIn = !!user;

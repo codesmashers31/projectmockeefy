@@ -376,6 +376,10 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   const [submittingReview, setSubmittingReview] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
+  useState(() => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+  });
+
   // Bookings list: newest first + pagination
   const sortedSessions = useMemo(() => {
     return [...sessions].sort(

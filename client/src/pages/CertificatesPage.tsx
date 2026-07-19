@@ -160,6 +160,10 @@ export default function CertificatesPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadingMaster, setDownloadingMaster] = useState(false);
 
+  useState(() => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+  });
+
   const allCompletedAndReviewed = useMemo(() => {
     return sessions.filter(
       (s) =>

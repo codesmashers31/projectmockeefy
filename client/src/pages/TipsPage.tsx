@@ -103,6 +103,10 @@ export default function TipsPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  useState(() => {
+    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+  });
+
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
     const timer = setTimeout(() => {
