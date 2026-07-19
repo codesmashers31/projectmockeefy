@@ -526,7 +526,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   };
 
   return (
-      <div className="flex flex-col gap-8 pb-10 w-full">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full relative z-10 space-y-6">
 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
         {activeView === 'overview' && (
@@ -834,6 +839,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
           </div>
         )}
       </div>
+    </div>
   );
 };
 
