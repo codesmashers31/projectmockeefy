@@ -248,16 +248,23 @@ const Navigation = () => {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex items-center justify-between h-full gap-3">
             {/* Left: Logo */}
-            <Link
-              to="/"
-              className="flex items-center gap-2.5 group active:scale-95 transition-transform shrink-0"
-              onClick={closeAllDropdowns}
-            >
-              <MockeefyLogo className="h-9 w-9" variant="brand" />
-              <span className="text-[18px] font-logo tracking-tight text-elite-blue group-hover:text-blue-700 transition-colors">
-                Mockeefy
-              </span>
-            </Link>
+            {showSkeletons ? (
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="w-9 h-9 rounded-xl border border-slate-100/50 shimmer-shining" />
+                <div className="w-20 h-6 rounded-lg border border-slate-100/50 shimmer-shining" />
+              </div>
+            ) : (
+              <Link
+                to="/"
+                className="flex items-center gap-2.5 group active:scale-95 transition-transform shrink-0"
+                onClick={closeAllDropdowns}
+              >
+                <MockeefyLogo className="h-9 w-9" variant="brand" />
+                <span className="text-[18px] font-logo tracking-tight text-elite-blue group-hover:text-blue-700 transition-colors">
+                  Mockeefy
+                </span>
+              </Link>
+            )}
 
             {/* Center: Nav pill (includes More) */}
             <div className="hidden md:flex flex-1 items-center justify-center">
