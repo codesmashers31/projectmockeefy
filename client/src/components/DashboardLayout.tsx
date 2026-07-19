@@ -95,7 +95,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebar
                 )}
             </main>
 
-            <Footer />
+            <Footer showSkeletons={showSkeletons} />
         </div>
     );
 };
