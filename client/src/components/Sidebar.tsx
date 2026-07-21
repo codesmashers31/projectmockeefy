@@ -119,7 +119,7 @@ const Sidebar = () => {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - ((displayProfile.profileCompletion || 0) / 100) * circumference;
 
-  if (isProfileLoading || isPageLoading || (location.pathname === "/" && (isExpertsLoading || isCategoriesLoading))) {
+  if (isProfileLoading || isPageLoading || (!!user && location.pathname === "/" && (isExpertsLoading || isCategoriesLoading))) {
     return <SkeletonSidebar />;
   }
 
@@ -231,14 +231,16 @@ const Sidebar = () => {
       </div>
 
       {/* CARD 2: NAVIGATION */}
-      <div className="bg-white rounded-[24px] border border-slate-100 p-3 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] space-y-1">
-        <p className="px-3 pb-1 pt-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Menu</p>
-        <NavItem icon={User} label="Overview" path="/" active={location.pathname === "/" || location.pathname === "/dashboard"} />
-        <NavItem icon={UserCircle} label="Profile" path="/profile" active={location.pathname === "/profile"} />
-        <NavItem icon={Calendar} label="Sessions" path="/my-sessions" active={location.pathname === "/my-sessions"} />
-        <NavItem icon={BookOpen} label="Interview tips" path="/tips" active={location.pathname === "/tips"} />
-        <NavItem icon={Bookmark} label="Saved Experts" path="/saved-experts" active={location.pathname === "/saved-experts"} />
-        <NavItem icon={Award} label="Certificates" path="/certificates" active={location.pathname === "/certificates"} />
+      <div className="bg-white rounded-[24px] border border-slate-100 p-3 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] space-y-1 relative overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-[#f0f5ff] to-transparent pointer-events-none" />
+        <p className="px-3 pb-1 pt-1 text-[9px] font-black text-slate-400 uppercase tracking-widest relative z-10">Menu</p>
+        <div className="relative z-10 space-y-1">
+          <NavItem icon={User} label="Overview" path="/" active={location.pathname === "/" || location.pathname === "/dashboard"} />
+          <NavItem icon={UserCircle} label="Profile" path="/profile" active={location.pathname === "/profile"} />
+          <NavItem icon={Calendar} label="Sessions" path="/my-sessions" active={location.pathname === "/my-sessions"} />
+          <NavItem icon={Bookmark} label="Saved Experts" path="/saved-experts" active={location.pathname === "/saved-experts"} />
+          <NavItem icon={Award} label="Certificates" path="/certificates" active={location.pathname === "/certificates"} />
+        </div>
       </div>
 
       {/* CARD 4: UPCOMING */}

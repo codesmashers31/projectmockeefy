@@ -21,8 +21,9 @@ const AdCard = ({
     onClick={onClick}
     className="group w-full text-left relative overflow-hidden bg-white border border-slate-100 rounded-[24px] p-5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_-8px_rgba(0,79,203,0.12)] hover:-translate-y-0.5 transition-all duration-300"
   >
-    <span className="inline-block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{tag}</span>
-    <div className="flex items-start gap-3">
+    <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-[#f0f5ff] to-transparent pointer-events-none" />
+    <span className="inline-block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5 relative z-10">{tag}</span>
+    <div className="flex items-start gap-3 relative z-10">
       <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
         {icon}
       </div>
@@ -31,7 +32,7 @@ const AdCard = ({
         <p className="text-[11px] text-gray-500 font-medium mt-1">{subtitle}</p>
       </div>
     </div>
-    <span className="mt-4 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 group-hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+    <span className="mt-4 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 group-hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors relative z-10">
       {cta} <ChevronRight className="w-3.5 h-3.5" />
     </span>
   </button>

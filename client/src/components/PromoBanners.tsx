@@ -39,18 +39,10 @@ export const PromoBanners = () => {
       icon: <Video className="w-5 h-5" />,
       gradient: "from-violet-600 to-purple-700",
     },
-    {
-      title: "Interview Tips & Career Pipeline",
-      subtitle: "Curated prep guides and a path to referrals at hiring companies.",
-      cta: "Explore Pipeline Hub",
-      to: "/tips",
-      icon: <Compass className="w-5 h-5" />,
-      gradient: "from-amber-600 to-orange-700",
-    },
   ];
 
   return (
-    <section className="mb-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <section className="mb-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
       {banners.map((b) => (
         <button
           key={b.title}

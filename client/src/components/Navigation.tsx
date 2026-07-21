@@ -118,7 +118,7 @@ const Navigation = () => {
 
 
 
-  const showSkeletons = isPageLoading || (location.pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
+  const showSkeletons = isPageLoading || (!!user && location.pathname === "/" && (isExpertsLoading || isCategoriesLoading || isProfileLoading));
 
   // Fetch Notifications
   const fetchNotifications = async () => {
@@ -236,13 +236,11 @@ const Navigation = () => {
 
   const moreItems = [
     { name: "Profile", href: "/profile", icon: <User size={16} /> },
-    { name: "Interview tips", href: "/tips", icon: <BookOpen size={16} /> },
     { name: "Saved Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
   ];
 
   const sidebarNavItems = user ? [
-    { name: "Interview tips", href: "/tips", icon: <BookOpen size={16} /> },
     { name: "Saved Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
   ] : [];

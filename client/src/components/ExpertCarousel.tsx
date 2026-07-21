@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Clock, Bookmark, Star, Briefcase, MapPin, ChevronRight, Loader2 } from 'lucide-react';
+import { Clock, Bookmark, Star, Briefcase, MapPin, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
@@ -217,6 +217,12 @@ export const ExpertCarousel = React.memo(function ExpertCarousel() {
     fetchExperts();
   }, []);
 
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -340, behavior: 'smooth' });
+    }
+  };
+
   const scrollRight = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollBy({ left: 340, behavior: 'smooth' });
@@ -262,6 +268,16 @@ export const ExpertCarousel = React.memo(function ExpertCarousel() {
              ))}
           </div>
           
+          {/* Left Fade & Arrow Button */}
+          <div className="absolute left-0 top-0 bottom-6 w-24 bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none flex items-center justify-start pl-1 sm:pl-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+             <button 
+               onClick={scrollLeft}
+               className="w-12 h-12 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-full flex items-center justify-center text-slate-600 hover:text-blue-600 hover:scale-105 active:scale-95 pointer-events-auto transition-all"
+             >
+               <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
+             </button>
+          </div>
+
           {/* Right Fade & Arrow Button */}
           <div className="absolute right-0 top-0 bottom-6 w-24 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none flex items-center justify-end pr-1 sm:pr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
              <button 

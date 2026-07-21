@@ -4,10 +4,9 @@ import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Star, MapPin, Clock, Users, Award,
-  Calendar, CheckCircle, Shield, Video,
-  ChevronLeft, ChevronRight, ChevronDown, X, ThumbsUp, Zap, MessageCircle, Briefcase,
-  Share2, Check, Info, ArrowRight, Timer, UserCircle2, BadgeCheck, Code2, Terminal
+  Star, Clock, Calendar, CheckCircle, Shield, Video,
+  ChevronLeft, ChevronRight, ChevronDown, X, ThumbsUp, MessageCircle, Briefcase,
+  Share2, Check, ArrowRight, Timer, BadgeCheck
 } from "lucide-react";
 import Swal from "sweetalert2";
 import Navigation from "./Navigation";
@@ -111,22 +110,24 @@ function PremiumSelect({
         type="button"
         disabled={isDisabled}
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-left shadow-sm transition-all ${
-          isDisabled 
-            ? "cursor-default text-gray-500 bg-gray-50/50" 
-            : "hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer"
+        className={`w-full flex items-center justify-between gap-2 bg-white border-[1.5px] rounded-xl px-3.5 py-3 text-left transition-all ${
+          isDisabled
+            ? "cursor-default border-[#E3E8F5] text-[#5A6284]"
+            : open
+              ? "border-[#2F5FFF] cursor-pointer"
+              : "border-[#E3E8F5] hover:border-[#B9CBF5] cursor-pointer"
         }`}
       >
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-800 truncate">{selected?.label || "Select option"}</p>
+          <p className="text-[13.5px] font-extrabold text-[#141A33] truncate">{selected?.label || "Select option"}</p>
         </div>
         {!isDisabled && (
-          <ChevronDown size={16} className={`text-gray-500 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          <ChevronDown size={15} className={`text-[#5A6284] shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         )}
       </button>
 
       {open && !isDisabled && (
-        <div className="absolute z-20 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-xl p-1.5 max-h-60 overflow-y-auto">
+        <div className="absolute z-30 mt-1.5 w-full min-w-full rounded-[14px] border border-[#EAEEF7] bg-white shadow-[0_16px_34px_-14px_rgba(20,26,51,.3)] p-1.5 max-h-60 overflow-y-auto">
           {options.map((option) => {
             const isActive = option.value === value;
             return (
@@ -137,14 +138,14 @@ function PremiumSelect({
                   onChange(option.value);
                   setOpen(false);
                 }}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
-                  isActive ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700"
+                className={`w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-[10px] text-left transition-colors ${
+                  isActive ? "bg-[#F0F5FF] text-[#2F5FFF]" : "hover:bg-[#F5F7FC] text-[#141A33]"
                 }`}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{option.label}</p>
+                  <p className="text-[13.5px] font-extrabold truncate">{option.label}</p>
                 </div>
-                {isActive ? <Check className="w-4 h-4 shrink-0" /> : null}
+                {isActive ? <Check className="w-3.5 h-3.5 shrink-0 text-[#2F5FFF]" /> : null}
               </button>
             );
           })}
@@ -286,50 +287,6 @@ const BookSessionPage = () => {
       })),
     [levelOptions]
   );
-
-  // Professional category-aware banner images
-  const bannerImage = useMemo(() => {
-    const category = (profile?.category || "General").toLowerCase();
-    const categoryBanners: Record<string, string[]> = {
-      it: [
-        "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1400&q=80",
-      ],
-      hr: [
-        "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1400&q=80",
-      ],
-      business: [
-        "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=80",
-      ],
-      design: [
-        "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1400&q=80",
-      ],
-      marketing: [
-        "https://images.unsplash.com/photo-1533750349088-cd871a92f312?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1432888622747-4eb9a8efeb07?auto=format&fit=crop&w=1400&q=80",
-      ],
-      finance: [
-        "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1565514020179-026b92b84bb6?auto=format&fit=crop&w=1400&q=80",
-      ],
-      ai: [
-        "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1674027444485-cec3da58eef4?auto=format&fit=crop&w=1400&q=80",
-      ],
-      general: [
-        "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1400&q=80",
-      ],
-    };
-
-    const banners = categoryBanners[category] || categoryBanners.general;
-    // Use expertId to consistently pick one banner for the same expert
-    const charSum = expertId ? expertId.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) : 0;
-    return banners[charSum % banners.length];
-  }, [expertId, profile?.category]);
 
   // Synchronize expert Level selection when profile options change
   useEffect(() => {
@@ -481,17 +438,6 @@ const BookSessionPage = () => {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
-
-  const scrollCarousel = (direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const { scrollLeft, clientWidth } = carouselRef.current;
-      const amount = clientWidth * 0.7;
-      carouselRef.current.scrollTo({
-        left: direction === 'left' ? scrollLeft - amount : scrollLeft + amount,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   const getShareUrl = () => {
     const id = expertId || profile?.id || "";
@@ -929,15 +875,15 @@ const BookSessionPage = () => {
     );
   }
 
-  const getCategoryColor = (section: string) => {
-    const colors: Record<string, string> = {
-      "IT": "bg-blue-50 text-[#004fcb] border-blue-100",
-      "HR": "bg-purple-50 text-purple-700 border-purple-100",
-      "Business": "bg-orange-50 text-orange-700 border-orange-100",
-      "Design": "bg-pink-50 text-pink-700 border-pink-100"
-    };
-    return colors[section] || "bg-gray-50 text-gray-700 border-gray-100";
-  };
+  // Derived display data for the new design
+  const ratingDist = [5, 4, 3, 2, 1].map((star) => {
+    const count = reviews.filter((r) => Math.round(r.rating) === star).length;
+    const pct = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
+    return { star, pct };
+  });
+  const sessionsTaken = bookedSessions.filter((s) => s.status !== "cancelled").length;
+  const expertInitials = (profile.name || "EX").trim().substring(0, 2).toUpperCase();
+  const firstName = profile.name.split(" ")[0];
 
   const parsePriceToNumber = (value: unknown): number | null => {
     if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -957,300 +903,258 @@ const BookSessionPage = () => {
     return `₹${amount}`;
   };
 
-  // LinkedIn-style Profile Header
-
-
+  // Hero card — Expert Detail design
   const ProfileHeader = () => (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-      {/* Banner */}
-      <div className="h-36 md:h-44 relative overflow-hidden">
-        <img
-          src={bannerImage}
-          alt="Banner"
-          className="w-full h-full object-cover"
+    <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
+      {/* Gradient banner */}
+      <div
+        className="relative h-[112px]"
+        style={{ background: "linear-gradient(110deg,#0E1B4D 0%,#1E3FCC 58%,#2F5FFF 100%)" }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "repeating-linear-gradient(115deg,rgba(255,255,255,.05) 0 1px,transparent 1px 26px),radial-gradient(circle at 85% 0%,rgba(255,255,255,.16),transparent 45%)",
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/25 to-black/5" />
-        <div className="absolute right-4 bottom-4">
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white/90 text-slate-800 border border-white/70">
+        <div className="absolute top-3.5 right-3.5 flex gap-2" ref={shareMenuRef}>
+          <span className="inline-flex items-center gap-[7px] bg-white/15 border border-white/25 text-white text-[11.5px] font-extrabold px-3.5 py-[7px] rounded-full backdrop-blur whitespace-nowrap">
             {profile.category} Interview Mentor
           </span>
-        </div>
-        <div className="absolute top-4 right-4 flex gap-2" ref={shareMenuRef}>
           <button
             type="button"
             onClick={() => setIsShareMenuOpen((v) => !v)}
-            className="white-glass p-2.5 rounded-full hover:bg-white/40 transition-colors shadow-sm bg-white/20 backdrop-blur-md"
+            className="w-[34px] h-[34px] rounded-full bg-white/15 border border-white/25 flex items-center justify-center cursor-pointer text-white backdrop-blur focus:outline-none"
             title="Share"
           >
-            <Share2 className="w-5 h-5 text-gray-700" />
+            <Share2 className="w-3.5 h-3.5" />
           </button>
           {isShareMenuOpen && (
-            <div className="absolute right-0 top-12 w-52 bg-white border border-gray-200 rounded-xl shadow-xl p-2 z-20">
-              <button onClick={() => handleShare("native")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">Share...</button>
-              <button onClick={() => handleShare("whatsapp")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">WhatsApp</button>
-              <button onClick={() => handleShare("linkedin")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">LinkedIn</button>
-              <button onClick={() => handleShare("x")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">X (Twitter)</button>
-              <button onClick={() => handleShare("facebook")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">Facebook</button>
-              <button onClick={() => handleShare("telegram")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">Telegram</button>
-              <button onClick={() => handleShare("email")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">Email</button>
-              <button onClick={() => handleShare("copy")} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">Copy link</button>
+            <div className="absolute right-0 top-11 w-52 bg-white border border-[#EAEEF7] rounded-[14px] shadow-[0_16px_34px_-14px_rgba(20,26,51,.3)] p-1.5 z-30">
+              <button onClick={() => handleShare("native")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Share...</button>
+              <button onClick={() => handleShare("whatsapp")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">WhatsApp</button>
+              <button onClick={() => handleShare("linkedin")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">LinkedIn</button>
+              <button onClick={() => handleShare("x")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">X (Twitter)</button>
+              <button onClick={() => handleShare("facebook")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Facebook</button>
+              <button onClick={() => handleShare("telegram")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Telegram</button>
+              <button onClick={() => handleShare("email")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Email</button>
+              <button onClick={() => handleShare("copy")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Copy link</button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Profile Info Section — single row: avatar + details + price aligned */}
-      <div className="px-5 sm:px-6 pb-6 pt-5">
-        <div className="grid grid-cols-1 md:grid-cols-[auto,1fr,auto] gap-5 md:gap-6 items-start">
-          <div className="relative shrink-0 -mt-14 md:-mt-16">
-            <div className="relative inline-block">
-              {profile.avatar && !profile.avatar.includes("mockeefy.png") && !profile.avatar.includes("default-avatar.png") && !expertAvatarError ? (
-                <img
-                  src={profile.avatar}
-                  alt={profile.name}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-white bg-white object-cover shadow-lg shadow-black/5"
-                  onError={() => setExpertAvatarError(true)}
-                />
-              ) : (
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-white bg-blue-100 text-blue-700 flex items-center justify-center text-xl md:text-2xl font-black uppercase shadow-lg shadow-black/5">
-                  {(profile.name || "EX").trim().substring(0, 2).toUpperCase()}
-                </div>
-              )}
-            </div>
+      <div className="px-5 sm:px-7 pb-[22px]">
+        {/* Avatar + chips row */}
+        <div className="flex items-end justify-between gap-4 flex-wrap -mt-10">
+          <div className="relative w-[88px] h-[88px] rounded-full bg-white p-1 box-border shadow-[0_8px_20px_-10px_rgba(20,26,51,.35)]">
+            {profile.avatar && !profile.avatar.includes("mockeefy.png") && !profile.avatar.includes("default-avatar.png") && !expertAvatarError ? (
+              <img
+                src={profile.avatar}
+                alt={profile.name}
+                className="w-full h-full rounded-full object-cover"
+                onError={() => setExpertAvatarError(true)}
+              />
+            ) : (
+              <div className="w-full h-full rounded-full bg-[#EEF2FF] text-[#2F5FFF] flex items-center justify-center text-[27px] font-bold uppercase">
+                {expertInitials}
+              </div>
+            )}
+            <div className="absolute bottom-[5px] right-[5px] w-[15px] h-[15px] rounded-full bg-[#22C55E] border-[3px] border-white" />
           </div>
-
-          {/* Name, role, location, experience — main block */}
-          <div className="min-w-0 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2.5 gap-y-2">
-              <div className="inline-flex items-center gap-1.5">
-                <UserCircle2 className="w-4 h-4 text-gray-400" />
-                <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 leading-tight tracking-tight">
-                  {profile.name}
-                </h1>
-              </div>
-              <div className="inline-flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
-                <Star className="w-3.5 h-3.5 text-amber-500 fill-current shrink-0" />
-                <span className="text-xs font-bold text-amber-900 tabular-nums">{profile.rating ?? 0}</span>
-                <span className="text-[11px] font-semibold text-amber-900/70">({profile.reviews ?? 0})</span>
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 pl-0.5 text-xs text-gray-700 font-semibold leading-snug">
-              <Code2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <span>{profile.role}</span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-                <span className="truncate max-w-[260px]">{profile.location}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Terminal className="w-4 h-4 text-gray-400 shrink-0" />
-                {profile.experience} Experience
-              </span>
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-1.5">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border ${getCategoryColor(profile.category)}`}>
-                <Briefcase className="w-3.5 h-3.5 text-gray-500" />
-                {profile.category} Specialist
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="flex gap-2 flex-wrap pb-1">
+            <span className="inline-flex items-center gap-[7px] bg-white text-[#33395B] border-[1.5px] border-[#E3E8F5] text-[12.5px] font-bold px-[15px] py-[7px] rounded-full whitespace-nowrap">
+              <Briefcase className="w-[13px] h-[13px] text-[#2F5FFF]" />
+              {profile.category} Specialist
+            </span>
+            {profile.isVerified && (
+              <span className="inline-flex items-center gap-[7px] bg-white text-[#33395B] border-[1.5px] border-[#E3E8F5] text-[12.5px] font-bold px-[15px] py-[7px] rounded-full whitespace-nowrap">
+                <Check className="w-[13px] h-[13px] text-[#0E9D5C]" strokeWidth={2.6} />
                 Verified Expert
               </span>
+            )}
+          </div>
+        </div>
+
+        {/* Name + verified badge */}
+        <div className="flex items-center gap-2.5 flex-wrap mt-3.5">
+          <h1 className="text-[25px] font-bold text-[#141A33] tracking-tight leading-tight m-0">{profile.name}</h1>
+          {profile.isVerified && <BadgeCheck className="w-[19px] h-[19px] text-white fill-[#2F5FFF]" />}
+        </div>
+
+        {/* Role • location • experience */}
+        <div className="flex items-center gap-2 flex-wrap mt-[7px] text-[13.5px] font-bold text-[#5A6284]">
+          <span className="font-extrabold text-[#33395B] whitespace-nowrap">{profile.role}</span>
+          <span className="text-[#D5DAE8]">•</span>
+          <span className="whitespace-nowrap">{profile.location}</span>
+          <span className="text-[#D5DAE8]">•</span>
+          <span className="whitespace-nowrap">{profile.experience} experience</span>
+        </div>
+
+        {/* Stats strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 mt-5 pt-[18px] border-t border-[#F0F2F8] text-center gap-y-4">
+          <div className="sm:border-r border-[#F0F2F8]">
+            <div className="flex items-center justify-center gap-1.5 font-extrabold text-base text-[#141A33]">
+              <Star className="w-3.5 h-3.5 text-[#F5A524] fill-[#F5A524]" />
+              {profile.rating ?? 0}
+            </div>
+            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">
+              {profile.reviews === 1 ? "1 Review" : `${profile.reviews ?? 0} Reviews`}
             </div>
           </div>
-
-          {/* Price card removed per UX request */}
+          <div className="sm:border-r border-[#F0F2F8]">
+            <div className="font-extrabold text-base text-[#141A33]">{sessionsTaken > 0 ? `${sessionsTaken}+` : "New"}</div>
+            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Sessions Taken</div>
+          </div>
+          <div className="sm:border-r border-[#F0F2F8]">
+            <div className="font-extrabold text-base text-[#141A33]">{profile.experience}</div>
+            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Experience</div>
+          </div>
+          <div>
+            <div className="font-extrabold text-base text-[#141A33]">
+              {profile.responseTime && profile.responseTime !== "New expert" ? profile.responseTime : "< 2 hrs"}
+            </div>
+            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Response Time</div>
+          </div>
         </div>
       </div>
     </div>
   );
 
-  // Booking card — used in sidebar (desktop) and mobile sheet
+  // Booking card — Expert Detail design; used in sidebar (desktop) and mobile sheet
   const BookingCard = () => (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm p-4 sm:p-6 space-y-5 sm:space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight">Configure Session</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Topic, duration, date & time</p>
-        </div>
-        <button type="button" className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors shrink-0" title="Session info">
-          <Info className="w-4 h-4" />
-        </button>
-      </div>
+    <div className="bg-white rounded-[22px] border border-[#EDF1FB] p-6 shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
+      <h3 className="text-[19px] font-bold text-[#141A33] tracking-tight m-0">Configure Session</h3>
+      <p className="text-[12.5px] text-[#8B93B2] font-bold mt-[3px] mb-5">Topic, duration, date &amp; time</p>
 
       {/* Level & Duration */}
-      <div className="space-y-4 sm:space-y-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-2">Expert Level</label>
-            <PremiumSelect
-              value={expertLevel}
-              options={levelSelectOptions}
-              onChange={(value) => setExpertLevel(value)}
-            />
-            <p className="text-xs text-gray-500 mt-1.5">
-              {profile?.levels && profile.levels.length > 1 ? "Choose your session level tier" : "Set by expert"}
-            </p>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-2">Duration</label>
-            <PremiumSelect
-              value={String(durationOptions.includes(sessionDuration) ? sessionDuration : durationOptions[0])}
-              options={durationSelectOptions}
-              onChange={(value) => {
-                const next = Number(value);
-                if (isSessionDuration(next)) setSessionDuration(next);
-              }}
-            />
-          </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <div className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] mb-2 whitespace-nowrap">EXPERT LEVEL</div>
+          <PremiumSelect
+            value={expertLevel}
+            options={levelSelectOptions}
+            onChange={(value) => setExpertLevel(value)}
+          />
+        </div>
+        <div>
+          <div className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] mb-2 whitespace-nowrap">DURATION</div>
+          <PremiumSelect
+            value={String(durationOptions.includes(sessionDuration) ? sessionDuration : durationOptions[0])}
+            options={durationSelectOptions}
+            onChange={(value) => {
+              const next = Number(value);
+              if (isSessionDuration(next)) setSessionDuration(next);
+            }}
+          />
         </div>
       </div>
 
-      {/* Total Amount — session total (not hourly); label matches */}
-      <div className="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-blue-200 bg-blue-50/80">
-        <div className="min-w-0">
-          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-0.5">Total amount</span>
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className={`text-xl sm:text-2xl font-bold tabular-nums ${appliedFreePromo ? "text-green-600" : "text-blue-600"}`}>
+      {/* Total Amount */}
+      <div className="bg-[#F0F5FF] border border-[#DCE8FF] rounded-2xl px-[18px] py-4 mb-[18px]">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10.5px] font-extrabold text-[#5A6284] tracking-[.08em] whitespace-nowrap">TOTAL AMOUNT</span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#5A6284]">
+            <Timer className="w-[13px] h-[13px]" /> {sessionDuration} min
+          </span>
+        </div>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-baseline gap-2">
+            <span className={`text-[26px] font-bold ${appliedFreePromo ? "text-[#0E9D5C]" : "text-[#2F5FFF]"}`}>
               {appliedFreePromo ? "Free" : formatPrice(displayPrice)}
             </span>
             {!appliedFreePromo && (
-              <span className="text-xs font-semibold text-gray-600">for {sessionDuration} min · INR</span>
+              <span className="text-[12.5px] text-[#5A6284] font-bold whitespace-nowrap">for {sessionDuration} min · INR</span>
             )}
           </div>
-        </div>
-        <div className="flex flex-col items-end gap-0.5 shrink-0">
-          <span className="flex items-center gap-1 text-xs font-semibold text-gray-700">
-            <Timer className="w-3.5 h-3.5" /> {sessionDuration} min
-          </span>
-          <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold">
+          <span className="bg-[#DCE8FF] text-[#2F5FFF] text-[11.5px] font-extrabold px-3 py-[5px] rounded-full whitespace-nowrap">
             {expertLevel}
           </span>
         </div>
       </div>
 
-      {/* Promo code — free session */}
-      <div className="border-t border-gray-100 pt-4">
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Promo code</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Enter promo code"
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-300"
-            value={discountCode}
-            onChange={(e) => setDiscountCode(e.target.value)}
-          />
+      {/* Promo code */}
+      <div className="flex gap-2.5 mb-[22px]">
+        <input
+          type="text"
+          placeholder="Enter promo code"
+          className="flex-1 min-w-0 bg-[#F7F9FE] border border-[#E3E8F5] rounded-xl px-3.5 py-3 text-[13.5px] font-bold text-[#141A33] placeholder:text-[#8B93B2] outline-none focus:border-[#2F5FFF] transition-colors"
+          value={discountCode}
+          onChange={(e) => setDiscountCode(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={handleApplyPromo}
+          className="px-5 bg-[#E3EDFF] text-[#2F5FFF] rounded-xl font-extrabold text-[13.5px] cursor-pointer hover:bg-[#D5E3FF] transition-colors focus:outline-none"
+        >
+          Apply
+        </button>
+      </div>
+      {appliedFreePromo && (
+        <p className="text-[#0E9D5C] text-xs font-bold -mt-4 mb-4">✓ Free session — no payment. Click the button below to complete.</p>
+      )}
+
+      {/* Pick a date */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] whitespace-nowrap">PICK A DATE</span>
+        <div className="flex items-center gap-1">
           <button
-            type="button"
-            onClick={handleApplyPromo}
-            className="px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm border border-blue-200 hover:bg-blue-100 transition-colors"
+            onClick={prevMonth}
+            disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
+            className="p-1.5 rounded-lg hover:bg-[#F5F7FC] disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none"
           >
-            Apply
+            <ChevronLeft size={16} className="text-[#4A5170]" />
+          </button>
+          <span className="font-extrabold text-[13.5px] text-[#141A33] whitespace-nowrap">
+            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </span>
+          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[#F5F7FC] transition-colors focus:outline-none">
+            <ChevronRight size={16} className="text-[#4A5170]" />
           </button>
         </div>
-        {appliedFreePromo && (
-          <p className="text-green-600 text-xs font-medium mt-2">✓ Free session — no payment. Click Confirm & Book to complete.</p>
-        )}
+      </div>
+      <div
+        ref={carouselRef}
+        className="flex gap-2 overflow-x-auto pb-1 mb-5 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {dates.map((date, index) => {
+          const isToday = new Date().toDateString() === date.toDateString();
+          const isActive = selectedDate === index;
+          return (
+            <button
+              key={index}
+              data-active={isActive}
+              onClick={() => {
+                setSelectedDate(index);
+                setSelectedSlot(null);
+              }}
+              className={`min-w-[64px] text-center px-1.5 py-[11px] rounded-[14px] cursor-pointer shrink-0 border-[1.5px] transition-colors focus:outline-none ${
+                isActive
+                  ? "bg-[#2F5FFF] border-[#2F5FFF] text-white"
+                  : "bg-white border-[#E3E8F5] text-[#33395B] hover:border-[#B9CBF5]"
+              }`}
+            >
+              <div className="text-[9.5px] font-extrabold tracking-[.06em] opacity-85">
+                {isToday ? "TODAY" : date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+              </div>
+              <div className="font-bold text-[19px] my-0.5 leading-none tabular-nums">{date.getDate()}</div>
+              <div className="text-[9.5px] font-extrabold tracking-[.06em] opacity-85">
+                {date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ——— Pick a date ——— */}
-      <div className="border-t border-gray-100 pt-4 sm:pt-5">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Pick a date</p>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-bold text-gray-900">
-            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </h4>
-          <div className="flex gap-1">
-            <button
-              onClick={prevMonth}
-              disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
-              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft size={18} className="text-gray-600" />
-            </button>
-            <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <ChevronRight size={18} className="text-gray-600" />
-            </button>
-          </div>
-        </div>
-
-        <div className="-mx-1">
-          <div
-            ref={carouselRef}
-            className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 pt-1 px-1 scrollbar-none no-scrollbar snap-x snap-mandatory scroll-smooth"
-          >
-            {dates.map((date, index) => {
-              const isToday = new Date().toDateString() === date.toDateString();
-              return (
-                <button
-                  key={index}
-                  data-active={selectedDate === index}
-                  onClick={() => {
-                    setSelectedDate(index);
-                    setSelectedSlot(null);
-                  }}
-                  className={`flex flex-col items-center justify-start pt-3 pb-3 px-4 rounded-xl min-w-[72px] sm:min-w-[80px] transition-all duration-200 shrink-0 snap-center border ${selectedDate === index
-                    ? "bg-blue-600 border-blue-600 text-white shadow-md"
-                    : isToday
-                      ? "bg-white border-blue-200 text-gray-900 ring-1 ring-blue-100"
-                      : "bg-white border-gray-200 text-gray-600 hover:border-blue-200"
-                    }`}
-                >
-                  {isToday ? (
-                    <span
-                      className={`flex flex-wrap align-bottom text-left mb-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)] ${selectedDate === index ? "bg-white/20 text-white" : "bg-blue-600 text-white"}`}
-                      style={{ backgroundClip: 'unset', WebkitBackgroundClip: 'unset', backgroundImage: 'none' }}
-                    >
-                      Today
-                    </span>
-                  ) : (
-                    <span className={`text-[10px] font-semibold uppercase mb-0.5 ${selectedDate === index ? "text-blue-200" : "text-gray-400"}`}>
-                      {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                    </span>
-                  )}
-                  <span className="text-lg sm:text-xl font-bold leading-none my-0.5 tabular-nums">
-                    {date.getDate()}
-                  </span>
-                  <span className={`text-[10px] font-semibold uppercase ${selectedDate === index ? "text-blue-200" : "text-gray-400"}`}>
-                    {date.toLocaleDateString('en-US', { month: 'short' })}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <button
-              type="button"
-              onClick={() => scrollCarousel('left')}
-              className="p-2 rounded-full bg-white shadow-sm border border-gray-200 text-blue-600 hover:bg-blue-600 hover:text-white transition-all"
-            >
-              <ChevronLeft size={18} strokeWidth={2.5} />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollCarousel('right')}
-              className="p-2 rounded-full bg-white shadow-sm border border-gray-200 text-blue-600 hover:bg-blue-600 hover:text-white transition-all"
-            >
-              <ChevronRight size={18} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
+      {/* Pick a time */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] whitespace-nowrap">PICK A TIME</span>
+        <span className="bg-[#EEF2FF] text-[#2F5FFF] text-[11px] font-extrabold px-2.5 py-1 rounded-full">
+          {currentSlots.length} slots
+        </span>
       </div>
-
-      {/* ——— Pick a time ——— */}
-      <div className="border-t border-gray-100 pt-4 sm:pt-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pick a time</p>
-          <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100">
-            {currentSlots.length} slots
-          </span>
-        </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 min-h-[160px] max-h-[320px] sm:max-h-[380px] lg:max-h-[400px] overflow-y-auto overflow-x-hidden pt-1 pb-3">
+      <div className="grid grid-cols-2 gap-2 mb-5 max-h-[320px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {currentSlots.length > 0 ? (
           currentSlots.map((slot, index) => {
             const isSelected = selectedSlot?.time === slot.time;
@@ -1281,25 +1185,20 @@ const BookSessionPage = () => {
                 type="button"
                 disabled={isUnavailable}
                 onClick={() => setSelectedSlot(slot)}
-                className={`group relative flex flex-row items-center justify-center gap-2 w-full min-h-[44px] py-3 px-4 rounded-lg border-2 transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-600/30 focus:ring-offset-1 box-border ${isUnavailable
-                  ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-80"
-                  : isSelected
-                    ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20 ring-2 ring-blue-100 ring-offset-1"
-                    : "bg-white border-gray-200 text-gray-700 hover:border-blue-600 hover:bg-blue-50/50 hover:text-blue-700 active:scale-[0.98]"
-                  }`}
+                className={`relative flex items-center justify-center gap-[7px] px-2 py-[11px] rounded-xl font-extrabold text-[12.5px] whitespace-nowrap border-[1.5px] transition-colors focus:outline-none ${
+                  isUnavailable
+                    ? "bg-[#F5F7FC] border-[#EAEEF7] text-[#B2B8D0] cursor-not-allowed"
+                    : isSelected
+                      ? "bg-[#F0F5FF] border-[#2F5FFF] text-[#2F5FFF] cursor-pointer"
+                      : "bg-white border-[#E3E8F5] text-[#33395B] hover:border-[#B9CBF5] cursor-pointer"
+                }`}
+                title={slot.time}
               >
-                <span className="flex flex-row items-center justify-center gap-2 flex-1">
-                  <Clock className={`w-4 h-4 flex-shrink-0 ${isSelected ? "text-blue-100" : "text-gray-500 group-hover:text-blue-700"}`} strokeWidth={2} aria-hidden />
-                  <span
-                    className={`text-sm font-semibold tracking-tight whitespace-nowrap text-center tabular-nums ${isSelected ? "text-white" : "text-gray-700 group-hover:text-blue-700"}`}
-                    title={slot.time}
-                  >
-                    {timeLabel}
-                  </span>
-                </span>
+                <Clock className="w-[13px] h-[13px] shrink-0" strokeWidth={2} aria-hidden />
+                {timeLabel}
                 {isUnavailable && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl z-10 bg-gray-50/95" aria-hidden>
-                    <span className="bg-gray-200 px-2 py-0.5 rounded text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl z-10 bg-[#F5F7FC]/95" aria-hidden>
+                    <span className="bg-[#E9EDF7] px-2 py-0.5 rounded text-[9px] font-extrabold text-[#8B93B2] uppercase tracking-wider">
                       Unavailable
                     </span>
                   </div>
@@ -1308,101 +1207,92 @@ const BookSessionPage = () => {
             );
           })
         ) : (
-          <div className="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-              <Calendar className="w-6 h-6 text-gray-400" />
+          <div className="col-span-2 py-10 text-center bg-[#F7F9FE] rounded-2xl border-2 border-dashed border-[#E3E8F5] flex flex-col items-center justify-center">
+            <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+              <Calendar className="w-5 h-5 text-[#8B93B2]" />
             </div>
-            <p className="text-gray-900 font-bold mb-1">No slots available</p>
-            <p className="text-xs text-gray-500">Try selecting another date or viewing next month</p>
+            <p className="text-[#141A33] font-extrabold text-sm mb-0.5">No slots available</p>
+            <p className="text-xs text-[#8B93B2] font-bold">Try another date or the next month</p>
           </div>
         )}
       </div>
-      </div>
 
-      {/* Booking Actions */}
-      <div className="border-t border-gray-100 pt-5">
-        {selectedSlot ? (
-          <div className="mb-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Selected Slot</span>
-              <button onClick={() => setSelectedSlot(null)} className="text-blue-600 text-xs font-bold hover:underline">
-                Clear
-              </button>
-            </div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">
-              {dates[selectedDate]?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) || ""}
-            </p>
-            <p className="text-blue-600 font-bold text-sm mt-1">
-              At {selectedSlot.time}
-            </p>
+      {/* Selected slot summary */}
+      {selectedSlot && (
+        <div className="mb-4 bg-[#F0F5FF] px-4 py-3.5 rounded-2xl border border-[#DCE8FF]">
+          <div className="flex justify-between items-start mb-1">
+            <span className="text-[10.5px] font-extrabold text-[#5A6284] tracking-[.08em]">SELECTED SLOT</span>
+            <button onClick={() => setSelectedSlot(null)} className="text-[#2F5FFF] text-xs font-extrabold hover:underline focus:outline-none">
+              Clear
+            </button>
           </div>
-        ) : (
-          <p className="text-xs text-center text-gray-500 mb-4 px-4">
-            Select an available time slot above to continue with your booking.
+          <p className="text-[13.5px] font-extrabold text-[#141A33] leading-tight m-0">
+            {dates[selectedDate]?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) || ""}
           </p>
-        )}
-
-        <button
-          onClick={() => {
-            if (!selectedSlot) return;
-            if (appliedFreePromo) {
-              handleFreeBooking();
-            } else if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
-              handlePremiumCreditBooking();
-            } else {
-              if (!user) {
-                Swal.fire({
-                  title: "Login Required",
-                  text: "Please sign in to book a session.",
-                  icon: "info",
-                  showCancelButton: true,
-                  confirmButtonText: "Sign In",
-                  confirmButtonColor: "#004fcb",
-                }).then((res) => {
-                  if (res.isConfirmed) navigate("/signin");
-                });
-                return;
-              }
-              showPaymentPage();
-            }
-          }}
-          disabled={!selectedSlot || isProcessing}
-          className={`w-full py-3.5 rounded-2xl font-extrabold transition-all flex items-center justify-center gap-2 group ${selectedSlot
-            ? appliedFreePromo
-              ? "bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-900/10 active:scale-[0.99]"
-              : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
-                ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-900/10 active:scale-[0.99]"
-                : "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-900/10 active:scale-[0.99]"
-            : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}
-        >
-          {isProcessing ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          ) : selectedSlot ? (
-            <>
-              {appliedFreePromo 
-                ? "Confirm free booking" 
-                : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
-                  ? `Book with Credit (${user.freeInterviewsCount} left)`
-                  : "Confirm & Book"
-              }
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </>
-          ) : (
-            "Select a Slot"
-          )}
-        </button>
-
-        <div className="flex flex-col items-center gap-2 mt-4">
-          <div className="flex items-center gap-2 text-[11px] font-medium text-gray-500">
-            <Shield className="w-3.5 h-3.5 text-green-600" />
-            <span>Secure 256-bit SSL encrypted payment</span>
-          </div>
-          <div className="flex items-center gap-2 text-[11px] font-medium text-gray-500">
-            <Clock className="w-3.5 h-3.5 text-blue-600" />
-            <span>24-hour cancellation policy applies</span>
-          </div>
+          <p className="text-[#2F5FFF] font-extrabold text-[13px] mt-0.5 m-0">At {selectedSlot.time}</p>
         </div>
+      )}
+
+      {/* CTA */}
+      <button
+        onClick={() => {
+          if (!selectedSlot) return;
+          if (appliedFreePromo) {
+            handleFreeBooking();
+          } else if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
+            handlePremiumCreditBooking();
+          } else {
+            if (!user) {
+              Swal.fire({
+                title: "Login Required",
+                text: "Please sign in to book a session.",
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonText: "Sign In",
+                confirmButtonColor: "#004fcb",
+              }).then((res) => {
+                if (res.isConfirmed) navigate("/signin");
+              });
+              return;
+            }
+            showPaymentPage();
+          }
+        }}
+        disabled={!selectedSlot || isProcessing}
+        className={`w-full flex items-center justify-center gap-[9px] py-[15px] rounded-[14px] font-extrabold text-[15px] transition-colors ${
+          selectedSlot
+            ? appliedFreePromo
+              ? "bg-[#0E9D5C] text-white hover:bg-[#0C8A50] cursor-pointer"
+              : "bg-[#2F5FFF] text-white hover:bg-[#1E3FCC] cursor-pointer"
+            : "bg-[#E9EDF7] text-[#8B93B2] cursor-not-allowed"
+        }`}
+      >
+        {isProcessing ? (
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        ) : selectedSlot ? (
+          <>
+            {appliedFreePromo
+              ? "Confirm free booking"
+              : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
+                ? `Book with Credit (${user.freeInterviewsCount} left)`
+                : `Book Session — ${formatPrice(displayPrice)}`
+            }
+            <ArrowRight className="w-[15px] h-[15px]" />
+          </>
+        ) : (
+          "Select a Slot"
+        )}
+      </button>
+
+      <div className="flex flex-col gap-2 mt-4">
+        <span className="inline-flex items-center justify-center gap-2 text-xs font-bold text-[#5A6284]">
+          <Shield className="w-[13px] h-[13px] text-[#0E9D5C]" />
+          Secure 256-bit SSL encrypted payment
+        </span>
+        <span className="inline-flex items-center justify-center gap-2 text-xs font-bold text-[#5A6284]">
+          <Clock className="w-[13px] h-[13px] text-[#2F5FFF]" />
+          24-hour cancellation policy applies
+        </span>
       </div>
     </div>
   );
@@ -1411,7 +1301,7 @@ const BookSessionPage = () => {
     <div className="lg:hidden fixed bottom-4 right-4 z-40">
       <button
         onClick={() => setShowMobileBooking(true)}
-        className="flex items-center gap-1.5 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/20 hover:shadow-xl active:scale-95 transition-all font-bold text-sm"
+        className="flex items-center gap-1.5 px-5 py-3 bg-[#2F5FFF] text-white rounded-full shadow-lg shadow-blue-900/20 hover:bg-[#1E3FCC] active:scale-95 transition-all font-extrabold text-sm"
       >
         <Calendar className="w-4 h-4" />
         Book
@@ -1420,34 +1310,22 @@ const BookSessionPage = () => {
   );
 
   const CareerAdsSection = () => (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-      <div className="px-4 md:px-5 py-3.5 border-b border-gray-100">
-        <h4 className="text-sm font-bold text-gray-900">Recommended for you</h4>
+    <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
+      <div className="px-6 py-4 border-b border-[#F0F2F8]">
+        <h4 className="text-[15px] font-bold text-[#141A33] m-0">Recommended for you</h4>
       </div>
-      <div className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 h-full min-h-[164px] flex flex-col">
-          <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wide mb-1">Career Boost</p>
-          <p className="text-sm font-semibold text-gray-900">Resume Review Add-on</p>
-          <p className="text-xs text-gray-600 mt-1">Get targeted edits from experts and improve shortlisting chances.</p>
-          <button className="mt-auto pt-3 text-xs font-bold text-blue-700 hover:underline text-left">Learn more</button>
+      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-[#DCE8FF] bg-[#F0F5FF] p-4 h-full min-h-[164px] flex flex-col">
+          <p className="text-[10.5px] font-extrabold text-[#2F5FFF] tracking-[.08em] mb-1">CAREER BOOST</p>
+          <p className="text-sm font-extrabold text-[#141A33]">Resume Review Add-on</p>
+          <p className="text-xs text-[#5A6284] font-semibold mt-1 leading-relaxed">Get targeted edits from experts and improve shortlisting chances.</p>
+          <button className="mt-auto pt-3 text-xs font-extrabold text-[#2F5FFF] hover:underline text-left">Learn more</button>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 h-full min-h-[164px] flex flex-col">
-          <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide mb-1">Interview Prep</p>
-          <p className="text-sm font-semibold text-gray-900">Expert Interview Tips</p>
-          <p className="text-xs text-gray-600 mt-1">Go through practical tips and frameworks before your live mock interview.</p>
-          <button
-            type="button"
-            onClick={() => navigate("/tips")}
-            className="mt-auto pt-3 text-xs font-bold text-emerald-700 hover:underline text-left"
-          >
-            Open tips
-          </button>
-        </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 h-full min-h-[164px] flex flex-col">
-          <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide mb-1">New Offer</p>
-          <p className="text-sm font-semibold text-gray-900">Bundle & Save</p>
-          <p className="text-xs text-gray-600 mt-1">Book 3 sessions together and unlock discount pricing.</p>
-          <button className="mt-auto pt-3 text-xs font-bold text-amber-700 hover:underline text-left">View plans</button>
+        <div className="rounded-2xl border border-[#FCE3C2] bg-[#FFF6EA] p-4 h-full min-h-[164px] flex flex-col">
+          <p className="text-[10.5px] font-extrabold text-[#D9720C] tracking-[.08em] mb-1">NEW OFFER</p>
+          <p className="text-sm font-extrabold text-[#141A33]">Bundle &amp; Save</p>
+          <p className="text-xs text-[#5A6284] font-semibold mt-1 leading-relaxed">Book 3 sessions together and unlock discount pricing.</p>
+          <button className="mt-auto pt-3 text-xs font-extrabold text-[#D9720C] hover:underline text-left">View plans</button>
         </div>
       </div>
     </div>
@@ -1455,52 +1333,52 @@ const BookSessionPage = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-white pb-10">
+      <div className="min-h-screen bg-[#F5F7FC] pb-10">
         <Navigation />
 
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-7">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 py-5">
           <button
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full bg-white/80 border border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-600 hover:bg-blue-50 transition-colors text-sm font-semibold shadow-sm"
+            className="inline-flex items-center gap-[9px] bg-white border border-[#EAEEF7] rounded-full pl-4 pr-5 py-2.5 font-extrabold text-sm text-[#141A33] mb-[18px] shadow-[0_4px_10px_-6px_rgba(20,26,51,.12)] hover:text-[#2F5FFF] transition-colors focus:outline-none"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-[15px] h-[15px]" strokeWidth={2.4} />
             Back to Home
           </button>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-5 items-start">
             {/* Main Content Areas */}
-            <div className="lg:col-span-8 space-y-5">
+            <div className="min-w-0 space-y-5">
               {ProfileHeader()}
 
               {/* Tabs Section */}
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="border-b border-gray-100">
-                <div className="flex px-3 sm:px-4 gap-2 pt-1">
-                    <button
-                      onClick={() => setActiveTab("details")}
-                    className={`px-4 sm:px-5 py-3 font-extrabold text-xs sm:text-sm transition-all relative rounded-t-xl ${activeTab === "details"
-                        ? "text-blue-600 bg-blue-50/60 after:content-[''] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:bg-blue-600"
-                        : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                    >
-                      About Session
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("reviews")}
-                    className={`px-4 sm:px-5 py-3 font-extrabold text-xs sm:text-sm transition-all relative rounded-t-xl ${activeTab === "reviews"
-                        ? "text-blue-600 bg-blue-50/60 after:content-[''] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:bg-blue-600"
-                        : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                    >
-                      Reviews & Ratings ({reviews.length})
-                    </button>
-                  </div>
+              <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
+                <div className="flex gap-1 px-5 pt-3.5 border-b border-[#F0F2F8]">
+                  <button
+                    onClick={() => setActiveTab("details")}
+                    className={`px-[18px] py-[11px] font-bold text-[15.5px] rounded-t-xl border-b-[2.5px] whitespace-nowrap transition-colors focus:outline-none ${
+                      activeTab === "details"
+                        ? "text-[#2F5FFF] bg-[#F0F5FF] border-[#2F5FFF]"
+                        : "text-[#8B93B2] border-transparent hover:text-[#4A5170]"
+                    }`}
+                  >
+                    About Session
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("reviews")}
+                    className={`px-[18px] py-[11px] font-bold text-[15.5px] rounded-t-xl border-b-[2.5px] whitespace-nowrap transition-colors focus:outline-none ${
+                      activeTab === "reviews"
+                        ? "text-[#2F5FFF] bg-[#F0F5FF] border-[#2F5FFF]"
+                        : "text-[#8B93B2] border-transparent hover:text-[#4A5170]"
+                    }`}
+                  >
+                    Reviews &amp; Ratings ({reviews.length})
+                  </button>
                 </div>
 
-                <div className="p-4 md:p-5">
+                <div className="p-6">
                   {activeTab === "details" ? (
-                    <div className="space-y-7 animate-fadeIn">
+                    <div className="animate-fadeIn">
                       {/* Session Quick Stats */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-[26px]">
                         <div
                           onClick={() => {
                             if (durationOptions.length > 1) {
@@ -1510,122 +1388,89 @@ const BookSessionPage = () => {
                               setSelectedSlot(null);
                             }
                           }}
-                          className={`flex items-center gap-4 p-4 bg-gradient-to-b from-gray-50 to-white rounded-2xl border border-gray-200 select-none ${
-                            durationOptions.length > 1 
-                              ? "cursor-pointer hover:border-blue-600 hover:bg-blue-50/20 active:scale-[0.98] transition-all"
+                          className={`flex items-center gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4 select-none ${
+                            durationOptions.length > 1
+                              ? "cursor-pointer hover:border-[#B9CBF5] active:scale-[0.98] transition-all"
                               : ""
                           }`}
                         >
-                          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-blue-600 border border-gray-100">
-                            <Timer className="w-6 h-6" />
+                          <div className="w-[42px] h-[42px] rounded-[13px] bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
+                            <Timer className="w-[19px] h-[19px]" />
                           </div>
                           <div>
-                            <div className="font-extrabold text-gray-900 tabular-nums flex items-center gap-1.5">
+                            <div className="font-extrabold text-[15px] text-[#141A33] tabular-nums flex items-center gap-1.5">
                               {sessionDuration}m
                               {durationOptions.length > 1 && (
-                                <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-200/50 px-1.5 py-0.5 rounded-lg">
+                                <span className="text-[9px] font-extrabold text-[#2F5FFF] bg-[#EEF2FF] px-1.5 py-0.5 rounded-lg">
                                   Click to change
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-gray-500 font-semibold">Session duration</div>
+                            <div className="text-xs text-[#8B93B2] font-bold">Session duration</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 p-4 bg-gradient-to-b from-gray-50 to-white rounded-2xl border border-gray-200">
-                          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-blue-600 border border-gray-100">
-                            <Video className="w-6 h-6" />
+                        <div className="flex items-center gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4">
+                          <div className="w-[42px] h-[42px] rounded-[13px] bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
+                            <Video className="w-[19px] h-[19px]" />
                           </div>
                           <div>
-                            <div className="font-extrabold text-gray-900">1:1 Video</div>
-                            <div className="text-xs text-gray-500 font-semibold">Live interaction</div>
+                            <div className="font-extrabold text-[15px] text-[#141A33]">1:1 Video</div>
+                            <div className="text-xs text-[#8B93B2] font-bold">Live interaction</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 p-4 bg-gradient-to-b from-gray-50 to-white rounded-2xl border border-gray-200">
-                          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-blue-600 border border-gray-100">
-                            <CheckCircle className="w-6 h-6" />
+                        <div className="flex items-center gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4">
+                          <div className="w-[42px] h-[42px] rounded-[13px] bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
+                            <CheckCircle className="w-[19px] h-[19px]" />
                           </div>
                           <div>
-                            <div className="font-extrabold text-gray-900">Customized</div>
-                            <div className="text-xs text-gray-500 font-semibold">Tailored plan</div>
+                            <div className="font-extrabold text-[15px] text-[#141A33]">Customized</div>
+                            <div className="text-xs text-[#8B93B2] font-bold">Tailored plan</div>
                           </div>
                         </div>
                       </div>
 
                       {/* Expertise Tags */}
-                      <div>
-                        <h4 className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3.5 flex items-center gap-1.5">
-                          <Award className="w-4 h-4 text-blue-600" />
-                          Areas of Expertise
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.skills.map((skill, idx) => {
-                            const name = skill.toLowerCase();
-                            let SkillIcon = Award;
-                            let iconColor = "text-slate-400";
-                            
-                            if (name.includes("react") || name.includes("frontend") || name.includes("web") || name.includes("javascript") || name.includes("html") || name.includes("css")) {
-                              SkillIcon = Code2;
-                              iconColor = "text-blue-500";
-                            } else if (name.includes("python") || name.includes("backend") || name.includes("node") || name.includes("java") || name.includes("c++") || name.includes("go") || name.includes("development") || name.includes("software")) {
-                              SkillIcon = Terminal;
-                              iconColor = "text-emerald-500";
-                            } else if (name.includes("design") || name.includes("ui") || name.includes("ux") || name.includes("product") || name.includes("figma")) {
-                              SkillIcon = Zap;
-                              iconColor = "text-amber-500";
-                            } else if (name.includes("manager") || name.includes("agile") || name.includes("scrum") || name.includes("business") || name.includes("marketing")) {
-                              SkillIcon = Briefcase;
-                              iconColor = "text-indigo-500";
-                            } else {
-                              SkillIcon = Award;
-                              iconColor = "text-purple-500";
-                            }
-                            
-                            return (
-                              <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:border-blue-600 hover:bg-blue-50/40 transition-all cursor-default shadow-sm">
-                                <SkillIcon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
-                                {skill}
-                              </span>
-                            );
-                          })}
-                          {[
-                            { label: "Mock Interviews", icon: CheckCircle, color: "text-emerald-500" },
-                            { label: "Technical Round", icon: Code2, color: "text-blue-500" },
-                            { label: "Behavioral", icon: Briefcase, color: "text-indigo-500" }
-                          ].map((item, idx) => (
-                            <span key={`extra-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-xs font-semibold hover:border-blue-600 hover:bg-blue-50/40 transition-all cursor-default">
-                              <item.icon className={`w-3.5 h-3.5 ${item.color} shrink-0`} />
-                              {item.label}
-                            </span>
-                          ))}
-                        </div>
+                      <div className="text-[11.5px] font-extrabold text-[#8B93B2] tracking-[.08em] mb-3">AREAS OF EXPERTISE</div>
+                      <div className="flex flex-wrap gap-2 mb-[30px]">
+                        {[...profile.skills, "Mock Interviews", "Technical Round", "Behavioral"].map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-[7px] bg-white text-[#33395B] border-[1.5px] border-[#E3E8F5] text-[13px] font-bold px-4 py-2 rounded-full whitespace-nowrap hover:border-[#B9CBF5] hover:text-[#141A33] transition-colors cursor-default"
+                          >
+                            {skill}
+                            <ChevronRight className="w-3 h-3 text-[#8B93B2]" strokeWidth={2.4} />
+                          </span>
+                        ))}
                       </div>
 
                       {/* Session Structure */}
-                      <div className="space-y-4">
-                        <h4 className="text-lg font-bold text-gray-900">Session flow</h4>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          A structured mock interview with clear outcomes—optimized for fast improvements.
-                        </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {[
-                            { title: "Align goals", desc: "We confirm your target role, seniority, and focus areas." },
-                            { title: "Mock interview", desc: "Real questions, realistic pacing, and professional evaluation." },
-                            { title: "Feedback & scorecard", desc: "Strengths, gaps, and specific fixes—no generic advice." },
-                            { title: "Next steps", desc: "A short action plan + resources to practice right away." }
-                          ].map((step, idx) => (
-                            <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-sm transition-all">
-                              <h5 className="font-bold text-gray-900 text-sm mb-1">{idx + 1}) {step.title}</h5>
-                              <p className="text-sm text-gray-600 leading-relaxed">{step.desc}</p>
+                      <h4 className="text-[19px] font-bold text-[#141A33] mb-1.5 m-0">Session flow</h4>
+                      <p className="text-[13.5px] text-[#5A6284] font-semibold mb-4">
+                        A structured mock interview with clear outcomes — optimized for fast improvement.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+                        {[
+                          { title: "Align goals", desc: "We confirm your target role, seniority, and focus areas." },
+                          { title: "Mock interview", desc: "Real questions, realistic pacing, and professional evaluation." },
+                          { title: "Feedback & scorecard", desc: "Strengths, gaps, and specific fixes — no generic advice." },
+                          { title: "Next steps", desc: "A short action plan + resources to practice right away." }
+                        ].map((step, idx) => (
+                          <div key={idx} className="flex gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4">
+                            <div className="w-[30px] h-[30px] rounded-[10px] bg-[#EEF2FF] text-[#2F5FFF] flex items-center justify-center font-extrabold text-[13.5px] shrink-0">
+                              {idx + 1}
                             </div>
-                          ))}
-                        </div>
+                            <div>
+                              <div className="font-extrabold text-sm text-[#141A33] mb-[3px]">{step.title}</div>
+                              <div className="text-[12.5px] text-[#5A6284] font-semibold leading-normal">{step.desc}</div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
                       {/* Benefits Checklist */}
-                      <div className="bg-blue-600/5 p-5 rounded-xl border border-blue-600/10">
-                        <h4 className="text-sm font-bold text-blue-900 uppercase tracking-wider mb-4">Included in every session</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
+                      <div className="bg-[#F0F5FF] border border-[#DCE8FF] rounded-2xl px-[22px] py-5">
+                        <div className="text-[11.5px] font-extrabold text-[#2F5FFF] tracking-[.08em] mb-3.5">INCLUDED IN EVERY SESSION</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2.5 gap-x-6">
                           {[
                             "Performance scorecard",
                             "Actionable improvement plan",
@@ -1634,115 +1479,99 @@ const BookSessionPage = () => {
                             "Resume review tips",
                             "Follow-up email support"
                           ].map((b, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                              <Check className="w-4 h-4 text-green-600 font-bold" />
-                              <span className="text-sm font-medium text-gray-700">{b}</span>
-                            </div>
+                            <span key={i} className="inline-flex items-start gap-[9px] text-[13.5px] font-bold text-[#33395B] leading-snug">
+                              <Check className="w-3.5 h-3.5 text-[#0E9D5C] shrink-0 mt-0.5" strokeWidth={2.6} />
+                              {b}
+                            </span>
                           ))}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-6 animate-fadeIn">
+                    <div className="animate-fadeIn">
                       {/* Rating Summary Card */}
-                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-                        <div className="flex flex-col md:flex-row items-center gap-8">
-                          <div className="text-center md:border-r border-gray-200 pr-0 md:pr-10">
-                            <div className="text-6xl font-bold text-gray-900 mb-1">{profile.rating}</div>
-                            <div className="flex items-center justify-center gap-1 mb-2">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-5 h-5 ${i < Math.floor(profile.rating) ? 'text-yellow-500 fill-current' : 'text-gray-300'}`}
-                                />
-                              ))}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">{profile.reviews} total reviews</div>
-                          </div>
-
-                          <div className="flex-1 w-full space-y-2">
-                            {[5, 4, 3, 2, 1].map((star) => (
-                              <div key={star} className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-gray-600 w-3">{star}</span>
-                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="bg-yellow-500 h-full rounded-full transition-all duration-1000"
-                                    style={{
-                                      width: `${star === 5 ? (profile.rating > 4.5 ? 85 : 70) : star === 4 ? 20 : 5}%`
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-xs font-medium text-gray-400 w-8">
-                                  {star === 5 ? '85%' : star === 4 ? '12%' : '1%'}
-                                </span>
-                              </div>
+                      <div className="flex gap-7 items-center bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-[22px] mb-[18px] flex-wrap">
+                        <div className="text-center min-w-[110px]">
+                          <div className="text-[44px] font-bold text-[#141A33] leading-none">{profile.rating}</div>
+                          <div className="flex gap-0.5 justify-center my-2">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-[15px] h-[15px] ${i < Math.round(profile.rating) ? "text-[#F5A524] fill-[#F5A524]" : "text-[#E9EDF7] fill-[#E9EDF7]"}`}
+                              />
                             ))}
                           </div>
+                          <div className="text-[12.5px] text-[#8B93B2] font-bold">
+                            {profile.reviews === 1 ? "1 total review" : `${profile.reviews} total reviews`}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-[220px] flex flex-col gap-[7px]">
+                          {ratingDist.map((bar) => (
+                            <div key={bar.star} className="flex items-center gap-3">
+                              <span className="text-xs font-extrabold text-[#5A6284] w-2.5">{bar.star}</span>
+                              <div className="flex-1 h-[7px] rounded-full bg-[#E9EDF7] overflow-hidden">
+                                <div className="h-full rounded-full bg-[#F5A524]" style={{ width: `${bar.pct}%` }} />
+                              </div>
+                              <span className="text-xs font-bold text-[#8B93B2] w-[34px] text-right">{bar.pct}%</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
                       {/* Reviews List */}
-                      <div className="space-y-6">
+                      <div className="space-y-4">
                         {reviewsLoading ? (
                           <div className="py-14 text-center">
-                            <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-sm font-medium text-gray-500">Curating client feedback...</p>
+                            <div className="w-10 h-10 border-4 border-[#2F5FFF]/20 border-t-[#2F5FFF] rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-sm font-bold text-[#8B93B2]">Curating client feedback...</p>
                           </div>
                         ) : reviews.length > 0 ? (
                           reviews.map((review) => (
-                            <div key={review.id} className="p-6 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
-                              <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 font-bold">
-                                  {review.avatar ? (
-                                    <img src={review.avatar} alt={review.name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    review.name.charAt(0)
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
-                                    <div>
-                                      <h5 className="font-bold text-gray-900">{review.name}</h5>
-                                      <p className="text-xs text-gray-500 font-medium">{review.role}</p>
-                                    </div>
-                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 sm:mt-0">
-                                      {review.date}
-                                    </span>
+                            <div key={review.id} className="border border-[#EFF2FA] rounded-2xl p-5">
+                              <div className="flex items-start justify-between gap-3 flex-wrap">
+                                <div className="flex gap-3.5">
+                                  <div className="w-[46px] h-[46px] rounded-full bg-[#EEF2FF] text-[#2F5FFF] overflow-hidden shrink-0 flex items-center justify-center font-bold text-[15px]">
+                                    {review.avatar ? (
+                                      <img src={review.avatar} alt={review.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      review.name.trim().substring(0, 2).toUpperCase()
+                                    )}
                                   </div>
-                                  <div className="flex items-center gap-0.5 mb-3">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'text-yellow-500 fill-current' : 'text-gray-200'}`} />
-                                    ))}
-                                  </div>
-                                  <p className="text-sm text-gray-700 leading-relaxed italic">"{review.comment}"</p>
-
-                                  {review.strengths && review.strengths.length > 0 && (
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                      {review.strengths.map((s, idx) => (
-                                        <span key={idx} className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded font-bold border border-green-100 uppercase tracking-tighter">
-                                          {s}
-                                        </span>
+                                  <div>
+                                    <div className="font-extrabold text-[15px] text-[#141A33]">{review.name}</div>
+                                    <div className="text-xs text-[#8B93B2] font-bold">{review.role}</div>
+                                    <div className="flex gap-0.5 mt-1.5">
+                                      {[...Array(5)].map((_, i) => (
+                                        <Star key={i} className={`w-[13px] h-[13px] ${i < review.rating ? "text-[#F5A524] fill-[#F5A524]" : "text-[#E9EDF7] fill-[#E9EDF7]"}`} />
                                       ))}
                                     </div>
-                                  )}
-
-                                  <div className="flex items-center gap-6 mt-5 border-t border-gray-50 pt-3">
-                                    <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors">
-                                      <ThumbsUp className="w-4 h-4" />
-                                      Helpful
-                                    </button>
                                   </div>
                                 </div>
+                                <span className="text-xs text-[#8B93B2] font-extrabold uppercase">{review.date}</span>
                               </div>
+                              <p className="text-sm text-[#33395B] font-semibold italic my-3.5">"{review.comment}"</p>
+                              {review.strengths && review.strengths.length > 0 && (
+                                <div className="mb-3.5 flex flex-wrap gap-2">
+                                  {review.strengths.map((s, idx) => (
+                                    <span key={idx} className="text-[10px] bg-[#E7FBF1] text-[#0E9D5C] px-2 py-1 rounded-md font-extrabold uppercase">
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <button className="inline-flex items-center gap-[7px] text-[13px] font-extrabold text-[#5A6284] hover:text-[#2F5FFF] transition-colors focus:outline-none">
+                                <ThumbsUp className="w-3.5 h-3.5" strokeWidth={1.8} />
+                                Helpful
+                              </button>
                             </div>
                           ))
                         ) : (
-                          <div className="text-center py-14 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                          <div className="text-center py-14 bg-[#F7F9FE] rounded-2xl border-2 border-dashed border-[#E3E8F5]">
                             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                              <MessageCircle className="w-8 h-8 text-gray-300" />
+                              <MessageCircle className="w-8 h-8 text-[#C7CDE0]" />
                             </div>
-                            <h4 className="text-base font-bold text-gray-800">No reviews yet</h4>
-                            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">Be the first to share your experience after completing a session.</p>
+                            <h4 className="text-base font-extrabold text-[#141A33] m-0">No reviews yet</h4>
+                            <p className="text-sm text-[#8B93B2] font-bold mt-1 max-w-xs mx-auto">Be the first to share your experience after completing a session.</p>
                           </div>
                         )}
                       </div>
@@ -1755,42 +1584,40 @@ const BookSessionPage = () => {
             </div>
 
             {/* Right Sidebar Column */}
-            <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto no-scrollbar">
-              <div className="space-y-6 pb-6">
+            <div className="hidden lg:block lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto no-scrollbar">
+              <div className="space-y-5 pb-6">
                 {BookingCard()}
 
                 {/* Proof Card */}
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                  <div className="px-5 py-4 border-b border-gray-100">
-                    <h4 className="text-sm font-bold text-gray-900">Why learn from {profile.name.split(' ')[0]}?</h4>
-                  </div>
-                  <div className="p-5 md:p-6 space-y-4">
-                    <div className="flex gap-4">
-                      <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                        <Users className="w-4 h-4 text-blue-600" />
+                <div className="bg-white rounded-[22px] border border-[#EDF1FB] p-6 shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
+                  <h4 className="text-[17px] font-bold text-[#141A33] mb-4 m-0">Why learn from {firstName}?</h4>
+                  <div className="flex flex-col gap-4">
+                    {[
+                      {
+                        title: "Trusted Guidance",
+                        desc: profile.reviews > 0
+                          ? `${profile.reviews}+ reviews with strong learner feedback.`
+                          : "Verified mentor profile with a structured mock interview approach.",
+                      },
+                      {
+                        title: "Real Interview Experience",
+                        desc: `${profile.experience} of hands-on ${profile.category} experience across production teams.`,
+                      },
+                      {
+                        title: "Actionable Feedback",
+                        desc: "Every session ends with a scorecard and a concrete practice plan.",
+                      },
+                    ].map((p, i) => (
+                      <div key={i} className="flex gap-[13px]">
+                        <div className="w-[38px] h-[38px] rounded-xl bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
+                          <Check className="w-4 h-4" strokeWidth={2} />
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-[13.5px] text-[#141A33]">{p.title}</div>
+                          <div className="text-[12.5px] text-[#8B93B2] font-semibold leading-normal mt-0.5">{p.desc}</div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-800">Trusted Guidance</p>
-                        <p className="text-[11px] text-gray-500">
-                          {profile.reviews > 0
-                            ? `${profile.reviews}+ reviews with strong learner feedback.`
-                            : "Verified mentor profile with structured mock interview approach."}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center shrink-0">
-                        <Zap className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-800">Fast Response</p>
-                        <p className="text-[11px] text-gray-500">
-                          {profile.responseTime && profile.responseTime !== "New expert"
-                            ? `Typically responds to booking requests within ${profile.responseTime}.`
-                            : "New expert profile. Response times may vary by schedule."}
-                        </p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>

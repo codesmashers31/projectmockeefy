@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { MentorJobCard, MentorProfile } from "./MentorJobCard";
 import { 
-  AlertCircle, Search, X, SlidersHorizontal, Crown, Zap, Check, ChevronLeft, ChevronRight,
+  AlertCircle, Search, X, SlidersHorizontal, ChevronLeft, ChevronRight,
   Award, Layers, Terminal, Globe, Smartphone, Cloud, Cpu, ShieldCheck, Database, CheckSquare, 
   Users, Network, Sparkles, UserCheck, Briefcase, Palette, Clock, Calendar
 } from "lucide-react";
@@ -158,38 +158,284 @@ const CategoryRow: React.FC<{ title: string; profiles: MentorProfile[] }> = ({ t
   );
 };
 
-const ProIllustration = () => (
-  <svg className="w-28 h-28 text-amber-400/85 animate-bounce shrink-0" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animationDuration: '3s' }}>
-    {/* Background Glow Ring */}
-    <circle cx="60" cy="60" r="45" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" className="animate-spin" style={{ animationDuration: '15s' }} />
-    <circle cx="60" cy="60" r="38" stroke="url(#goldGradient)" strokeWidth="0.5" strokeOpacity="0.5" />
-    
-    {/* Floating stars */}
-    <path d="M60 22L62.5 29H69.5L64 33L66.5 40L60 36L53.5 40L56 33L50.5 29H57.5L60 22Z" fill="url(#goldGradient)" className="animate-pulse" />
-    <path d="M28 55L29.5 59H33.5L30 61.5L31.5 65.5L28 63L24.5 65.5L26 61.5L22.5 59H26.5L28 55Z" fill="url(#goldGradient)" opacity="0.6" />
-    <path d="M92 65L93.5 69H97.5L94 71.5L95.5 75.5L92 73L88.5 75.5L90 71.5L86.5 69H90.5L92 65Z" fill="url(#goldGradient)" opacity="0.8" />
-    
-    {/* Main Crown */}
-    <g transform="translate(36, 42)">
-      {/* Crown base */}
-      <path d="M6 28C6 28 12 30 24 30C36 30 42 28 42 28L45 22L36 24L24 12L12 24L3 22L6 28Z" fill="url(#goldGradient)" filter="drop-shadow(0px 4px 8px rgba(217, 114, 12, 0.3))" />
-      {/* Crown jewels */}
-      <circle cx="24" cy="12" r="2.5" fill="#FFF" />
-      <circle cx="12" cy="24" r="2" fill="#FFF" />
-      <circle cx="36" cy="24" r="2" fill="#FFF" />
-      <circle cx="24" cy="23" r="3" fill="#D9720C" />
-    </g>
-    
-    {/* Gradients */}
-    <defs>
-      <linearGradient id="goldGradient" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stopColor="#FBBF24" />
-        <stop offset="50%" stopColor="#F59E0B" />
-        <stop offset="100%" stopColor="#D9720C" />
-      </linearGradient>
-    </defs>
+const promoStyles = `
+@keyframes mkFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes mkFloatTilt{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(-2deg) translateY(-12px)}}
+@keyframes mkSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes mkPulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.95;transform:scale(1.08)}}
+@keyframes mkTwinkle{0%,100%{opacity:0;transform:scale(.3) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(90deg)}}
+@keyframes mkOrb{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-9px) scale(1.06)}}
+@keyframes mkPing{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.2);opacity:0}}
+@keyframes mkCardSheen{0%{transform:translateX(-200px) skewX(-18deg)}55%,100%{transform:translateX(1100px) skewX(-18deg)}}
+`;
+
+const Twinkle: React.FC<{ fill: string; size: number; style: React.CSSProperties }> = ({ fill, size, style }) => (
+  <svg width={size} height={size} viewBox="-10 -10 20 20" style={style}>
+    <path d="M0 -9 L2.2 -2.2 L9 0 L2.2 2.2 L0 9 L-2.2 2.2 L-9 0 L-2.2 -2.2 Z" fill={fill} />
   </svg>
 );
+
+const promoCompanies = ["google.com|Google", "amazon.com|Amazon", "hcltech.com|HCLTech", "zoho.com|Zoho"].map(s => {
+  const [domain, name] = s.split("|");
+  return { name, icon: `https://www.google.com/s2/favicons?domain=${domain}&sz=64` };
+});
+
+const PromoCarousel = () => {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  React.useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % 3), 6000);
+    return () => clearInterval(t);
+  }, [paused]);
+
+  const sheen: React.CSSProperties = {
+    position: "absolute", top: 0, bottom: 0, left: 0, width: 130, zIndex: 4,
+    background: "linear-gradient(100deg,transparent,rgba(255,255,255,.09),transparent)",
+    animation: "mkCardSheen 4s linear infinite",
+  };
+  const innerShadow: React.CSSProperties = {
+    position: "absolute", inset: 0,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 80px rgba(0,0,0,.35)",
+  };
+
+  return (
+    <div
+      className="relative mb-6 text-left"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <style>{promoStyles}</style>
+      <div className="relative rounded-3xl overflow-hidden" style={{ boxShadow: "0 30px 70px -20px rgba(5,12,60,.55), inset 0 1px 0 rgba(255,255,255,.15)" }}>
+        <div className="flex" style={{ transition: "transform .65s cubic-bezier(.7,0,.25,1)", transform: `translateX(-${idx * 100}%)` }}>
+
+          {/* ============ SLIDE 1 : PRO ============ */}
+          <div className="relative flex flex-wrap items-stretch gap-6 box-border" style={{ flex: "0 0 100%", background: "#211636", padding: "18px 26px", minHeight: 210 }}>
+            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[inherit]">
+              <div style={innerShadow} />
+              <div style={sheen} />
+            </div>
+            <div className="relative z-[2] flex flex-col justify-center gap-[11px]" style={{ flex: "1 1 280px", minWidth: 240 }}>
+              <div className="self-start flex items-center gap-[7px] px-3.5 py-[7px] rounded-full backdrop-blur-sm" style={{ background: "rgba(10,15,60,.5)", border: "1px solid rgba(255,255,255,.22)" }}>
+                <span className="w-[7px] h-[7px] rounded-full" style={{ background: "#ffcf3f", boxShadow: "0 0 8px #ffcf3f" }} />
+                <span className="text-[11px] font-extrabold tracking-[.14em] text-[#e8ecff]">PREMIUM UPGRADE</span>
+              </div>
+              <h1 className="m-0 text-[28px] font-extrabold tracking-[-.02em] text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(180deg,#ffe9a3 0%,#ffcf3f 55%,#f5a623 100%)" }}>
+                Mockeefy PRO
+              </h1>
+              <p className="m-0 text-[13px] leading-[1.55] font-semibold text-[#e4dcff]">
+                Crack your dream job faster — unlimited mock interviews, priority access to top experts, and AI-powered feedback on every session.
+              </p>
+              <button className="self-start mt-1 px-[26px] py-3 border-none rounded-xl cursor-pointer text-sm font-extrabold text-[#3a2500] transition-transform hover:-translate-y-0.5" style={{ background: "linear-gradient(180deg,#ffd558 0%,#ffb01f 100%)", boxShadow: "0 10px 24px -6px rgba(255,170,20,.55), inset 0 1px 0 rgba(255,255,255,.55)" }}>
+                Upgrade to Pro
+              </button>
+            </div>
+            <div className="relative z-[2] flex flex-col justify-center gap-2" style={{ flex: "1 1 300px", minWidth: 260 }}>
+              <div className="text-[11px] font-extrabold tracking-[.16em] text-[#d4c8f5] mb-0.5">PRO BENEFITS YOU WILL UNLOCK</div>
+              {[
+                { title: "Unlimited mock interviews", sub: "Practice as much as you need, no session caps" },
+                { title: "Priority expert booking", sub: "Skip the queue for top-rated interviewers" },
+                { title: "AI feedback reports", sub: "Detailed scorecards after every session" },
+              ].map((b, i) => (
+                <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl backdrop-blur-sm transition-colors" style={{ background: "rgba(8,10,50,.42)", border: "1px solid rgba(255,255,255,.14)" }}>
+                  <div className="flex-1 flex flex-col gap-0.5">
+                    <div className="flex items-center gap-[7px]">
+                      <svg width="11" height="13" viewBox="0 0 12 14"><path d="M7 0 L0 8 H4.5 L4 14 L11 6 H6.5 Z" fill="#ffd23f" /></svg>
+                      <span className="text-[12.5px] font-extrabold text-white">{b.title}</span>
+                    </div>
+                    <span className="text-[10.5px] font-semibold text-[#c0c9f5]">{b.sub}</span>
+                  </div>
+                  <div className="flex-none w-[22px] h-[22px] rounded-full flex items-center justify-center" style={{ background: "linear-gradient(180deg,#ffd558,#f5a623)", boxShadow: "0 4px 10px rgba(245,166,35,.5), inset 0 1px 0 rgba(255,255,255,.5)" }}>
+                    <svg width="11" height="9" viewBox="0 0 13 10"><path d="M1 5 L4.6 8.6 L12 1" fill="none" stroke="#4a2f00" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ============ SLIDE 2 : EXPERTS ============ */}
+          <div className="relative flex flex-wrap items-center gap-6 box-border" style={{ flex: "0 0 100%", background: "#142a22", padding: "18px 26px", minHeight: 210 }}>
+            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[inherit]">
+              <div style={innerShadow} />
+              <div style={sheen} />
+            </div>
+            <div className="relative z-[2] flex flex-col gap-2.5" style={{ flex: "1 1 340px", minWidth: 280 }}>
+              <div className="self-start flex items-center gap-2 px-3.5 py-[7px] rounded-full" style={{ background: "rgba(4,25,40,.55)", border: "1px solid rgba(120,255,230,.3)" }}>
+                <span className="relative w-2 h-2 rounded-full" style={{ background: "#2fe6a8" }}>
+                  <span className="absolute inset-0 rounded-full" style={{ background: "#2fe6a8", animation: "mkPing 1.8s ease-out infinite" }} />
+                </span>
+                <span className="text-[11px] font-extrabold tracking-[.14em] text-[#c8fff0]">LIVE NOW</span>
+              </div>
+              <h1 className="m-0 text-[22px] leading-[1.2] font-extrabold tracking-[-.02em] text-white">
+                Real interviews with experts working at{" "}
+                <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(90deg,#5be3a8,#ffd23f)" }}>top companies</span>
+              </h1>
+              <p className="m-0 text-[12.5px] leading-[1.5] font-semibold text-[#c4ead9]">
+                Book real-time mock interviews with engineers and hiring managers from the world's leading tech companies.
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                {promoCompanies.map(c => (
+                  <span key={c.name} className="flex items-center gap-1.5 px-2.5 py-[5px] rounded-full bg-white" style={{ boxShadow: "0 4px 14px rgba(0,20,15,.35)" }}>
+                    <span className="flex-none w-[18px] h-[18px] rounded" style={{ backgroundImage: `url(${c.icon})`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />
+                    <span className="text-[11px] font-extrabold text-[#1c2b28]">{c.name}</span>
+                  </span>
+                ))}
+              </div>
+              <button className="self-start mt-0.5 px-[22px] py-2.5 border-none rounded-[10px] cursor-pointer text-[13px] font-extrabold text-[#02281e] transition-transform hover:-translate-y-0.5" style={{ background: "linear-gradient(180deg,#5df0c3 0%,#20cf95 100%)", boxShadow: "0 10px 24px -6px rgba(30,210,150,.5), inset 0 1px 0 rgba(255,255,255,.5)" }}>
+                Book an Expert
+              </button>
+            </div>
+            <div className="relative z-[1] hidden md:flex items-center justify-center" style={{ flex: "1 1 340px", minWidth: 300, minHeight: 180 }}>
+              <div className="absolute w-[200px] h-[200px] rounded-full" style={{ border: "1.5px dashed rgba(120,255,230,.3)", animation: "mkSpin 26s linear infinite" }} />
+              {/* interviewer card */}
+              <div className="relative w-[290px] rounded-[20px] p-[22px] backdrop-blur-md" style={{ zoom: 0.72, background: "rgba(6,26,42,.75)", border: "1px solid rgba(120,255,230,.25)", boxShadow: "0 24px 50px -14px rgba(0,20,30,.7)", animation: "mkFloat 5s ease-in-out infinite" }}>
+                <div className="flex items-center gap-3.5">
+                  <div className="relative w-14 h-14 rounded-full flex items-center justify-center text-[19px] font-extrabold text-white" style={{ background: "linear-gradient(135deg,#2fbf8f,#0e7a5a)" }}>
+                    AR
+                    <span className="absolute bottom-[1px] right-[1px] w-[13px] h-[13px] rounded-full" style={{ background: "#2fe6a8", border: "2.5px solid #061a2a" }} />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-base font-extrabold text-white">Senior Engineer</span>
+                    <span className="text-[12.5px] font-bold text-[#7de8d2]">FAANG · 9 yrs experience</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-2">
+                  <div className="flex justify-between gap-2.5 text-[11.5px] font-bold text-[#bfe6ea]">
+                    <span className="whitespace-nowrap">System design round</span>
+                    <span className="whitespace-nowrap text-[#5be3c8]">In session</span>
+                  </div>
+                  <div className="h-[7px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.1)" }}>
+                    <div className="h-full rounded-full" style={{ width: "64%", background: "linear-gradient(90deg,#5be3c8,#2fbf8f)" }} />
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <span className="flex-1 text-center py-[9px] rounded-[10px] text-xs font-extrabold text-[#dffbf4]" style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)" }}>★ 4.9 rating</span>
+                  <span className="flex-1 text-center py-[9px] rounded-[10px] text-xs font-extrabold text-[#dffbf4]" style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)" }}>1,200+ sessions</span>
+                </div>
+              </div>
+              {/* floating avatar bubbles */}
+              <div className="absolute flex items-center justify-center text-sm font-extrabold text-white rounded-full" style={{ top: "6%", left: "8%", width: 46, height: 46, background: "linear-gradient(135deg,#ffb86b,#ff7a59)", border: "2px solid rgba(255,255,255,.35)", animation: "mkOrb 4.2s ease-in-out infinite" }}>JK</div>
+              <div className="absolute flex items-center justify-center text-[12.5px] font-extrabold text-white rounded-full" style={{ bottom: "8%", left: "4%", width: 40, height: 40, background: "linear-gradient(135deg,#5be3c8,#1d9e8f)", border: "2px solid rgba(255,255,255,.35)", animation: "mkOrb 5s ease-in-out 1s infinite" }}>MP</div>
+              <div className="absolute flex items-center justify-center text-[13px] font-extrabold text-white rounded-full" style={{ top: "12%", right: "6%", width: 42, height: 42, background: "linear-gradient(135deg,#b18cff,#6a3fe0)", border: "2px solid rgba(255,255,255,.35)", animation: "mkOrb 4.6s ease-in-out .5s infinite" }}>SD</div>
+              <Twinkle fill="#7de8d2" size={15} style={{ position: "absolute", bottom: "18%", right: "12%", animation: "mkTwinkle 2.6s ease-in-out infinite" }} />
+            </div>
+          </div>
+
+          {/* ============ SLIDE 3 : CERTIFICATE ============ */}
+          <div className="relative flex flex-wrap items-center gap-6 box-border" style={{ flex: "0 0 100%", background: "#261431", padding: "18px 26px", minHeight: 210 }}>
+            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[inherit]">
+              <div style={innerShadow} />
+              <div style={sheen} />
+            </div>
+            <div className="relative z-[2] flex flex-col gap-2.5" style={{ flex: "1 1 340px", minWidth: 280 }}>
+              <div className="self-start flex items-center gap-[7px] px-3.5 py-[7px] rounded-full" style={{ background: "rgba(30,8,60,.55)", border: "1px solid rgba(255,190,120,.35)" }}>
+                <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 0 L7.6 4.2 L12 4.6 L8.7 7.5 L9.8 12 L6 9.5 L2.2 12 L3.3 7.5 L0 4.6 L4.4 4.2 Z" fill="#ffcf3f" /></svg>
+                <span className="text-[11px] font-extrabold tracking-[.14em] text-[#ffe6c4]">GET CERTIFIED</span>
+              </div>
+              <h1 className="m-0 text-[22px] leading-[1.2] font-extrabold tracking-[-.02em] text-white">
+                Earn a verified{" "}
+                <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(90deg,#ffcf3f,#ff8fd0)" }}>interview-ready certificate</span>
+              </h1>
+              <p className="m-0 text-[12.5px] leading-[1.5] font-semibold text-[#e6d4f5]">
+                Pass expert-graded mock interviews and earn a shareable certificate — add it to LinkedIn and your resume.
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                {["Expert graded", "Shareable link", "QR verified"].map(t => (
+                  <span key={t} className="px-2.5 py-[5px] rounded-full text-[11px] font-extrabold text-[#ffe9c8]" style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,190,120,.3)" }}>✓ {t}</span>
+                ))}
+              </div>
+              <button className="self-start mt-0.5 px-[22px] py-2.5 border-none rounded-[10px] cursor-pointer text-[13px] font-extrabold text-[#3a1030] transition-transform hover:-translate-y-0.5" style={{ background: "linear-gradient(180deg,#ffb3dd 0%,#ff7ec2 100%)", boxShadow: "0 10px 24px -6px rgba(255,110,190,.5), inset 0 1px 0 rgba(255,255,255,.55)" }}>
+                Start Certification
+              </button>
+            </div>
+            <div className="relative z-[1] hidden md:flex items-center justify-center" style={{ flex: "1 1 340px", minWidth: 300, minHeight: 200 }}>
+              <div className="absolute w-[300px] h-[300px] rounded-full" style={{ background: "radial-gradient(circle,rgba(255,200,80,.2),rgba(255,110,190,.14) 50%,transparent 70%)", animation: "mkPulse 4s ease-in-out infinite" }} />
+              {/* certificate card */}
+              <div className="relative w-[330px] rounded-2xl overflow-hidden" style={{ zoom: 0.72, background: "linear-gradient(160deg,#ffffff 0%,#fbfbfd 60%,#f4f4f7 100%)", padding: "26px 28px 22px", boxShadow: "0 26px 55px -14px rgba(10,2,25,.85), inset 0 1px 0 rgba(255,255,255,.9)", animation: "mkFloatTilt 5s ease-in-out infinite" }}>
+                <div className="absolute pointer-events-none rounded-[11px]" style={{ inset: 9, border: "1px solid rgba(230,180,80,.55)" }} />
+                <div className="absolute pointer-events-none rounded-lg" style={{ inset: 13, border: "1px solid rgba(230,180,80,.2)" }} />
+                <span className="absolute" style={{ top: 9, left: 9, width: 14, height: 14, borderTop: "2px solid #e6b450", borderLeft: "2px solid #e6b450", borderRadius: "11px 0 0 0" }} />
+                <span className="absolute" style={{ top: 9, right: 9, width: 14, height: 14, borderTop: "2px solid #e6b450", borderRight: "2px solid #e6b450", borderRadius: "0 11px 0 0" }} />
+                <span className="absolute" style={{ bottom: 9, left: 9, width: 14, height: 14, borderBottom: "2px solid #e6b450", borderLeft: "2px solid #e6b450", borderRadius: "0 0 0 11px" }} />
+                <span className="absolute" style={{ bottom: 9, right: 9, width: 14, height: 14, borderBottom: "2px solid #e6b450", borderRight: "2px solid #e6b450", borderRadius: "0 0 11px 0" }} />
+                <div className="relative flex flex-col gap-[7px] items-center text-center">
+                  <svg width="36" height="27" viewBox="0 0 34 26">
+                    <defs>
+                      <linearGradient id="mkCertCrown" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff3c4" /><stop offset=".5" stopColor="#ffd23f" /><stop offset="1" stopColor="#f09a10" /></linearGradient>
+                    </defs>
+                    <path d="M3 24 L1 5 L10 13 L17 2 L24 13 L33 5 L31 24 Z" fill="url(#mkCertCrown)" stroke="#c47a08" strokeWidth="1.4" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-[9.5px] font-extrabold tracking-[.32em] text-[#a8842f]">MOCKEEFY CERTIFIED</span>
+                  <span className="text-[23px] font-extrabold tracking-[-.01em] text-[#241d33]">Java Developer</span>
+                  <div className="flex items-center gap-[9px] w-full my-0.5">
+                    <span className="flex-1 h-px" style={{ background: "linear-gradient(90deg,transparent,rgba(230,180,80,.5))" }} />
+                    <Twinkle fill="#e6b450" size={10} style={{}} />
+                    <span className="flex-1 h-px" style={{ background: "linear-gradient(90deg,rgba(230,180,80,.5),transparent)" }} />
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#6e6880] leading-[1.5]">Cleared expert-graded technical rounds<br />with distinction · Verified by Mockeefy</span>
+                  <div className="w-full flex justify-between items-end mt-1.5">
+                    <div className="flex flex-col gap-0.5 text-left">
+                      <span className="text-sm font-extrabold italic text-[#241d33]">Your Name</span>
+                      <span className="text-[9px] font-bold tracking-[.14em] text-[#a8842f]">CREDENTIAL ID · MK-2481</span>
+                    </div>
+                    <svg width="52" height="52" viewBox="0 0 52 52">
+                      <defs>
+                        <linearGradient id="mkCertRibbon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffdf7a" /><stop offset="1" stopColor="#f5a623" /></linearGradient>
+                      </defs>
+                      <circle cx="26" cy="23" r="17" fill="none" stroke="#e6b450" strokeWidth="1.4" strokeDasharray="3 2.4" />
+                      <circle cx="26" cy="23" r="14" fill="url(#mkCertRibbon)" />
+                      <path d="M19 35 L16 50 L23 45.5 L26 51 L29 45.5 L36 50 L33 35 Z" fill="#c9880e" />
+                      <path d="M20.5 23 L24 26.5 L31.5 18.5" fill="none" stroke="#4a2f00" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <Twinkle fill="#ffcf3f" size={17} style={{ position: "absolute", top: "12%", left: "14%", animation: "mkTwinkle 2.6s ease-in-out infinite" }} />
+              <Twinkle fill="#ff8fd0" size={13} style={{ position: "absolute", bottom: "14%", right: "12%", animation: "mkTwinkle 2.9s ease-in-out 1.4s infinite" }} />
+              <div className="absolute" style={{ top: "16%", right: "14%", width: 12, height: 12, transform: "rotate(45deg)", borderRadius: 3, background: "linear-gradient(135deg,#ffe9a3,#f5a623)", boxShadow: "0 4px 12px rgba(245,166,35,.6)", animation: "mkOrb 4.2s ease-in-out infinite" }} />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* controls: arrows + dots below the banner */}
+      <div className="flex justify-center items-center gap-4 mt-3.5">
+        <button
+          onClick={() => { setIdx(i => (i + 2) % 3); setPaused(true); }}
+          aria-label="Previous slide"
+          className="w-8 h-8 rounded-full cursor-pointer flex items-center justify-center transition-colors hover:bg-slate-200/60"
+          style={{ border: "1px solid rgba(90,80,120,.3)", background: "rgba(90,80,120,.08)" }}
+        >
+          <ChevronLeft className="w-4 h-4 text-[#4a4360] stroke-[2.4]" />
+        </button>
+        <div className="flex items-center gap-[9px]">
+          {[0, 1, 2].map(i => (
+            <button
+              key={i}
+              onClick={() => { setIdx(i); setPaused(true); }}
+              aria-label={`Go to slide ${i + 1}`}
+              className="border-none cursor-pointer transition-all duration-300"
+              style={{
+                width: i === idx ? 26 : 9, height: 9, borderRadius: 99,
+                background: i === idx ? "linear-gradient(90deg,#ffd558,#ffb01f)" : "rgba(90,80,120,.3)",
+              }}
+            />
+          ))}
+        </div>
+        <button
+          onClick={() => { setIdx(i => (i + 1) % 3); setPaused(true); }}
+          aria-label="Next slide"
+          className="w-8 h-8 rounded-full cursor-pointer flex items-center justify-center transition-colors hover:bg-slate-200/60"
+          style={{ border: "1px solid rgba(90,80,120,.3)", background: "rgba(90,80,120,.08)" }}
+        >
+          <ChevronRight className="w-4 h-4 text-[#4a4360] stroke-[2.4]" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const CoachSessionCard = React.memo(function CoachSessionCard() {
   // Query experts
@@ -578,68 +824,8 @@ const CoachSessionCard = React.memo(function CoachSessionCard() {
     <>
     <div ref={listingSectionRef} className="w-full scroll-mt-24">
 
-      {/* PROMO BANNER */}
-      {!isFilteringActive && (
-        <div className="relative mb-6 bg-gradient-to-br from-[#0b3cc1] via-[#004fcb] to-[#1d4ed8] border border-blue-400/20 rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-center gap-6 sm:gap-8 shadow-xl overflow-hidden text-white">
-          {/* Decorative absolute glow */}
-          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
-          
-          <div className="flex-1 min-w-[240px] text-left relative z-10">
-            <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest bg-amber-400/20 border border-amber-300/30 px-2.5 py-1 rounded-full">
-              Premium Upgrade
-            </span>
-            <div className="flex items-center gap-2.5 my-3">
-              <span className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-amber-200 via-amber-300 to-amber-100 text-transparent bg-clip-text">
-                Mockeefy PRO
-              </span>
-              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
-                <Crown className="w-4 h-4 text-slate-950 fill-slate-955" />
-              </div>
-            </div>
-            <p className="font-bold text-[14px] text-blue-100/90 mb-5 leading-relaxed">
-              Get booked by candidates up to 5x faster, get instant payouts, and unlock premium AI profile metrics.
-            </p>
-            <button className="inline-flex bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-955 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
-              Become a Pro
-            </button>
-          </div>
-
-          <div className="hidden md:flex items-center justify-center shrink-0 z-10">
-            <ProIllustration />
-          </div>
-
-          <div className="hidden md:block w-px self-stretch bg-blue-400/20" />
-
-          <div className="flex-[1.2] w-full min-w-[280px] text-left relative z-10">
-            <div className="font-black text-xs text-blue-200 uppercase tracking-wider mb-4">
-              Premium benefits you will unlock
-            </div>
-            <div className="space-y-3">
-              {[
-                { f: "Hidden expert invitations", d: "Instantly match hidden premium client sessions" },
-                { f: "AI-enhanced profile rating", d: "Ranks at the top of candidate mentor searches" },
-                { f: "Auto-match with top mentors", d: "Get matched with corporate interview pipelines" }
-              ].map((item, i) => (
-                <div key={i} className="flex items-start justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md shadow-sm">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13px] text-white font-extrabold flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
-                      {item.f}
-                    </span>
-                    <p className="text-[10px] text-blue-200/80 font-semibold mt-0.5 pl-5">
-                      {item.d}
-                    </p>
-                  </div>
-                  <span className="w-6.5 h-6.5 rounded-lg bg-blue-600/40 border border-blue-400/20 flex items-center justify-center shadow-sm shrink-0 ml-2">
-                    <Check className="w-3.5 h-3.5 text-amber-300 stroke-[3]" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* PROMO BANNER CAROUSEL */}
+      {!isFilteringActive && <PromoCarousel />}
 
       {/* Search and Filters Row */}
       <div className="flex gap-3 mb-6">
