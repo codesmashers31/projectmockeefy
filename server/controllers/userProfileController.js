@@ -15,11 +15,11 @@ function calculateProfileCompletion(user) {
     let score = 0;
     const isFresher = String(user?.preferences?.experienceLevel || "").toLowerCase() === "fresher";
 
-    // Personal Info (20%)
-    if (user.name) score += 5;
-    if (user.personalInfo?.phone) score += 5;
-    if (user.personalInfo?.city && user.personalInfo?.state) score += 5;
-    if (user.personalInfo?.bio) score += 5;
+    // Personal Info (25%)
+    if (user.name) score += 6;
+    if (user.personalInfo?.phone) score += 6;
+    if (user.personalInfo?.city && user.personalInfo?.state) score += 6;
+    if (user.personalInfo?.bio) score += 7;
 
     // Profile Image (10%)
     if (user.profileImage) score += 10;
@@ -31,19 +31,13 @@ function calculateProfileCompletion(user) {
     // For fresher profiles, experience section is considered complete even without company history.
     if ((user.experience && user.experience.length > 0) || isFresher) score += 20;
 
-    // Certifications (5%)
-    if (user.certifications && user.certifications.length > 0) score += 5;
+    // Certifications (10%)
+    if (user.certifications && user.certifications.length > 0) score += 10;
 
     // Skills (15%)
     if (user.skills?.technical && user.skills.technical.length > 0) score += 5;
     if (user.skills?.soft && user.skills.soft.length > 0) score += 5;
     if (user.skills?.languages && user.skills.languages.length > 0) score += 5;
-
-    // Preferences (10%)
-    if (user.preferences?.jobType) score += 3;
-    if (user.preferences?.expectedSalary) score += 3;
-    if (user.preferences?.noticePeriod) score += 2;
-    if (user.preferences?.willingToRelocate !== undefined) score += 2;
 
     return Math.min(score, 100);
 }
@@ -58,17 +52,11 @@ function getProfileWarnings(user) {
     if (!user.personalInfo?.bio) warnings.push("Add a short bio.");
     if (!user.profileImage) warnings.push("Upload a profile image.");
     if (!(user.education && user.education.length > 0)) warnings.push("Add at least one education entry.");
-    if (!isFresher && !(user.experience && user.experience.length > 0)) warnings.push("Add work experience or mark yourself as Fresher in Preferences.");
+    if (!isFresher && !(user.experience && user.experience.length > 0)) warnings.push("Add work experience.");
     if (!(user.certifications && user.certifications.length > 0)) warnings.push("Add at least one certification.");
     if (!(user.skills?.technical && user.skills.technical.length > 0)) warnings.push("Add technical skills.");
     if (!(user.skills?.soft && user.skills.soft.length > 0)) warnings.push("Add soft skills.");
     if (!(user.skills?.languages && user.skills.languages.length > 0)) warnings.push("Add languages.");
-    if (!user.preferences?.jobType) warnings.push("Select preferred job type.");
-    if (user.preferences?.willingToRelocate === undefined) warnings.push("Set relocation preference.");
-    if (!isFresher) {
-        if (!user.preferences?.expectedSalary) warnings.push("Set expected salary.");
-        if (!user.preferences?.noticePeriod) warnings.push("Set notice period.");
-    }
 
     return warnings;
 }

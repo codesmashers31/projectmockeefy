@@ -16,7 +16,6 @@ import EducationSection from "../components/profile/EducationSection";
 import ExperienceSection from "../components/profile/ExperienceSection";
 import CertificationsSection from "../components/profile/CertificationsSection";
 import SkillsSection from "../components/profile/SkillsSection";
-import PreferencesSection from "../components/profile/PreferencesSection";
 import { useQuery } from "@tanstack/react-query";
 
 export default function UserProfile() {
@@ -54,7 +53,6 @@ export default function UserProfile() {
     { id: "experience", label: "Experience", icon: Briefcase },
     { id: "certifications", label: "Certificates", icon: Trophy },
     { id: "skills", label: "Skills", icon: Zap },
-    { id: "preferences", label: "Preferences", icon: Target },
   ];
 
   const completion = profileData?.profileCompletion ?? 0;
@@ -143,7 +141,6 @@ export default function UserProfile() {
               {activeTab === "experience" && <ExperienceSection profileData={profileData} onUpdate={refetch} />}
               {activeTab === "certifications" && <CertificationsSection profileData={profileData} onUpdate={refetch} />}
               {activeTab === "skills" && <SkillsSection profileData={profileData} onUpdate={refetch} />}
-              {activeTab === "preferences" && <PreferencesSection profileData={profileData} onUpdate={refetch} />}
             </div>
           )}
         </div>
