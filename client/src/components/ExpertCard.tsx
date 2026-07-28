@@ -173,7 +173,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                     </div>
                     <div>
                         <div className="font-extrabold text-[12.5px] text-[#141A33]">{yearsExp}</div>
-                        <div className="text-[10px] text-[#8B93B2] font-bold">Years Exp.</div>
+                        <div className="text-[12px] text-[#8B93B2] font-bold">Years Exp.</div>
                     </div>
                 </div>
                 <div className="flex items-center gap-[9px] border-r border-[#F0F2F8]">
@@ -182,7 +182,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                     </div>
                     <div>
                         <div className="font-extrabold text-[12.5px] text-[#141A33]">{mentor.totalSessions > 0 ? `${mentor.totalSessions}+` : "New"}</div>
-                        <div className="text-[10px] text-[#8B93B2] font-bold">Sessions</div>
+                        <div className="text-[12px] text-[#8B93B2] font-bold">Sessions</div>
                     </div>
                 </div>
                 <div className="flex items-center gap-[9px]">
@@ -191,7 +191,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                     </div>
                     <div>
                         <div className="font-extrabold text-[12.5px] text-[#141A33]">{mentor.rating > 0 ? mentor.rating.toFixed(1) : "New"}</div>
-                        <div className="text-[10px] text-[#8B93B2] font-bold">({mentor.reviews} Reviews)</div>
+                        <div className="text-[12px] text-[#8B93B2] font-bold">({mentor.reviews} Reviews)</div>
                     </div>
                 </div>
             </div>

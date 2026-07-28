@@ -1,89 +1,223 @@
 import { Link } from "react-router-dom";
 import {
-  Sparkles,
+  Rocket,
   ArrowRight,
+  PlayCircle,
+  Star,
+  ShieldCheck,
+  MessagesSquare,
+  Lock,
+  TrendingUp,
   UserPlus,
   Search,
   CalendarCheck,
   Video,
 } from "lucide-react";
+import mainBannerImage from "@/assets/mainbanner.png";
+
+const trustBullets = [
+  { icon: ShieldCheck, title: "Verified Experts", subtitle: "Industry professionals", color: "text-blue-600", bg: "bg-blue-50" },
+  { icon: Star, title: "Real Interviews", subtitle: "Real-world practice", color: "text-purple-600", bg: "bg-purple-50" },
+  { icon: MessagesSquare, title: "Actionable Feedback", subtitle: "Improve & grow faster", color: "text-emerald-600", bg: "bg-emerald-50" },
+  { icon: Lock, title: "100% Safe & Secure", subtitle: "Your data is protected", color: "text-orange-600", bg: "bg-orange-50" },
+];
 
 const processSteps = [
-  { number: "01", icon: UserPlus, label: "Sign up & choose your role" },
-  { number: "02", icon: Search, label: "Pick a category & expert" },
-  { number: "03", icon: CalendarCheck, label: "Book date & time slot" },
-  { number: "04", icon: Video, label: "Attend session & get feedback" },
+  { number: "01", icon: UserPlus, title: "Sign up & choose your role", description: "Create your profile and tell us what role you're preparing for.", color: "text-blue-600", bg: "bg-blue-50" },
+  { number: "02", icon: Search, title: "Pick a category & expert", description: "Choose a category and book a session with a verified expert.", color: "text-purple-600", bg: "bg-purple-50" },
+  { number: "03", icon: CalendarCheck, title: "Book date & time slot", description: "Select a convenient time that works best for you.", color: "text-emerald-600", bg: "bg-emerald-50" },
+  { number: "04", icon: Video, title: "Attend session & get feedback", description: "Join the session, practice, and get detailed feedback.", color: "text-orange-600", bg: "bg-orange-50" },
+];
+
+const avatarUrls = [
+  "/media/avatars/300-1.png",
+  "/media/avatars/300-5.png",
+  "/media/avatars/300-12.png",
+  "/media/avatars/300-20.png",
 ];
 
 export default function LandingHeroSection() {
   return (
-    <section className="relative overflow-hidden bg-[#004fcb] text-white [&_h1]:!text-white [&_h2]:!text-white [&_p]:!text-white [&_span]:!text-inherit">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#004fcb] via-[#004fcb] to-blue-800/90" />
-      <div className="absolute inset-0 opacity-10" aria-hidden>
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-            backgroundSize: "28px 28px",
-          }}
-        />
-      </div>
+    <>
+      {/* HERO */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/60">
+        <div className="absolute inset-0 opacity-[0.35] pointer-events-none" aria-hidden>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `radial-gradient(circle at 2px 2px, #94a3b8 1px, transparent 0)`,
+              backgroundSize: "28px 28px",
+              maskImage: "radial-gradient(ellipse 60% 50% at 100% 0%, black 40%, transparent 80%)",
+            }}
+          />
+        </div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-200/30 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 -right-24 w-96 h-96 rounded-full bg-purple-200/30 blur-3xl pointer-events-none" />
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-14 sm:pb-16 md:pt-20 md:pb-20">
-        <div className="text-center max-w-3xl mx-auto mb-10 md:mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 border border-white/25 mb-6">
-            <Sparkles className="w-4 h-4 text-amber-200" />
-            <span className="text-sm font-semibold text-white">Mockeefy</span>
-          </div>
-          <p className="text-blue-200/90 text-xs font-bold uppercase tracking-[0.25em] mb-3">The process</p>
-          <h1 className="!text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
-            Your first interview
-            <span className="block mt-2 text-blue-100">shouldn't be the real one</span>
-          </h1>
-          <p className="mt-5 text-lg sm:text-xl text-blue-100 font-medium leading-relaxed max-w-2xl mx-auto">
-            Practice with verified HR & tech experts. Get detailed feedback. Land your dream role with confidence.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link
-              to="/signup"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#004fcb] font-bold rounded-xl hover:bg-blue-50 shadow-xl shadow-black/10 transition-all active:scale-[0.98]"
-            >
-              Get started free
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/signin"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/15 border-2 border-white/40 text-white font-semibold rounded-xl hover:bg-white/25 transition-all backdrop-blur-sm"
-            >
-              Log in
-            </Link>
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 md:pt-12">
+          <div className="grid lg:grid-cols-2 items-center gap-10 lg:gap-10">
+            {/* Left: copy */}
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 mb-5">
+                <Rocket className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-600">Your career. Our mission.</span>
+              </div>
+              <h1 className="text-4xl sm:text-5xl md:text-[50px] font-bold tracking-tighter leading-[1.08] text-slate-900">
+                Your first interview
+                <span className="block mt-1 bg-gradient-to-r from-[#004fcb] to-purple-600 bg-clip-text text-transparent">
+                  shouldn&apos;t be the real one.
+                </span>
+              </h1>
+              <p className="mt-5 text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto lg:mx-0">
+                Practice with verified HR &amp; tech experts. Get detailed feedback. Land your dream role with confidence.
+              </p>
+              <div className="mt-7 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center">
+                <Link
+                  to="/signup"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white text-base font-bold tracking-tight rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-900/20 transition-all active:scale-[0.98]"
+                >
+                  Get started free
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/watch-mock"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-slate-200 text-slate-800 text-base font-semibold tracking-tight rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-all"
+                >
+                  <PlayCircle className="w-4.5 h-4.5 text-[#004fcb]" />
+                  How it works
+                </Link>
+              </div>
+              <div className="mt-6 flex items-center justify-center lg:justify-start gap-3">
+                <div className="flex -space-x-3">
+                  {avatarUrls.map((src) => (
+                    <img
+                      key={src}
+                      src={src}
+                      alt=""
+                      className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-sm"
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    ))}
+                  </div>
+                  <span className="font-semibold text-slate-700">4.9/5</span>
+                  <span className="text-slate-500">from 10,000+ learners</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: photo + floating stat cards */}
+            <div className="relative mx-auto max-w-sm sm:max-w-md lg:max-w-none lg:w-full">
+              <div className="relative z-10 w-full aspect-4/3 rounded-3xl overflow-hidden">
+                <img
+                  src={mainBannerImage}
+                  alt="Candidate practicing a mock interview on a laptop"
+                  className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                  draggable={false}
+                />
+              </div>
+
+              <div className="hidden sm:flex absolute -top-4 left-2 lg:-left-6 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(0,79,203,0.25)] border border-slate-100 px-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-4.5 h-4.5 text-blue-600" />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Mock Interviews</p>
+                  <p className="text-lg font-bold text-slate-900 tracking-tight">10K+</p>
+                  <p className="text-[11px] text-slate-500 font-medium whitespace-nowrap">Sessions Completed</p>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex absolute top-1/2 -translate-y-1/2 -left-4 lg:-left-10 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(16,185,129,0.25)] border border-slate-100 px-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Success Rate</p>
+                  <p className="text-lg font-bold text-slate-900 tracking-tight">92%</p>
+                  <p className="text-[11px] text-slate-500 font-medium whitespace-nowrap">Got Placed</p>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex absolute -bottom-4 right-2 lg:-right-8 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(124,58,237,0.25)] border border-slate-100 px-4 py-3">
+                <div className="leading-tight text-right">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Top Experts</p>
+                  <p className="text-lg font-bold text-slate-900 tracking-tight">500+</p>
+                  <p className="text-[11px] text-slate-500 font-medium whitespace-nowrap">Verified Experts</p>
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4.5 h-4.5 text-purple-600" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {processSteps.map((step) => {
+        {/* Trust bullet strip */}
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-12 pb-8 md:pb-10">
+          <div className="rounded-2xl bg-white/90 backdrop-blur border border-slate-200/70 shadow-sm px-6 py-5 md:px-10 md:py-6 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            {trustBullets.map(({ icon: Icon, title, subtitle, color, bg }) => (
+              <div key={title} className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-4.5 h-4.5 ${color}`} />
+                </div>
+                <div className="leading-tight min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">{title}</p>
+                  <p className="text-xs text-slate-500 font-medium truncate">{subtitle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PROCESS */}
+      <section className="relative bg-white py-16 md:py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 md:mb-14">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <span className="h-px w-8 bg-purple-300" aria-hidden />
+              <p className="text-purple-600 text-xs sm:text-sm font-bold uppercase tracking-[0.2em]">The process</p>
+              <span className="h-px w-8 bg-purple-300" aria-hidden />
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 leading-tight">
+              Simple steps to{" "}
+              <span className="bg-gradient-to-r from-[#004fcb] to-purple-600 bg-clip-text text-transparent">
+                career success
+              </span>
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
+            {processSteps.map((step, i) => {
               const Icon = step.icon;
               return (
-                <div
-                  key={step.number}
-                  className="relative flex flex-col items-center text-center rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm px-4 py-5 sm:px-5 sm:py-6 hover:bg-white/15 hover:border-white/30 transition-all duration-300"
-                >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center text-white mb-3">
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2} />
+                <div key={step.number} className="relative">
+                  <div className="h-full rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6">
+                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl ${step.bg} flex items-center justify-center mb-4`}>
+                      <Icon className={`w-5 h-5 sm:w-5.5 sm:h-5.5 ${step.color}`} strokeWidth={2} />
+                    </div>
+                    <span className={`text-xs font-black uppercase tracking-widest ${step.color}`}>{step.number}</span>
+                    <h3 className="mt-2 text-[15px] sm:text-base font-bold text-slate-900 leading-snug tracking-tight">
+                      {step.title}
+                    </h3>
+                    <p className="mt-1.5 text-[13px] text-slate-500 leading-relaxed">{step.description}</p>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-black text-white/70 uppercase tracking-widest mb-1.5">
-                    {step.number}
-                  </span>
-                  <p className="text-white text-sm sm:text-base font-semibold leading-snug">
-                    {step.label}
-                  </p>
+                  {i < processSteps.length - 1 && (
+                    <div className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 z-10 items-center">
+                      <ArrowRight className="w-4 h-4 text-slate-300" strokeWidth={2.5} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

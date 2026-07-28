@@ -377,7 +377,9 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   const [now, setNow] = useState(() => new Date());
 
   useState(() => {
-    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+    if (initialView !== 'saved') {
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
+    }
   });
 
   // Bookings list: newest first + pagination
@@ -465,8 +467,11 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   };
 
   useEffect(() => {
-    if (user?.id || user?._id) {
+    if ((user?.id || user?._id) && activeView !== 'saved') {
       fetchSessions();
+    } else {
+      setLoading(false);
+      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
     }
     loadSavedExperts();
 

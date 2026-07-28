@@ -258,7 +258,7 @@ const Navigation = () => {
         ref={menuRef}
         className="bg-white border-b border-gray-100 sticky top-0 z-[100] w-full h-[72px] transition-all duration-300 shadow-sm"
       >
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className={`${user ? "max-w-[1440px] px-5 sm:px-8 lg:px-12" : "max-w-6xl px-4 sm:px-6 lg:px-8"} mx-auto h-full`}>
           <div className="flex items-center justify-between h-full gap-3">
             {/* Left: Logo */}
             {showSkeletons ? (

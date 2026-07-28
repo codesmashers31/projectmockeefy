@@ -1,7 +1,5 @@
 import {
   LandingHeroSection,
-  WhyMockeefySection,
-  LandingPricingSection,
   BookExpertsCtaSection,
   MockInterviewCardsSection,
   TrustStripSection,
@@ -15,8 +13,6 @@ export default function MarketingLanding() {
   return (
     <div className="min-h-screen bg-slate-50/50">
       <LandingHeroSection />
-      <WhyMockeefySection />
-      <LandingPricingSection />
       <BookExpertsCtaSection />
       <MockInterviewCardsSection />
       <TrustStripSection />

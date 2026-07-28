@@ -86,13 +86,18 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
 
     return (
         <div className="space-y-10 animate-in fade-in duration-500 max-w-4xl">
-            <div className="border-b border-slate-200 pb-4">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Skills & Languages</h2>
-                <p className="text-sm font-medium text-slate-500 mt-1">Add your technical skills, soft skills, and languages</p>
+            <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#004fcb] flex items-center justify-center border border-blue-100 shrink-0">
+                    <Code className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Skills & Languages</h2>
+                    <p className="text-[13px] font-medium text-slate-500 mt-1">Add your technical skills, soft skills, and languages</p>
+                </div>
             </div>
 
             {/* Technical Skills */}
-            <div className="space-y-4 bg-slate-50 border border-slate-200 rounded-[28px] p-5">
+            <div className="space-y-4 bg-slate-50 border border-slate-200 rounded-[28px] p-5 sm:p-6 hover:border-blue-100 transition-colors">
                 <div className="flex items-center gap-2">
                     <Code className="w-5 h-5 text-[#004fcb]" />
                     <h3 className="text-sm font-bold text-elite-black">Technical Skills</h3>
@@ -104,12 +109,12 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
                         value={newSkill.technical}
                         onChange={(e) => setNewSkill({ ...newSkill, technical: e.target.value })}
                         onKeyPress={(e) => e.key === "Enter" && addSkill("technical")}
-                        className="flex-1 px-4 py-2 border border-slate-200 bg-white rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        className="flex-1 h-12 px-4 border border-slate-200 bg-white hover:bg-slate-50 focus:bg-white rounded-2xl text-[14px] focus:border-[#004fcb] focus:ring-4 focus:ring-[#004fcb]/10 transition-all font-medium text-slate-800 outline-none placeholder:text-slate-400"
                         placeholder="e.g., React, Python, AWS"
                     />
                     <button
                         onClick={() => addSkill("technical")}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:opacity-95 transition-colors shadow-lg shadow-blue-500/20"
+                        className="flex items-center gap-2 px-4 h-12 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/20 text-[13px] font-bold shrink-0"
                     >
                         <Plus className="w-4 h-4" />
                         Add
@@ -131,7 +136,7 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
             </div>
 
             {/* Soft Skills */}
-            <div className="space-y-4 bg-slate-50 border border-slate-200 rounded-[28px] p-5">
+            <div className="space-y-4 bg-slate-50 border border-slate-200 rounded-[28px] p-5 sm:p-6 hover:border-blue-100 transition-colors">
                 <div className="flex items-center gap-2">
                     <Heart className="w-5 h-5 text-[#004fcb]" />
                     <h3 className="text-sm font-bold text-elite-black">Soft Skills</h3>
@@ -143,12 +148,12 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
                         value={newSkill.soft}
                         onChange={(e) => setNewSkill({ ...newSkill, soft: e.target.value })}
                         onKeyPress={(e) => e.key === "Enter" && addSkill("soft")}
-                        className="flex-1 px-4 py-2 border border-slate-200 bg-white rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        className="flex-1 h-12 px-4 border border-slate-200 bg-white hover:bg-slate-50 focus:bg-white rounded-2xl text-[14px] focus:border-[#004fcb] focus:ring-4 focus:ring-[#004fcb]/10 transition-all font-medium text-slate-800 outline-none placeholder:text-slate-400"
                         placeholder="e.g., Leadership, Communication, Teamwork"
                     />
                     <button
                         onClick={() => addSkill("soft")}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:opacity-95 transition-colors shadow-lg shadow-blue-500/20"
+                        className="flex items-center gap-2 px-4 h-12 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/20 text-[13px] font-bold shrink-0"
                     >
                         <Plus className="w-4 h-4" />
                         Add
@@ -170,7 +175,7 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
             </div>
 
             {/* Languages */}
-            <div className="space-y-4 bg-slate-50 border border-slate-200 rounded-[28px] p-5">
+            <div className="space-y-4 bg-slate-50 border border-slate-200 rounded-[28px] p-5 sm:p-6 hover:border-blue-100 transition-colors">
                 <div className="flex items-center gap-2">
                     <Globe className="w-5 h-5 text-[#004fcb]" />
                     <h3 className="text-sm font-bold text-elite-black">Languages</h3>
@@ -182,12 +187,12 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
                         value={newSkill.languages}
                         onChange={(e) => setNewSkill({ ...newSkill, languages: e.target.value })}
                         onKeyPress={(e) => e.key === "Enter" && addSkill("languages")}
-                        className="flex-1 px-4 py-2 border border-slate-200 bg-white rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        className="flex-1 h-12 px-4 border border-slate-200 bg-white hover:bg-slate-50 focus:bg-white rounded-2xl text-[14px] focus:border-[#004fcb] focus:ring-4 focus:ring-[#004fcb]/10 transition-all font-medium text-slate-800 outline-none placeholder:text-slate-400"
                         placeholder="e.g., English, Spanish, Mandarin"
                     />
                     <button
                         onClick={() => addSkill("languages")}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:opacity-95 transition-colors shadow-lg shadow-blue-500/20"
+                        className="flex items-center gap-2 px-4 h-12 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/20 text-[13px] font-bold shrink-0"
                     >
                         <Plus className="w-4 h-4" />
                         Add
@@ -208,13 +213,13 @@ export default function SkillsSection({ profileData, onUpdate }: SkillsSectionPr
                 </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-blue-50">
+            <div className="flex justify-end pt-4 border-t border-slate-100">
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:opacity-95 transition-colors disabled:opacity-50 text-[11px] font-bold shadow-lg shadow-blue-500/20"
+                    className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-[13px] font-bold shadow-lg shadow-blue-500/20 active:scale-95"
                 >
-                    <Save className="w-4 h-4" />
+                    <Save className="w-3.5 h-3.5" />
                     {saving ? "Saving..." : "Save Changes"}
                 </button>
             </div>

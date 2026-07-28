@@ -62,7 +62,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideSidebar
             </div>
 
             {/* Unified Container: Left Sidebar (only on Overview) | Main | Right Sidebar */}
-            <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-4 lg:px-5 pt-4 sm:pt-5 pb-12 sm:pb-20 transition-all duration-300">
+            <main className="flex-1 w-full max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 pt-4 sm:pt-5 pb-12 sm:pb-20 transition-all duration-300">
                 <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start w-full">
 
                     {/* Left Sidebar - only on Overview (/) ; on Sessions/Profile only main content (experts etc.) shows */}
