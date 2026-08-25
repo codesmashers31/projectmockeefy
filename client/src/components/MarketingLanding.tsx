@@ -11,7 +11,7 @@ import {
  */
 export default function MarketingLanding() {
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="min-h-screen bg-white">
       <LandingHeroSection />
       <BookExpertsCtaSection />
       <MockInterviewCardsSection />

@@ -29,11 +29,7 @@ const processSteps = [
     title: "Sign up & choose your role", 
     description: "Create your profile and tell us what role you're preparing for.", 
     color: "text-blue-600", 
-    bg: "bg-blue-50", 
-    accentBar: "from-blue-500 to-indigo-500",
-    hoverBorder: "hover:border-blue-300/80", 
-    shadow: "hover:shadow-blue-500/5",
-    glow: "group-hover/step:bg-blue-50/30"
+    bg: "bg-blue-50"
   },
   { 
     number: "02", 
@@ -41,11 +37,7 @@ const processSteps = [
     title: "Pick a category & expert", 
     description: "Choose a category and book a session with a verified expert.", 
     color: "text-purple-600", 
-    bg: "bg-purple-50", 
-    accentBar: "from-purple-500 to-indigo-500",
-    hoverBorder: "hover:border-purple-300/80", 
-    shadow: "hover:shadow-purple-500/5",
-    glow: "group-hover/step:bg-purple-50/30"
+    bg: "bg-purple-50"
   },
   { 
     number: "03", 
@@ -53,11 +45,7 @@ const processSteps = [
     title: "Book date & time slot", 
     description: "Select a convenient time that works best for you.", 
     color: "text-emerald-600", 
-    bg: "bg-emerald-50", 
-    accentBar: "from-emerald-500 to-teal-500",
-    hoverBorder: "hover:border-emerald-300/80", 
-    shadow: "hover:shadow-emerald-500/5",
-    glow: "group-hover/step:bg-emerald-50/30"
+    bg: "bg-emerald-50"
   },
   { 
     number: "04", 
@@ -65,11 +53,7 @@ const processSteps = [
     title: "Attend session & get feedback", 
     description: "Join the session, practice, and get detailed feedback.", 
     color: "text-orange-600", 
-    bg: "bg-orange-50", 
-    accentBar: "from-orange-500 to-amber-500",
-    hoverBorder: "hover:border-orange-300/80", 
-    shadow: "hover:shadow-orange-500/5",
-    glow: "group-hover/step:bg-orange-50/30"
+    bg: "bg-orange-50"
   },
 ];
 
@@ -84,19 +68,7 @@ export default function LandingHeroSection() {
   return (
     <>
       {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/60">
-        <div className="absolute inset-0 opacity-[0.35] pointer-events-none" aria-hidden>
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `radial-gradient(circle at 2px 2px, #94a3b8 1px, transparent 0)`,
-              backgroundSize: "28px 28px",
-              maskImage: "radial-gradient(ellipse 60% 50% at 100% 0%, black 40%, transparent 80%)",
-            }}
-          />
-        </div>
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-200/30 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 -right-24 w-96 h-96 rounded-full bg-purple-200/30 blur-3xl pointer-events-none" />
+      <section className="relative overflow-hidden bg-white">
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 md:pt-12">
           <div className="grid lg:grid-cols-2 items-center gap-10 lg:gap-10">
@@ -242,9 +214,7 @@ export default function LandingHeroSection() {
               const Icon = step.icon;
               return (
                 <div key={step.number} className="relative group/step">
-                  <div className={`h-full rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-sm transition-all duration-300 relative overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-lg ${step.hoverBorder} ${step.shadow} ${step.glow}`}>
-                    {/* Top Accent Line */}
-                    <div className={`absolute top-0 left-0 w-full h-[3.5px] bg-gradient-to-r ${step.accentBar}`} />
+                  <div className="h-full rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-sm transition-all duration-300 relative overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-md hover:border-slate-300">
                     
                     <div className={`w-12 h-12 rounded-2xl ${step.bg} flex items-center justify-center mb-4 transition-transform duration-300 group-hover/step:scale-105`}>
                       <Icon className={`w-5.5 h-5.5 ${step.color}`} strokeWidth={2} />
