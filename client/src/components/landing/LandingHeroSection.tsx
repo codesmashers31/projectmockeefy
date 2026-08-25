@@ -194,9 +194,9 @@ export default function LandingHeroSection() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 md:mb-14">
             <div className="flex items-center justify-center gap-3 mb-3">
-              <span className="h-px w-8 bg-purple-300" aria-hidden />
-              <p className="text-purple-600 text-xs sm:text-sm font-bold uppercase tracking-[0.2em]">The process</p>
-              <span className="h-px w-8 bg-purple-300" aria-hidden />
+              <span className="h-px w-8 bg-slate-200" aria-hidden />
+              <p className="text-slate-500 text-xs sm:text-sm font-bold uppercase tracking-[0.2em]">The process</p>
+              <span className="h-px w-8 bg-slate-200" aria-hidden />
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 leading-tight">
               Simple steps to career success
