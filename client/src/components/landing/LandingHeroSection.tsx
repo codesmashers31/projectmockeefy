@@ -80,10 +80,7 @@ export default function LandingHeroSection() {
               </div>
               <h1 className="text-4xl sm:text-5xl md:text-[54px] font-extrabold tracking-tight leading-[1.1] text-slate-900">
                 Your first interview <br className="hidden sm:inline" />
-                shouldn&apos;t be the{" "}
-                <span className="whitespace-nowrap bg-gradient-to-r from-[#004fcb] via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  real one.
-                </span>
+                shouldn&apos;t be the real one.
               </h1>
               <p className="mt-5 text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto lg:mx-0">
                 Practice with verified HR &amp; tech experts. Get detailed feedback. Land your dream role with confidence.
@@ -91,14 +88,14 @@ export default function LandingHeroSection() {
               <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center w-full">
                 <Link
                   to="/signup"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white text-base font-extrabold tracking-tight rounded-full hover:opacity-95 shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98]"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white text-base font-extrabold tracking-tight rounded-full hover:opacity-95 transition-all active:scale-[0.98]"
                 >
                   Get started free
                   <ArrowRight className="w-4.5 h-4.5" strokeWidth={2.5} />
                 </Link>
                 <Link
                   to="/watch-mock"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border border-slate-200 text-slate-700 text-base font-bold tracking-tight rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm shadow-slate-100"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border border-slate-200 text-slate-700 text-base font-bold tracking-tight rounded-full hover:bg-slate-50 hover:border-slate-350 transition-all shadow-sm shadow-slate-100"
                 >
                   <PlayCircle className="w-5 h-5 text-[#004fcb]" strokeWidth={2.5} />
                   How it works
@@ -202,10 +199,7 @@ export default function LandingHeroSection() {
               <span className="h-px w-8 bg-purple-300" aria-hidden />
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 leading-tight">
-              Simple steps to{" "}
-              <span className="bg-gradient-to-r from-[#004fcb] to-purple-600 bg-clip-text text-transparent">
-                career success
-              </span>
+              Simple steps to career success
             </h2>
           </div>
 
@@ -213,10 +207,10 @@ export default function LandingHeroSection() {
             {processSteps.map((step, i) => {
               const Icon = step.icon;
               return (
-                <div key={step.number} className="relative group/step">
-                  <div className="h-full rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-sm transition-all duration-300 relative overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-md hover:border-slate-300">
+                <div key={step.number} className="relative">
+                  <div className="h-full rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-sm relative overflow-hidden flex flex-col">
                     
-                    <div className={`w-12 h-12 rounded-2xl ${step.bg} flex items-center justify-center mb-4 transition-transform duration-300 group-hover/step:scale-105`}>
+                    <div className={`w-12 h-12 rounded-2xl ${step.bg} flex items-center justify-center mb-4`}>
                       <Icon className={`w-5.5 h-5.5 ${step.color}`} strokeWidth={2} />
                     </div>
                     <span className={`text-xs font-black uppercase tracking-widest ${step.color}`}>{step.number}</span>
@@ -226,8 +220,8 @@ export default function LandingHeroSection() {
                     <p className="mt-2 text-[13px] text-slate-500 leading-relaxed">{step.description}</p>
                   </div>
                   {i < processSteps.length - 1 && (
-                    <div className="hidden lg:flex absolute top-1/2 -right-5 lg:-right-6 -translate-y-1/2 z-20 items-center justify-center bg-white border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.05)] rounded-full w-10 h-10 group-hover/step:scale-110 group-hover/step:border-blue-200 transition-all duration-300">
-                      <ArrowRight className="w-5 h-5 text-blue-600 group-hover/step:translate-x-0.5 transition-transform duration-300" strokeWidth={3} />
+                    <div className="hidden lg:flex absolute top-1/2 -right-5 lg:-right-6 -translate-y-1/2 z-20 items-center justify-center bg-white border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.05)] rounded-full w-10 h-10">
+                      <ArrowRight className="w-5 h-5 text-blue-600" strokeWidth={3} />
                     </div>
                   )}
                 </div>
