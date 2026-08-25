@@ -7,14 +7,8 @@ export default function BookExpertsCtaSection() {
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       <Link
         to="/signup"
-        className="group relative overflow-hidden rounded-[28px] border border-blue-100 bg-gradient-to-br from-blue-50 via-indigo-50/40 to-white p-7 sm:p-9 md:p-11 shadow-[0_20px_60px_-30px_rgba(0,79,203,0.35)] hover:shadow-[0_25px_70px_-25px_rgba(0,79,203,0.4)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col lg:flex-row lg:items-center gap-9"
+        className="group relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-7 sm:p-9 md:p-11 shadow-sm flex flex-col lg:flex-row lg:items-center gap-9"
       >
-        {/* Decorative dot grid + glow */}
-        <div
-          className="absolute top-0 right-0 w-72 h-72 opacity-[0.25] pointer-events-none"
-          style={{ backgroundImage: `radial-gradient(circle at 2px 2px, #004fcb 1px, transparent 0)`, backgroundSize: "22px 22px" }}
-        />
-        <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-blue-200/30 blur-3xl pointer-events-none" />
 
         {/* Text block */}
         <div className="relative z-10 flex-1 max-w-lg">
