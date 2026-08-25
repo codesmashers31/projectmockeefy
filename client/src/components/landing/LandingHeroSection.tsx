@@ -106,28 +106,29 @@ export default function LandingHeroSection() {
                 <Rocket className="w-3.5 h-3.5 text-indigo-500" />
                 <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-600">Your career. Our mission.</span>
               </div>
-              <h1 className="text-4xl sm:text-5xl md:text-[50px] font-bold tracking-tighter leading-[1.08] text-slate-900">
-                Your first interview
-                <span className="block mt-1 bg-gradient-to-r from-[#004fcb] to-purple-600 bg-clip-text text-transparent">
-                  shouldn&apos;t be the real one.
+              <h1 className="text-4xl sm:text-5xl md:text-[54px] font-extrabold tracking-tight leading-[1.1] text-slate-900">
+                Your first interview <br className="hidden sm:inline" />
+                shouldn&apos;t be the{" "}
+                <span className="whitespace-nowrap bg-gradient-to-r from-[#004fcb] via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  real one.
                 </span>
               </h1>
               <p className="mt-5 text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto lg:mx-0">
                 Practice with verified HR &amp; tech experts. Get detailed feedback. Land your dream role with confidence.
               </p>
-              <div className="mt-7 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center">
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center w-full">
                 <Link
                   to="/signup"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white text-base font-bold tracking-tight rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-900/20 transition-all active:scale-[0.98]"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white text-base font-extrabold tracking-tight rounded-full hover:opacity-95 shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98]"
                 >
                   Get started free
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4.5 h-4.5" strokeWidth={2.5} />
                 </Link>
                 <Link
                   to="/watch-mock"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-slate-200 text-slate-800 text-base font-semibold tracking-tight rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border border-slate-200 text-slate-700 text-base font-bold tracking-tight rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm shadow-slate-100"
                 >
-                  <PlayCircle className="w-4.5 h-4.5 text-[#004fcb]" />
+                  <PlayCircle className="w-5 h-5 text-[#004fcb]" strokeWidth={2.5} />
                   How it works
                 </Link>
               </div>
@@ -165,7 +166,7 @@ export default function LandingHeroSection() {
                 />
               </div>
 
-              <div className="hidden sm:flex absolute -top-4 left-2 lg:-left-6 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(0,79,203,0.25)] border border-slate-100 px-4 py-3">
+              <div className="hidden sm:flex absolute -top-4 left-2 lg:-left-6 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(0,79,203,0.25)] border border-slate-100 px-4 py-3 hover:-translate-y-1 hover:scale-[1.03] transition-all duration-300">
                 <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                   <TrendingUp className="w-4.5 h-4.5 text-blue-600" />
                 </div>
@@ -176,7 +177,7 @@ export default function LandingHeroSection() {
                 </div>
               </div>
 
-              <div className="hidden sm:flex absolute top-1/2 -translate-y-1/2 -left-4 lg:-left-10 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(16,185,129,0.25)] border border-slate-100 px-4 py-3">
+              <div className="hidden sm:flex absolute top-1/2 -translate-y-1/2 -left-4 lg:-left-10 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(16,185,129,0.25)] border border-slate-100 px-4 py-3 hover:-translate-y-1 hover:scale-[1.03] transition-all duration-300">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                   <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
                 </div>
@@ -187,7 +188,7 @@ export default function LandingHeroSection() {
                 </div>
               </div>
 
-              <div className="hidden sm:flex absolute -bottom-4 right-2 lg:-right-8 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(124,58,237,0.25)] border border-slate-100 px-4 py-3">
+              <div className="hidden sm:flex absolute -bottom-4 right-2 lg:-right-8 z-20 items-center gap-3 bg-white rounded-2xl shadow-[0_12px_32px_-10px_rgba(124,58,237,0.25)] border border-slate-100 px-4 py-3 hover:-translate-y-1 hover:scale-[1.03] transition-all duration-300">
                 <div className="leading-tight text-right">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Top Experts</p>
                   <p className="text-lg font-bold text-slate-900 tracking-tight">500+</p>
@@ -203,15 +204,15 @@ export default function LandingHeroSection() {
 
         {/* Trust bullet strip */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-12 pb-8 md:pb-10">
-          <div className="rounded-2xl bg-white/90 backdrop-blur border border-slate-200/70 shadow-sm px-6 py-5 md:px-10 md:py-6 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+          <div className="rounded-[28px] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] px-6 py-6 md:px-10 md:py-7 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300">
             {trustBullets.map(({ icon: Icon, title, subtitle, color, bg }) => (
-              <div key={title} className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+              <div key={title} className="flex items-center gap-3.5">
+                <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`w-4.5 h-4.5 ${color}`} />
                 </div>
                 <div className="leading-tight min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{title}</p>
-                  <p className="text-xs text-slate-500 font-medium truncate">{subtitle}</p>
+                  <p className="text-[14px] font-extrabold text-slate-900 leading-snug">{title}</p>
+                  <p className="text-[11.5px] text-slate-500 font-medium truncate mt-0.5">{subtitle}</p>
                 </div>
               </div>
             ))}
