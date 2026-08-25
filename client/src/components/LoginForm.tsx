@@ -86,7 +86,7 @@ export const LoginForm = () => {
 
   return (
     <AuthLayout title="Sign in">
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
+      <div className="bg-white rounded-[28px] border border-slate-100 p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
         <div className="flex items-center justify-center gap-2 mb-5">
           <MockeefyLogo className="h-12 w-12" variant="brand" />
           <span className="text-2xl font-logo tracking-tight text-[#004fcb]">Mockeefy</span>
@@ -128,7 +128,7 @@ export const LoginForm = () => {
               placeholder="name@company.com"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full h-11 px-4 rounded-xl border-2 border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-2 focus:ring-[#004fcb]/20 focus:bg-white outline-none transition-all text-sm"
+              className="w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 focus:bg-white outline-none transition-all text-sm"
               required
             />
           </div>
@@ -154,13 +154,13 @@ export const LoginForm = () => {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full h-11 px-4 pr-11 rounded-xl border-2 border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-2 focus:ring-[#004fcb]/20 focus:bg-white outline-none transition-all text-sm"
+                className="w-full h-11 px-5 pr-12 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 focus:bg-white outline-none transition-all text-sm"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -170,7 +170,7 @@ export const LoginForm = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-11 rounded-xl bg-[#004fcb] text-white font-bold text-sm hover:bg-blue-700 focus:ring-2 focus:ring-[#004fcb]/30 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
+            className="w-full h-11 rounded-full bg-[#004fcb] text-white font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </button>

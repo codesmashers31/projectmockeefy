@@ -18,10 +18,10 @@ const userTypeOptions = [
 ];
 
 const inputClass =
-  "w-full h-11 px-4 rounded-xl border-2 border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-2 focus:ring-[#004fcb]/20 focus:bg-white outline-none transition-all text-sm";
+  "w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 focus:bg-white outline-none transition-all text-sm";
 const labelClass = "block text-xs font-semibold text-slate-700 mb-1.5";
 const btnPrimary =
-  "w-full h-11 rounded-xl bg-[#004fcb] text-white font-bold text-sm hover:bg-blue-700 focus:ring-2 focus:ring-[#004fcb]/30 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20";
+  "w-full h-11 rounded-full bg-[#004fcb] text-white font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed";
 
 export default function CompleteProfile() {
   const roleMenuRef = useRef<HTMLDivElement>(null);
@@ -111,7 +111,7 @@ export default function CompleteProfile() {
 
   return (
     <AuthLayout title="Complete profile">
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
+      <div className="bg-white rounded-[28px] border border-slate-100 p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
         <div className="flex items-center justify-center gap-2 mb-5">
           <MockeefyLogo className="h-12 w-12" variant="brand" />
           <span className="text-2xl font-logo tracking-tight text-[#004fcb]">Mockeefy</span>
@@ -151,7 +151,7 @@ export default function CompleteProfile() {
                 id="userType"
                 type="button"
                 onClick={() => setIsRoleOpen((v) => !v)}
-                className="w-full h-11 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-900 hover:border-blue-300 focus:border-[#004fcb] focus:ring-2 focus:ring-[#004fcb]/20 outline-none transition-all text-sm flex items-center justify-between"
+                className="w-full h-11 px-5 rounded-full border border-slate-200 bg-white text-slate-900 hover:border-blue-350 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 outline-none transition-all text-sm flex items-center justify-between"
                 aria-haspopup="listbox"
                 aria-expanded={isRoleOpen}
               >
