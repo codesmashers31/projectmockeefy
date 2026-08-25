@@ -23,10 +23,54 @@ const trustBullets = [
 ];
 
 const processSteps = [
-  { number: "01", icon: UserPlus, title: "Sign up & choose your role", description: "Create your profile and tell us what role you're preparing for.", color: "text-blue-600", bg: "bg-blue-50" },
-  { number: "02", icon: Search, title: "Pick a category & expert", description: "Choose a category and book a session with a verified expert.", color: "text-purple-600", bg: "bg-purple-50" },
-  { number: "03", icon: CalendarCheck, title: "Book date & time slot", description: "Select a convenient time that works best for you.", color: "text-emerald-600", bg: "bg-emerald-50" },
-  { number: "04", icon: Video, title: "Attend session & get feedback", description: "Join the session, practice, and get detailed feedback.", color: "text-orange-600", bg: "bg-orange-50" },
+  { 
+    number: "01", 
+    icon: UserPlus, 
+    title: "Sign up & choose your role", 
+    description: "Create your profile and tell us what role you're preparing for.", 
+    color: "text-blue-600", 
+    bg: "bg-blue-50", 
+    accentBar: "from-blue-500 to-indigo-500",
+    hoverBorder: "hover:border-blue-300/80", 
+    shadow: "hover:shadow-blue-500/5",
+    glow: "group-hover/step:bg-blue-50/30"
+  },
+  { 
+    number: "02", 
+    icon: Search, 
+    title: "Pick a category & expert", 
+    description: "Choose a category and book a session with a verified expert.", 
+    color: "text-purple-600", 
+    bg: "bg-purple-50", 
+    accentBar: "from-purple-500 to-indigo-500",
+    hoverBorder: "hover:border-purple-300/80", 
+    shadow: "hover:shadow-purple-500/5",
+    glow: "group-hover/step:bg-purple-50/30"
+  },
+  { 
+    number: "03", 
+    icon: CalendarCheck, 
+    title: "Book date & time slot", 
+    description: "Select a convenient time that works best for you.", 
+    color: "text-emerald-600", 
+    bg: "bg-emerald-50", 
+    accentBar: "from-emerald-500 to-teal-500",
+    hoverBorder: "hover:border-emerald-300/80", 
+    shadow: "hover:shadow-emerald-500/5",
+    glow: "group-hover/step:bg-emerald-50/30"
+  },
+  { 
+    number: "04", 
+    icon: Video, 
+    title: "Attend session & get feedback", 
+    description: "Join the session, practice, and get detailed feedback.", 
+    color: "text-orange-600", 
+    bg: "bg-orange-50", 
+    accentBar: "from-orange-500 to-amber-500",
+    hoverBorder: "hover:border-orange-300/80", 
+    shadow: "hover:shadow-orange-500/5",
+    glow: "group-hover/step:bg-orange-50/30"
+  },
 ];
 
 const avatarUrls = [
@@ -192,24 +236,27 @@ export default function LandingHeroSection() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             {processSteps.map((step, i) => {
               const Icon = step.icon;
               return (
-                <div key={step.number} className="relative">
-                  <div className="h-full rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6">
-                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl ${step.bg} flex items-center justify-center mb-4`}>
-                      <Icon className={`w-5 h-5 sm:w-5.5 sm:h-5.5 ${step.color}`} strokeWidth={2} />
+                <div key={step.number} className="relative group/step">
+                  <div className={`h-full rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-sm transition-all duration-300 relative overflow-hidden flex flex-col hover:-translate-y-1 hover:shadow-lg ${step.hoverBorder} ${step.shadow} ${step.glow}`}>
+                    {/* Top Accent Line */}
+                    <div className={`absolute top-0 left-0 w-full h-[3.5px] bg-gradient-to-r ${step.accentBar}`} />
+                    
+                    <div className={`w-12 h-12 rounded-2xl ${step.bg} flex items-center justify-center mb-4 transition-transform duration-300 group-hover/step:scale-105`}>
+                      <Icon className={`w-5.5 h-5.5 ${step.color}`} strokeWidth={2} />
                     </div>
                     <span className={`text-xs font-black uppercase tracking-widest ${step.color}`}>{step.number}</span>
-                    <h3 className="mt-2 text-[15px] sm:text-base font-bold text-slate-900 leading-snug tracking-tight">
+                    <h3 className="mt-2.5 text-[15px] sm:text-base font-bold text-slate-900 leading-snug tracking-tight">
                       {step.title}
                     </h3>
-                    <p className="mt-1.5 text-[13px] text-slate-500 leading-relaxed">{step.description}</p>
+                    <p className="mt-2 text-[13px] text-slate-500 leading-relaxed">{step.description}</p>
                   </div>
                   {i < processSteps.length - 1 && (
-                    <div className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 z-10 items-center">
-                      <ArrowRight className="w-4 h-4 text-slate-300" strokeWidth={2.5} />
+                    <div className="hidden lg:flex absolute top-1/2 -right-5 lg:-right-6 -translate-y-1/2 z-20 items-center justify-center bg-white border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.05)] rounded-full w-10 h-10 group-hover/step:scale-110 group-hover/step:border-blue-200 transition-all duration-300">
+                      <ArrowRight className="w-5 h-5 text-blue-600 group-hover/step:translate-x-0.5 transition-transform duration-300" strokeWidth={3} />
                     </div>
                   )}
                 </div>
