@@ -20,7 +20,9 @@ import {
   Bookmark,
   Award,
   Crown,
-  MessageSquare
+  MessageSquare,
+  Search,
+  ArrowRight
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
@@ -231,11 +233,12 @@ const Navigation = () => {
 
   const navItems = [
     { name: "Mock Interview", href: "/", icon: <Users size={16} /> },
+    { name: "Experts", href: "/book-session", icon: null },
     { name: "My Sessions", href: "/my-sessions", icon: <Calendar size={16} /> },
   ];
 
   const moreItems = [
-    { name: "Profile", href: "/profile", icon: <User size={16} /> },
+    { name: "Interview Resources", href: "/watch-mock", icon: <BookOpen size={16} /> },
     { name: "Saved Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
   ];
@@ -291,27 +294,30 @@ const Navigation = () => {
                 ) : (
                   <>
                     {navItems.map((item) => {
-                      const isActive = location.pathname === item.href || (location.pathname.startsWith(item.href) && item.href !== "/");
+                      const isActive = (item.href === "/" && location.pathname === "/") || (item.href !== "/" && (location.pathname === item.href || location.pathname.startsWith(item.href)));
 
                       return (
                         <Link
                           key={item.name}
                           to={item.href}
-                          className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${isActive
-                            ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
-                            : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                            }`}
+                          className={`flex items-center gap-2 px-4 py-2 text-[14px] font-semibold transition-all duration-200 rounded-full whitespace-nowrap ${
+                            isActive
+                              ? "text-blue-600 bg-blue-50/90 border border-blue-100/60 shadow-sm"
+                              : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
+                          }`}
                           onClick={closeAllDropdowns}
                         >
-                          <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-500"}`}>
-                            {item.icon}
-                          </span>
+                          {item.icon && (
+                            <span className={`${isActive ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"}`}>
+                              {item.icon}
+                            </span>
+                          )}
                           {item.name}
                         </Link>
                       );
                     })}
 
-                    {/* More dropdown */}
+                    {/* Resources dropdown */}
                     <div className="relative" ref={moreMenuRef}>
                       <button
                         type="button"
@@ -320,13 +326,14 @@ const Navigation = () => {
                           setIsProfileMenuOpen(false);
                           setIsNotificationOpen(false);
                         }}
-                        className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 px-4 py-2 text-[14px] font-medium transition-all duration-200 rounded-full whitespace-nowrap ${
                           isMoreOpen
-                            ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
-                            : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                            ? "text-blue-600 bg-blue-50/90 border border-blue-100/60 shadow-sm"
+                            : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
                         }`}
                       >
-                        More
+                        <BookOpen size={16} className="text-slate-400" />
+                        Resources
                         <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? "rotate-180" : ""}`} />
                       </button>
 
@@ -352,9 +359,6 @@ const Navigation = () => {
                 )}
               </div>
             </div>
-
-            {/* Right side: Actions */}
-            <div className="hidden md:flex items-center space-x-1 lg:space-x-3">
 
             {/* Right side: Actions */}
             <div className="hidden md:flex items-center space-x-1 lg:space-x-3">
@@ -493,18 +497,37 @@ const Navigation = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 lg:gap-3">
+                      <button
+                        type="button"
+                        className="p-2 text-slate-500 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors"
+                        aria-label="Search"
+                      >
+                        <Search size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-2 text-slate-500 hover:text-blue-600 rounded-full hover:bg-slate-50 transition-colors"
+                        aria-label="Notifications"
+                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                      >
+                        <Bell size={18} />
+                      </button>
                       <Link to="/signin">
-                        <Button variant="ghost" className="text-[15px] font-semibold text-gray-700 hover:text-blue-700 hover:bg-blue-50/50 rounded-2xl px-5 h-10">Log in</Button>
+                        <Button variant="ghost" className="text-[14px] font-semibold text-slate-800 hover:text-blue-700 hover:bg-slate-50 rounded-full px-4 h-9">
+                          Log in
+                        </Button>
                       </Link>
                       <Link to="/signup">
-                        <Button className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold rounded-2xl transition-all shadow-sm shadow-blue-500/20 border-0">Get started</Button>
+                        <Button className="h-9 px-5 bg-[#004fcb] hover:bg-blue-700 text-white text-[14px] font-semibold rounded-full transition-all shadow-sm border-0 flex items-center gap-1.5">
+                          Get started
+                          <ArrowRight size={15} />
+                        </Button>
                       </Link>
                     </div>
                   )}
                 </>
               )}
-            </div>
             </div>
 
             {/* Mobile Toggle */}
