@@ -86,7 +86,10 @@ export const RegisterForm = () => {
     }
     setIsLoading(true);
     try {
-      await sendOtp();
+      const res = await sendOtp();
+      if (res?.devOtp) {
+        setFormData((prev) => ({ ...prev, otp: String(res.devOtp) }));
+      }
       setStep("otp");
       startCountdown();
     } catch (err) {

@@ -41,6 +41,7 @@ import SubscriptionPlans from "./pages/SubscriptionPlans";
 import UserShell from "./components/UserShell";
 import { ResumeProvider } from "./context/ResumeContext";
 import { ResumeBuilderPage } from "./pages/ResumeBuilder";
+import FindMentor from "./pages/FindMentor";
 
 import PendingExpertsTable from "./components/PendingExpertsTable";
 import RejectedExpertsTable from "./components/RejectedExpertsTable";
@@ -150,6 +151,8 @@ function AppRoutes() {
 
           {/* App shell (keeps nav/side panels stable, no flicker) */}
           <Route element={<UserShell />}>
+            <Route path="/mentors" element={<FindMentor />} />
+            <Route path="/find-mentor" element={<FindMentor />} />
             <Route path="/my-sessions" element={<MySessions />} />
             <Route path="/saved-experts" element={<MySessions initialViewOverride="saved" />} />
             <Route path="/tips" element={<TipsPage />} />

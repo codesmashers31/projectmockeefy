@@ -42,6 +42,58 @@ export interface Profile {
     };
 }
 
+export const getKolkataTimeParts = (d: Date = new Date()) => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(d);
+    const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+    return {
+        year: getPart('year'),
+        month: getPart('month') - 1, // 0-indexed
+        day: getPart('day'),
+        hours: getPart('hour'),
+        minutes: getPart('minute'),
+        seconds: getPart('second')
+    };
+};
+
+export const getKolkataDateString = (d: Date | string) => {
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    if (isNaN(dateObj.getTime())) return '';
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+
+    const parts = formatter.formatToParts(dateObj);
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    const year = parts.find(p => p.type === 'year')?.value;
+
+    return `${year}-${month}-${day}`;
+};
+
+export const getKolkataToday = () => {
+    const parts = getKolkataTimeParts();
+    return new Date(parts.year, parts.month, parts.day);
+};
+
+export const getInitialKolkataMonth = () => {
+    const parts = getKolkataTimeParts();
+    return new Date(parts.year, parts.month, 1);
+};
+
 const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
     const today = new Date();

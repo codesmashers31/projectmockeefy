@@ -45,8 +45,11 @@ export default function ForgotPassword() {
       const res = await axios.post("/api/auth/send-otp", { email: emailAddress, type: "reset" });
       return res.data;
     },
-    onSuccess: (_, emailAddress) => {
+    onSuccess: (data, emailAddress) => {
       setEmail(emailAddress);
+      if (data?.devOtp) {
+        setOtp(String(data.devOtp));
+      }
       setStep(2);
       setError("");
       startCountdown();

@@ -44,6 +44,7 @@ router.post('/search', searchExperts); // Public search
 router.get("/all-experts", getAllExperts);
 router.get("/pending", getPendingExperts);
 router.get("/verified", getVerifiedExperts);
+router.get("/verified-experts", getVerifiedExperts); // Alias for compatibility
 router.get("/rejected", getRejectedExperts);
 router.put("/approve/:id", approveExpert);
 router.put("/reject/:id", rejectExpert);

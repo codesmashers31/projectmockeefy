@@ -530,9 +530,20 @@ export const sendOtp = async (req, res) => {
       : "Verify your email – Your verification code";
     const html = getOtpEmailHtml({ otp, type });
 
-    await sendEmail({ to: email, subject, html });
+    console.log(`\n========================================`);
+    console.log(`🔑 [OTP VERIFICATION CODE]`);
+    console.log(`   To:    ${cleanEmail}`);
+    console.log(`   Type:  ${type}`);
+    console.log(`   Code:  ${otp}`);
+    console.log(`========================================\n`);
 
-    res.json({ success: true, message: "OTP sent successfully" });
+    const emailSent = await sendEmail({ to: email, subject, html });
+
+    res.json({
+      success: true,
+      message: emailSent ? "OTP sent successfully" : "OTP generated. (Email delivery failed: check server console for code in dev mode)",
+      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otp } : {})
+    });
 
   } catch (error) {
     console.error("Send OTP Error:", error);

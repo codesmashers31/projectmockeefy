@@ -1,8 +1,15 @@
 import React from 'react';
+import Navigation from '../components/Navigation';
+import Footer from '../components/Footer';
 
 const PrivacyPolicy = () => {
     return (
-        <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-white flex flex-col font-sans">
+            <div className="sticky top-0 z-50">
+                <Navigation />
+            </div>
+
+            <main className="flex-1 max-w-4xl mx-auto py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Privacy Policy</h1>
             <div className="prose prose-blue max-w-none text-gray-600 space-y-6">
                 <h2 className="text-2xl font-semibold text-gray-800 mt-8 mb-4">Introduction</h2>
@@ -59,6 +66,8 @@ const PrivacyPolicy = () => {
                     <p><strong>Phone:</strong> Time: Monday - Friday(9:00 - 18:00)</p>
                 </div>
             </div>
+            </main>
+            <Footer />
         </div>
     );
 };

@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import axios from '../lib/axios';
+import Navigation from '../components/Navigation';
 
 import { ModernResumeTemplate } from '../components/ResumeBuilder/Templates/ModernTemplate';
 import { FresherTemplate } from '../components/ResumeBuilder/Templates/FresherTemplate';
@@ -186,15 +187,20 @@ export function ResumeBuilderPage() {
 
   if (isLoadingResume || isLoadingProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Loading Your Profile</h2>
-          <p className="text-gray-600 mb-6">We're preparing your resume with your existing information...</p>
-          <div className="flex justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col font-sans">
+        <div className="sticky top-0 z-50">
+          <Navigation />
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Loading Your Profile</h2>
+            <p className="text-gray-600 mb-6">We're preparing your resume with your existing information...</p>
+            <div className="flex justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
           </div>
         </div>
       </div>
@@ -204,38 +210,43 @@ export function ResumeBuilderPage() {
   // Show quick generate option if profile is complete
   if (isProfileComplete && currentStep === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-lg">
-          <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
-            <Sparkles className="w-10 h-10 text-white" />
-          </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <div className="sticky top-0 z-50">
+          <Navigation />
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center max-w-lg">
+            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
+              <Sparkles className="w-10 h-10 text-white" />
+            </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Your Profile is Ready!</h1>
-          <p className="text-lg text-gray-600 mb-8">
-            We found your complete profile information. You can generate a professional resume instantly or customize it further.
-          </p>
-
-          <div className="space-y-4">
-            <button
-              onClick={() => setCurrentStep(7)}
-              className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
-            >
-              <Sparkles className="w-6 h-6" />
-              Generate Resume from Profile
-            </button>
-
-            <button
-              onClick={() => setCurrentStep(1)}
-              className="w-full px-8 py-4 bg-white text-gray-700 rounded-lg border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors font-semibold text-lg"
-            >
-              Customize & Edit Details
-            </button>
-          </div>
-
-          <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              <strong>What we'll use:</strong> Your personal details, skills, education, experience, projects, and achievements from your profile.
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Your Profile is Ready!</h1>
+            <p className="text-lg text-gray-600 mb-8">
+              We found your complete profile information. You can generate a professional resume instantly or customize it further.
             </p>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => setCurrentStep(7)}
+                className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg cursor-pointer"
+              >
+                <Sparkles className="w-6 h-6" />
+                Generate Resume from Profile
+              </button>
+
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="w-full px-8 py-4 bg-white text-gray-700 rounded-lg border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors font-semibold text-lg cursor-pointer"
+              >
+                Customize & Edit Details
+              </button>
+            </div>
+
+            <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>What we'll use:</strong> Your personal details, skills, education, experience, projects, and achievements from your profile.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -243,8 +254,13 @@ export function ResumeBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex h-screen overflow-hidden">
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      {/* Top Navigation */}
+      <div className="sticky top-0 z-50">
+        <Navigation />
+      </div>
+
+      <div className="flex flex-1 h-[calc(100vh-68px)] overflow-hidden">
         
         {/* LEFT SIDEBAR */}
         <div className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200">

@@ -11,7 +11,15 @@ import {
 import Swal from "sweetalert2";
 import Navigation from "./Navigation";
 import Footer from "./Footer";
-import { mapExpertToProfile, Profile } from "../lib/bookSessionUtils";
+import {
+  mapExpertToProfile,
+  Profile,
+  getKolkataToday,
+  getKolkataTimeParts,
+  getKolkataDateString,
+  getInitialKolkataMonth
+} from "../lib/bookSessionUtils";
+import { BookingModal } from "./BookingModal";
 
 /**
  * Enhanced Skeleton Loader matching the LinkedIn-style design
@@ -346,60 +354,6 @@ const BookSessionPage = () => {
     fetchPrice();
   }, [profile?.id, sessionDuration, expertLevel]);
 
-
-  const getKolkataTimeParts = (d: Date = new Date()) => {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-      hour12: false
-    });
-    const parts = formatter.formatToParts(d);
-    const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
-    return {
-      year: getPart('year'),
-      month: getPart('month') - 1, // 0-indexed
-      day: getPart('day'),
-      hours: getPart('hour'),
-      minutes: getPart('minute'),
-      seconds: getPart('second')
-    };
-  };
-
-  const getKolkataDateString = (d: Date | string) => {
-    const dateObj = typeof d === 'string' ? new Date(d) : d;
-    if (isNaN(dateObj.getTime())) return '';
-    
-    // Explicitly format in India timezone (Kolkata)
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    
-    const parts = formatter.formatToParts(dateObj);
-    const month = parts.find(p => p.type === 'month')?.value;
-    const day = parts.find(p => p.type === 'day')?.value;
-    const year = parts.find(p => p.type === 'year')?.value;
-    
-    return `${year}-${month}-${day}`;
-  };
-
-  const getKolkataToday = () => {
-    const parts = getKolkataTimeParts();
-    return new Date(parts.year, parts.month, parts.day);
-  };
-
-  const getInitialKolkataMonth = () => {
-    const parts = getKolkataTimeParts();
-    return new Date(parts.year, parts.month, 1);
-  };
-
   const [currentMonth, setCurrentMonth] = useState<Date>(getInitialKolkataMonth);
   const [selectedDate, setSelectedDate] = useState(0); // Default to first available date (Today)
   // Better: selectedDate as index is tricky with switching months. 
@@ -408,11 +362,20 @@ const BookSessionPage = () => {
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
   const [showMobileBooking, setShowMobileBooking] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(() => {
+    return searchParams.get("bookNow") === "true" || !!(location.state as any)?.openBooking;
+  });
   const [activeTab, setActiveTab] = useState("details");
   const [expertAvatarError, setExpertAvatarError] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (searchParams.get("bookNow") === "true" || (location.state as any)?.openBooking) {
+      setIsBookingModalOpen(true);
+    }
+  }, [searchParams, location.state]);
 
   // Scroll active date into view horizontally on mount or when navigation drawer opens (without scrolling the window vertically)
   useEffect(() => {
@@ -1018,6 +981,24 @@ const BookSessionPage = () => {
             <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Response Time</div>
           </div>
         </div>
+
+        {/* Action Row with Book Session Button */}
+        <div className="flex items-center justify-between gap-3 mt-4 pt-3.5 border-t border-[#F0F2F8] flex-wrap">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-[#2F5FFF]">{formatPrice(displayPrice)}</span>
+            <span className="text-xs text-slate-500 font-bold">per session ({sessionDuration} mins)</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsBookingModalOpen(true)}
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-full flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Book Session</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1336,18 +1317,17 @@ const BookSessionPage = () => {
       <div className="min-h-screen bg-[#F5F7FC] pb-10">
         <Navigation />
 
-        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 py-5">
+        <div className="max-w-[1040px] mx-auto px-4 sm:px-6 py-5">
           <button
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-[9px] bg-white border border-[#EAEEF7] rounded-full pl-4 pr-5 py-2.5 font-extrabold text-sm text-[#141A33] mb-[18px] shadow-[0_4px_10px_-6px_rgba(20,26,51,.12)] hover:text-[#2F5FFF] transition-colors focus:outline-none"
+            className="inline-flex items-center gap-[9px] bg-white border border-[#EAEEF7] rounded-full pl-4 pr-5 py-2.5 font-extrabold text-sm text-[#141A33] mb-[18px] shadow-[0_4px_10px_-6px_rgba(20,26,51,.12)] hover:text-[#2F5FFF] transition-colors focus:outline-none cursor-pointer"
           >
             <ChevronLeft className="w-[15px] h-[15px]" strokeWidth={2.4} />
             Back to Home
           </button>
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-5 items-start">
-            {/* Main Content Areas */}
-            <div className="min-w-0 space-y-5">
-              {ProfileHeader()}
+
+          <div className="w-full space-y-6">
+            {ProfileHeader()}
 
               {/* Tabs Section */}
               <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
@@ -1580,72 +1560,61 @@ const BookSessionPage = () => {
                 </div>
               </div>
 
-              {CareerAdsSection()}
-            </div>
-
-            {/* Right Sidebar Column */}
-            <div className="hidden lg:block lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto no-scrollbar">
-              <div className="space-y-5 pb-6">
-                {BookingCard()}
-
-                {/* Proof Card */}
-                <div className="bg-white rounded-[22px] border border-[#EDF1FB] p-6 shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
-                  <h4 className="text-[17px] font-bold text-[#141A33] mb-4 m-0">Why learn from {firstName}?</h4>
-                  <div className="flex flex-col gap-4">
-                    {[
-                      {
-                        title: "Trusted Guidance",
-                        desc: profile.reviews > 0
-                          ? `${profile.reviews}+ reviews with strong learner feedback.`
-                          : "Verified mentor profile with a structured mock interview approach.",
-                      },
-                      {
-                        title: "Real Interview Experience",
-                        desc: `${profile.experience} of hands-on ${profile.category} experience across production teams.`,
-                      },
-                      {
-                        title: "Actionable Feedback",
-                        desc: "Every session ends with a scorecard and a concrete practice plan.",
-                      },
-                    ].map((p, i) => (
-                      <div key={i} className="flex gap-[13px]">
-                        <div className="w-[38px] h-[38px] rounded-xl bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
-                          <Check className="w-4 h-4" strokeWidth={2} />
-                        </div>
-                        <div>
-                          <div className="font-extrabold text-[13.5px] text-[#141A33]">{p.title}</div>
-                          <div className="text-[12.5px] text-[#8B93B2] font-semibold leading-normal mt-0.5">{p.desc}</div>
-                        </div>
-                      </div>
-                    ))}
+            {/* Proof Card ("Why learn from Mia?") */}
+            <div className="bg-white rounded-[22px] border border-[#EDF1FB] p-6 sm:p-7 shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
+              <h4 className="text-[18px] font-bold text-[#141A33] mb-4 m-0">Why learn from {firstName}?</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  {
+                    title: "Trusted Guidance",
+                    desc: profile.reviews > 0
+                      ? `${profile.reviews}+ reviews with strong learner feedback.`
+                      : "Verified mentor profile with a structured mock interview approach.",
+                  },
+                  {
+                    title: "Real Interview Experience",
+                    desc: `${profile.experience} of hands-on ${profile.category} experience across production teams.`,
+                  },
+                  {
+                    title: "Actionable Feedback",
+                    desc: "Every session ends with a scorecard and a concrete practice plan.",
+                  },
+                ].map((p, i) => (
+                  <div key={i} className="flex gap-[13px] p-4 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl">
+                    <div className="w-[38px] h-[38px] rounded-xl bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
+                      <Check className="w-4 h-4" strokeWidth={2} />
+                    </div>
+                    <div>
+                      <div className="font-extrabold text-[13.5px] text-[#141A33]">{p.title}</div>
+                      <div className="text-[12.5px] text-[#8B93B2] font-semibold leading-normal mt-0.5">{p.desc}</div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
+
+            {CareerAdsSection()}
           </div>
         </div>
 
-        {MobileBookingFAB()}
+        {/* Floating Book Session Action FAB for easy booking on all screens */}
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => setIsBookingModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all font-black text-sm cursor-pointer"
+          >
+            <Calendar className="w-4.5 h-4.5" />
+            <span>Book Session</span>
+          </button>
+        </div>
 
-        {/* Mobile Booking Sheet */}
-        {showMobileBooking && (
-          <div className="lg:hidden fixed inset-0 bg-black/60 z-[60] flex items-end animate-fadeIn">
-            <div className="bg-white w-full rounded-t-[24px] sm:rounded-t-[32px] max-h-[90vh] overflow-y-auto animate-slideUp relative pb-10 shadow-2xl shadow-black/20">
-              <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between z-10">
-                <div className="min-w-0">
-                  <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Book Session</h3>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">with {profile.name}</p>
-                </div>
-                <button onClick={() => setShowMobileBooking(false)} className="p-2.5 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors shrink-0" aria-label="Close">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="px-4 py-4 pb-8">
-                {BookingCard()}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* In-place Booking Box Modal */}
+        <BookingModal
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          expertId={expertId}
+          initialProfile={profile}
+        />
 
       </div>
       <Footer />
