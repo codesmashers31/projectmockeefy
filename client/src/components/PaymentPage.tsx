@@ -4,6 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, CheckCircle, Calendar, Clock, Video, ShieldCheck, Zap, Sparkles, CreditCard, Smartphone, Landmark } from "lucide-react";
 import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
+import Navigation from "./Navigation";
+import Footer from "./Footer";
 
 declare global {
   interface Window {
@@ -290,9 +292,14 @@ const PaymentPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="flex items-center justify-between mb-10">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
+      <div className="sticky top-0 z-50">
+        <Navigation />
+      </div>
+
+      <div className="flex-1 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <header className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center text-gray-600 hover:text-black transition-colors"
@@ -525,6 +532,7 @@ const PaymentPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </div>
 
       {/* Success Modal */}
       {showSuccessModal && (
@@ -565,6 +573,7 @@ const PaymentPage: React.FC = () => {
           </div>
         </div>
       )}
+      <Footer />
     </div>
   );
 };

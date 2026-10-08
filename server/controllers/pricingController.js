@@ -123,42 +123,92 @@ export const getCalculatePrice = async (req, res) => {
         }
 
         const ExpertDetails = (await import("../models/expertModel.js")).default;
-        const expert = await ExpertDetails.findOne({
-            $or: [{ _id: expertId }, { userId: expertId }],
-        }).lean();
-        if (!expert) {
-            return res.status(404).json({ success: false, message: "Expert not found" });
+        const mongoose = (await import("mongoose")).default;
+
+        let expert = null;
+        if (mongoose.Types.ObjectId.isValid(expertId)) {
+            expert = await ExpertDetails.findOne({
+                $or: [{ _id: expertId }, { userId: expertId }],
+            }).lean();
+        } else {
+            expert = await ExpertDetails.findOne({ userId: expertId }).lean();
         }
 
-        const categoryName = expert.personalInformation?.category || expert.category || "IT";
-        const level = (levelOverride && String(levelOverride).trim()) ||
-            expert.professionalDetails?.level ||
-            expert.adminMappings?.level ||
-            "Intermediate";
+        const categoryName = expert?.personalInformation?.category || expert?.category || "IT";
+        const levelRaw = (levelOverride && String(levelOverride).trim()) ||
+            expert?.professionalDetails?.level ||
+            expert?.adminMappings?.level ||
+            "Professional Mentor";
 
-        const catDoc = await Category.findOne({ name: categoryName });
+        let catDoc = await Category.findOne({ name: categoryName }).lean();
         if (!catDoc) {
-            return res.status(404).json({ success: false, message: `Category '${categoryName}' not found` });
+            catDoc = await Category.findOne({ name: new RegExp(`^${categoryName}$`, 'i') }).lean();
         }
+        if (!catDoc) {
+            catDoc = await Category.findOne({ name: "IT" }).lean() || await Category.findOne({}).lean();
+        }
+
+        // Level synonyms mapping
+        const levelLower = levelRaw.toLowerCase();
+        const levelSynonyms = {
+            "beginner": ["Beginner", "Rising Mentor"],
+            "rising mentor": ["Rising Mentor", "Beginner"],
+            "intermediate": ["Intermediate", "Professional Mentor"],
+            "professional mentor": ["Professional Mentor", "Intermediate"],
+            "advanced": ["Advanced", "Senior Mentor"],
+            "senior mentor": ["Senior Mentor", "Advanced"],
+            "elite": ["Elite Mentor", "Advanced"],
+            "elite mentor": ["Elite Mentor", "Advanced"],
+            "faang": ["FAANG Mentor", "Elite Mentor", "Advanced"],
+            "faang mentor": ["FAANG Mentor", "Elite Mentor", "Advanced"],
+        };
+        const candidateLevels = levelSynonyms[levelLower] || [levelRaw, "Professional Mentor", "Intermediate", "Rising Mentor"];
 
         let finalPrice = null;
-        const priceRule = await PricingRule.findOne({
-            categoryId: catDoc._id,
-            skillId: null,
-            level: String(level).trim(),
-            duration: durationNum,
-        });
-        if (priceRule) {
-            finalPrice = priceRule.price;
-        } else if (catDoc.amount != null && catDoc.amount >= 0) {
-            // Fallback to category base price (set in Admin → Categories)
+        let priceRule = null;
+
+        if (catDoc) {
+            for (const lvl of candidateLevels) {
+                priceRule = await PricingRule.findOne({
+                    categoryId: catDoc._id,
+                    skillId: null,
+                    level: lvl,
+                    duration: durationNum,
+                }).lean();
+                if (priceRule?.price != null) {
+                    finalPrice = priceRule.price;
+                    break;
+                }
+            }
+        }
+
+        // Fallback 1: category base price
+        if (finalPrice == null && catDoc?.amount != null && catDoc.amount >= 0) {
             finalPrice = durationNum === 30 ? catDoc.amount : Math.round(catDoc.amount * 1.8);
         }
+
+        // Fallback 2: IT default rules if category specific was missing
         if (finalPrice == null) {
-            return res.status(404).json({
-                success: false,
-                message: `Pricing not configured for category ${categoryName}, level ${level}, ${durationNum} min. Set base in Admin → Categories or rules in Admin → Pricing.`,
-            });
+            const itCat = await Category.findOne({ name: "IT" }).lean();
+            if (itCat) {
+                for (const lvl of candidateLevels) {
+                    const itRule = await PricingRule.findOne({
+                        categoryId: itCat._id,
+                        skillId: null,
+                        level: lvl,
+                        duration: durationNum,
+                    }).lean();
+                    if (itRule?.price != null) {
+                        finalPrice = itRule.price;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Fallback 3: Standard default price
+        if (finalPrice == null) {
+            finalPrice = durationNum === 30 ? 499 : 899;
         }
 
         res.json({
@@ -166,7 +216,7 @@ export const getCalculatePrice = async (req, res) => {
             finalPrice,
             currency: priceRule?.currency || "INR",
             category: categoryName,
-            level: String(level),
+            level: String(levelRaw),
             duration: durationNum,
         });
     } catch (error) {

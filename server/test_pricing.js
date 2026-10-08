@@ -10,28 +10,20 @@ const testPricing = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ MongoDB Connected');
 
-        let categoryId = "IT & Software";
+        const expertId = "6a3c0d59089e5dab6ec34346";
+        const durationNum = 30;
+        const level = "Intermediate";
 
-        // Resolve Category ID if name is passed
-        if (categoryId && !categoryId.match(/^[0-9a-fA-F]{24}$/)) {
-            const categoryDoc = await Category.findOne({ name: categoryId });
-            console.log("Found CategoryDoc?:", !!categoryDoc);
-            if (categoryDoc) {
-                categoryId = categoryDoc._id.toString();
-                console.log("Resolved category ID to:", categoryId);
-            } else {
-                console.log("Category not found");
-                process.exit(1);
-            }
-        }
+        const Expert = (await import('./models/expertModel.js')).default;
+        const expert = await Expert.findOne({ $or: [{ _id: expertId }, { userId: expertId }] }).lean();
+        console.log("Found Expert:", expert ? { id: expert._id, cat: expert.personalInformation?.category || expert.category } : null);
 
-        const level = "Beginner";
-        const duration = 30;
+        const categoryName = expert?.personalInformation?.category || expert?.category || "IT";
+        const catDoc = await Category.findOne({ name: categoryName });
+        console.log("Found Category:", catDoc?.name, catDoc?._id);
 
-        console.log("Looking for PricingRule with:", { categoryId, level, duration });
-
-        let priceRule = await PricingRule.findOne({ categoryId, skillId: null, level, duration: Number(duration) });
-        console.log("Found PriceRule:", priceRule);
+        const rule = await PricingRule.findOne({ categoryId: catDoc._id, level, duration: durationNum });
+        console.log("Found PricingRule for Intermediate 30m:", rule);
 
         process.exit(0);
     } catch (err) {

@@ -91,10 +91,10 @@ export const CategorySection = ({ title, profiles }: CategorySectionProps) => {
                     <div className={`w-11 h-11 rounded-2xl ${iconDetails.bg} flex items-center justify-center shrink-0 shadow-sm border`}>
                         {iconDetails.icon}
                     </div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                         {title === "IT" ? "Top Rated Experts" : `${title} Experts`}
                     </h2>
-                    <span className="text-xs text-slate-400 font-semibold">({profiles.length})</span>
+                    <span className="text-xs text-slate-500 font-bold">({profiles.length})</span>
                 </div>
                 {/* Scroll controls */}
                 <div className="flex gap-1.5">
@@ -120,7 +120,7 @@ export const CategorySection = ({ title, profiles }: CategorySectionProps) => {
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
                 {profiles.map((profile) => (
-                    <div key={profile.id} className="min-w-[85%] max-w-[85%] md:min-w-[calc(50%-9px)] md:max-w-[calc(50%-9px)] snap-start flex">
+                    <div key={profile.id} className="w-full min-w-full max-w-full snap-start flex">
                         <MentorJobCard mentor={profile} />
                     </div>
                 ))}

@@ -3,6 +3,8 @@ import axios from "../lib/axios";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { Search, MapPin, Briefcase, Award, ExternalLink, DollarSign, ShieldCheck, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Navigation from "../components/Navigation";
+import Footer from "../components/Footer";
 
 interface Expert {
     _id: string;
@@ -75,7 +77,12 @@ const JobReferral = () => {
     });
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+            <div className="sticky top-0 z-50">
+                <Navigation />
+            </div>
+
+            <div className="flex-1 flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
 
             {/* Hero Section */}
             <div className="w-full max-w-7xl animate-fadeIn space-y-8 mb-12">
@@ -318,6 +325,7 @@ const JobReferral = () => {
                 </div>
 
             </div>
+            <Footer />
         </div>
     );
 };

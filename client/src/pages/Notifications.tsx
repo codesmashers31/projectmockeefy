@@ -22,10 +22,6 @@ const Notifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useState(() => {
-        window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
-    });
-
     useEffect(() => {
         window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: loading } }));
     }, [loading]);

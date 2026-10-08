@@ -7,6 +7,7 @@ import {
   Briefcase,
   Award,
   Bookmark,
+  Heart,
   Check,
   Star,
   X,
@@ -376,12 +377,6 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   const [submittingReview, setSubmittingReview] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  useState(() => {
-    if (initialView !== 'saved') {
-      window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
-    }
-  });
-
   // Bookings list: newest first + pagination
   const sortedSessions = useMemo(() => {
     return [...sessions].sort(
@@ -649,38 +644,38 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             {/* Header - simple, flat title row with icon */}
             <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
-                  <Bookmark className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100 shrink-0">
+                  <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Saved Experts Library</h2>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Liked Mentors</h2>
                   <p className="text-xs font-semibold text-gray-500 mt-1">
-                    Track your shortlisted mentors and book quickly when ready.
+                    Your favorite shortlisted mentors. Book a session or view profile anytime.
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-100 bg-blue-50 text-[10px] font-black text-blue-700 uppercase tracking-wider">
-                {savedExperts.length} Saved
+              <span className="inline-flex items-center px-3 py-1 rounded-full border border-rose-100 bg-rose-50 text-[10.5px] font-black text-rose-700 uppercase tracking-wider">
+                {savedExperts.length} Liked
               </span>
             </div>
 
-            {/* List - directly rendered grid, no extra white card container! */}
+            {/* List - full-width single-column grid */}
             {savedExperts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+              <div className="grid grid-cols-1 gap-5">
                 {savedExperts.map((expert) => (
-                  <div key={expert.expertID} className="flex animate-in fade-in duration-300">
+                  <div key={expert.expertID || expert.id} className="flex animate-in fade-in duration-300">
                     <MentorJobCard mentor={expert} />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 p-20 text-center flex flex-col items-center shadow-sm">
-                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
-                  <Bookmark className="w-8 h-8 text-gray-300" />
+                <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center mb-4">
+                  <Heart className="w-8 h-8 text-rose-300" />
                 </div>
-                <h3 className="text-gray-900 font-bold mb-1">No Saved Experts</h3>
-                <p className="text-gray-500 text-sm font-medium max-w-xs mx-auto">Start saving mentors from the discovery feed to build your personal shortlist.</p>
-                <button onClick={() => navigate('/')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all cursor-pointer">Browse Mentors</button>
+                <h3 className="text-gray-900 font-bold mb-1">No Liked Mentors Yet</h3>
+                <p className="text-gray-500 text-sm font-medium max-w-xs mx-auto">Click the heart icon on any mentor card to save your top mentors here.</p>
+                <button onClick={() => navigate('/find-mentor')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all cursor-pointer">Explore Mentors</button>
               </div>
             )}
           </div>

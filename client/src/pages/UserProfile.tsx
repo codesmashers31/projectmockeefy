@@ -35,10 +35,6 @@ export default function UserProfile() {
     enabled: !!userId,
   });
 
-  useState(() => {
-    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: true } }));
-  });
-
   useEffect(() => {
     if (!userId) {
       window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
