@@ -56,8 +56,8 @@ type Session = {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    Upcoming: "bg-blue-50/50 text-blue-600 border-blue-100",
-    Confirmed: "bg-elite-blue text-white border-blue-600",
+    Upcoming: "bg-[#F0EDFF] text-[#5B4BDB] border-[#D8D1FF]",
+    Confirmed: "bg-[#5B4BDB] text-white border-[#5B4BDB]",
     Completed: "bg-slate-50 text-slate-500 border-slate-200",
     Cancelled: "bg-rose-50 text-rose-600 border-rose-100",
     Live: "bg-emerald-50 text-emerald-600 border-emerald-100",
@@ -227,13 +227,13 @@ const SessionCard: React.FC<{
   const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   return (
-    <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left h-full overflow-hidden">
+    <div className="relative bg-gradient-to-b from-[#F0EDFF]/20 via-white to-white border border-slate-200/80 rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left h-full overflow-hidden">
       {/* Decorative gradient glow */}
-      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-2xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-[#D8D1FF]/40 via-[#F0EDFF]/35 to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#F0EDFF]/30 to-transparent pointer-events-none" />
       {/* Top Header: Category & Status */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black bg-blue-50 text-[#004fcb] border border-blue-100 uppercase tracking-tight">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black bg-[#F0EDFF] text-[#5B4BDB] border border-[#D8D1FF] uppercase tracking-tight">
           {session.category || "IT"}
         </span>
         {countdown ? (
@@ -264,7 +264,7 @@ const SessionCard: React.FC<{
       {/* Date & Time */}
       <div className="bg-slate-50 border border-slate-100/50 rounded-xl p-2.5 flex items-center justify-between text-slate-700 text-xs mb-4.5 mt-auto">
         <div className="flex items-center gap-1.5 font-extrabold text-slate-800">
-          <Calendar className="w-3.5 h-3.5 text-[#004fcb]" />
+          <Calendar className="w-3.5 h-3.5 text-[#5B4BDB]" />
           <span>{dateStr}</span>
         </div>
         <div className="flex items-center gap-1.5 font-bold text-slate-500">
@@ -281,7 +281,7 @@ const SessionCard: React.FC<{
               session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
                 <button
                   onClick={() => setCertificateModalSession(session)}
-                  className="flex-1 py-2 px-3 border border-slate-200 hover:border-[#004fcb] hover:text-[#004fcb] text-slate-600 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-white"
+                  className="flex-1 py-2 px-3 border border-slate-200 hover:border-[#5B4BDB] hover:text-[#5B4BDB] text-slate-600 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-white cursor-pointer"
                 >
                   <Award className="w-3.5 h-3.5" />
                   <span>Certificate</span>
@@ -290,7 +290,7 @@ const SessionCard: React.FC<{
             ) : (
               <button
                 onClick={() => setReviewModalSession(session)}
-                className="flex-1 py-2 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>Review</span>
@@ -300,7 +300,7 @@ const SessionCard: React.FC<{
             {session.expertReview ? (
               <button
                 onClick={() => setCertificateModalSession(session)}
-                className="flex-1 py-2 px-3 border border-indigo-200 hover:border-indigo-600 hover:text-indigo-600 text-indigo-700 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-indigo-50/30"
+                className="flex-1 py-2 px-3 border border-[#D8D1FF] hover:border-[#5B4BDB] hover:text-[#5B4BDB] text-[#5B4BDB] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-[#F0EDFF] cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5 animate-pulse" />
                 <span>Feedback</span>
@@ -316,7 +316,7 @@ const SessionCard: React.FC<{
             ) : (
               <button
                 onClick={() => handleRequestFeedback(session.sessionId)}
-                className="flex-1 py-2 px-3 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 px-3 bg-[#F0EDFF] border border-[#D8D1FF] text-[#5B4BDB] hover:bg-[#F0EDFF]/80 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Request</span>
@@ -535,10 +535,10 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   };
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
+    <div className="relative w-full bg-gradient-to-b from-[#F0EDFF]/20 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
       {/* Decorative gradient glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-[#D8D1FF]/40 via-[#F0EDFF]/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#F0EDFF]/30 to-transparent pointer-events-none" />
 
       <div className="w-full relative z-10 space-y-6">
 
@@ -548,8 +548,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             {/* Header - simple, flat title row with icon */}
             <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-xl bg-[#F0EDFF] flex items-center justify-center border border-[#D8D1FF] shrink-0">
+                  <Sparkles className="w-5 h-5 text-[#5B4BDB]" />
                 </div>
                 <div>
                   <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Bookings</h1>
@@ -558,7 +558,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-100 bg-blue-50 text-[10px] font-black text-blue-700 uppercase tracking-wider">
+                <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#D8D1FF] bg-[#F0EDFF] text-[10px] font-black text-[#5B4BDB] uppercase tracking-wider">
                   Bookings
                 </span>
                 <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/50 text-xs font-bold text-slate-600">
@@ -617,7 +617,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#5B4BDB] hover:text-[#5B4BDB] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                   >
                     Prev
                   </button>
@@ -628,7 +628,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-elite-blue hover:text-elite-blue disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#5B4BDB] hover:text-[#5B4BDB] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                   >
                     Next
                   </button>
@@ -735,7 +735,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
           <div className="bg-white rounded-2xl border border-slate-200/60 p-16 text-center shadow-sm">
             <Briefcase className="w-10 h-10 text-slate-100 mx-auto mb-4" />
             <p className="text-slate-500 text-[10px] font-black tracking-tight">Intel Core "{activeView}" Encrypted</p>
-            <button onClick={() => setActiveView('overview')} className="mt-8 px-8 py-2.5 bg-elite-blue text-white rounded-xl text-[10px] font-black tracking-tight hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10">Return to Nexus</button>
+            <button onClick={() => setActiveView('overview')} className="mt-8 px-8 py-2.5 bg-[#5B4BDB] text-white rounded-xl text-[10px] font-black tracking-tight hover:bg-[#4938C8] transition-all shadow-xl shadow-[#5B4BDB]/20">Return to Nexus</button>
           </div>
         )}
 
@@ -766,7 +766,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
               </div>
               <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
                 <button onClick={() => setReviewModalSession(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium">Cancel</button>
-                <button onClick={handleSubmitReview} disabled={submittingReview} className="px-4 py-2 bg-elite-blue text-white rounded-lg text-sm font-bold hover:bg-blue-600 disabled:opacity-60">{submittingReview ? "Submitting…" : "Submit review"}</button>
+                <button onClick={handleSubmitReview} disabled={submittingReview} className="px-4 py-2 bg-[#5B4BDB] text-white rounded-lg text-sm font-bold hover:bg-[#4938C8] disabled:opacity-60">{submittingReview ? "Submitting…" : "Submit review"}</button>
               </div>
             </div>
           </div>
@@ -807,8 +807,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                         </div>
                       )}
                       {certificateModalSession.expertReview.suggestions && (
-                        <div className="mt-3 bg-indigo-50/40 border border-indigo-100/50 p-3 rounded-xl">
-                          <p className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">Key Recommendations & Suggestions</p>
+                        <div className="mt-3 bg-[#F0EDFF]/50 border border-[#D8D1FF] p-3 rounded-xl">
+                          <p className="text-[10px] font-bold text-[#5B4BDB] uppercase tracking-wider">Key Recommendations & Suggestions</p>
                           <p className="text-sm text-slate-700 mt-1">{certificateModalSession.expertReview.suggestions}</p>
                         </div>
                       )}
@@ -819,8 +819,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                         </div>
                       ) : null}
                     </div>
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 flex items-start gap-2">
-                      <Award className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="mt-4 p-3 bg-[#F0EDFF] border border-[#D8D1FF] rounded-xl text-xs text-[#5B4BDB] flex items-start gap-2">
+                      <Award className="w-4 h-4 text-[#5B4BDB] shrink-0 mt-0.5" />
                       <div>
                         <span>This session is completed and verified. You can download or share this certificate from the </span>
                         <button

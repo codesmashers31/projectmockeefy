@@ -89,7 +89,7 @@ export const LoginForm = () => {
       <div className="bg-white rounded-[28px] border border-slate-100 p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
         <div className="flex items-center justify-center gap-2 mb-5">
           <MockeefyLogo className="h-12 w-12" variant="brand" />
-          <span className="text-2xl font-logo tracking-tight text-[#004fcb]">Mockeefy</span>
+          <span className="text-2xl font-logo tracking-tight text-[#5B4BDB]">Mockeefy</span>
         </div>
 
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">Welcome back</h2>
@@ -128,7 +128,7 @@ export const LoginForm = () => {
               placeholder="name@company.com"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 focus:bg-white outline-none transition-all text-sm"
+              className="w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#5B4BDB] focus:ring-2 focus:ring-[#5B4BDB]/20 focus:bg-white outline-none transition-all text-sm"
               required
             />
           </div>
@@ -140,7 +140,7 @@ export const LoginForm = () => {
               </label>
               <Link
                 to="/forgot-password"
-                className="text-xs font-semibold text-[#004fcb] hover:text-blue-700 hover:underline"
+                className="text-xs font-semibold text-[#5B4BDB] hover:text-[#4938C8] hover:underline"
               >
                 Forgot password?
               </Link>
@@ -154,7 +154,7 @@ export const LoginForm = () => {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full h-11 px-5 pr-12 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 focus:bg-white outline-none transition-all text-sm"
+                className="w-full h-11 px-5 pr-12 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#5B4BDB] focus:ring-2 focus:ring-[#5B4BDB]/20 focus:bg-white outline-none transition-all text-sm"
                 required
               />
               <button
@@ -170,7 +170,7 @@ export const LoginForm = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-11 rounded-full bg-[#004fcb] text-white font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full h-11 rounded-full bg-[#5B4BDB] text-white font-bold text-sm hover:bg-[#4938C8] active:bg-[#3F2FB3] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </button>
@@ -196,7 +196,7 @@ export const LoginForm = () => {
 
         <p className="text-center text-sm text-slate-500 mt-6">
           Don't have an account?{" "}
-          <Link to="/signup" className="font-semibold text-[#004fcb] hover:text-blue-700 hover:underline">
+          <Link to="/signup" className="font-semibold text-[#5B4BDB] hover:text-[#4938C8] hover:underline">
             Create account
           </Link>
         </p>

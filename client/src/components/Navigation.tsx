@@ -234,7 +234,7 @@ const Navigation = () => {
               onClick={closeAllDropdowns}
             >
               <MockeefyLogo className="h-9 w-9" variant="brand" />
-              <span className="text-[18px] font-logo tracking-tight text-elite-blue group-hover:text-blue-700 transition-colors">
+              <span className="text-[18px] font-logo tracking-tight text-elite-blue group-hover:text-[#4938C8] transition-colors">
                 Mockeefy
               </span>
             </Link>
@@ -251,13 +251,13 @@ const Navigation = () => {
                     <Link
                       key={item.name}
                       to={item.href}
-                      className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${isActive
-                        ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                      className={`flex items-center gap-2 px-5 py-2.5 text-[14px] font-semibold transition-all duration-200 rounded-xl whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB] ${isActive
+                        ? "text-[#5B4BDB] bg-[#F0EDFF] shadow-xs"
+                        : "text-slate-600 hover:text-[#5B4BDB] hover:bg-slate-50"
                         }`}
                       onClick={closeAllDropdowns}
                     >
-                      <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-500"}`}>
+                      <span className={`${isActive ? "text-[#5B4BDB]" : "text-slate-400 group-hover:text-[#5B4BDB]"}`}>
                         {item.icon}
                       </span>
                       {item.name}
@@ -269,15 +269,18 @@ const Navigation = () => {
                 <div className="relative" ref={moreMenuRef}>
                   <button
                     type="button"
+                    aria-haspopup="true"
+                    aria-expanded={isMoreOpen}
+                    aria-label="More navigation options"
                     onClick={() => {
                       setIsMoreOpen((v) => !v);
                       setIsProfileMenuOpen(false);
                       setIsNotificationOpen(false);
                     }}
-                    className={`flex items-center gap-2 px-5 py-2.5 text-[15px] font-semibold transition-all duration-200 rounded-2xl whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-5 py-2.5 text-[14px] font-semibold transition-all duration-200 rounded-xl whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB] ${
                       isMoreOpen
-                        ? "text-blue-700 bg-blue-50/50 shadow-[0_2px_8px_rgb(0,0,0,0.02)]"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                        ? "text-[#5B4BDB] bg-[#F0EDFF] shadow-xs"
+                        : "text-slate-600 hover:text-[#5B4BDB] hover:bg-slate-50"
                     }`}
                   >
                     More
@@ -310,16 +313,19 @@ const Navigation = () => {
               {/* Notifications */}
               <div className="relative" ref={notificationRef}>
                 <button
+                  type="button"
+                  aria-label="View notifications"
+                  aria-expanded={isNotificationOpen}
                   onClick={() => {
                     setIsNotificationOpen(!isNotificationOpen);
                     setIsProfileMenuOpen(false);
                     if (!isNotificationOpen) fetchNotifications();
                   }}
-                  className="p-2.5 text-gray-500 hover:text-blue-600 rounded-2xl hover:bg-blue-50/50 transition-all active:scale-95 relative"
+                  className="p-2.5 text-slate-500 hover:text-[#5B4BDB] rounded-2xl hover:bg-[#F0EDFF] transition-all active:scale-95 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB]"
                 >
                   <Bell size={18} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2 bg-blue-600 text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-black border-2 border-white">
+                    <span className="absolute top-2 right-2 bg-[#5B4BDB] text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-black border-2 border-white">
                       {unreadCount}
                     </span>
                   )}
@@ -330,7 +336,7 @@ const Navigation = () => {
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                       <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Notifications</h3>
                       {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="text-xs text-elite-blue hover:text-blue-700 font-semibold">
+                        <button onClick={markAllRead} className="text-xs text-[#5B4BDB] hover:text-[#4938C8] font-semibold">
                           Mark all read
                         </button>
                       )}
@@ -377,14 +383,14 @@ const Navigation = () => {
                         {user.name?.split(" ")[0] || "User"}
                       </p>
                       {user.isPremium ? (
-                        <div className="flex items-center justify-end mt-1 gap-1 text-[11px] font-bold text-[#004fcb]">
+                        <div className="flex items-center justify-end mt-1 gap-1 text-[11px] font-bold text-[#5B4BDB]">
                           <Crown size={10} /> Premium
                         </div>
                       ) : (
                         <p className="text-[11px] text-slate-500 mt-1">Member</p>
                       )}
                     </div>
-                    <div className="w-9 h-9 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-100 transition-all">
+                    <div className="w-9 h-9 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden ring-2 ring-transparent group-hover:ring-[#5B4BDB]/20 transition-all">
                       <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
                     </div>
                     <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isProfileMenuOpen ? "rotate-180" : ""}`} />
@@ -400,7 +406,7 @@ const Navigation = () => {
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-slate-900 text-sm truncate tracking-tight">{user.name}</p>
                             {user.isPremium && (
-                              <Crown size={12} className="text-[#004fcb] shrink-0 fill-current opacity-80" />
+                              <Crown size={12} className="text-[#5B4BDB] shrink-0 fill-current opacity-80" />
                             )}
                           </div>
                           <p className="text-[10px] text-slate-400 truncate mt-0.5 tracking-tighter">{user.email}</p>
@@ -414,7 +420,7 @@ const Navigation = () => {
                             className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
                             onClick={closeAllDropdowns}
                           >
-                            <span className="mr-3 text-slate-400 transition-colors group-hover:text-elite-blue">{item.icon}</span>
+                            <span className="mr-3 text-slate-400 transition-colors group-hover:text-[#5B4BDB]">{item.icon}</span>
                             {item.name}
                           </Link>
                         ))}
@@ -434,10 +440,10 @@ const Navigation = () => {
               ) : (
                 <div className="flex items-center gap-3">
                   <Link to="/signin">
-                    <Button variant="ghost" className="text-[15px] font-semibold text-gray-700 hover:text-blue-700 hover:bg-blue-50/50 rounded-2xl px-5 h-10">Log in</Button>
+                    <Button variant="ghost" className="text-[14px] font-semibold text-gray-700 hover:text-[#5B4BDB] hover:bg-[#F0EDFF] rounded-xl px-5 h-10">Log in</Button>
                   </Link>
                   <Link to="/signup">
-                    <Button className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold rounded-2xl transition-all shadow-sm shadow-blue-500/20 border-0">Get started</Button>
+                    <Button className="h-10 px-6 bg-[#5B4BDB] hover:bg-[#4938C8] text-white text-[14px] font-semibold rounded-xl transition-all shadow-xs border-0">Get started</Button>
                   </Link>
                 </div>
               )}
@@ -453,13 +459,19 @@ const Navigation = () => {
                 >
                   <Bell size={19} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 bg-elite-blue text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border border-white">
+                    <span className="absolute top-1 right-1 bg-[#5B4BDB] text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border border-white">
                       {unreadCount}
                     </span>
                   )}
                 </Link>
               )}
-              <button onClick={toggleMenu} className="p-2 text-slate-900 hover:bg-slate-50 rounded-xl transition-colors">
+              <button
+                type="button"
+                onClick={toggleMenu}
+                aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isMenuOpen}
+                className="p-2 text-slate-900 hover:bg-slate-50 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB]"
+              >
                 {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             </div>
@@ -514,7 +526,7 @@ const Navigation = () => {
                     <Button variant="outline" className="w-full text-sm font-medium rounded-xl">Log in</Button>
                   </Link>
                   <Link to="/signup" onClick={closeAllDropdowns}>
-                    <Button className="w-full bg-elite-blue text-white text-sm font-semibold rounded-xl">Get started</Button>
+                    <Button className="w-full bg-[#5B4BDB] hover:bg-[#4938C8] text-white text-sm font-semibold rounded-xl">Get started</Button>
                   </Link>
                 </div>
               )}

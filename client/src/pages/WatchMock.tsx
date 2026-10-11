@@ -144,23 +144,23 @@ const WatchMock = () => {
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 {/* Progress Line */}
                                 <div className="h-1 bg-white/30 rounded-full mb-4 cursor-pointer overflow-hidden">
-                                    <div className="h-full w-1/3 bg-[#004fcb] relative"></div>
+                                    <div className="h-full w-1/3 bg-[#5B4BDB] relative"></div>
                                 </div>
 
                                 <div className="flex items-center justify-between text-white">
                                     <div className="flex items-center gap-4">
-                                        <button onClick={togglePlay} className="hover:text-blue-400 transition-colors">
+                                        <button onClick={togglePlay} className="hover:text-[#D8D1FF] transition-colors">
                                             {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
                                         </button>
-                                        <button className="hover:text-blue-400">
+                                        <button className="hover:text-[#D8D1FF]">
                                             <Volume2 size={20} />
                                         </button>
                                         <span className="text-xs font-medium">12:30 / {currentVideo.duration}</span>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <button className="hover:text-blue-400 text-xs font-bold border border-white/30 px-1.5 py-0.5 rounded">1x</button>
-                                        <button className="hover:text-blue-400"><Settings size={20} /></button>
-                                        <button className="hover:text-blue-400"><Maximize size={20} /></button>
+                                        <button className="hover:text-[#D8D1FF] text-xs font-bold border border-white/30 px-1.5 py-0.5 rounded">1x</button>
+                                        <button className="hover:text-[#D8D1FF]"><Settings size={20} /></button>
+                                        <button className="hover:text-[#D8D1FF]"><Maximize size={20} /></button>
                                     </div>
                                 </div>
                             </div>
@@ -176,9 +176,9 @@ const WatchMock = () => {
                                     <div className="flex items-center gap-2 shrink-0">
                                         <button
                                             onClick={() => setIsBookmarked(!isBookmarked)}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${isBookmarked ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${isBookmarked ? 'bg-[#F0EDFF] text-[#5B4BDB] border-[#D8D1FF]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
                                         >
-                                            <Bookmark size={18} className={isBookmarked ? "fill-blue-700" : ""} />
+                                            <Bookmark size={18} className={isBookmarked ? "fill-[#5B4BDB]" : ""} />
                                             {isBookmarked ? 'Saved' : 'Save'}
                                         </button>
                                         <button className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors">
@@ -192,11 +192,11 @@ const WatchMock = () => {
 
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-6">
                                     <span className="flex items-center gap-1.5 font-medium text-gray-900">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#004fcb] to-blue-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white shadow-sm">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5B4BDB] to-[#4938C8] flex items-center justify-center text-white text-xs font-bold ring-2 ring-white shadow-sm">
                                             {currentVideo.instructor.charAt(0)}
                                         </div>
                                         {currentVideo.instructor}
-                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] uppercase font-bold rounded-full">{currentVideo.role}</span>
+                                        <span className="px-2 py-0.5 bg-[#F0EDFF] text-[#5B4BDB] text-[10px] uppercase font-bold rounded-full">{currentVideo.role}</span>
                                     </span>
                                     <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                                     <span>{currentVideo.uploaded}</span>
@@ -292,17 +292,17 @@ const WatchMock = () => {
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <h4 className={`text-sm font-bold leading-snug mb-1 line-clamp-2 ${isActive ? 'text-[#004fcb]' : 'text-gray-900 group-hover:text-[#004fcb] transition-colors'}`}>
+                                                <h4 className={`text-sm font-bold leading-snug mb-1 line-clamp-2 ${isActive ? 'text-[#5B4BDB]' : 'text-gray-900 group-hover:text-[#5B4BDB] transition-colors'}`}>
                                                     {video.title}
                                                 </h4>
                                                 <p className="text-xs text-gray-500 truncate mb-1">{video.instructor}</p>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${video.type === 'System Design' ? 'bg-purple-100 text-purple-700' :
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${video.type === 'System Design' ? 'bg-[#F0EDFF] text-[#5B4BDB]' :
                                                             video.type === 'Frontend' ? 'bg-pink-100 text-pink-700' :
                                                                 video.type === 'Backend' ? 'bg-green-100 text-green-700' :
                                                                     'bg-gray-100 text-gray-600'
                                                         }`}>
-                                                        {video.type}
+                                                         {video.type}
                                                     </span>
                                                 </div>
                                             </div>
@@ -313,7 +313,7 @@ const WatchMock = () => {
 
                             {/* Playlist Footer */}
                             <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
-                                <button className="text-xs font-bold text-[#004fcb] hover:underline uppercase tracking-widest">
+                                <button className="text-xs font-bold text-[#5B4BDB] hover:text-[#4938C8] hover:underline uppercase tracking-widest cursor-pointer">
                                     View Full Playlist
                                 </button>
                             </div>

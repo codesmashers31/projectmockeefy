@@ -300,9 +300,8 @@ const AiInterview = () => {
 
     if (sessionState === 'live') {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col font-sans transition-all duration-500">
-                <Navigation />
-                <main className="flex-1 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col items-center justify-center relative">
+            <div className="w-full font-sans transition-all duration-500">
+                <div className="max-w-[1600px] mx-auto py-4 w-full flex flex-col items-center justify-center relative">
 
                     {/* Header Info */}
                     <div className="absolute top-8 left-8 right-8 flex items-center justify-between">
@@ -335,13 +334,13 @@ const AiInterview = () => {
                         {/* Pulse Rings */}
                         {(voiceState === 'listening' || voiceState === 'speaking') && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-64 h-64 bg-blue-500/5 rounded-full animate-ping opacity-75"></div>
-                                <div className="w-48 h-48 bg-blue-500/10 rounded-full animate-ping opacity-50 delay-150"></div>
+                                <div className="w-64 h-64 bg-[#5B4BDB]/10 rounded-full animate-ping opacity-75"></div>
+                                <div className="w-48 h-48 bg-[#5B4BDB]/15 rounded-full animate-ping opacity-50 delay-150"></div>
                             </div>
                         )}
 
                         {/* Avatar Circle */}
-                        <div className={`relative w-40 h-40 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 z-10 overflow-hidden ${voiceState === 'speaking' ? 'bg-gradient-to-br from-blue-500 to-indigo-600 scale-110' :
+                        <div className={`relative w-40 h-40 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 z-10 overflow-hidden ${voiceState === 'speaking' ? 'bg-gradient-to-br from-[#5B4BDB] to-[#4938C8] scale-110' :
                             voiceState === 'listening' ? 'bg-gradient-to-br from-red-500 to-pink-600 scale-105' :
                                 voiceState === 'processing' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
                                     'bg-white border-4 border-gray-100'
@@ -351,7 +350,7 @@ const AiInterview = () => {
 
                         {/* Status Badge + Voice controls */}
                         <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 relative z-10">
-                            <div className="px-6 py-2 bg-white border border-gray-200 rounded-full shadow-sm text-sm font-bold uppercase tracking-widest text-[#004fcb]">
+                            <div className="px-6 py-2 bg-white border border-[#D8D1FF] rounded-full shadow-sm text-sm font-bold uppercase tracking-widest text-[#5B4BDB]">
                                 {voiceState === 'idle' && "Tap the mic to speak your answer"}
                                 {voiceState === 'listening' && "Listening… tap again when done"}
                                 {voiceState === 'processing' && "Thinking..."}
@@ -361,7 +360,7 @@ const AiInterview = () => {
                                 <button
                                     type="button"
                                     onClick={() => setAiVoiceEnabled((v) => !v)}
-                                    className={`p-2.5 rounded-xl border transition-all ${aiVoiceEnabled ? 'bg-blue-50 border-blue-200 text-[#004fcb]' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
+                                    className={`p-2.5 rounded-xl border transition-all ${aiVoiceEnabled ? 'bg-[#F0EDFF] border-[#D8D1FF] text-[#5B4BDB]' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
                                     title={aiVoiceEnabled ? 'Turn off AI voice' : 'Turn on AI voice'}
                                 >
                                     {aiVoiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
@@ -395,10 +394,10 @@ const AiInterview = () => {
                             ) : (
                                 transcript.map((msg, i) => (
                                     <div key={i} className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${msg.sender === 'ai' ? 'bg-[#004fcb] text-white' : 'bg-gray-600 text-white'}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${msg.sender === 'ai' ? 'bg-[#5B4BDB] text-white' : 'bg-gray-600 text-white'}`}>
                                             {msg.sender === 'ai' ? 'AI' : 'You'}
                                         </div>
-                                        <div className={`p-3 rounded-2xl text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap ${msg.sender === 'ai' ? 'bg-gray-100 text-gray-900 rounded-tl-none' : 'bg-[#004fcb] text-white rounded-tr-none'}`}>
+                                        <div className={`p-3 rounded-2xl text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap ${msg.sender === 'ai' ? 'bg-gray-100 text-gray-900 rounded-tl-none' : 'bg-[#5B4BDB] text-white rounded-tr-none'}`}>
                                             {msg.text}
                                         </div>
                                     </div>
@@ -420,7 +419,7 @@ const AiInterview = () => {
                                 className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
                                     ? 'bg-red-500 text-white scale-110 animate-pulse'
                                     : canSpeak
-                                        ? 'bg-[#004fcb] text-white hover:bg-blue-600 hover:scale-105 active:scale-95'
+                                        ? 'bg-[#5B4BDB] text-white hover:bg-[#4938C8] hover:scale-105 active:scale-95 shadow-[#5B4BDB]/25'
                                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                                 title={isListening ? 'Tap to stop and send' : 'Tap to speak your answer'}
@@ -435,7 +434,7 @@ const AiInterview = () => {
                         </p>
                     </div>
 
-                </main>
+                </div>
             </div>
         );
     }
@@ -443,9 +442,8 @@ const AiInterview = () => {
     if (sessionState === 'completed') {
         const r = evaluationReport;
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-                <Navigation />
-                <main className="flex-1 max-w-[800px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="w-full font-sans py-4">
+                <div className="max-w-[800px] mx-auto">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center shrink-0">
                             <CheckCircle2 className="w-8 h-8 text-green-600" />
@@ -519,29 +517,25 @@ const AiInterview = () => {
                             <RotateCcw size={18} /> Start New Interview
                         </button>
                     </div>
-                </main>
-                <Footer />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 selection:bg-blue-100">
-            <Navigation />
-
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 flex-1 w-full">
+        <div className="w-full font-sans text-gray-900 space-y-6">
 
                 {/* Header */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#004fcb]"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D8D1FF] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#5B4BDB]"></span>
                         </span>
-                        <span className="text-[#004fcb] font-bold text-xs tracking-widest uppercase">AI Session Builder</span>
+                        <span className="text-[#5B4BDB] font-bold text-xs tracking-widest uppercase">AI Session Builder</span>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight mb-2">
-                        Design Your <span className="text-[#004fcb]">Perfect Interview</span>
+                        Design Your <span className="text-[#5B4BDB]">Perfect Interview</span>
                     </h1>
                     <p className="text-gray-500 text-base font-medium">Configure the AI to match your exact career goals.</p>
                 </div>
@@ -556,11 +550,11 @@ const AiInterview = () => {
                             <div className="flex items-center gap-3 mb-6">
                                 {[1, 2, 3].map((s) => (
                                     <div key={s} className="flex items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all border ${step >= s ? "bg-[#004fcb] text-white border-[#004fcb]" : "bg-white text-gray-400 border-gray-200"
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all border ${step >= s ? "bg-[#5B4BDB] text-white border-[#5B4BDB]" : "bg-white text-gray-400 border-gray-200"
                                             }`}>
                                             {s}
                                         </div>
-                                        {s < 3 && <div className={`w-12 h-1 rounded-full ${step > s ? "bg-[#004fcb]" : "bg-gray-200"}`}></div>}
+                                        {s < 3 && <div className={`w-12 h-1 rounded-full ${step > s ? "bg-[#5B4BDB]" : "bg-gray-200"}`}></div>}
                                     </div>
                                 ))}
                             </div>
@@ -585,20 +579,20 @@ const AiInterview = () => {
                                                     key={item.id}
                                                     onClick={() => setConfig({ ...config, goal: item.id as MockType })}
                                                     className={`p-4 rounded-xl border text-left transition-all duration-300 group relative overflow-hidden ${config.goal === item.id
-                                                        ? "bg-blue-50 border-[#004fcb] ring-1 ring-blue-200"
-                                                        : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-md"
+                                                        ? "bg-[#F0EDFF] border-[#5B4BDB] ring-1 ring-[#D8D1FF]"
+                                                        : "bg-white border-gray-200 hover:border-[#D8D1FF] hover:shadow-md"
                                                         }`}
                                                 >
-                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors ${config.goal === item.id ? "bg-[#004fcb] text-white" : "bg-blue-50 text-[#004fcb] group-hover:bg-[#004fcb] group-hover:text-white"
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors ${config.goal === item.id ? "bg-[#5B4BDB] text-white" : "bg-[#F0EDFF] text-[#5B4BDB] group-hover:bg-[#5B4BDB] group-hover:text-white"
                                                         }`}>
                                                         {item.icon}
                                                     </div>
-                                                    <h3 className={`text-base font-bold mb-0.5 ${config.goal === item.id ? "text-[#004fcb]" : "text-gray-900"}`}>{item.label}</h3>
+                                                    <h3 className={`text-base font-bold mb-0.5 ${config.goal === item.id ? "text-[#5B4BDB]" : "text-gray-900"}`}>{item.label}</h3>
                                                     <p className="text-xs text-gray-500 font-medium group-hover:text-gray-600 transition-colors">{item.desc}</p>
 
                                                     {config.goal === item.id && (
                                                         <div className="absolute top-4 right-4">
-                                                            <CheckCircle2 className="text-[#004fcb] w-5 h-5" />
+                                                            <CheckCircle2 className="text-[#5B4BDB] w-5 h-5" />
                                                         </div>
                                                     )}
                                                 </button>
@@ -625,7 +619,7 @@ const AiInterview = () => {
                                                         value={config.role}
                                                         onChange={(e) => setConfig({ ...config, role: e.target.value })}
                                                         placeholder="e.g. Senior Frontend Developer"
-                                                        className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-[#004fcb] transition-all font-medium"
+                                                        className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B4BDB]/20 focus:border-[#5B4BDB] transition-all font-medium"
                                                     />
                                                 </div>
                                             </div>
@@ -639,7 +633,7 @@ const AiInterview = () => {
                                                             key={exp}
                                                             onClick={() => setConfig({ ...config, experience: exp as ExperienceLevel })}
                                                             className={`py-3 rounded-xl text-sm font-bold border transition-all ${config.experience === exp
-                                                                ? "bg-[#004fcb] text-white border-[#004fcb] shadow-lg shadow-blue-200"
+                                                                ? "bg-[#5B4BDB] text-white border-[#5B4BDB] shadow-lg shadow-[#5B4BDB]/20"
                                                                 : "bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
                                                                 }`}
                                                         >
@@ -652,9 +646,9 @@ const AiInterview = () => {
                                             {/* Skills Input */}
                                             <div className="space-y-3">
                                                 <label className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Key Skills (Press Enter)</label>
-                                                <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-wrap gap-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-[#004fcb] transition-all">
+                                                <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-wrap gap-2 focus-within:ring-2 focus-within:ring-[#5B4BDB]/20 focus-within:border-[#5B4BDB] transition-all">
                                                     {config.skills.map((skill) => (
-                                                        <span key={skill} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 animate-in zoom-in-50 duration-200 border border-blue-100">
+                                                        <span key={skill} className="bg-[#F0EDFF] text-[#5B4BDB] px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 animate-in zoom-in-50 duration-200 border border-[#D8D1FF]">
                                                             {skill}
                                                             <button onClick={() => removeSkill(skill)} className="hover:text-red-500 transition-colors"><span className="sr-only">Remove</span>&times;</button>
                                                         </span>
@@ -669,7 +663,7 @@ const AiInterview = () => {
                                                     />
                                                 </div>
                                                 <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <Sparkles className="w-3 h-3 text-[#004fcb]" />
+                                                    <Sparkles className="w-3 h-3 text-[#5B4BDB]" />
                                                     AI will adapt questions based on these skills
                                                 </p>
                                             </div>
@@ -703,7 +697,7 @@ const AiInterview = () => {
                                                         const val = parseInt(e.target.value);
                                                         setConfig({ ...config, difficulty: val === 0 ? 'easy' : val === 1 ? 'medium' : 'hard' });
                                                     }}
-                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#004fcb]"
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#5B4BDB]"
                                                 />
                                                 <div className="flex justify-between text-xs text-gray-400 font-medium px-1">
                                                     <span>Easy</span>
@@ -725,7 +719,7 @@ const AiInterview = () => {
                                                             key={tone.id}
                                                             onClick={() => setConfig({ ...config, tone: tone.id as Tone })}
                                                             className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-bold transition-all ${config.tone === tone.id
-                                                                ? "bg-blue-50 border-[#004fcb] text-[#004fcb]"
+                                                                ? "bg-[#F0EDFF] border-[#5B4BDB] text-[#5B4BDB]"
                                                                 : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                                                                 }`}
                                                         >
@@ -783,7 +777,7 @@ const AiInterview = () => {
                                 ) : (
                                     <button
                                         onClick={startInterview}
-                                        className="ml-auto px-8 py-3 bg-[#004fcb] text-white font-bold text-sm rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all flex items-center gap-2 transform hover:scale-105"
+                                        className="ml-auto px-8 py-3 bg-[#5B4BDB] text-white font-bold text-sm rounded-xl hover:bg-[#4938C8] active:bg-[#3F2FB3] hover:shadow-lg hover:shadow-[#5B4BDB]/25 transition-all flex items-center gap-2 transform hover:scale-105"
                                     >
                                         Start AI Interview <Sparkles className="w-4 h-4" />
                                     </button>
@@ -796,7 +790,7 @@ const AiInterview = () => {
                     {/* RIGHT PANEL: Live Preview (5 Cols) */}
                     <div className="lg:col-span-5 hidden lg:block">
                         <div className="sticky top-24">
-                            <div className="bg-white border border-gray-200 rounded-3xl p-1 overflow-hidden shadow-xl shadow-blue-50/50">
+                            <div className="bg-white border border-gray-200 rounded-3xl p-1 overflow-hidden shadow-xl shadow-gray-200/50">
                                 {/* Fake Window Header */}
                                 <div className="bg-gray-50 px-5 py-2.5 flex items-center gap-2 border-b border-gray-200">
                                     <div className="flex gap-1.5">
@@ -823,14 +817,14 @@ const AiInterview = () => {
                                     {/* Chat Bubble */}
                                     <div className="relative z-10 bg-gray-50 border border-gray-100 rounded-2xl p-6 mb-4 shadow-sm">
                                         <p className="text-gray-800 text-lg leading-relaxed font-medium">
-                                            "{previewText}<span className="inline-block w-2 h-5 bg-[#004fcb] ml-1 animate-pulse"></span>"
+                                            "{previewText}<span className="inline-block w-2 h-5 bg-[#5B4BDB] ml-1 animate-pulse"></span>"
                                         </p>
                                     </div>
 
                                     {/* Dynamic Tags Preview */}
                                     <div className="mt-auto flex flex-wrap gap-2 justify-center opacity-70">
                                         {config.goal && (
-                                            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold border border-blue-100 caption-bottom">
+                                            <span className="px-3 py-1 rounded-full bg-[#F0EDFF] text-[#5B4BDB] text-xs font-bold border border-[#D8D1FF] caption-bottom">
                                                 {config.goal.replace('-', ' ').toUpperCase()}
                                             </span>
                                         )}
@@ -848,8 +842,8 @@ const AiInterview = () => {
                             </div>
 
                             {/* Tips Card */}
-                            <div className="mt-6 bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
-                                <div className="p-2 bg-blue-100 rounded-lg text-[#004fcb]">
+                            <div className="mt-6 bg-[#F0EDFF]/50 border border-[#D8D1FF] rounded-2xl p-4 flex items-start gap-3">
+                                <div className="p-2 bg-[#F0EDFF] rounded-lg text-[#5B4BDB]">
                                     <Zap className="w-5 h-5" />
                                 </div>
                                 <div>
@@ -862,9 +856,6 @@ const AiInterview = () => {
                     </div>
 
                 </div>
-            </main>
-
-            <Footer />
         </div>
     );
 };

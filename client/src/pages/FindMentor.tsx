@@ -1,23 +1,65 @@
 import React, { useMemo, useState, useEffect, useRef, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "../lib/axios";
-import { MentorJobCard, MentorProfile } from "../components/MentorJobCard";
+import { MentorJobCard, MentorCardSkeleton, MentorProfile } from "../components/MentorJobCard";
 import { getProfileImageUrl } from "../lib/imageUtils";
-import { calculateProfessionalExperience, getCurrentCompany, getJobTitle } from "../lib/expertUtils";
-import { Search, Users, Sparkles, X, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import {
+  calculateProfessionalExperience,
+  getCurrentCompany,
+  getJobTitle,
+} from "../lib/expertUtils";
+import {
+  Search,
+  Users,
+  Sparkles,
+  X,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 10;
 
 export default function FindMentor() {
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearch = useDeferredValue(searchQuery);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [selectedExpRanges, setSelectedExpRanges] = useState<string[]>([]);
+  const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>("All");
   const [sortBy, setSortBy] = useState("recommended");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
 
+  // Filter Accordions
+  const [expandedSections, setExpandedSections] = useState({
+    company: true,
+    experience: true,
+    price: false,
+    availability: false,
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
   // Fetch verified active experts from API
-  const { data: expertsData = [], isLoading } = useQuery({
+  const {
+    data: expertsData = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["allMentorsList"],
     queryFn: async () => {
       const response = await axios.get("/api/expert/verified");
@@ -27,18 +69,22 @@ export default function FindMentor() {
   });
 
   // Map backend experts to MentorProfile
-  const allMentors = useMemo(() => {
+  const allMentors = useMemo<MentorProfile[]>(() => {
     if (!Array.isArray(expertsData)) return [];
 
     return expertsData.map((expert: any) => {
-      const cat = expert.category || expert.professionalDetails?.industry || "Software Engineering";
-      
+      const cat =
+        expert.personalInformation?.category ||
+        expert.category ||
+        expert.professionalDetails?.industry ||
+        "Software Engineering";
+
       const skills = (() => {
         if (Array.isArray(expert.skillsAndExpertise?.tools) && expert.skillsAndExpertise.tools.length) {
           return expert.skillsAndExpertise.tools;
         }
         if (Array.isArray(expert.expertSkills) && expert.expertSkills.length) {
-          return expert.expertSkills.map((s: any) => (typeof s === "string" ? s : s.skillName));
+          return expert.expertSkills.map((s: any) => (typeof s === "string" ? s : s.skillName)).filter(Boolean);
         }
         if (Array.isArray(expert.skills) && expert.skills.length) {
           return expert.skills;
@@ -47,6 +93,9 @@ export default function FindMentor() {
       })();
 
       const exp = (() => {
+        if (expert.professionalDetails?.totalExperience) {
+          return `${expert.professionalDetails.totalExperience} yrs`;
+        }
         if (expert.professionalDetails?.experience) {
           return `${expert.professionalDetails.experience} yrs`;
         }
@@ -60,7 +109,7 @@ export default function FindMentor() {
       return {
         id: expert._id || expert.userId,
         expertID: expert._id || expert.userId,
-        name: expert.personalInformation?.userName || "Verified Mentor",
+        name: expert.personalInformation?.userName || expert.name || "Verified Mentor",
         role: getJobTitle(expert.professionalDetails, cat),
         company: getCurrentCompany(expert.professionalDetails, cat),
         location: expert.personalInformation?.city || "Remote",
@@ -71,21 +120,17 @@ export default function FindMentor() {
         price: expert.price ? String(expert.price) : "799",
         minPrice: expert.minPrice,
         maxPrice: expert.maxPrice,
-        minOriginalPrice: expert.minOriginalPrice,
-        maxOriginalPrice: expert.maxOriginalPrice,
-        skills: skills,
+        skills,
         experience: exp,
         activeTime: expert.availability?.nextAvailable || "Available Today",
         totalSessions: expert.metrics?.totalSessions || 15,
         category: cat,
         bio: expert.personalInformation?.bio || "",
-        level: expert.professionalDetails?.level || "Senior",
-        allTags: [cat, ...skills, expert.professionalDetails?.industry].filter(Boolean).map(s => s.toString())
-      } as MentorProfile;
+      };
     });
   }, [expertsData]);
 
-  // Extract unique categories for filter chips
+  // Unique Categories and Companies
   const categories = useMemo(() => {
     const set = new Set<string>();
     allMentors.forEach((m) => {
@@ -94,56 +139,218 @@ export default function FindMentor() {
     return ["All", ...Array.from(set).sort()];
   }, [allMentors]);
 
+  const uniqueCompanies = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allMentors.forEach((m) => {
+      const comp = m.company?.trim();
+      if (comp && !/l[ae]ntera/i.test(comp)) {
+        counts[comp] = (counts[comp] || 0) + 1;
+      }
+    });
+    return Object.keys(counts).sort((a, b) => {
+      const diff = counts[b] - counts[a];
+      if (diff !== 0) return diff;
+      return a.localeCompare(b);
+    });
+  }, [allMentors]);
+
+  // Real Counts for Filter Items
+  const companyCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    allMentors.forEach((m) => {
+      if (m.company) map[m.company] = (map[m.company] || 0) + 1;
+    });
+    return map;
+  }, [allMentors]);
+
+  const expCounts = useMemo(() => {
+    const counts = { "0-2": 0, "3-5": 0, "6-10": 0, "10+": 0 };
+    allMentors.forEach((m) => {
+      const match = (m.experience || "").match(/\d+/);
+      const exp = match ? parseInt(match[0], 10) : 0;
+      if (exp <= 2) counts["0-2"]++;
+      else if (exp <= 5) counts["3-5"]++;
+      else if (exp <= 10) counts["6-10"]++;
+      else counts["10+"]++;
+    });
+    return counts;
+  }, [allMentors]);
+
+  const priceCounts = useMemo(() => {
+    const counts = { "under-1000": 0, "1000-2000": 0, "2000+": 0 };
+    allMentors.forEach((m) => {
+      const price = m.minPrice ?? parseInt((m.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
+      if (price < 1000) counts["under-1000"]++;
+      else if (price <= 2000) counts["1000-2000"]++;
+      else counts["2000+"]++;
+    });
+    return counts;
+  }, [allMentors]);
+
+  const toggleCompany = (comp: string) => {
+    setSelectedCompanies((prev) =>
+      prev.includes(comp) ? prev.filter((c) => c !== comp) : [...prev, comp]
+    );
+  };
+
+  const toggleExpRange = (range: string) => {
+    setSelectedExpRanges((prev) =>
+      prev.includes(range) ? prev.filter((r) => r !== range) : [...prev, range]
+    );
+  };
+
+  const togglePriceRange = (range: string) => {
+    setSelectedPriceRanges((prev) =>
+      prev.includes(range) ? prev.filter((r) => r !== range) : [...prev, range]
+    );
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("All");
+    setSelectedCompanies([]);
+    setSelectedExpRanges([]);
+    setSelectedPriceRanges([]);
+    setAvailabilityFilter("All");
+    setSortBy("recommended");
+    setCurrentPage(1);
+  };
+
   // Reset pagination to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, deferredSearch, sortBy]);
+  }, [
+    selectedCategory,
+    deferredSearch,
+    selectedCompanies,
+    selectedExpRanges,
+    selectedPriceRanges,
+    availabilityFilter,
+    sortBy,
+  ]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedCategory !== "All") count++;
+    if (selectedCompanies.length > 0) count += selectedCompanies.length;
+    if (selectedExpRanges.length > 0) count += selectedExpRanges.length;
+    if (selectedPriceRanges.length > 0) count += selectedPriceRanges.length;
+    if (availabilityFilter !== "All") count++;
+    if (sortBy !== "recommended") count++;
+    return count;
+  }, [
+    selectedCategory,
+    selectedCompanies,
+    selectedExpRanges,
+    selectedPriceRanges,
+    availabilityFilter,
+    sortBy,
+  ]);
 
   // Filter and sort mentors
   const filteredMentors = useMemo(() => {
+    let list = [...allMentors];
     const q = deferredSearch.toLowerCase().trim();
-    const isAll = selectedCategory === "All";
-    const selectedCatLower = selectedCategory.toLowerCase();
 
-    return allMentors
-      .filter((mentor) => {
-        // Category filter
-        if (!isAll && mentor.category?.toLowerCase() !== selectedCatLower) {
-          return false;
-        }
+    // 1. Category filter
+    if (selectedCategory !== "All") {
+      const selectedCatLower = selectedCategory.toLowerCase();
+      list = list.filter((m) => m.category?.toLowerCase() === selectedCatLower);
+    }
 
-        // Text search query (matches name, role, company, skills, or category)
-        if (q) {
-          const matchName = mentor.name.toLowerCase().includes(q);
-          const matchRole = mentor.role.toLowerCase().includes(q);
-          const matchCompany = mentor.company?.toLowerCase().includes(q);
-          const matchCategory = mentor.category?.toLowerCase().includes(q);
-          const matchSkills = mentor.skills?.some(s => s.toLowerCase().includes(q));
-
-          if (!matchName && !matchRole && !matchCompany && !matchCategory && !matchSkills) {
-            return false;
-          }
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === "rating") {
-          return (b.rating || 0) - (a.rating || 0);
-        }
-        if (sortBy === "sessions") {
-          return (b.totalSessions || 0) - (a.totalSessions || 0);
-        }
-        if (sortBy === "price-low") {
-          return (a.minPrice || parseInt(a.price) || 0) - (b.minPrice || parseInt(b.price) || 0);
-        }
-        if (sortBy === "price-high") {
-          return (b.minPrice || parseInt(b.price) || 0) - (a.minPrice || parseInt(a.price) || 0);
-        }
-        // Default: recommended (high rating + session count)
-        return ((b.rating || 0) * 10 + (b.totalSessions || 0)) - ((a.rating || 0) * 10 + (a.totalSessions || 0));
+    // 2. Search query (matches name, role, company, skills, or category)
+    if (q) {
+      list = list.filter((m) => {
+        const matchName = m.name.toLowerCase().includes(q);
+        const matchRole = m.role.toLowerCase().includes(q);
+        const matchCompany = m.company?.toLowerCase().includes(q);
+        const matchCategory = m.category?.toLowerCase().includes(q);
+        const matchSkills = m.skills?.some((s) => s.toLowerCase().includes(q));
+        return matchName || matchRole || matchCompany || matchCategory || matchSkills;
       });
-  }, [allMentors, selectedCategory, deferredSearch, sortBy]);
+    }
+
+    // 3. Company Filter
+    if (selectedCompanies.length > 0) {
+      list = list.filter((m) => m.company && selectedCompanies.includes(m.company));
+    }
+
+    // 4. Experience Filter
+    if (selectedExpRanges.length > 0) {
+      list = list.filter((m) => {
+        const match = (m.experience || "").match(/\d+/);
+        const exp = match ? parseInt(match[0], 10) : 0;
+        return selectedExpRanges.some((r) => {
+          if (r === "0-2") return exp <= 2;
+          if (r === "3-5") return exp >= 3 && exp <= 5;
+          if (r === "6-10") return exp >= 6 && exp <= 10;
+          if (r === "10+") return exp >= 10;
+          return true;
+        });
+      });
+    }
+
+    // 5. Price Filter
+    if (selectedPriceRanges.length > 0) {
+      list = list.filter((m) => {
+        const price = m.minPrice ?? parseInt((m.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
+        return selectedPriceRanges.some((r) => {
+          if (r === "under-1000") return price < 1000;
+          if (r === "1000-2000") return price >= 1000 && price <= 2000;
+          if (r === "2000+") return price > 2000;
+          return true;
+        });
+      });
+    }
+
+    // 6. Availability Filter
+    if (availabilityFilter === "Today") {
+      list = list.filter((m) => m.activeTime?.toLowerCase().includes("today"));
+    } else if (availabilityFilter === "Week") {
+      list = list.filter(
+        (m) =>
+          m.activeTime?.toLowerCase().includes("today") ||
+          m.activeTime?.toLowerCase().includes("week")
+      );
+    }
+
+    // 7. Sort
+    list.sort((a, b) => {
+      if (sortBy === "rating") {
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      if (sortBy === "sessions") {
+        return (b.totalSessions || 0) - (a.totalSessions || 0);
+      }
+      if (sortBy === "price-low") {
+        const priceA = a.minPrice ?? parseInt((a.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
+        const priceB = b.minPrice ?? parseInt((b.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
+        return priceA - priceB;
+      }
+      if (sortBy === "price-high") {
+        const priceA = a.minPrice ?? parseInt((a.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
+        const priceB = b.minPrice ?? parseInt((b.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
+        return priceB - priceA;
+      }
+      // Default: recommended
+      return (
+        (b.rating || 0) * 10 +
+        (b.totalSessions || 0) -
+        ((a.rating || 0) * 10 + (a.totalSessions || 0))
+      );
+    });
+
+    return list;
+  }, [
+    allMentors,
+    selectedCategory,
+    deferredSearch,
+    selectedCompanies,
+    selectedExpRanges,
+    selectedPriceRanges,
+    availabilityFilter,
+    sortBy,
+  ]);
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filteredMentors.length / ITEMS_PER_PAGE));
@@ -157,113 +364,294 @@ export default function FindMentor() {
     setCurrentPage(newPage);
     if (listTopRef.current) {
       listTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  // Generate pagination number array with ellipsis
-  const paginationPages = useMemo(() => {
-    const pages: (number | "ellipsis")[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push("ellipsis");
+  // Dedicated Filter Sidebar Component
+  const renderFilterPanel = () => (
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-4.5 space-y-4 text-left">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4 text-[#5B4BDB]" />
+          <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
+          {activeFilterCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-[#F0EDFF] text-[#5B4BDB] text-[10.5px] font-bold">
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={handleResetFilters}
+            className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
 
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
+      {/* 1. Companies */}
+      {uniqueCompanies.length > 0 && (
+        <div className="space-y-2">
+          <button
+            onClick={() => toggleSection("company")}
+            className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+          >
+            <span className="flex items-center gap-1.5">
+              <span>Company</span>
+              {selectedCompanies.length > 0 && (
+                <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+                  {selectedCompanies.length}
+                </span>
+              )}
+            </span>
+            {expandedSections.company ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
 
-      if (currentPage < totalPages - 2) pages.push("ellipsis");
-      pages.push(totalPages);
-    }
-    return pages;
-  }, [totalPages, currentPage]);
+          {expandedSections.company && (
+            <div className="space-y-1">
+              {uniqueCompanies.slice(0, 7).map((comp) => {
+                const checked = selectedCompanies.includes(comp);
+                return (
+                  <label
+                    key={comp}
+                    onClick={() => toggleCompany(comp)}
+                    className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                        checked
+                          ? "bg-[#5B4BDB] border-[#5B4BDB] text-white"
+                          : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                    </div>
+                    <span className="truncate flex-1 font-medium">{comp}</span>
+                    <span className="text-slate-400 text-[11px]">
+                      ({companyCounts[comp] || 0})
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. Experience */}
+      <div className="space-y-2 pt-3 border-t border-slate-100">
+        <button
+          onClick={() => toggleSection("experience")}
+          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+        >
+          <span className="flex items-center gap-1.5">
+            <span>Experience</span>
+            {selectedExpRanges.length > 0 && (
+              <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+                {selectedExpRanges.length}
+              </span>
+            )}
+          </span>
+          {expandedSections.experience ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {expandedSections.experience && (
+          <div className="space-y-1">
+            {[
+              { id: "0-2", label: "0-2 Yrs", count: expCounts["0-2"] },
+              { id: "3-5", label: "3-5 Yrs", count: expCounts["3-5"] },
+              { id: "6-10", label: "6-10 Yrs", count: expCounts["6-10"] },
+              { id: "10+", label: "10+ Yrs", count: expCounts["10+"] },
+            ].map((item) => {
+              const checked = selectedExpRanges.includes(item.id);
+              return (
+                <label
+                  key={item.id}
+                  onClick={() => toggleExpRange(item.id)}
+                  className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                >
+                  <div
+                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                      checked
+                        ? "bg-[#5B4BDB] border-[#5B4BDB] text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                  </div>
+                  <span className="flex-1 font-medium">{item.label}</span>
+                  <span className="text-slate-400 text-[11px]">({item.count})</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 3. Session Price */}
+      <div className="space-y-2 pt-3 border-t border-slate-100">
+        <button
+          onClick={() => toggleSection("price")}
+          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+        >
+          <span className="flex items-center gap-1.5">
+            <span>Session Price</span>
+            {selectedPriceRanges.length > 0 && (
+              <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+                {selectedPriceRanges.length}
+              </span>
+            )}
+          </span>
+          {expandedSections.price ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {expandedSections.price && (
+          <div className="space-y-1">
+            {[
+              { id: "under-1000", label: "Under ₹1,000", count: priceCounts["under-1000"] },
+              { id: "1000-2000", label: "₹1,000 - ₹2,000", count: priceCounts["1000-2000"] },
+              { id: "2000+", label: "₹2,000+", count: priceCounts["2000+"] },
+            ].map((item) => {
+              const checked = selectedPriceRanges.includes(item.id);
+              return (
+                <label
+                  key={item.id}
+                  onClick={() => togglePriceRange(item.id)}
+                  className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                >
+                  <div
+                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                      checked
+                        ? "bg-[#5B4BDB] border-[#5B4BDB] text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                  </div>
+                  <span className="flex-1 font-medium">{item.label}</span>
+                  <span className="text-slate-400 text-[11px]">({item.count})</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. Availability */}
+      <div className="space-y-2 pt-3 border-t border-slate-100">
+        <button
+          onClick={() => toggleSection("availability")}
+          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+        >
+          <span className="flex items-center gap-1.5">
+            <span>Availability</span>
+            {availabilityFilter !== "All" && (
+              <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+                1
+              </span>
+            )}
+          </span>
+          {expandedSections.availability ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {expandedSections.availability && (
+          <div className="space-y-1">
+            {[
+              { id: "All", label: "Anytime" },
+              { id: "Today", label: "Available Today" },
+              { id: "Week", label: "This Week" },
+            ].map((opt) => (
+              <label
+                key={opt.id}
+                onClick={() => setAvailabilityFilter(opt.id)}
+                className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+              >
+                <div
+                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+                    availabilityFilter === opt.id
+                      ? "border-[#5B4BDB]"
+                      : "border-slate-300 bg-white"
+                  }`}
+                >
+                  {availabilityFilter === opt.id && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#5B4BDB]" />
+                  )}
+                </div>
+                <span className="flex-1 font-medium">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div ref={listTopRef} className="w-full font-sans space-y-6 animate-in fade-in duration-300">
-      
-      {/* Header Banner */}
-      <div className="bg-white rounded-[24px] p-6 sm:p-8 border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div ref={listTopRef} className="w-full font-sans space-y-6 text-left animate-in fade-in duration-200">
+      {/* ======================================================== */}
+      {/* SECTION 1: DISCOVERY HEADING                             */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
-            <Sparkles size={13} className="text-blue-600" />
-            Top 1% Verified Mentors
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F0EDFF] border border-[#D8D1FF] text-[#5B4BDB] text-xs font-bold uppercase tracking-wider mb-2">
+            <Sparkles size={13} className="text-[#5B4BDB]" />
+            Mentor Directory
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Find a Mentor
+            Find Your Mentor
           </h1>
-          <p className="text-slate-500 text-sm mt-1 max-w-xl">
-            Book 1-on-1 mock interviews, system design drills, and resume reviews with industry hiring managers.
+          <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl">
+            Connect with experienced professionals who can help you prepare for your next interview.
           </p>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200/70 rounded-2xl px-4 py-3 shrink-0 text-center sm:text-right">
-          <p className="text-2xl font-black text-blue-600 leading-none">
+        <div className="bg-slate-50 border border-slate-200/70 rounded-xl px-4 py-3 shrink-0 text-center sm:text-right">
+          <p className="text-2xl font-black text-[#5B4BDB] leading-none">
             {isLoading ? "--" : allMentors.length}
           </p>
-          <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">
-            Available Mentors
+          <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">
+            Verified Mentors
           </p>
         </div>
       </div>
 
-      {/* Search and Filters Bar */}
-      <div className="bg-white rounded-[24px] p-4 sm:p-5 border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] space-y-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by mentor name, role, company, or skills (e.g. React, Google, System Design)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/80 focus:border-blue-500 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md"
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="flex items-center gap-2 shrink-0">
-            <ArrowUpDown size={15} className="text-slate-400 hidden sm:block" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3.5 py-3 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/80 focus:border-blue-500 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer transition-all"
+      {/* ======================================================== */}
+      {/* SECTION 2: PROMINENT SEARCH & CATEGORY CHIPS             */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-3.5">
+        <div className="relative w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white border border-slate-200/90 focus:border-[#5B4BDB] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#5B4BDB]/10 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
+              aria-label="Clear search"
             >
-              <option value="recommended">Sort: Recommended</option>
-              <option value="rating">Sort: Highest Rated</option>
-              <option value="sessions">Sort: Most Sessions</option>
-              <option value="price-low">Sort: Price (Low to High)</option>
-              <option value="price-high">Sort: Price (High to Low)</option>
-            </select>
-          </div>
+              <X size={15} />
+            </button>
+          )}
         </div>
 
         {/* Category Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
                   isSelected
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30"
-                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+                    ? "bg-[#5B4BDB] text-white font-semibold shadow-xs"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70 font-medium"
                 }`}
               >
                 {cat}
@@ -273,154 +661,321 @@ export default function FindMentor() {
         </div>
       </div>
 
-      {/* Active Results Summary */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-2">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-          Showing <span className="text-slate-900">{filteredMentors.length > 0 ? startIndex + 1 : 0}</span> to{" "}
-          <span className="text-slate-900">{Math.min(startIndex + ITEMS_PER_PAGE, filteredMentors.length)}</span> of{" "}
-          <span className="text-blue-600 font-extrabold">{filteredMentors.length}</span> mentors
-          {selectedCategory !== "All" && ` in ${selectedCategory}`}
-          {searchQuery && ` for "${searchQuery}"`}
-        </p>
+      {/* ======================================================== */}
+      {/* SECTION 3: TWO-COLUMN DISCOVERY & FILTER LAYOUT          */}
+      {/* ======================================================== */}
+      <div className="flex items-start gap-6 scroll-mt-24">
+        {/* Left Column: Mentors Directory */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Header Controls: Result Count & Sort Dropdown */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 m-0">
+                Available Mentors
+              </h2>
+              <span className="text-xs text-slate-500 font-medium">
+                (Showing{" "}
+                <span className="text-slate-900 font-bold">
+                  {filteredMentors.length > 0 ? startIndex + 1 : 0}
+                </span>
+                –
+                <span className="text-slate-900 font-bold">
+                  {Math.min(startIndex + ITEMS_PER_PAGE, filteredMentors.length)}
+                </span>{" "}
+                of <span className="text-[#5B4BDB] font-bold">{filteredMentors.length}</span>)
+              </span>
+            </div>
 
-        <div className="flex items-center gap-3">
-          {totalPages > 1 && (
-            <span className="text-xs font-semibold text-slate-400">
-              Page {currentPage} of {totalPages}
-            </span>
-          )}
-          {(selectedCategory !== "All" || searchQuery) && (
-            <button
-              onClick={() => {
-                setSelectedCategory("All");
-                setSearchQuery("");
-              }}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-            >
-              Clear Filters
-            </button>
-          )}
-        </div>
-      </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Mobile Filter Button */}
+              <button
+                onClick={() => setIsMobileFilterOpen(true)}
+                className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+              >
+                <SlidersHorizontal size={13} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-[#5B4BDB] text-white text-[10px] font-bold flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
 
-      {/* Mentor Cards Grid - Straight Vertical List */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-5">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm h-64 shimmer-shining"
-            />
-          ))}
-        </div>
-      ) : filteredMentors.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 gap-5">
-            {paginatedMentors.map((mentor) => (
-              <div key={mentor.id} className="w-full flex animate-in fade-in duration-200">
-                <MentorJobCard mentor={mentor} />
+              {/* Sort Control */}
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#5B4BDB] cursor-pointer"
+                >
+                  <option value="recommended">Sort: Recommended</option>
+                  <option value="rating">Sort: Highest Rated</option>
+                  <option value="sessions">Sort: Most Experienced</option>
+                  <option value="price-low">Sort: Price (Low to High)</option>
+                  <option value="price-high">Sort: Price (High to Low)</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               </div>
-            ))}
+            </div>
           </div>
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="bg-white rounded-[24px] p-4 sm:p-5 border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)] flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-              
-              {/* Previous & First Page Button */}
-              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-start">
-                <button
-                  onClick={() => handlePageChange(1)}
-                  disabled={currentPage === 1}
-                  className="px-2.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                  title="First Page"
-                >
-                  <ChevronsLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Previous</span>
-                </button>
-              </div>
+          {/* Active Filter Badges */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
 
-              {/* Page Number Pills */}
-              <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                {paginationPages.map((page, idx) => {
-                  if (page === "ellipsis") {
-                    return (
-                      <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs font-bold">
-                        ...
-                      </span>
-                    );
-                  }
+              {selectedCategory !== "All" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F0EDFF] border border-[#D8D1FF] text-xs font-bold text-[#5B4BDB]">
+                  {selectedCategory}
+                  <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
 
-                  const isCurrent = page === currentPage;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`min-w-[36px] h-9 px-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                        isCurrent
-                          ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30 scale-105"
-                          : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Next & Last Page Button */}
-              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
+              {selectedCompanies.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
                 >
-                  <span>Next</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handlePageChange(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="px-2.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                  title="Last Page"
-                >
-                  <ChevronsRight className="w-4 h-4" />
-                </button>
-              </div>
+                  {c}
+                  <button onClick={() => toggleCompany(c)} className="hover:text-red-500">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
 
+              {selectedExpRanges.map((exp) => (
+                <span
+                  key={exp}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                >
+                  Exp: {exp} yrs
+                  <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+
+              {selectedPriceRanges.map((pr) => (
+                <span
+                  key={pr}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                >
+                  Price: {pr}
+                  <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+
+              {availabilityFilter !== "All" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                  {availabilityFilter}
+                  <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+
+              <button
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-rose-600 hover:underline ml-1 cursor-pointer"
+              >
+                Clear all
+              </button>
             </div>
           )}
-        </>
-      ) : (
-        <div className="bg-white rounded-[24px] p-12 border border-slate-100 shadow-sm text-center">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
-            <Users size={28} />
+
+          {/* Mentors Grid / Empty / Error States */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <MentorCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-rose-200 p-6 space-y-3">
+              <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+              <h3 className="text-sm font-bold text-slate-900">Failed to load mentors</h3>
+              <p className="text-xs text-slate-500">
+                {error instanceof Error ? error.message : "Error connecting to mentor API."}
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <RefreshCw size={13} />
+                <span>Retry</span>
+              </button>
+            </div>
+          ) : filteredMentors.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {paginatedMentors.map((mentor) => (
+                  <MentorJobCard key={mentor.id} mentor={mentor} />
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3 mt-5">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      title="First Page"
+                    >
+                      <ChevronsLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Prev</span>
+                    </button>
+                  </div>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }).map((_, idx) => {
+                      const page = idx + 1;
+                      if (
+                        totalPages > 6 &&
+                        Math.abs(page - currentPage) > 2 &&
+                        page !== 1 &&
+                        page !== totalPages
+                      ) {
+                        if (Math.abs(page - currentPage) === 3) {
+                          return (
+                            <span key={page} className="px-1 text-slate-400 text-xs">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      }
+
+                      const isCurrent = page === currentPage;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isCurrent
+                              ? "bg-[#5B4BDB] text-white shadow-xs"
+                              : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      title="Last Page"
+                    >
+                      <ChevronsRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
+              <div className="w-12 h-12 rounded-xl bg-[#F0EDFF] text-[#5B4BDB] flex items-center justify-center mx-auto mb-2">
+                <Users size={24} />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">No mentors found</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                We couldn't find any mentors matching your search or filters. Try resetting to explore all experts.
+              </p>
+              <button
+                onClick={handleResetFilters}
+                className="px-4 py-2 bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                Show All Mentors
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Sticky Filter Sidebar (Desktop xl+ screens) */}
+        <aside aria-label="Filters Panel" className="hidden xl:block w-[270px] shrink-0 sticky top-[88px] self-start space-y-4">
+          {renderFilterPanel()}
+
+          {/* Tips Card */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-2 text-left">
+            <div className="flex items-center gap-1.5 text-[#5B4BDB]">
+              <Sparkles size={14} />
+              <span className="text-xs font-bold text-slate-900">Finding the Right Mentor</span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Choose a mentor working in your target industry or company to get the most accurate mock interview questions.
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-1">
-            No mentors found
-          </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto mb-5">
-            We couldn't find any mentors matching your search or category filters. Try resetting the filters to explore all experts.
-          </p>
-          <button
-            onClick={() => {
-              setSelectedCategory("All");
-              setSearchQuery("");
-            }}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-blue-500/20 cursor-pointer"
+        </aside>
+      </div>
+
+      {/* Mobile Filter Drawer Modal */}
+      {isMobileFilterOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filter Mentors"
+          className="xl:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsMobileFilterOpen(false)}
+        >
+          <div
+            className="w-full max-w-md max-h-[85vh] bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
           >
-            Show All Mentors
-          </button>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <span className="text-sm font-bold text-slate-900">Filter Mentors</span>
+              <button
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                aria-label="Close filters"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">{renderFilterPanel()}</div>
+
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-slate-600 hover:underline"
+              >
+                Reset All
+              </button>
+              <button
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="px-4 py-2 rounded-xl bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white text-xs font-semibold shadow-xs"
+              >
+                Apply ({filteredMentors.length} Mentors)
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
-
