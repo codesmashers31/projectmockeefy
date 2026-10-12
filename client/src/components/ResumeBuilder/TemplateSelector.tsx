@@ -47,34 +47,34 @@ export function TemplateSelector() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {templates.map(template => (
-          <motion.div
+          <div
             key={template.id}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             onClick={() => setSelectedTemplate(template.id)}
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
               selectedTemplate === template.id
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 hover:border-blue-300'
+                ? 'border-[#0755E8] bg-[#EAF2FF]/50 ring-2 ring-[#0755E8]/10'
+                : 'border-slate-200 hover:border-[#0755E8]/60 bg-white hover:bg-slate-50'
             }`}
           >
-            <h3 className="font-semibold text-gray-900">{template.name}</h3>
-            <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-            {selectedTemplate === template.id && (
-              <div className="mt-3 inline-block px-3 py-1 bg-blue-600 text-white text-xs rounded-full">
-                Selected
-              </div>
-            )}
-          </motion.div>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm">{template.name}</h3>
+              {selectedTemplate === template.id && (
+                <span className="px-2.5 py-0.5 bg-[#0755E8] text-white text-[11px] font-bold rounded-full">
+                  Selected
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">{template.description}</p>
+          </div>
         ))}
       </div>
 
-      <div className="flex justify-end pt-6">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-100">
         <Button
-          onClick={nextStep}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          onClick={() => nextStep()}
+          className="ml-auto bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center gap-1.5 text-xs font-bold px-5 py-2.5 rounded-xl cursor-pointer shadow-xs"
         >
           Continue to Download
           <ChevronRight className="w-4 h-4" />

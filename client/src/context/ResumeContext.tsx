@@ -135,6 +135,7 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
           fetchUserResumes();
           return res.data.data;
         }
+        throw new Error(res.data.message || "Failed to update resume");
       } else {
         const res = await axios.post('/api/user/resumes', payload);
         if (res.data.success) {
@@ -142,9 +143,11 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
           fetchUserResumes();
           return res.data.data;
         }
+        throw new Error(res.data.message || "Failed to create resume");
       }
     } catch (err) {
       console.error("saveResumeToDb error:", err);
+      throw err;
     }
   }, [resumeData, selectedTemplate, activeResumeId, fetchUserResumes]);
 
@@ -155,15 +158,37 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
         const doc = res.data.data;
         setActiveResumeId(doc._id);
         setSelectedTemplate(doc.template || 'modern');
+
+        const rawSkills = doc.skills;
+        let normalizedSkills: Skill[] = [];
+        if (Array.isArray(rawSkills)) {
+          normalizedSkills = rawSkills.map((s: any) =>
+            typeof s === 'string'
+              ? { id: Math.random().toString(36).substring(2, 9), name: s, proficiency: 'intermediate' }
+              : { id: s.id || Math.random().toString(36).substring(2, 9), name: s.name || '', proficiency: s.proficiency || 'intermediate' }
+          );
+        } else if (rawSkills && typeof rawSkills === 'object') {
+          const list = [
+            ...(Array.isArray(rawSkills.technical) ? rawSkills.technical : []),
+            ...(Array.isArray(rawSkills.soft) ? rawSkills.soft : []),
+            ...(Array.isArray(rawSkills.languages) ? rawSkills.languages : []),
+          ];
+          normalizedSkills = list.map((name: any) => ({
+            id: Math.random().toString(36).substring(2, 9),
+            name: typeof name === 'string' ? name : (name.name || ''),
+            proficiency: 'intermediate',
+          }));
+        }
+
         setResumeData({
           personalDetails: doc.personalInfo || defaultResumeData.personalDetails,
           objective: doc.objective,
-          skills: doc.skills?.technical?.map((name: string) => ({ id: Math.random().toString(), name })) || [],
-          education: doc.education || [],
-          experience: doc.experience || [],
-          projects: doc.projects || [],
-          certifications: doc.certifications || [],
-          achievements: doc.achievements || []
+          skills: normalizedSkills,
+          education: Array.isArray(doc.education) ? doc.education : [],
+          experience: Array.isArray(doc.experience) ? doc.experience : [],
+          projects: Array.isArray(doc.projects) ? doc.projects : [],
+          certifications: Array.isArray(doc.certifications) ? doc.certifications : [],
+          achievements: Array.isArray(doc.achievements) ? doc.achievements : []
         });
         return doc;
       }
@@ -259,10 +284,42 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadResumeData = useCallback((data: Partial<ResumeData>) => {
-    setResumeData(prev => ({
-      ...prev,
-      ...data,
-    }));
+    setResumeData(prev => {
+      let normalizedSkills = prev.skills || [];
+      if (data.skills !== undefined) {
+        const rawSkills = data.skills;
+        if (Array.isArray(rawSkills)) {
+          normalizedSkills = rawSkills.map((s: any) =>
+            typeof s === 'string'
+              ? { id: Math.random().toString(36).substring(2, 9), name: s, proficiency: 'intermediate' }
+              : { id: s.id || Math.random().toString(36).substring(2, 9), name: s.name || '', proficiency: s.proficiency || 'intermediate' }
+          );
+        } else if (rawSkills && typeof rawSkills === 'object') {
+          const list = [
+            ...(Array.isArray((rawSkills as any).technical) ? (rawSkills as any).technical : []),
+            ...(Array.isArray((rawSkills as any).soft) ? (rawSkills as any).soft : []),
+            ...(Array.isArray((rawSkills as any).languages) ? (rawSkills as any).languages : []),
+          ];
+          normalizedSkills = list.map((name: any) => ({
+            id: Math.random().toString(36).substring(2, 9),
+            name: typeof name === 'string' ? name : (name.name || ''),
+            proficiency: 'intermediate',
+          }));
+        }
+      }
+
+      return {
+        ...prev,
+        ...data,
+        personalDetails: { ...(prev.personalDetails || defaultResumeData.personalDetails), ...(data.personalDetails || {}) },
+        skills: normalizedSkills,
+        education: Array.isArray(data.education) ? data.education : (prev.education || []),
+        experience: Array.isArray(data.experience) ? data.experience : (prev.experience || []),
+        projects: Array.isArray(data.projects) ? data.projects : (prev.projects || []),
+        certifications: Array.isArray(data.certifications) ? data.certifications : (prev.certifications || []),
+        achievements: Array.isArray(data.achievements) ? data.achievements : (prev.achievements || []),
+      };
+    });
   }, []);
 
   const nextStep = useCallback(() => {
@@ -276,7 +333,7 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const updatePersonalDetails = useCallback((details: Partial<PersonalDetails>) => {
     setResumeData(prev => ({
       ...prev,
-      personalDetails: { ...prev.personalDetails, ...details },
+      personalDetails: { ...(prev.personalDetails || defaultResumeData.personalDetails), ...details },
     }));
   }, []);
 
@@ -291,21 +348,21 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const addSkill = useCallback((skill: Skill) => {
     setResumeData(prev => ({
       ...prev,
-      skills: [...prev.skills, skill],
+      skills: [...(prev.skills || []), skill],
     }));
   }, []);
 
   const updateSkill = useCallback((id: string, skill: Partial<Skill>) => {
     setResumeData(prev => ({
       ...prev,
-      skills: prev.skills.map(s => (s.id === id ? { ...s, ...skill } : s)),
+      skills: (prev.skills || []).map(s => (s.id === id ? { ...s, ...skill } : s)),
     }));
   }, []);
 
   const removeSkill = useCallback((id: string) => {
     setResumeData(prev => ({
       ...prev,
-      skills: prev.skills.filter(s => s.id !== id),
+      skills: (prev.skills || []).filter(s => s.id !== id),
     }));
   }, []);
 
@@ -313,21 +370,21 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const addEducation = useCallback((education: Education) => {
     setResumeData(prev => ({
       ...prev,
-      education: [...prev.education, education],
+      education: [...(prev.education || []), education],
     }));
   }, []);
 
   const updateEducation = useCallback((id: string, education: Partial<Education>) => {
     setResumeData(prev => ({
       ...prev,
-      education: prev.education.map(e => (e.id === id ? { ...e, ...education } : e)),
+      education: (prev.education || []).map(e => (e.id === id ? { ...e, ...education } : e)),
     }));
   }, []);
 
   const removeEducation = useCallback((id: string) => {
     setResumeData(prev => ({
       ...prev,
-      education: prev.education.filter(e => e.id !== id),
+      education: (prev.education || []).filter(e => e.id !== id),
     }));
   }, []);
 
@@ -335,21 +392,21 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const addExperience = useCallback((experience: Experience) => {
     setResumeData(prev => ({
       ...prev,
-      experience: [...prev.experience, experience],
+      experience: [...(prev.experience || []), experience],
     }));
   }, []);
 
   const updateExperience = useCallback((id: string, experience: Partial<Experience>) => {
     setResumeData(prev => ({
       ...prev,
-      experience: prev.experience.map(e => (e.id === id ? { ...e, ...experience } : e)),
+      experience: (prev.experience || []).map(e => (e.id === id ? { ...e, ...experience } : e)),
     }));
   }, []);
 
   const removeExperience = useCallback((id: string) => {
     setResumeData(prev => ({
       ...prev,
-      experience: prev.experience.filter(e => e.id !== id),
+      experience: (prev.experience || []).filter(e => e.id !== id),
     }));
   }, []);
 
@@ -357,21 +414,21 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const addProject = useCallback((project: Project) => {
     setResumeData(prev => ({
       ...prev,
-      projects: [...prev.projects, project],
+      projects: [...(prev.projects || []), project],
     }));
   }, []);
 
   const updateProject = useCallback((id: string, project: Partial<Project>) => {
     setResumeData(prev => ({
       ...prev,
-      projects: prev.projects.map(p => (p.id === id ? { ...p, ...project } : p)),
+      projects: (prev.projects || []).map(p => (p.id === id ? { ...p, ...project } : p)),
     }));
   }, []);
 
   const removeProject = useCallback((id: string) => {
     setResumeData(prev => ({
       ...prev,
-      projects: prev.projects.filter(p => p.id !== id),
+      projects: (prev.projects || []).filter(p => p.id !== id),
     }));
   }, []);
 
@@ -379,21 +436,21 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const addCertification = useCallback((certification: Certification) => {
     setResumeData(prev => ({
       ...prev,
-      certifications: [...prev.certifications, certification],
+      certifications: [...(prev.certifications || []), certification],
     }));
   }, []);
 
   const updateCertification = useCallback((id: string, certification: Partial<Certification>) => {
     setResumeData(prev => ({
       ...prev,
-      certifications: prev.certifications.map(c => (c.id === id ? { ...c, ...certification } : c)),
+      certifications: (prev.certifications || []).map(c => (c.id === id ? { ...c, ...certification } : c)),
     }));
   }, []);
 
   const removeCertification = useCallback((id: string) => {
     setResumeData(prev => ({
       ...prev,
-      certifications: prev.certifications.filter(c => c.id !== id),
+      certifications: (prev.certifications || []).filter(c => c.id !== id),
     }));
   }, []);
 
@@ -401,7 +458,7 @@ export function ResumeProvider({ children }: { children: React.ReactNode }) {
   const addAchievement = useCallback((achievement: Achievement) => {
     setResumeData(prev => ({
       ...prev,
-      achievements: [...prev.achievements, achievement],
+      achievements: [...(prev.achievements || []), achievement],
     }));
   }, []);
 

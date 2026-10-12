@@ -182,7 +182,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         title: "Invalid Code",
         text: "This promo code is not valid.",
         icon: "error",
-        confirmButtonColor: "#2F5FFF",
+        confirmButtonColor: "#0755E8",
       });
     }
   };
@@ -384,7 +384,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         icon: "info",
         showCancelButton: true,
         confirmButtonText: "Sign In",
-        confirmButtonColor: "#2F5FFF",
+        confirmButtonColor: "#0755E8",
       }).then((res) => {
         if (res.isConfirmed) {
           navigate("/signin", { state: { returnUrl: `/book-session?expertId=${expertId}` } });
@@ -408,7 +408,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             title: "Booking Confirmed! 🎉",
             text: "Your free session has been scheduled successfully.",
             icon: "success",
-            confirmButtonColor: "#2F5FFF",
+            confirmButtonColor: "#0755E8",
           }).then(() => navigate("/my-sessions"));
         }
         return;
@@ -423,7 +423,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             title: "Booked with Credit!",
             text: `Session confirmed. You have ${res.data.remainingCredits} credits left.`,
             icon: "success",
-            confirmButtonColor: "#2F5FFF",
+            confirmButtonColor: "#0755E8",
           }).then(() => navigate("/my-sessions"));
         }
         return;
@@ -454,7 +454,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         title: "Booking Failed",
         text: err?.response?.data?.message || "An error occurred while booking. Please try again.",
         icon: "error",
-        confirmButtonColor: "#2F5FFF",
+        confirmButtonColor: "#0755E8",
       });
     } finally {
       setIsProcessing(false);
@@ -475,7 +475,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         {/* MODAL HEADER */}
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white border-b border-slate-100">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-full bg-blue-100 text-[#2F5FFF] font-black text-sm flex items-center justify-center shrink-0 border-2 border-white shadow-xs overflow-hidden">
+            <div className="w-11 h-11 rounded-full bg-blue-100 text-[#0755E8] font-black text-sm flex items-center justify-center shrink-0 border-2 border-white shadow-xs overflow-hidden">
               {profile?.avatar ? (
                 <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
               ) : (
@@ -520,7 +520,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     }}
                     className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
                       sessionDuration === dur
-                        ? "bg-[#2F5FFF] text-white shadow-xs"
+                        ? "bg-[#0755E8] text-white shadow-xs"
                         : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
                     }`}
                   >
@@ -532,7 +532,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             <div className="text-right">
               <span className="text-[10px] font-black tracking-wider text-slate-400 uppercase">TOTAL</span>
-              <div className="text-xl font-black text-[#2F5FFF] leading-none mt-1">
+              <div className="text-xl font-black text-[#0755E8] leading-none mt-1">
                 {appliedFreePromo ? "Free" : `₹${displayPrice.toLocaleString("en-IN")}`}
               </div>
             </div>
@@ -545,12 +545,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               placeholder="Promo code (e.g. MOCK20)"
               value={discountCode}
               onChange={(e) => setDiscountCode(e.target.value)}
-              className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#2F5FFF]"
+              className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0755E8]"
             />
             <button
               type="button"
               onClick={handleApplyPromo}
-              className="px-4 py-2 bg-blue-50 text-[#2F5FFF] hover:bg-blue-100 font-extrabold text-xs rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2 bg-blue-50 text-[#0755E8] hover:bg-blue-100 font-extrabold text-xs rounded-xl transition-colors cursor-pointer"
             >
               Apply
             </button>
@@ -597,7 +597,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     }}
                     className={`min-w-[56px] text-center px-1 py-2 rounded-xl border transition-all cursor-pointer shrink-0 ${
                       isSelected
-                        ? "bg-[#2F5FFF] border-[#2F5FFF] text-white shadow-xs"
+                        ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs"
                         : "bg-white border-slate-200 text-slate-700 hover:border-blue-200"
                     }`}
                   >
@@ -638,11 +638,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         isUnavailable
                           ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
                           : isSelected
-                            ? "bg-blue-50 border-[#2F5FFF] text-[#2F5FFF] shadow-xs"
+                            ? "bg-blue-50 border-[#0755E8] text-[#0755E8] shadow-xs"
                             : "bg-white border-slate-200 text-slate-700 hover:border-blue-300 cursor-pointer"
                       }`}
                     >
-                      <Clock className="w-3 h-3 text-[#2F5FFF] shrink-0" />
+                      <Clock className="w-3 h-3 text-[#0755E8] shrink-0" />
                       <span className="truncate">{slot.time}</span>
                     </button>
                   );

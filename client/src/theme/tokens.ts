@@ -5,21 +5,26 @@
 
 export const brandTokens = {
   // Brand colors
-  primary: '#5B4BDB',
-  primaryHover: '#4938C8',
-  primaryActive: '#3F2FB3',
-  primaryLight: '#F0EDFF',
-  primaryBorder: '#D8D1FF',
+  primary: '#0755E8',
+  primaryHover: '#0645C7',
+  primaryActive: '#073AA3',
+  primaryLight: '#EAF2FF',
+  primarySubtle: '#F0F6FF',
+  primaryBorder: '#93B8FF',
+  focusRing: '#93B8FF',
 
   // Neutral colors
   neutral: {
-    bg: '#F5F6FA',
+    bg: '#F5F8FF',
     card: '#FFFFFF',
-    text: '#111827',
-    secondary: '#4B5563',
-    muted: '#6B7280',
-    border: '#E5E7EB',
-    subtle: '#F3F4F6',
+    navbar: '#FFFFFF',
+    navbarBorder: '#E2E8F0',
+    heading: '#172B4D',
+    body: '#334155',
+    secondary: '#64748B',
+    muted: '#94A3B8',
+    border: '#E2E8F0',
+    subtle: '#F0F6FF',
   },
 
   // Semantic colors
@@ -34,9 +39,9 @@ export const brandTokens = {
     infoBg: '#EFF6FF',
   },
 
-  // Typography scale
+  // Typography scale (Source Sans 3)
   typography: {
-    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontFamily: '"Source Sans 3", "Segoe UI", Arial, sans-serif',
     pageTitle: {
       fontSize: '1.875rem', // 30px
       lineHeight: '1.25',
@@ -57,14 +62,19 @@ export const brandTokens = {
       lineHeight: '1.5',
       fontWeight: '400',
     },
-    formLabel: {
-      fontSize: '0.84375rem', // 13.5px
+    navLabel: {
+      fontSize: '0.875rem', // 14px
       lineHeight: '1.4',
-      fontWeight: '500',
+      fontWeight: '600',
+    },
+    formLabel: {
+      fontSize: '0.875rem', // 14px
+      lineHeight: '1.4',
+      fontWeight: '600',
     },
     supportingText: {
       fontSize: '0.84375rem', // 13.5px
-      lineHeight: '1.4',
+      lineHeight: '1.45',
       fontWeight: '400',
     },
     metadata: {

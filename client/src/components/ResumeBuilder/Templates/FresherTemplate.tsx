@@ -7,7 +7,7 @@ export function FresherTemplate() {
     resumeData;
 
   return (
-    <div className="bg-white p-10 text-gray-900 font-sans space-y-5">
+    <div className="bg-white p-8 sm:p-10 text-gray-900 font-sans space-y-5 break-words [overflow-wrap:anywhere]">
       {/* Header */}
       <div className="text-center border-b-2 border-gray-300 pb-5">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{personalDetails.fullName || 'Your Name'}</h1>

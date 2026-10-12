@@ -334,13 +334,13 @@ const AiInterview = () => {
                         {/* Pulse Rings */}
                         {(voiceState === 'listening' || voiceState === 'speaking') && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-64 h-64 bg-[#5B4BDB]/10 rounded-full animate-ping opacity-75"></div>
-                                <div className="w-48 h-48 bg-[#5B4BDB]/15 rounded-full animate-ping opacity-50 delay-150"></div>
+                                <div className="w-64 h-64 bg-[#0755E8]/10 rounded-full animate-ping opacity-75"></div>
+                                <div className="w-48 h-48 bg-[#0755E8]/15 rounded-full animate-ping opacity-50 delay-150"></div>
                             </div>
                         )}
 
                         {/* Avatar Circle */}
-                        <div className={`relative w-40 h-40 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 z-10 overflow-hidden ${voiceState === 'speaking' ? 'bg-gradient-to-br from-[#5B4BDB] to-[#4938C8] scale-110' :
+                        <div className={`relative w-40 h-40 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 z-10 overflow-hidden ${voiceState === 'speaking' ? 'bg-gradient-to-br from-[#0755E8] to-[#0645C7] scale-110' :
                             voiceState === 'listening' ? 'bg-gradient-to-br from-red-500 to-pink-600 scale-105' :
                                 voiceState === 'processing' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
                                     'bg-white border-4 border-gray-100'
@@ -350,7 +350,7 @@ const AiInterview = () => {
 
                         {/* Status Badge + Voice controls */}
                         <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 relative z-10">
-                            <div className="px-6 py-2 bg-white border border-[#D8D1FF] rounded-full shadow-sm text-sm font-bold uppercase tracking-widest text-[#5B4BDB]">
+                            <div className="px-6 py-2 bg-white border border-[#93B8FF] rounded-full shadow-sm text-sm font-bold uppercase tracking-widest text-[#0755E8]">
                                 {voiceState === 'idle' && "Tap the mic to speak your answer"}
                                 {voiceState === 'listening' && "Listening… tap again when done"}
                                 {voiceState === 'processing' && "Thinking..."}
@@ -360,7 +360,7 @@ const AiInterview = () => {
                                 <button
                                     type="button"
                                     onClick={() => setAiVoiceEnabled((v) => !v)}
-                                    className={`p-2.5 rounded-xl border transition-all ${aiVoiceEnabled ? 'bg-[#F0EDFF] border-[#D8D1FF] text-[#5B4BDB]' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
+                                    className={`p-2.5 rounded-xl border transition-all ${aiVoiceEnabled ? 'bg-[#EAF2FF] border-[#93B8FF] text-[#0755E8]' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
                                     title={aiVoiceEnabled ? 'Turn off AI voice' : 'Turn on AI voice'}
                                 >
                                     {aiVoiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
@@ -394,10 +394,10 @@ const AiInterview = () => {
                             ) : (
                                 transcript.map((msg, i) => (
                                     <div key={i} className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${msg.sender === 'ai' ? 'bg-[#5B4BDB] text-white' : 'bg-gray-600 text-white'}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${msg.sender === 'ai' ? 'bg-[#0755E8] text-white' : 'bg-gray-600 text-white'}`}>
                                             {msg.sender === 'ai' ? 'AI' : 'You'}
                                         </div>
-                                        <div className={`p-3 rounded-2xl text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap ${msg.sender === 'ai' ? 'bg-gray-100 text-gray-900 rounded-tl-none' : 'bg-[#5B4BDB] text-white rounded-tr-none'}`}>
+                                        <div className={`p-3 rounded-2xl text-sm leading-relaxed max-w-[85%] whitespace-pre-wrap ${msg.sender === 'ai' ? 'bg-gray-100 text-gray-900 rounded-tl-none' : 'bg-[#0755E8] text-white rounded-tr-none'}`}>
                                             {msg.text}
                                         </div>
                                     </div>
@@ -411,6 +411,13 @@ const AiInterview = () => {
                         {isListening && interimTranscript && (
                             <p className="text-sm text-gray-600 max-w-md text-center italic">“{interimTranscript}”</p>
                         )}
+                        {speechError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 text-center max-w-md flex flex-col gap-1">
+                                <span className="font-semibold">Microphone issue detected:</span>
+                                <span>{speechError}</span>
+                                <span className="text-[11px] text-red-500">Please check your browser permissions (click the lock icon in the address bar) to allow microphone access.</span>
+                            </div>
+                        )}
                         {speechSupported ? (
                             <button
                                 type="button"
@@ -419,7 +426,7 @@ const AiInterview = () => {
                                 className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
                                     ? 'bg-red-500 text-white scale-110 animate-pulse'
                                     : canSpeak
-                                        ? 'bg-[#5B4BDB] text-white hover:bg-[#4938C8] hover:scale-105 active:scale-95 shadow-[#5B4BDB]/25'
+                                        ? 'bg-[#0755E8] text-white hover:bg-[#0645C7] hover:scale-105 active:scale-95 shadow-[#0755E8]/25'
                                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                                 title={isListening ? 'Tap to stop and send' : 'Tap to speak your answer'}
@@ -427,7 +434,7 @@ const AiInterview = () => {
                                 {isListening ? <MicOff size={36} className="sm:w-10 sm:h-10" /> : <Mic size={36} className="sm:w-10 sm:h-10" />}
                             </button>
                         ) : (
-                            <p className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">Voice not supported in this browser. Use Chrome for full experience.</p>
+                            <p className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">Voice not supported in this browser. Use Chrome or Edge for full speech experience.</p>
                         )}
                         <p className="text-xs text-gray-500 text-center max-w-sm">
                             {speechSupported ? "Tap once to start speaking, tap again when you're done. No typing — just talk." : ""}
@@ -529,13 +536,13 @@ const AiInterview = () => {
                 <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D8D1FF] opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#5B4BDB]"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#93B8FF] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#0755E8]"></span>
                         </span>
-                        <span className="text-[#5B4BDB] font-bold text-xs tracking-widest uppercase">AI Session Builder</span>
+                        <span className="text-[#0755E8] font-bold text-xs tracking-widest uppercase">AI Session Builder</span>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight mb-2">
-                        Design Your <span className="text-[#5B4BDB]">Perfect Interview</span>
+                        Design Your <span className="text-[#0755E8]">Perfect Interview</span>
                     </h1>
                     <p className="text-gray-500 text-base font-medium">Configure the AI to match your exact career goals.</p>
                 </div>
@@ -550,11 +557,11 @@ const AiInterview = () => {
                             <div className="flex items-center gap-3 mb-6">
                                 {[1, 2, 3].map((s) => (
                                     <div key={s} className="flex items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all border ${step >= s ? "bg-[#5B4BDB] text-white border-[#5B4BDB]" : "bg-white text-gray-400 border-gray-200"
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all border ${step >= s ? "bg-[#0755E8] text-white border-[#0755E8]" : "bg-white text-gray-400 border-gray-200"
                                             }`}>
                                             {s}
                                         </div>
-                                        {s < 3 && <div className={`w-12 h-1 rounded-full ${step > s ? "bg-[#5B4BDB]" : "bg-gray-200"}`}></div>}
+                                        {s < 3 && <div className={`w-12 h-1 rounded-full ${step > s ? "bg-[#0755E8]" : "bg-gray-200"}`}></div>}
                                     </div>
                                 ))}
                             </div>
@@ -579,20 +586,20 @@ const AiInterview = () => {
                                                     key={item.id}
                                                     onClick={() => setConfig({ ...config, goal: item.id as MockType })}
                                                     className={`p-4 rounded-xl border text-left transition-all duration-300 group relative overflow-hidden ${config.goal === item.id
-                                                        ? "bg-[#F0EDFF] border-[#5B4BDB] ring-1 ring-[#D8D1FF]"
-                                                        : "bg-white border-gray-200 hover:border-[#D8D1FF] hover:shadow-md"
+                                                        ? "bg-[#EAF2FF] border-[#0755E8] ring-1 ring-[#93B8FF]"
+                                                        : "bg-white border-gray-200 hover:border-[#93B8FF] hover:shadow-md"
                                                         }`}
                                                 >
-                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors ${config.goal === item.id ? "bg-[#5B4BDB] text-white" : "bg-[#F0EDFF] text-[#5B4BDB] group-hover:bg-[#5B4BDB] group-hover:text-white"
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors ${config.goal === item.id ? "bg-[#0755E8] text-white" : "bg-[#EAF2FF] text-[#0755E8] group-hover:bg-[#0755E8] group-hover:text-white"
                                                         }`}>
                                                         {item.icon}
                                                     </div>
-                                                    <h3 className={`text-base font-bold mb-0.5 ${config.goal === item.id ? "text-[#5B4BDB]" : "text-gray-900"}`}>{item.label}</h3>
+                                                    <h3 className={`text-base font-bold mb-0.5 ${config.goal === item.id ? "text-[#0755E8]" : "text-gray-900"}`}>{item.label}</h3>
                                                     <p className="text-xs text-gray-500 font-medium group-hover:text-gray-600 transition-colors">{item.desc}</p>
 
                                                     {config.goal === item.id && (
                                                         <div className="absolute top-4 right-4">
-                                                            <CheckCircle2 className="text-[#5B4BDB] w-5 h-5" />
+                                                            <CheckCircle2 className="text-[#0755E8] w-5 h-5" />
                                                         </div>
                                                     )}
                                                 </button>
@@ -619,7 +626,7 @@ const AiInterview = () => {
                                                         value={config.role}
                                                         onChange={(e) => setConfig({ ...config, role: e.target.value })}
                                                         placeholder="e.g. Senior Frontend Developer"
-                                                        className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B4BDB]/20 focus:border-[#5B4BDB] transition-all font-medium"
+                                                        className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0755E8]/20 focus:border-[#0755E8] transition-all font-medium"
                                                     />
                                                 </div>
                                             </div>
@@ -633,7 +640,7 @@ const AiInterview = () => {
                                                             key={exp}
                                                             onClick={() => setConfig({ ...config, experience: exp as ExperienceLevel })}
                                                             className={`py-3 rounded-xl text-sm font-bold border transition-all ${config.experience === exp
-                                                                ? "bg-[#5B4BDB] text-white border-[#5B4BDB] shadow-lg shadow-[#5B4BDB]/20"
+                                                                ? "bg-[#0755E8] text-white border-[#0755E8] shadow-lg shadow-[#0755E8]/20"
                                                                 : "bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
                                                                 }`}
                                                         >
@@ -646,9 +653,9 @@ const AiInterview = () => {
                                             {/* Skills Input */}
                                             <div className="space-y-3">
                                                 <label className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Key Skills (Press Enter)</label>
-                                                <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-wrap gap-2 focus-within:ring-2 focus-within:ring-[#5B4BDB]/20 focus-within:border-[#5B4BDB] transition-all">
+                                                <div className="bg-white border border-gray-200 rounded-xl p-2 flex flex-wrap gap-2 focus-within:ring-2 focus-within:ring-[#0755E8]/20 focus-within:border-[#0755E8] transition-all">
                                                     {config.skills.map((skill) => (
-                                                        <span key={skill} className="bg-[#F0EDFF] text-[#5B4BDB] px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 animate-in zoom-in-50 duration-200 border border-[#D8D1FF]">
+                                                        <span key={skill} className="bg-[#EAF2FF] text-[#0755E8] px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 animate-in zoom-in-50 duration-200 border border-[#93B8FF]">
                                                             {skill}
                                                             <button onClick={() => removeSkill(skill)} className="hover:text-red-500 transition-colors"><span className="sr-only">Remove</span>&times;</button>
                                                         </span>
@@ -663,7 +670,7 @@ const AiInterview = () => {
                                                     />
                                                 </div>
                                                 <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <Sparkles className="w-3 h-3 text-[#5B4BDB]" />
+                                                    <Sparkles className="w-3 h-3 text-[#0755E8]" />
                                                     AI will adapt questions based on these skills
                                                 </p>
                                             </div>
@@ -697,7 +704,7 @@ const AiInterview = () => {
                                                         const val = parseInt(e.target.value);
                                                         setConfig({ ...config, difficulty: val === 0 ? 'easy' : val === 1 ? 'medium' : 'hard' });
                                                     }}
-                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#5B4BDB]"
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#0755E8]"
                                                 />
                                                 <div className="flex justify-between text-xs text-gray-400 font-medium px-1">
                                                     <span>Easy</span>
@@ -719,7 +726,7 @@ const AiInterview = () => {
                                                             key={tone.id}
                                                             onClick={() => setConfig({ ...config, tone: tone.id as Tone })}
                                                             className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-bold transition-all ${config.tone === tone.id
-                                                                ? "bg-[#F0EDFF] border-[#5B4BDB] text-[#5B4BDB]"
+                                                                ? "bg-[#EAF2FF] border-[#0755E8] text-[#0755E8]"
                                                                 : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                                                                 }`}
                                                         >
@@ -777,7 +784,7 @@ const AiInterview = () => {
                                 ) : (
                                     <button
                                         onClick={startInterview}
-                                        className="ml-auto px-8 py-3 bg-[#5B4BDB] text-white font-bold text-sm rounded-xl hover:bg-[#4938C8] active:bg-[#3F2FB3] hover:shadow-lg hover:shadow-[#5B4BDB]/25 transition-all flex items-center gap-2 transform hover:scale-105"
+                                        className="ml-auto px-8 py-3 bg-[#0755E8] text-white font-bold text-sm rounded-xl hover:bg-[#0645C7] active:bg-[#073AA3] hover:shadow-lg hover:shadow-[#0755E8]/25 transition-all flex items-center gap-2 transform hover:scale-105"
                                     >
                                         Start AI Interview <Sparkles className="w-4 h-4" />
                                     </button>
@@ -817,14 +824,14 @@ const AiInterview = () => {
                                     {/* Chat Bubble */}
                                     <div className="relative z-10 bg-gray-50 border border-gray-100 rounded-2xl p-6 mb-4 shadow-sm">
                                         <p className="text-gray-800 text-lg leading-relaxed font-medium">
-                                            "{previewText}<span className="inline-block w-2 h-5 bg-[#5B4BDB] ml-1 animate-pulse"></span>"
+                                            "{previewText}<span className="inline-block w-2 h-5 bg-[#0755E8] ml-1 animate-pulse"></span>"
                                         </p>
                                     </div>
 
                                     {/* Dynamic Tags Preview */}
                                     <div className="mt-auto flex flex-wrap gap-2 justify-center opacity-70">
                                         {config.goal && (
-                                            <span className="px-3 py-1 rounded-full bg-[#F0EDFF] text-[#5B4BDB] text-xs font-bold border border-[#D8D1FF] caption-bottom">
+                                            <span className="px-3 py-1 rounded-full bg-[#EAF2FF] text-[#0755E8] text-xs font-bold border border-[#93B8FF] caption-bottom">
                                                 {config.goal.replace('-', ' ').toUpperCase()}
                                             </span>
                                         )}
@@ -842,8 +849,8 @@ const AiInterview = () => {
                             </div>
 
                             {/* Tips Card */}
-                            <div className="mt-6 bg-[#F0EDFF]/50 border border-[#D8D1FF] rounded-2xl p-4 flex items-start gap-3">
-                                <div className="p-2 bg-[#F0EDFF] rounded-lg text-[#5B4BDB]">
+                            <div className="mt-6 bg-[#EAF2FF]/50 border border-[#93B8FF] rounded-2xl p-4 flex items-start gap-3">
+                                <div className="p-2 bg-[#EAF2FF] rounded-lg text-[#0755E8]">
                                     <Zap className="w-5 h-5" />
                                 </div>
                                 <div>

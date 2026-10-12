@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MentorProfile } from "./MentorJobCard";
 
-const ACCENT = "#2F5FFF";
+const ACCENT = "#0755E8";
 
 interface ExpertCardProps {
     mentor: MentorProfile;
@@ -123,10 +123,10 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                     )}
                 </div>
                 <div className="flex-1 min-w-[150px]">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-[17.5px] text-[#141A33] tracking-tight">{mentor.name}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-[17.5px] text-[#141A33] tracking-tight truncate min-w-0" title={mentor.name}>{mentor.name}</span>
                         {mentor.isVerified && (
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill={ACCENT}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill={ACCENT} className="shrink-0">
                                 <path d="M12 1l2.4 2.1 3.1-.5 1.1 3 3 1.1-.5 3.1L23 12l-2.1 2.4.5 3.1-3 1.1-1.1 3-3.1-.5L12 23l-2.4-2.1-3.1.5-1.1-3-3-1.1.5-3.1L1 12l2.1-2.4-.5-3.1 3-1.1 1.1-3 3.1.5z" />
                                 <path d="M9.5 12.2l1.8 1.8 3.6-3.8" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>

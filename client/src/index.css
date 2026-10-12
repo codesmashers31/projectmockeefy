@@ -1,37 +1,41 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap');
-@import url('https://fonts.cdnfonts.com/css/google-sans');
 
 @import 'tailwindcss';
 
 @theme {
-    --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: "Source Sans 3", "Segoe UI", Arial, sans-serif;
     --font-logo: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
 
     /* STANDARDIZED BRAND TOKENS */
-    --color-primary: #5B4BDB;
-    --color-primary-hover: #4938C8;
-    --color-primary-active: #3F2FB3;
-    --color-primary-light: #F0EDFF;
-    --color-primary-border: #D8D1FF;
+    --color-primary: #0755E8;
+    --color-primary-hover: #0645C7;
+    --color-primary-active: #073AA3;
+    --color-primary-light: #EAF2FF;
+    --color-primary-subtle: #F0F6FF;
+    --color-primary-border: #93B8FF;
     --color-primary-foreground: #ffffff;
+    --color-focus-ring: #93B8FF;
 
     /* BRAND ALIASES */
-    --color-brand: #5B4BDB;
-    --color-brand-hover: #4938C8;
-    --color-brand-active: #3F2FB3;
-    --color-brand-bg: #F0EDFF;
-    --color-brand-border: #D8D1FF;
+    --color-brand: #0755E8;
+    --color-brand-hover: #0645C7;
+    --color-brand-active: #073AA3;
+    --color-brand-bg: #EAF2FF;
+    --color-brand-border: #93B8FF;
 
     /* NEUTRAL DESIGN TOKENS */
-    --color-neutral-bg: #F5F6FA;
+    --color-neutral-bg: #F5F8FF;
     --color-neutral-surface: #FFFFFF;
-    --color-neutral-text: #111827;
-    --color-neutral-secondary: #4B5563;
-    --color-neutral-muted: #6B7280;
-    --color-neutral-border: #E5E7EB;
-    --color-neutral-subtle: #F3F4F6;
+    --color-neutral-text: #172B4D;
+    --color-neutral-heading: #172B4D;
+    --color-neutral-body: #334155;
+    --color-neutral-secondary: #64748B;
+    --color-neutral-muted: #94A3B8;
+    --color-neutral-border: #E2E8F0;
+    --color-neutral-subtle: #F0F6FF;
+    --color-navbar-bg: #FFFFFF;
+    --color-navbar-border: #E2E8F0;
 
     /* SEMANTIC DESIGN TOKENS */
     --color-semantic-success: #15803D;
@@ -44,12 +48,12 @@
     --color-semantic-info-bg: #EFF6FF;
 
     /* LEGACY COMPATIBILITY */
-    --color-secondary: #F3F4F6;
-    --color-background: #ffffff;
-    --color-foreground: #111827;
-    --color-elite-black: #111827;
-    --color-elite-blue: #5B4BDB;
-    --color-text-secondary: #4B5563;
+    --color-secondary: #F0F6FF;
+    --color-background: #F5F8FF;
+    --color-foreground: #172B4D;
+    --color-elite-black: #172B4D;
+    --color-elite-blue: #0755E8;
+    --color-text-secondary: #64748B;
 
     --radius-lg: 0.75rem;
     --radius-md: 0.5rem;
@@ -69,20 +73,14 @@
 
     body {
         font-family: var(--font-sans);
-        @apply bg-white text-elite-black antialiased;
+        @apply bg-[#F5F8FF] text-elite-black antialiased;
         font-weight: 400;
+        line-height: 1.5;
         margin: 0;
         padding: 0;
         width: 100%;
         min-height: 100vh;
         box-sizing: border-box;
-        /* Do NOT set overflow-x here: per the CSS overflow spec, once one axis is
-           non-"visible", the browser silently promotes the other axis to "auto",
-           turning body into its own scroll container in addition to html. That
-           second scroll container breaks position:sticky for the dashboard side
-           nav / info panel (they'd stick relative to the wrong ancestor).
-           overflow-x: clip on <html> above is already enough to stop horizontal
-           bleed, so body should stay fully "visible". */
         scrollbar-gutter: stable;
     }
 
@@ -90,6 +88,15 @@
     *::before,
     *::after {
         box-sizing: border-box;
+    }
+
+    /* Form Controls & Interactive Elements Font Inheritance */
+    button,
+    input,
+    textarea,
+    select,
+    optgroup {
+        font-family: var(--font-sans);
     }
 
     h1,
@@ -100,6 +107,7 @@
     h6 {
         font-family: var(--font-sans);
         @apply tracking-tight text-elite-black;
+        line-height: 1.25;
         font-weight: 700;
     }
 
@@ -213,7 +221,7 @@
         line-height: 1.25;
         font-weight: 700;
         letter-spacing: -0.025em;
-        color: #111827;
+        color: #172B4D;
     }
 
     .section-heading {
@@ -222,7 +230,7 @@
         line-height: 1.3;
         font-weight: 600;
         letter-spacing: -0.015em;
-        color: #111827;
+        color: #172B4D;
     }
 
     .card-title {
@@ -230,7 +238,7 @@
         font-size: 1.0625rem; /* 17px */
         line-height: 1.35;
         font-weight: 600;
-        color: #111827;
+        color: #172B4D;
     }
 
     .body-text {
@@ -238,7 +246,7 @@
         font-size: 0.9375rem; /* 15px */
         line-height: 1.5;
         font-weight: 400;
-        color: #111827;
+        color: #334155;
     }
 
     .supporting-text {
@@ -246,15 +254,15 @@
         font-size: 0.84375rem; /* 13.5px */
         line-height: 1.45;
         font-weight: 400;
-        color: #4B5563;
+        color: #64748B;
     }
 
     .form-label {
         font-family: var(--font-sans);
-        font-size: 0.84375rem; /* 13.5px */
+        font-size: 0.875rem; /* 14px */
         line-height: 1.4;
-        font-weight: 500;
-        color: #374151;
+        font-weight: 600;
+        color: #172B4D;
         margin-bottom: 0.375rem;
         display: block;
     }
@@ -264,14 +272,14 @@
         font-size: 0.78125rem; /* 12.5px */
         line-height: 1.4;
         font-weight: 400;
-        color: #6B7280;
+        color: #94A3B8;
     }
 
     /* ======================================================== */
     /* STANDARDIZED COMPONENT CLASSES                           */
     /* ======================================================== */
     .btn-primary {
-        background-color: #5B4BDB;
+        background-color: #0755E8;
         color: #ffffff;
         font-family: var(--font-sans);
         font-size: 0.875rem;
@@ -283,16 +291,16 @@
         justify-content: center;
         gap: 0.375rem;
         transition: all 0.15s ease-in-out;
-        box-shadow: 0 1px 2px rgba(91, 75, 219, 0.15);
+        box-shadow: 0 1px 2px rgba(7, 85, 232, 0.2);
         cursor: pointer;
     }
 
     .btn-primary:hover {
-        background-color: #4938C8;
+        background-color: #0645C7;
     }
 
     .btn-primary:active {
-        background-color: #3F2FB3;
+        background-color: #073AA3;
         transform: scale(0.98);
     }
 
@@ -304,12 +312,12 @@
 
     .btn-secondary {
         background-color: #ffffff;
-        color: #111827;
+        color: #172B4D;
         font-family: var(--font-sans);
         font-size: 0.875rem;
         font-weight: 600;
         border-radius: 0.75rem;
-        border: 1px solid #E5E7EB;
+        border: 1px solid #E2E8F0;
         padding: 0.5rem 1rem;
         display: inline-flex;
         align-items: center;
@@ -320,8 +328,8 @@
     }
 
     .btn-secondary:hover {
-        background-color: #F3F4F6;
-        color: #111827;
+        background-color: #F0F6FF;
+        color: #0755E8;
     }
 
     .btn-secondary:active {
@@ -337,7 +345,7 @@
     .card-standard {
         background-color: #ffffff;
         border-radius: 1rem;
-        border: 1px solid #E5E7EB;
+        border: 1px solid #E2E8F0;
         padding: 1.25rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
@@ -346,9 +354,9 @@
         width: 100%;
         padding: 0.625rem 1rem;
         border-radius: 0.75rem;
-        border: 1px solid #E5E7EB;
+        border: 1px solid #E2E8F0;
         background-color: #ffffff;
-        color: #111827;
+        color: #172B4D;
         font-family: var(--font-sans);
         font-size: 0.875rem;
         outline: none;
@@ -356,11 +364,12 @@
     }
 
     .input-standard:focus {
-        border-color: #5B4BDB;
-        box-shadow: 0 0 0 3px rgba(91, 75, 219, 0.15);
+        border-color: #0755E8;
+        box-shadow: 0 0 0 3px rgba(147, 184, 255, 0.4);
     }
 
-    .badge-purple {
+    .badge-purple,
+    .badge-blue {
         display: inline-flex;
         align-items: center;
         gap: 0.375rem;
@@ -368,9 +377,9 @@
         border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 600;
-        background-color: #F0EDFF;
-        color: #5B4BDB;
-        border: 1px solid #D8D1FF;
+        background-color: #EAF2FF;
+        color: #0755E8;
+        border: 1px solid #93B8FF;
     }
 
     .no-scrollbar::-webkit-scrollbar {

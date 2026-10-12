@@ -235,10 +235,10 @@ export function EducationForm() {
         </div>
 
         {/* Education List */}
-        {resumeData.education.length > 0 && (
+        {(resumeData?.education?.length ?? 0) > 0 && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-700">Added Education</h3>
-            {resumeData.education.map((edu) => (
+            {(resumeData?.education || []).map((edu) => (
               <motion.div
                 key={edu.id}
                 initial={{ opacity: 0, x: -10 }}

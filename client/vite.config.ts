@@ -26,5 +26,14 @@ export default defineConfig({
   },
   build: {
     sourcemap: false, // Prevent raw source code leaks via DevTools (Phase 5.3)
-  }
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-pdf': ['jspdf', 'html2canvas'],
+        },
+      },
+    },
+  },
 });

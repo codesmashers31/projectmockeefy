@@ -56,8 +56,8 @@ type Session = {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    Upcoming: "bg-[#F0EDFF] text-[#5B4BDB] border-[#D8D1FF]",
-    Confirmed: "bg-[#5B4BDB] text-white border-[#5B4BDB]",
+    Upcoming: "bg-[#EAF2FF] text-[#0755E8] border-[#93B8FF]",
+    Confirmed: "bg-[#0755E8] text-white border-[#0755E8]",
     Completed: "bg-slate-50 text-slate-500 border-slate-200",
     Cancelled: "bg-rose-50 text-rose-600 border-rose-100",
     Live: "bg-emerald-50 text-emerald-600 border-emerald-100",
@@ -227,13 +227,10 @@ const SessionCard: React.FC<{
   const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   return (
-    <div className="relative bg-gradient-to-b from-[#F0EDFF]/20 via-white to-white border border-slate-200/80 rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left h-full overflow-hidden">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-[#D8D1FF]/40 via-[#F0EDFF]/35 to-transparent blur-2xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#F0EDFF]/30 to-transparent pointer-events-none" />
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between text-left h-full">
       {/* Top Header: Category & Status */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black bg-[#F0EDFF] text-[#5B4BDB] border border-[#D8D1FF] uppercase tracking-tight">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF] uppercase tracking-tight">
           {session.category || "IT"}
         </span>
         {countdown ? (
@@ -248,7 +245,7 @@ const SessionCard: React.FC<{
 
       {/* Profile Details */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 p-0.5 shadow-sm shrink-0 overflow-hidden">
+        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 p-0.5 shadow-xs shrink-0 overflow-hidden">
           <SessionAvatar name={session.expert} profileImage={session.profileImage} />
         </div>
         <div className="min-w-0 flex-1">
@@ -262,9 +259,9 @@ const SessionCard: React.FC<{
       </div>
 
       {/* Date & Time */}
-      <div className="bg-slate-50 border border-slate-100/50 rounded-xl p-2.5 flex items-center justify-between text-slate-700 text-xs mb-4.5 mt-auto">
+      <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex items-center justify-between text-slate-700 text-xs mb-4.5 mt-auto">
         <div className="flex items-center gap-1.5 font-extrabold text-slate-800">
-          <Calendar className="w-3.5 h-3.5 text-[#5B4BDB]" />
+          <Calendar className="w-3.5 h-3.5 text-[#0755E8]" />
           <span>{dateStr}</span>
         </div>
         <div className="flex items-center gap-1.5 font-bold text-slate-500">
@@ -280,8 +277,9 @@ const SessionCard: React.FC<{
             {session.candidateReview ? (
               session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
                 <button
+                  type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="flex-1 py-2 px-3 border border-slate-200 hover:border-[#5B4BDB] hover:text-[#5B4BDB] text-slate-600 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-white cursor-pointer"
+                  className="flex-1 py-2 px-3 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-600 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-white cursor-pointer"
                 >
                   <Award className="w-3.5 h-3.5" />
                   <span>Certificate</span>
@@ -289,6 +287,7 @@ const SessionCard: React.FC<{
               ) : null
             ) : (
               <button
+                type="button"
                 onClick={() => setReviewModalSession(session)}
                 className="flex-1 py-2 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
@@ -299,8 +298,9 @@ const SessionCard: React.FC<{
 
             {session.expertReview ? (
               <button
+                type="button"
                 onClick={() => setCertificateModalSession(session)}
-                className="flex-1 py-2 px-3 border border-[#D8D1FF] hover:border-[#5B4BDB] hover:text-[#5B4BDB] text-[#5B4BDB] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-[#F0EDFF] cursor-pointer"
+                className="flex-1 py-2 px-3 border border-[#93B8FF] hover:border-[#0755E8] hover:text-[#0755E8] text-[#0755E8] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-[#EAF2FF] cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5 animate-pulse" />
                 <span>Feedback</span>
@@ -315,20 +315,32 @@ const SessionCard: React.FC<{
               </button>
             ) : (
               <button
+                type="button"
                 onClick={() => handleRequestFeedback(session.sessionId)}
-                className="flex-1 py-2 px-3 bg-[#F0EDFF] border border-[#D8D1FF] text-[#5B4BDB] hover:bg-[#F0EDFF]/80 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2 px-3 bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] hover:bg-[#EAF2FF]/80 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Request</span>
               </button>
             )}
           </>
+        ) : displayStatus === 'Cancelled' ? (
+          <button
+            type="button"
+            onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
+            className="w-full py-2 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <span>Book Another Session</span>
+            <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+          </button>
         ) : joinable ? (
           <button
+            type="button"
             onClick={() => handleJoin(session)}
-            className="w-full py-2 bg-[#2F5FFF] hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+            className="w-full py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
           >
-            Join Now <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+            <span>Join Now</span>
+            <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
           </button>
         ) : countdown ? (
           <span className="w-full py-2 text-center text-xs font-black text-amber-700 rounded-xl bg-amber-50 border border-amber-200 inline-flex items-center justify-center gap-1.5">
@@ -377,26 +389,64 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   const [submittingReview, setSubmittingReview] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  // Bookings list: newest first + pagination
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
+
+  // Bookings list: newest first
   const sortedSessions = useMemo(() => {
     return [...sessions].sort(
       (a, b) => new Date(b.startTime || 0).getTime() - new Date(a.startTime || 0).getTime()
     );
   }, [sessions]);
 
+  const upcomingCount = useMemo(() => {
+    return sessions.filter(s => {
+      if (['Completed', 'Cancelled'].includes(s.status)) return false;
+      const end = s.endTime ? new Date(s.endTime) : null;
+      if (end && now > end) return false;
+      return true;
+    }).length;
+  }, [sessions, now]);
+
+  const completedCount = useMemo(() => {
+    return sessions.filter(s => s.status === 'Completed').length;
+  }, [sessions]);
+
+  const cancelledCount = useMemo(() => {
+    return sessions.filter(s => s.status === 'Cancelled').length;
+  }, [sessions]);
+
+  const filteredSessions = useMemo(() => {
+    if (statusFilter === 'all') return sortedSessions;
+    if (statusFilter === 'upcoming') {
+      return sortedSessions.filter(s => {
+        if (['Completed', 'Cancelled'].includes(s.status)) return false;
+        const end = s.endTime ? new Date(s.endTime) : null;
+        if (end && now > end) return false;
+        return true;
+      });
+    }
+    if (statusFilter === 'completed') {
+      return sortedSessions.filter(s => s.status === 'Completed');
+    }
+    if (statusFilter === 'cancelled') {
+      return sortedSessions.filter(s => s.status === 'Cancelled');
+    }
+    return sortedSessions;
+  }, [sortedSessions, statusFilter, now]);
+
   const PAGE_SIZE = 10;
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(sortedSessions.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / PAGE_SIZE));
   useEffect(() => {
     setPage(1);
-  }, [sortedSessions.length]);
+  }, [filteredSessions.length, statusFilter]);
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   const pageStartIdx = (page - 1) * PAGE_SIZE;
-  const pageEndIdx = Math.min(sortedSessions.length, pageStartIdx + PAGE_SIZE);
-  const pagedSessions = sortedSessions.slice(pageStartIdx, pageEndIdx);
+  const pageEndIdx = Math.min(filteredSessions.length, pageStartIdx + PAGE_SIZE);
+  const pagedSessions = filteredSessions.slice(pageStartIdx, pageEndIdx);
 
   // Tick every second when on overview and there are upcoming sessions (for countdown)
   useEffect(() => {
@@ -535,12 +585,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   };
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-[#F0EDFF]/20 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-[#D8D1FF]/40 via-[#F0EDFF]/35 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#F0EDFF]/30 to-transparent pointer-events-none" />
-
-      <div className="w-full relative z-10 space-y-6">
+    <div className="w-full bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 md:p-8 shadow-xs pb-12 font-sans text-left">
+      <div className="w-full space-y-6">
 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
         {activeView === 'overview' && (
@@ -548,26 +594,59 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             {/* Header - simple, flat title row with icon */}
             <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#F0EDFF] flex items-center justify-center border border-[#D8D1FF] shrink-0">
-                  <Sparkles className="w-5 h-5 text-[#5B4BDB]" />
+                <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
+                  <Sparkles className="w-5 h-5 text-[#0755E8]" />
                 </div>
                 <div>
                   <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Bookings</h1>
-                  <p className="text-xs font-semibold text-gray-500 mt-1">All bookings — view and join sessions</p>
+                  <p className="text-xs font-semibold text-gray-500 mt-1">Real-time sessions, countdowns, and mentor feedback</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#D8D1FF] bg-[#F0EDFF] text-[10px] font-black text-[#5B4BDB] uppercase tracking-wider">
+                <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10px] font-black text-[#0755E8] uppercase tracking-wider">
                   Bookings
                 </span>
-                <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/50 text-xs font-bold text-slate-600">
-                  Total: {sortedSessions.length}
+                <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
+                  Total: {sessions.length}
                 </span>
               </div>
             </div>
 
-            {/* List - directly rendered grid, no extra white card container! */}
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {[
+                { id: 'all', label: 'All', count: sessions.length },
+                { id: 'upcoming', label: 'Upcoming', count: upcomingCount },
+                { id: 'completed', label: 'Completed', count: completedCount },
+                { id: 'cancelled', label: 'Cancelled', count: cancelledCount },
+              ].map((tab) => {
+                const isActive = statusFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.id as any)}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#0755E8] text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* List */}
             <div>
               {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
@@ -594,30 +673,49 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                   ))}
                 </div>
               ) : (
-                <div className="py-16 text-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-                  <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-900 font-bold text-[15px]">No bookings yet</p>
-                  <p className="text-gray-500 text-xs font-medium mt-1 max-w-xs mx-auto">Your bookings will show here after you book a session.</p>
-                  <button type="button" onClick={() => navigate("/book-session")} className="mt-5 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
-                    Book a session
-                  </button>
+                <div className="py-16 text-center bg-slate-50/50 border border-slate-200/80 rounded-2xl p-6 shadow-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                    <Briefcase className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <h3 className="text-gray-900 font-bold text-[15px]">
+                    {statusFilter === 'all' && 'No bookings yet'}
+                    {statusFilter === 'upcoming' && 'No upcoming sessions'}
+                    {statusFilter === 'completed' && 'No completed sessions yet'}
+                    {statusFilter === 'cancelled' && 'No cancelled sessions'}
+                  </h3>
+                  <p className="text-gray-500 text-xs font-medium mt-1 max-w-sm mx-auto">
+                    {statusFilter === 'all' && 'Your bookings will appear here after you schedule a session with a mentor.'}
+                    {statusFilter === 'upcoming' && 'You have no active sessions scheduled. Explore expert mentors to book a mock interview.'}
+                    {statusFilter === 'completed' && 'Your finished sessions, feedback reports, and certificates will appear here.'}
+                    {statusFilter === 'cancelled' && 'All your scheduled sessions are currently active or completed.'}
+                  </p>
+                  {statusFilter !== 'cancelled' && (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/find-mentor")}
+                      className="mt-5 px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span>Explore Mentors</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Pagination footer */}
-            {!loading && sortedSessions.length > 0 && (
+            {!loading && filteredSessions.length > 0 && (
               <div className="flex items-center justify-between px-2 py-4 mt-4 border-t border-slate-200">
                 <div className="text-[10px] font-bold text-slate-500">
                   Showing <span className="text-slate-700 tabular-nums">{pageStartIdx + 1}</span>–<span className="text-slate-700 tabular-nums">{pageEndIdx}</span> of{" "}
-                  <span className="text-slate-700 tabular-nums">{sortedSessions.length}</span>
+                  <span className="text-slate-700 tabular-nums">{filteredSessions.length}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#5B4BDB] hover:text-[#5B4BDB] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#0755E8] hover:text-[#0755E8] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                   >
                     Prev
                   </button>
@@ -628,7 +726,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#5B4BDB] hover:text-[#5B4BDB] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#0755E8] hover:text-[#0755E8] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                   >
                     Next
                   </button>
@@ -669,13 +767,20 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 p-20 text-center flex flex-col items-center shadow-sm">
-                <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center mb-4">
-                  <Heart className="w-8 h-8 text-rose-300" />
+              <div className="bg-slate-50/50 rounded-2xl border border-slate-200/80 p-12 sm:p-16 text-center flex flex-col items-center shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-3.5 shadow-xs">
+                  <Heart className="w-7 h-7 text-rose-500 fill-rose-500" />
                 </div>
-                <h3 className="text-gray-900 font-bold mb-1">No Liked Mentors Yet</h3>
-                <p className="text-gray-500 text-sm font-medium max-w-xs mx-auto">Click the heart icon on any mentor card to save your top mentors here.</p>
-                <button onClick={() => navigate('/find-mentor')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-blue-700 transition-all cursor-pointer">Explore Mentors</button>
+                <h3 className="text-gray-900 font-bold text-base mb-1">No Liked Mentors Yet</h3>
+                <p className="text-gray-500 text-xs font-medium max-w-xs mx-auto">Click the bookmark or heart icon on any mentor card to save your favorite mentors here for easy access.</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/find-mentor')}
+                  className="mt-5 px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Explore Mentors</span>
+                </button>
               </div>
             )}
           </div>
@@ -735,7 +840,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
           <div className="bg-white rounded-2xl border border-slate-200/60 p-16 text-center shadow-sm">
             <Briefcase className="w-10 h-10 text-slate-100 mx-auto mb-4" />
             <p className="text-slate-500 text-[10px] font-black tracking-tight">Intel Core "{activeView}" Encrypted</p>
-            <button onClick={() => setActiveView('overview')} className="mt-8 px-8 py-2.5 bg-[#5B4BDB] text-white rounded-xl text-[10px] font-black tracking-tight hover:bg-[#4938C8] transition-all shadow-xl shadow-[#5B4BDB]/20">Return to Nexus</button>
+            <button onClick={() => setActiveView('overview')} className="mt-8 px-8 py-2.5 bg-[#0755E8] text-white rounded-xl text-[10px] font-black tracking-tight hover:bg-[#0645C7] transition-all shadow-xl shadow-[#0755E8]/20">Return to Nexus</button>
           </div>
         )}
 
@@ -766,7 +871,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
               </div>
               <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
                 <button onClick={() => setReviewModalSession(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium">Cancel</button>
-                <button onClick={handleSubmitReview} disabled={submittingReview} className="px-4 py-2 bg-[#5B4BDB] text-white rounded-lg text-sm font-bold hover:bg-[#4938C8] disabled:opacity-60">{submittingReview ? "Submitting…" : "Submit review"}</button>
+                <button onClick={handleSubmitReview} disabled={submittingReview} className="px-4 py-2 bg-[#0755E8] text-white rounded-lg text-sm font-bold hover:bg-[#0645C7] disabled:opacity-60">{submittingReview ? "Submitting…" : "Submit review"}</button>
               </div>
             </div>
           </div>
@@ -777,12 +882,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award size={20} className="text-elite-blue" /> Certificate details</h3>
+                <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award size={20} className="text-[#0755E8]" /> Certificate details</h3>
                 <button onClick={() => setCertificateModalSession(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"><X size={18} /></button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="w-12 h-12 rounded-xl bg-elite-blue/10 flex items-center justify-center"><Award className="w-6 h-6 text-elite-blue" /></div>
+                  <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] flex items-center justify-center"><Award className="w-6 h-6 text-[#0755E8]" /></div>
                   <div>
                     <p className="font-bold text-slate-900">Session with {certificateModalSession.expert}</p>
                     <p className="text-xs text-slate-500">{certificateModalSession.category} · {certificateModalSession.startTime ? new Date(certificateModalSession.startTime).toLocaleDateString() : ""}</p>
@@ -807,8 +912,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                         </div>
                       )}
                       {certificateModalSession.expertReview.suggestions && (
-                        <div className="mt-3 bg-[#F0EDFF]/50 border border-[#D8D1FF] p-3 rounded-xl">
-                          <p className="text-[10px] font-bold text-[#5B4BDB] uppercase tracking-wider">Key Recommendations & Suggestions</p>
+                        <div className="mt-3 bg-[#EAF2FF]/50 border border-[#93B8FF] p-3 rounded-xl">
+                          <p className="text-[10px] font-bold text-[#0755E8] uppercase tracking-wider">Key Recommendations & Suggestions</p>
                           <p className="text-sm text-slate-700 mt-1">{certificateModalSession.expertReview.suggestions}</p>
                         </div>
                       )}
@@ -819,8 +924,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                         </div>
                       ) : null}
                     </div>
-                    <div className="mt-4 p-3 bg-[#F0EDFF] border border-[#D8D1FF] rounded-xl text-xs text-[#5B4BDB] flex items-start gap-2">
-                      <Award className="w-4 h-4 text-[#5B4BDB] shrink-0 mt-0.5" />
+                    <div className="mt-4 p-3 bg-[#EAF2FF] border border-[#93B8FF] rounded-xl text-xs text-[#0755E8] flex items-start gap-2">
+                      <Award className="w-4 h-4 text-[#0755E8] shrink-0 mt-0.5" />
                       <div>
                         <span>This session is completed and verified. You can download or share this certificate from the </span>
                         <button

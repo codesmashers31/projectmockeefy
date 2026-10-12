@@ -64,7 +64,7 @@ const PLANS = [
 
 export default function SubscriptionPlans() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F8FF] flex flex-col">
       <div className="sticky top-0 z-50">
         <Navigation />
       </div>
@@ -72,7 +72,7 @@ export default function SubscriptionPlans() {
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
         {/* Header */}
         <div className="text-center mb-10 md:mb-14">
-          <p className="text-[#5B4BDB] text-sm font-semibold uppercase tracking-widest mb-2">
+          <p className="text-[#0755E8] text-sm font-semibold uppercase tracking-widest mb-2">
             Pricing
           </p>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
@@ -92,7 +92,7 @@ export default function SubscriptionPlans() {
                 key={plan.id}
                 className={`relative rounded-2xl border-2 bg-white p-6 sm:p-8 flex flex-col transition-all duration-300 ${
                   plan.highlighted
-                    ? "border-[#5B4BDB] shadow-xl shadow-[#5B4BDB]/10 scale-[1.02] md:scale-105 z-10"
+                    ? "border-[#0755E8] shadow-xl shadow-[#0755E8]/10 scale-[1.02] md:scale-105 z-10"
                     : "border-slate-200 hover:border-slate-300 hover:shadow-lg"
                 }`}
               >
@@ -100,7 +100,7 @@ export default function SubscriptionPlans() {
                   <span
                     className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                       plan.highlighted
-                        ? "bg-[#5B4BDB] text-white"
+                        ? "bg-[#0755E8] text-white"
                         : "bg-slate-100 text-slate-600"
                     }`}
                   >
@@ -116,7 +116,7 @@ export default function SubscriptionPlans() {
                 <div className="flex items-center gap-3 mb-4">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      plan.highlighted ? "bg-[#5B4BDB] text-white" : "bg-slate-100 text-slate-600"
+                      plan.highlighted ? "bg-[#0755E8] text-white" : "bg-slate-100 text-slate-600"
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -145,8 +145,8 @@ export default function SubscriptionPlans() {
                     asChild
                     className={`w-full py-6 rounded-xl text-sm font-semibold transition-all ${
                       plan.highlighted
-                        ? "bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white shadow-lg shadow-[#5B4BDB]/25"
-                        : "bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white"
+                        ? "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white shadow-lg shadow-[#0755E8]/25"
+                        : "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white"
                     }`}
                   >
                     <Link to={plan.ctaLink}>{plan.cta}</Link>
@@ -160,15 +160,15 @@ export default function SubscriptionPlans() {
         {/* Trust row */}
         <div className="mt-14 flex flex-wrap items-center justify-center gap-8 text-slate-500 text-sm">
           <span className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-[#5B4BDB]" />
+            <Award className="w-4 h-4 text-[#0755E8]" />
             Certificate after 3 sessions
           </span>
           <span className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-[#5B4BDB]" />
+            <MessageSquare className="w-4 h-4 text-[#0755E8]" />
             Cancel anytime
           </span>
           <span className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-[#5B4BDB]" />
+            <Star className="w-4 h-4 text-[#0755E8]" />
             Verified experts
           </span>
         </div>

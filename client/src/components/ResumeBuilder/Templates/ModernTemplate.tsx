@@ -7,52 +7,52 @@ export function ModernResumeTemplate() {
     resumeData;
 
   return (
-    <div className="bg-white p-10 text-gray-900 font-sans space-y-6">
+    <div className="bg-white p-8 sm:p-10 text-gray-900 font-sans space-y-6 break-words [overflow-wrap:anywhere]">
       {/* Header */}
-      <div className="border-b-2 border-blue-600 pb-6">
-        <div className="mb-4">
-          <h1 className="text-4xl font-bold text-gray-900">{personalDetails.fullName || 'Your Name'}</h1>
+      <div className="border-b-2 border-[#0755E8] pb-6">
+        <div className="mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">{personalDetails.fullName || 'Your Name'}</h1>
         </div>
-        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-600">
           {personalDetails.email && (
-            <div className="flex items-center gap-1">
-              <Mail className="w-4 h-4" />
+            <div className="flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-[#0755E8]" />
               <span>{personalDetails.email}</span>
             </div>
           )}
           {personalDetails.phone && (
-            <div className="flex items-center gap-1">
-              <Phone className="w-4 h-4" />
+            <div className="flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-[#0755E8]" />
               <span>{personalDetails.phone}</span>
             </div>
           )}
           {personalDetails.location && (
-            <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#0755E8]" />
               <span>{personalDetails.location}</span>
             </div>
           )}
           {personalDetails.portfolio && (
-            <div className="flex items-center gap-1">
-              <Globe className="w-4 h-4" />
+            <div className="flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-[#0755E8]" />
               <a
                 href={personalDetails.portfolio}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-[#0755E8] hover:underline"
               >
                 Portfolio
               </a>
             </div>
           )}
           {personalDetails.linkedIn && (
-            <div className="flex items-center gap-1">
-              <Linkedin className="w-4 h-4" />
+            <div className="flex items-center gap-1.5">
+              <Linkedin className="w-3.5 h-3.5 text-[#0755E8]" />
               <a
                 href={personalDetails.linkedIn}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-[#0755E8] hover:underline"
               >
                 LinkedIn
               </a>
@@ -64,24 +64,24 @@ export function ModernResumeTemplate() {
       {/* Professional Summary */}
       {objective?.objective && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-2 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             PROFESSIONAL SUMMARY
           </h2>
-          <p className="text-sm text-gray-700 leading-relaxed">{objective.objective}</p>
+          <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">{objective.objective}</p>
         </div>
       )}
 
       {/* Skills */}
       {skills.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-2 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             SKILLS
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {skills.map(skill => (
               <div
                 key={skill.id}
-                className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full"
+                className="inline-block px-2.5 py-0.5 bg-[#EAF2FF] text-[#0755E8] text-xs font-semibold rounded-md border border-[#93B8FF]/40"
               >
                 {skill.name}
               </div>
@@ -93,12 +93,12 @@ export function ModernResumeTemplate() {
       {/* Experience */}
       {experience.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-3 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             EXPERIENCE
           </h2>
           <div className="space-y-4">
             {experience.map(exp => (
-              <div key={exp.id} className="border-l-4 border-blue-600 pl-4">
+              <div key={exp.id} className="border-l-2 border-[#0755E8] pl-3.5">
                 <div className="flex justify-between items-baseline">
                   <h3 className="text-sm font-bold text-gray-900">{exp.position}</h3>
                   <span className="text-xs text-gray-600">
@@ -125,12 +125,12 @@ export function ModernResumeTemplate() {
       {/* Education */}
       {education.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-3 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             EDUCATION
           </h2>
           <div className="space-y-3">
             {education.map(edu => (
-              <div key={edu.id} className="border-l-4 border-blue-600 pl-4">
+              <div key={edu.id} className="border-l-2 border-[#0755E8] pl-3.5">
                 <div className="flex justify-between items-baseline">
                   <h3 className="text-sm font-bold text-gray-900">
                     {edu.degree} in {edu.fieldOfStudy}
@@ -152,12 +152,12 @@ export function ModernResumeTemplate() {
       {/* Projects */}
       {projects.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-3 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             PROJECTS
           </h2>
           <div className="space-y-3">
             {projects.map(proj => (
-              <div key={proj.id} className="border-l-4 border-blue-600 pl-4">
+              <div key={proj.id} className="border-l-2 border-[#0755E8] pl-3.5">
                 <h3 className="text-sm font-bold text-gray-900">{proj.projectName}</h3>
                 {proj.techStack.length > 0 && (
                   <p className="text-xs text-gray-600">
@@ -174,7 +174,7 @@ export function ModernResumeTemplate() {
       {/* Certifications */}
       {certifications.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-2 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             CERTIFICATIONS
           </h2>
           <div className="space-y-2">
@@ -193,7 +193,7 @@ export function ModernResumeTemplate() {
       {/* Achievements */}
       {achievements.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2 border-b-2 border-blue-600 pb-1">
+          <h2 className="text-base font-bold text-gray-900 mb-2 border-b-2 border-[#0755E8] pb-1 tracking-wide">
             ACHIEVEMENTS
           </h2>
           <ul className="text-xs text-gray-700 space-y-1">

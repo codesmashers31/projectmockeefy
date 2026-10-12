@@ -19,19 +19,20 @@ export function PersonalDetailsForm() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const details = resumeData?.personalDetails || { fullName: '', email: '', phone: '', location: '' };
 
-    if (!resumeData.personalDetails.fullName.trim()) {
+    if (!details.fullName?.trim()) {
       newErrors.fullName = 'Full name is required';
     }
-    if (!resumeData.personalDetails.email.trim()) {
+    if (!details.email?.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resumeData.personalDetails.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
       newErrors.email = 'Invalid email format';
     }
-    if (!resumeData.personalDetails.phone.trim()) {
+    if (!details.phone?.trim()) {
       newErrors.phone = 'Phone is required';
     }
-    if (!resumeData.personalDetails.location.trim()) {
+    if (!details.location?.trim()) {
       newErrors.location = 'Location is required';
     }
 
@@ -68,7 +69,7 @@ export function PersonalDetailsForm() {
           <Input
             type="text"
             name="fullName"
-            value={resumeData.personalDetails.fullName}
+            value={resumeData?.personalDetails?.fullName || ''}
             onChange={handleChange}
             placeholder="John Doe"
             className={errors.fullName ? 'border-red-500' : ''}
@@ -86,7 +87,7 @@ export function PersonalDetailsForm() {
           <Input
             type="email"
             name="email"
-            value={resumeData.personalDetails.email}
+            value={resumeData?.personalDetails?.email || ''}
             onChange={handleChange}
             placeholder="john@example.com"
             className={errors.email ? 'border-red-500' : ''}
@@ -104,7 +105,7 @@ export function PersonalDetailsForm() {
           <Input
             type="tel"
             name="phone"
-            value={resumeData.personalDetails.phone}
+            value={resumeData?.personalDetails?.phone || ''}
             onChange={handleChange}
             placeholder="+1 (555) 123-4567"
             className={errors.phone ? 'border-red-500' : ''}
@@ -122,7 +123,7 @@ export function PersonalDetailsForm() {
           <Input
             type="text"
             name="location"
-            value={resumeData.personalDetails.location}
+            value={resumeData?.personalDetails?.location || ''}
             onChange={handleChange}
             placeholder="San Francisco, CA"
             className={errors.location ? 'border-red-500' : ''}

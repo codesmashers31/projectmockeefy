@@ -132,17 +132,17 @@ export const RegisterForm = () => {
   };
 
   const inputClass =
-    "w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#5B4BDB] focus:ring-2 focus:ring-[#5B4BDB]/20 focus:bg-white outline-none transition-all text-sm";
+    "w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/40 focus:bg-white outline-none transition-all text-sm";
   const labelClass = "block text-xs font-semibold text-slate-700 mb-1.5";
   const btnPrimary =
-    "w-full h-11 rounded-full bg-[#5B4BDB] text-white font-bold text-sm hover:bg-[#4938C8] active:bg-[#3F2FB3] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm";
+    "w-full h-11 rounded-full bg-[#0755E8] text-white font-bold text-sm hover:bg-[#0645C7] active:bg-[#073AA3] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm";
 
   return (
     <AuthLayout title="Sign up">
       <div className="bg-white rounded-[28px] border border-slate-100 p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
         <div className="flex items-center justify-center gap-2 mb-5">
           <MockeefyLogo className="h-12 w-12" variant="brand" />
-          <span className="text-2xl font-logo tracking-tight text-[#5B4BDB]">Mockeefy</span>
+          <span className="text-2xl font-logo tracking-tight text-[#0755E8]">Mockeefy</span>
         </div>
 
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -222,7 +222,7 @@ export const RegisterForm = () => {
                   type="button"
                   onClick={resendOtp}
                   disabled={countdown > 0 || isLoading}
-                  className="text-xs font-semibold text-[#5B4BDB] hover:text-[#4938C8] disabled:text-slate-400"
+                  className="text-xs font-semibold text-[#0755E8] hover:text-[#0645C7] disabled:text-slate-400"
                 >
                   {countdown > 0 ? `Resend in ${countdown}s` : "Resend code"}
                 </button>
@@ -243,7 +243,7 @@ export const RegisterForm = () => {
 
         <p className="text-center text-sm text-slate-500 mt-6">
           Already have an account?{" "}
-          <Link to="/signin" className="font-semibold text-[#5B4BDB] hover:text-[#4938C8] hover:underline">
+          <Link to="/signin" className="font-semibold text-[#0755E8] hover:text-[#0645C7] hover:underline">
             Sign in
           </Link>
         </p>

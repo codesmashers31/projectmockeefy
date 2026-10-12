@@ -6,7 +6,7 @@ export function MinimalATSTemplate() {
     resumeData;
 
   return (
-    <div className="bg-white p-10 text-gray-900 font-mono text-xs leading-loose space-y-4">
+    <div className="bg-white p-8 sm:p-10 text-gray-900 font-mono text-xs leading-loose space-y-4 break-words [overflow-wrap:anywhere]">
       {/* Header - ATS Friendly */}
       <div className="text-center border-b-2 border-black pb-3">
         <div className="font-bold text-base">{personalDetails.fullName || 'YOUR NAME'}</div>
