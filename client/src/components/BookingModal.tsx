@@ -429,28 +429,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return;
       }
 
-      // 3. Paid standard checkout
-      const res = await axios.post("/api/payment/create-order", {
-        amount: displayPrice,
-        currency: "INR",
-        bookingDetails: payload,
-      });
-
-      if (res.data?.success && res.data.paymentUrl) {
-        window.location.href = res.data.paymentUrl;
-      } else {
-        // Direct session booking fallback
-        const bookRes = await axios.post("/api/sessions", payload);
-        if (bookRes.data?.success || bookRes.status === 200 || bookRes.status === 201) {
-          onClose();
-          Swal.fire({
-            title: "Session Booked!",
-            text: "Your interview slot has been reserved.",
-            icon: "success",
-            confirmButtonColor: "#2F5FFF",
-          }).then(() => navigate("/my-sessions"));
+      // 3. Paid standard checkout: Navigate to PaymentPage to open Razorpay gateway
+      onClose();
+      navigate("/payment", {
+        state: {
+          bookingDetails: {
+            expertId: profile?.id || expertId,
+            expertName: profile?.name,
+            expertRole: profile?.role,
+            date: dates[selectedDate],
+            slot: selectedSlot,
+            price: displayPrice,
+            duration: sessionDuration,
+            category: profile?.category || "IT",
+            level: "Senior",
+            skill: profile?.category || "Technical Interview",
+            topics: [profile?.category || "Technical Interview"]
+          }
         }
-      }
+      });
     } catch (err: any) {
       console.error("Booking error", err);
       Swal.fire({
