@@ -23,7 +23,7 @@ export default function UserProfile() {
   const userId = user?.id || user?._id || user?.userId;
   const [activeTab, setActiveTab] = useState("personal");
 
-  const { data: profileData, isLoading, refetch } = useQuery({
+  const { data: profileData, isLoading, isError, refetch } = useQuery({
     queryKey: ["userProfile", userId],
     queryFn: async () => {
       if (!userId) return null;
@@ -36,12 +36,12 @@ export default function UserProfile() {
   });
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || isError) {
       window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
     } else {
       window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: isLoading } }));
     }
-  }, [isLoading, userId]);
+  }, [isLoading, isError, userId]);
 
   const tabs = [
     { id: "personal", label: "Personal", icon: User },
@@ -82,11 +82,11 @@ export default function UserProfile() {
                 <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
                   <defs>
                     <linearGradient id="profileCompletionRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#004fcb" />
-                      <stop offset="100%" stopColor="#6366f1" />
+                      <stop offset="0%" stopColor="#5B4BDB" />
+                      <stop offset="100%" stopColor="#4938C8" />
                     </linearGradient>
                   </defs>
-                  <circle cx="24" cy="24" r={ringRadius} fill="none" stroke="#eef2ff" strokeWidth="4" />
+                  <circle cx="24" cy="24" r={ringRadius} fill="none" stroke="#F0EDFF" strokeWidth="4" />
                   <circle
                     cx="24" cy="24" r={ringRadius}
                     fill="none"
@@ -98,7 +98,7 @@ export default function UserProfile() {
                     className="transition-all duration-1000 ease-out"
                   />
                 </svg>
-                <span className="text-[11px] font-black text-[#004fcb]">{isLoading ? "…" : `${completion}%`}</span>
+                <span className="text-[11px] font-black text-[#5B4BDB]">{isLoading ? "…" : `${completion}%`}</span>
               </div>
               <div className="leading-tight">
                 <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Profile</p>
@@ -118,9 +118,9 @@ export default function UserProfile() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 px-4 py-2.5 text-[13px] font-bold transition-all duration-200 rounded-2xl border whitespace-nowrap snap-start shrink-0
+                  flex items-center gap-2 px-4 py-2.5 text-[13px] font-bold transition-all duration-200 rounded-2xl border whitespace-nowrap snap-start shrink-0 cursor-pointer
                   ${isActive
-                     ? "bg-gradient-to-r from-[#004fcb] to-indigo-600 text-white border-transparent shadow-md shadow-blue-500/20"
+                     ? "bg-[#5B4BDB] text-white border-[#5B4BDB] shadow-md shadow-[#5B4BDB]/20"
                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"}
                 `}
               >
@@ -154,8 +154,22 @@ export default function UserProfile() {
         <div className="min-h-[360px] md:min-h-[480px] pt-2">
           {isLoading ? (
             <div className="w-full flex flex-col items-center justify-center text-slate-400 gap-3 min-h-[300px]">
-              <div className="w-6 h-6 border-2 border-slate-200 border-t-[#004fcb] rounded-full animate-spin"></div>
+              <div className="w-6 h-6 border-2 border-slate-200 border-t-[#5B4BDB] rounded-full animate-spin"></div>
               <span className="text-xs font-medium">Loading profile section...</span>
+            </div>
+          ) : isError ? (
+            <div className="w-full flex flex-col items-center justify-center p-8 bg-red-50/60 border border-red-200 rounded-2xl text-center min-h-[300px]">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-3">
+                <AlertTriangle size={20} />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 mb-1">Failed to load profile details</h3>
+              <p className="text-xs text-gray-500 mb-4 max-w-sm">We couldn't retrieve your profile data. Please check your connection and try again.</p>
+              <button
+                onClick={() => refetch()}
+                className="px-4 py-2 bg-[#5B4BDB] hover:bg-[#4938C8] text-white rounded-xl text-xs font-bold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB]"
+              >
+                Retry Loading
+              </button>
             </div>
           ) : (
             <div className="animate-in fade-in duration-300">

@@ -27,10 +27,10 @@ const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <Button size="lg" className="text-lg px-8 py-4 bg-elite-blue hover:bg-blue-600 text-white shadow-lg shadow-blue-900/20 transition-all duration-300 font-black tracking-tight rounded-2xl">
+            <Button size="lg" className="text-lg px-8 py-4 bg-[#5B4BDB] hover:bg-[#4938C8] text-white shadow-lg shadow-[#5B4BDB]/25 transition-all duration-300 font-black tracking-tight rounded-2xl">
               Book a Mock Interview
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-4 bg-white/5 text-white border-2 border-white/20 hover:bg-elite-blue hover:border-elite-blue hover:text-white backdrop-blur-sm transition-all duration-300 font-black tracking-tight rounded-2xl">
+            <Button variant="outline" size="lg" className="text-lg px-8 py-4 bg-white/5 text-white border-2 border-white/20 hover:bg-[#5B4BDB] hover:border-[#5B4BDB] hover:text-white backdrop-blur-sm transition-all duration-300 font-black tracking-tight rounded-2xl">
               Join as HR/Trainer
             </Button>
           </div>

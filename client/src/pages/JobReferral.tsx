@@ -176,7 +176,7 @@ const JobReferral = () => {
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                <Briefcase className="w-6 h-6 text-[#004fcb]" />
+                                <Briefcase className="w-6 h-6 text-[#5B4BDB]" />
                                 Latest Job Openings
                             </h2>
                             <p className="text-gray-500 mt-1">Curated opportunities from top companies</p>
@@ -194,13 +194,13 @@ const JobReferral = () => {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {jobs.map((job) => (
-                                <div key={job._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all hover:border-blue-200 group">
+                                <div key={job._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all hover:border-[#D8D1FF] group">
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
-                                            <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#004fcb] transition-colors">{job.position}</h3>
+                                            <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#5B4BDB] transition-colors">{job.position}</h3>
                                             <p className="text-gray-500 font-medium text-sm mt-1">{job.company}</p>
                                         </div>
-                                        <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg font-semibold uppercase tracking-wide">
+                                        <span className="px-2.5 py-1 bg-[#F0EDFF] text-[#5B4BDB] text-xs rounded-lg font-semibold uppercase tracking-wide">
                                             {job.type}
                                         </span>
                                     </div>
@@ -222,7 +222,7 @@ const JobReferral = () => {
                                             href={job.applyLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="px-4 py-2 bg-gray-50 text-gray-900 hover:bg-[#004fcb] hover:text-white rounded-lg font-bold text-sm transition-all"
+                                            className="px-4 py-2 bg-gray-50 text-gray-900 hover:bg-[#5B4BDB] hover:text-white rounded-lg font-bold text-sm transition-all"
                                         >
                                             Apply Now
                                         </a>

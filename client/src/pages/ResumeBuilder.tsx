@@ -187,20 +187,15 @@ export function ResumeBuilderPage() {
 
   if (isLoadingResume || isLoadingProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col font-sans">
-        <div className="sticky top-0 z-50">
-          <Navigation />
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
-              <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Loading Your Profile</h2>
-            <p className="text-gray-600 mb-6">We're preparing your resume with your existing information...</p>
-            <div className="flex justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
+      <div className="w-full flex items-center justify-center py-20">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-gradient-to-r from-[#5B4BDB] to-[#4938C8] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Loading Your Profile</h2>
+          <p className="text-slate-600 mb-6">We're preparing your resume with your existing information...</p>
+          <div className="flex justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-[#5B4BDB]" />
           </div>
         </div>
       </div>
@@ -210,43 +205,36 @@ export function ResumeBuilderPage() {
   // Show quick generate option if profile is complete
   if (isProfileComplete && currentStep === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-        <div className="sticky top-0 z-50">
-          <Navigation />
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center max-w-lg">
-            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
-              <Sparkles className="w-10 h-10 text-white" />
-            </div>
+      <div className="w-full flex items-center justify-center py-10">
+        <div className="text-center max-w-lg bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
+          <div className="w-16 h-16 bg-[#5B4BDB] rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Your Profile is Ready!</h1>
-            <p className="text-lg text-gray-600 mb-8">
-              We found your complete profile information. You can generate a professional resume instantly or customize it further.
-            </p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-3">Your Profile is Ready!</h1>
+          <p className="text-sm text-slate-600 mb-6">
+            We found your complete profile information. You can generate a professional resume instantly or customize it further.
+          </p>
 
-            <div className="space-y-4">
-              <button
-                onClick={() => setCurrentStep(7)}
-                className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg cursor-pointer"
-              >
-                <Sparkles className="w-6 h-6" />
-                Generate Resume from Profile
-              </button>
+          <div className="space-y-3">
+            <button
+              onClick={() => setCurrentStep(7)}
+              className="w-full flex items-center justify-center gap-2.5 px-6 py-3 bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white rounded-xl transition-colors font-semibold text-sm cursor-pointer shadow-xs"
+            >
+              <Sparkles className="w-5 h-5" />
+              Generate Resume from Profile
+            </button>
 
-              <button
-                onClick={() => setCurrentStep(1)}
-                className="w-full px-8 py-4 bg-white text-gray-700 rounded-lg border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors font-semibold text-lg cursor-pointer"
-              >
-                Customize & Edit Details
-              </button>
-            </div>
+            <button
+              onClick={() => setCurrentStep(1)}
+              className="w-full px-6 py-3 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors font-semibold text-sm cursor-pointer"
+            >
+              Customize & Edit Details
+            </button>
+          </div>
 
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                <strong>What we'll use:</strong> Your personal details, skills, education, experience, projects, and achievements from your profile.
-              </p>
-            </div>
+          <div className="mt-6 p-3.5 bg-[#F0EDFF] rounded-xl border border-[#D8D1FF] text-xs text-[#5B4BDB] font-medium">
+            <strong>Included:</strong> Personal details, skills, education, experience, projects, and achievements.
           </div>
         </div>
       </div>
@@ -254,177 +242,156 @@ export function ResumeBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      {/* Top Navigation */}
-      <div className="sticky top-0 z-50">
-        <Navigation />
+    <div className="w-full space-y-4 font-sans text-left">
+      {/* Horizontal Step Navigation Bar */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-2 shadow-xs overflow-x-auto">
+        <div className="flex items-center gap-1 min-w-max">
+          {steps.map((step, index) => {
+            const isActive = currentStep === index;
+            const isCompleted = index < currentStep;
+
+            return (
+              <button
+                key={step.id}
+                onClick={() => setCurrentStep(index)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#5B4BDB] text-white shadow-xs'
+                    : isCompleted
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100/70 hover:bg-emerald-100'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <span>{step.icon}</span>
+                <span>{step.title}</span>
+                {isCompleted && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="flex flex-1 h-[calc(100vh-68px)] overflow-hidden">
-        
-        {/* LEFT SIDEBAR */}
-        <div className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200">
-          {/* Profile Section */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                {user?.name?.[0]?.toUpperCase() || 'A'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-bold text-gray-900 truncate">{user?.name || 'User'}</h3>
-                <p className="text-xs text-gray-500 truncate">Professional</p>
-              </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col space-y-4">
+        {/* Top Header Card */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 px-6 py-4 shadow-xs">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 leading-tight">{steps[currentStep].title}</h1>
+              <p className="text-xs text-slate-500 mt-0.5">{steps[currentStep].description}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  const savePromise = saveResumeToDb();
+                  toast.promise(savePromise, {
+                    loading: 'Saving draft to cloud...',
+                    success: 'Resume saved to cloud successfully!',
+                    error: 'Failed to save draft.',
+                  });
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors font-semibold text-xs shadow-xs cursor-pointer"
+              >
+                Save Draft
+              </button>
+              {currentStep > 0 && (
+                <button
+                  onClick={prevStep}
+                  className="flex items-center gap-1 px-3.5 py-2 text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-xs font-semibold cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Previous
+                </button>
+              )}
+              {currentStep < steps.length - 1 && (
+                <button
+                  onClick={nextStep}
+                  className="flex items-center gap-1 px-3.5 py-2 text-white bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] rounded-xl transition-colors text-xs font-semibold cursor-pointer shadow-xs"
+                >
+                  Next
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Navigation Menu */}
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {steps.map((step, index) => {
-              const isActive = currentStep === index;
-              const isCompleted = index < currentStep;
-              
-              return (
-                <button
-                  key={step.id}
-                  onClick={() => setCurrentStep(index)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : isCompleted
-                        ? 'text-green-700 hover:bg-gray-50'
-                        : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-base">{step.icon}</span>
-                  <span>{step.title}</span>
-                </button>
-              );
-            })}
-          </nav>
         </div>
 
-        {/* MAIN CONTENT */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{steps[currentStep].title}</h1>
-                <p className="text-sm text-gray-500 mt-1">{steps[currentStep].description}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={async () => {
-                    const savePromise = saveResumeToDb();
-                    toast.promise(savePromise, {
-                      loading: 'Saving draft to cloud...',
-                      success: 'Resume saved to cloud successfully!',
-                      error: 'Failed to save draft.',
-                    });
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors font-semibold text-sm shadow-sm cursor-pointer"
-                >
-                  Save Draft
-                </button>
-                {currentStep > 0 && (
-                  <button
-                    onClick={prevStep}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </button>
-                )}
-                {currentStep < steps.length - 1 && (
-                  <button
-                    onClick={nextStep}
-                    className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
+        {/* Content Area */}
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
+          {isLoadingResume || isLoadingProfile ? (
+            <div className="w-full flex items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/80">
+              <div className="text-center">
+                <Loader2 className="w-10 h-10 animate-spin text-[#5B4BDB] mx-auto mb-3" />
+                <p className="text-slate-600 text-xs">Loading your profile...</p>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Left Panel: Form Editor */}
+              <div className="w-full lg:w-[55%]">
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
+                  <h3 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
+                    <span className="text-[#5B4BDB] text-lg">+</span>
+                    Edit {steps[currentStep].title}
+                  </h3>
+                  
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentStep}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {renderStepContent()}
+                    </motion.div>
+                  </AnimatePresence>
 
-          {/* Content Area */}
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row h-full">
-            {isLoadingResume || isLoadingProfile ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Loading your profile...</p>
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 mt-8 pt-6 border-t border-slate-100">
+                    <button 
+                      onClick={() => prevStep()}
+                      className="flex-1 px-4 py-2.5 text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors font-semibold text-xs cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={nextStep}
+                      className="flex-1 px-4 py-2.5 text-white bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] rounded-xl transition-colors font-semibold flex items-center justify-center gap-1.5 text-xs cursor-pointer shadow-xs"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Save & Continue
+                    </button>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Left Panel: Form Editor (60% width) */}
-                <div className="w-full lg:w-[55%] h-full overflow-y-auto px-6 py-8 border-r border-gray-200">
-                  <div className="max-w-2xl mx-auto bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <span className="text-blue-600 text-xl">+</span>
-                      Edit {steps[currentStep].title}
-                    </h3>
-                    
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentStep}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {renderStepContent()}
-                      </motion.div>
-                    </AnimatePresence>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
-                      <button 
-                        onClick={() => prevStep()}
-                        className="flex-1 px-6 py-3 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={nextStep}
-                        className="flex-1 px-6 py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                      >
-                        <Check className="w-4 h-4" />
-                        Save & Continue
-                      </button>
-                    </div>
+              {/* Right Panel: Live A4 Preview */}
+              <div className="hidden lg:flex flex-1 bg-slate-100 rounded-2xl border border-slate-200/80 p-6 justify-center items-start sticky top-[88px] overflow-hidden">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-xs text-[11px] font-bold text-slate-700">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Live A4 Preview
+                  </div>
+                  <div 
+                    className="bg-white shadow-xl border border-slate-300 rounded-sm overflow-hidden"
+                    style={{
+                      width: '210mm',
+                      minHeight: '297mm',
+                      transform: 'scale(0.72)',
+                      transformOrigin: 'top center',
+                      marginBottom: '-90px'
+                    }}
+                  >
+                    {selectedTemplate === 'modern' && <ModernResumeTemplate />}
+                    {selectedTemplate === 'fresher' && <FresherTemplate />}
+                    {selectedTemplate === 'experienced' && <ExperiencedTemplate />}
+                    {selectedTemplate === 'minimal' && <MinimalATSTemplate />}
                   </div>
                 </div>
-
-                {/* Right Panel: Live A4 Preview (45% width) */}
-                <div className="hidden lg:flex flex-1 h-full bg-slate-100 overflow-y-auto p-8 justify-center items-start border-l border-gray-200">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm text-xs font-bold text-gray-700">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                      Live A4 Preview
-                    </div>
-                    <div 
-                      className="bg-white shadow-2xl border border-gray-300 rounded-sm overflow-hidden"
-                      style={{
-                        width: '210mm',
-                        minHeight: '297mm',
-                        transform: 'scale(0.85)',
-                        transformOrigin: 'top center',
-                        marginBottom: '-50px' // Compensate scaling overflow
-                      }}
-                    >
-                      {selectedTemplate === 'modern' && <ModernResumeTemplate />}
-                      {selectedTemplate === 'fresher' && <FresherTemplate />}
-                      {selectedTemplate === 'experienced' && <ExperiencedTemplate />}
-                      {selectedTemplate === 'minimal' && <MinimalATSTemplate />}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

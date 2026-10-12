@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import {
-  Bot,
+  LayoutDashboard,
   Users,
-  Bookmark,
+  Bot,
   FileText,
-  BarChart3,
-  Video,
-  ArrowRight,
+  Bookmark,
   Calendar,
+  User,
+  LogOut,
+  Video,
   ChevronRight,
-  Crown,
+  Sparkles,
+  ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -18,7 +21,7 @@ import { getProfileImageUrl } from "../lib/imageUtils";
 import { useUserProfile } from "../hooks/useUserProfile";
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: userProfile } = useUserProfile();
@@ -57,7 +60,7 @@ export default function Sidebar() {
         if (Array.isArray(res.data)) {
           const now = new Date();
           const upcoming = res.data
-            .filter((s: any) => new Date(s.startTime) > now && s.status !== "Cancelled")
+            .filter((s: any) => new Date(s.startTime) > now && s.status !== "Cancelled" && s.status !== "cancelled")
             .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
           if (upcoming) setNextSession(upcoming);
         }
@@ -68,183 +71,231 @@ export default function Sidebar() {
     fetchUpcoming();
   }, [user?.id, user?._id]);
 
+  const navItems = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      path: "/",
+      isActive: location.pathname === "/" || location.pathname === "/dashboard",
+    },
+    {
+      label: "Find Mentors",
+      icon: Users,
+      path: "/mentors",
+      isActive: location.pathname === "/mentors" || location.pathname === "/find-mentor",
+    },
+    {
+      label: "AI Mock Interview",
+      icon: Bot,
+      path: "/ai-video",
+      isActive: location.pathname === "/ai-video",
+      badge: "AI",
+    },
+    {
+      label: "Resume Builder",
+      icon: FileText,
+      path: "/resume-builder",
+      isActive: location.pathname === "/resume-builder",
+    },
+    {
+      label: "Saved Mentors",
+      icon: Bookmark,
+      path: "/saved-experts",
+      isActive: location.pathname === "/saved-experts",
+      count: savedCount,
+    },
+    {
+      label: "My Sessions",
+      icon: Calendar,
+      path: "/my-sessions",
+      isActive: location.pathname === "/my-sessions",
+    },
+    {
+      label: "Profile & Settings",
+      icon: User,
+      path: "/profile",
+      isActive: location.pathname === "/profile",
+    },
+  ];
 
+  const profileImg = user?.profileImage || userProfile?.profileImage;
+  const userName = user?.name || userProfile?.personalInfo?.name || "Candidate";
+  const userEmail = user?.email || "";
+  const initials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <div className="w-full max-w-[240px] mx-auto space-y-3.5 font-sans text-left">
-
-
-
-      {/* ======================================================== */}
-      {/* 4. QUICK ACTIONS (COMMAND HUB)                          */}
-      {/* ======================================================== */}
-      <div className="bg-white rounded-[24px] p-3.5 border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
-        <p className="px-2.5 pb-2 text-[10.5px] font-black text-slate-400 uppercase tracking-widest">
-          Quick Actions
-        </p>
-        <div className="space-y-1">
-          <button
-            onClick={() => navigate("/ai-video")}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50/60 text-slate-700 hover:text-blue-700 font-semibold text-[13px] transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                <Bot size={15} />
-              </div>
-              <span>AI Mock Interview</span>
-            </div>
-            <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          <button
-            onClick={() => navigate("/mentors")}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-semibold text-[13px] transition-all group cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
-                <Users size={15} />
-              </div>
-              <span>Find a Mentor</span>
-            </div>
-            <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          <button
-            onClick={() => navigate("/saved-experts")}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50/70 text-slate-700 hover:text-blue-700 font-semibold text-[13px] transition-all group cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                <Bookmark size={15} className="text-blue-600 group-hover:text-white" />
-              </div>
-              <span>Saved Mentors</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {savedCount > 0 && (
-                <span className="text-[10.5px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                  {savedCount}
-                </span>
-              )}
-              <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate("/resume-builder")}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-semibold text-[13px] transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
-                <FileText size={15} />
-              </div>
-              <span>ATS Resume Builder</span>
-            </div>
-            <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          <button
-            onClick={() => navigate("/my-sessions")}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-semibold text-[13px] transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors shrink-0">
-                <BarChart3 size={15} />
-              </div>
-              <span>My Reports & Bookings</span>
-            </div>
-            <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          <button
-            onClick={() => navigate("/plans")}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-amber-50/70 text-slate-700 hover:text-amber-800 font-semibold text-[13px] transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
-                <Crown size={15} />
-              </div>
-              <span className="flex items-center gap-1.5">
-                Upgrade Plan
-                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">Pro</span>
-              </span>
-            </div>
-            <ChevronRight size={14} className="text-slate-300 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all" />
-          </button>
+    <aside
+      aria-label="Sidebar Navigation"
+      className="w-full space-y-4 font-sans text-left"
+    >
+      {/* Primary Navigation - Directly on canvas */}
+      <div className="space-y-1">
+        <div className="px-3 pb-1.5">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Navigation
+          </p>
         </div>
+
+        <nav className="space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer text-left ${
+                  item.isActive
+                    ? "bg-[#F0EDFF] text-[#5B4BDB] font-bold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon
+                    size={16}
+                    className={`shrink-0 transition-colors ${
+                      item.isActive ? "text-[#5B4BDB]" : "text-slate-400"
+                    }`}
+                  />
+                  <span className="truncate">{item.label}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.badge && (
+                    <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-[#F0EDFF] text-[#5B4BDB] border border-[#D8D1FF] tracking-wide uppercase">
+                      {item.badge}
+                    </span>
+                  )}
+                  {typeof item.count === "number" && item.count > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                      {item.count}
+                    </span>
+                  )}
+                  {item.isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#5B4BDB]" />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* ======================================================== */}
-      {/* 5. UPCOMING SESSION OR MENTOR PROMPT                    */}
-      {/* ======================================================== */}
+      {/* Upcoming Session or Practice Reminder Card - Kept as Distinct Card */}
       {nextSession ? (
-        <div className="bg-white rounded-[24px] p-4.5 border border-emerald-100 shadow-[0_4px_24px_-8px_rgba(16,185,129,0.18)] relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-[10px] font-black uppercase text-emerald-700 tracking-widest">
-                Upcoming Mock
-              </span>
-            </div>
-            <span className="text-[11px] font-bold text-slate-500">
-              {new Date(nextSession.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        <div className="bg-white rounded-2xl p-4 border border-emerald-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Upcoming Session
+            </span>
+            <span className="text-[11px] font-medium text-slate-500">
+              {new Date(nextSession.startTime).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5 mb-3.5">
-            <div className="w-9 h-9 rounded-xl border border-slate-100 p-0.5 shadow-sm shrink-0">
-              <img
-                src={getProfileImageUrl(nextSession.expertDetails?.profileImage)}
-                className="w-full h-full rounded-lg object-cover"
-                alt="Expert"
-              />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200/70 overflow-hidden shrink-0 flex items-center justify-center">
+              {nextSession.expertDetails?.profileImage ? (
+                <img
+                  src={getProfileImageUrl(nextSession.expertDetails.profileImage)}
+                  alt="Mentor"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User size={15} className="text-slate-400" />
+              )}
             </div>
-            <div className="min-w-0">
-              <p className="font-bold text-[13px] text-gray-900 truncate">
-                {nextSession.expertDetails?.name}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {nextSession.expertDetails?.name || "Verified Mentor"}
               </p>
-              <p className="text-[10.5px] font-semibold text-slate-400 truncate">
-                {nextSession.category || "Mock Simulation"}
+              <p className="text-[11px] text-slate-500 truncate">
+                {nextSession.category || "Mock Interview"}
               </p>
             </div>
           </div>
 
           <button
-            onClick={() => navigate(`/live-meeting/${nextSession.sessionId || nextSession._id}`)}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[12.5px] font-bold transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1.5"
+            onClick={() =>
+              navigate(`/live-meeting/${nextSession.sessionId || nextSession._id}`)
+            }
+            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Video size={14} /> Join Studio
+            <Video size={13} />
+            <span>Join Session</span>
           </button>
         </div>
       ) : (
-        <div className="bg-gradient-to-b from-blue-50/60 to-white rounded-[24px] p-4.5 border border-blue-100/70 shadow-sm relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-              <Calendar size={13} />
-            </div>
-            <p className="text-[12px] font-extrabold text-slate-900">
-              Ready for your next mock?
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-2.5">
+          <div className="flex items-center gap-2 text-[#5B4BDB]">
+            <Sparkles size={14} />
+            <p className="text-xs font-bold text-slate-900">
+              Need Interview Practice?
             </p>
           </div>
-          <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-3">
-            Practice 1-on-1 with verified hiring managers from top tech firms.
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Practice 1-on-1 with senior engineers and hiring managers from top tech companies.
           </p>
           <button
             onClick={() => navigate("/mentors")}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11.5px] font-bold transition-all shadow-sm shadow-blue-500/20 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full py-2 bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white rounded-xl text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
           >
-            <span>Book a Mock Interview</span>
-            <ArrowRight size={12} />
+            <span>Explore Mentors</span>
+            <ChevronRight size={13} />
           </button>
         </div>
       )}
-    </div>
+
+      {/* Authenticated User Compact Section with Subtle Divider */}
+      {user && (
+        <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between gap-2.5 px-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-[#F0EDFF] border border-[#D8D1FF] overflow-hidden flex items-center justify-center shrink-0 text-[#5B4BDB] font-bold text-xs">
+              {profileImg ? (
+                <img
+                  src={getProfileImageUrl(profileImg)}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {userName}
+              </p>
+              <p className="text-[10px] text-slate-500 truncate">
+                {userEmail || "Candidate"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => logout()}
+            title="Log out"
+            aria-label="Log out"
+            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
+      )}
+    </aside>
   );
 }
 
 export const SkeletonSidebar = () => (
-  <div className="w-full space-y-4">
-    <div className="h-44 rounded-[24px] border border-slate-100 shimmer-shining" />
-    <div className="h-32 rounded-[24px] border border-slate-100 shimmer-shining" />
-    <div className="h-40 rounded-[24px] border border-slate-100 shimmer-shining" />
+  <div className="w-full space-y-3">
+    <div className="h-60 rounded-2xl border border-slate-100 shimmer-shining" />
+    <div className="h-32 rounded-2xl border border-slate-100 shimmer-shining" />
   </div>
 );
