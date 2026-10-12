@@ -14,6 +14,9 @@ export async function downloadResumePDF(
     return;
   }
 
+  const originalTransform = resumeTemplate.style.transform;
+  const originalTransformOrigin = resumeTemplate.style.transformOrigin;
+
   const opt = {
     margin:       [0, 0, 0, 0],
     filename:     fileName,
@@ -28,11 +31,16 @@ export async function downloadResumePDF(
   };
 
   try {
+    resumeTemplate.style.transform = 'none';
+    resumeTemplate.style.transformOrigin = 'top left';
     await html2pdf().from(resumeTemplate).set(opt).save();
   } catch (error) {
     console.error('PDF generation failed:', error);
     // Fallback to print
     printResume(resumeTemplate);
+  } finally {
+    resumeTemplate.style.transform = originalTransform;
+    resumeTemplate.style.transformOrigin = originalTransformOrigin;
   }
 }
 

@@ -100,7 +100,7 @@ function AppRoutes() {
           {/* Zooming brand logo only, no spinning ring */}
           <MockeefyLogo className="h-16 w-16 rounded-2xl shadow-lg relative z-10 animate-zoom-logo" />
         </div>
-        <p className="mt-5 text-[10px] font-black tracking-widest text-[#5B4BDB] uppercase animate-zoom-logo">
+        <p className="mt-5 text-[10px] font-black tracking-widest text-[#0755E8] uppercase animate-zoom-logo">
           Loading Mockeefy...
         </p>
       </div>
@@ -143,12 +143,12 @@ function AppRoutes() {
         {/* Adjust allowedRoles as needed. 'expert' is definitely one. If 'candidate' exists, add it. */}
         <Route element={<RoleBasedRoute allowedRoles={['expert', 'candidate', 'user']} />}>
           <Route path="/watch-mock" element={<WatchMock />} />
-          <Route path="/book-session" element={<ErrorBoundary><BookSessionPage /></ErrorBoundary>} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/live-meeting/:sessionId?" element={<LiveMeeting />} />
 
           {/* App shell (keeps nav/side panels stable, no flicker) */}
           <Route element={<UserShell />}>
+            <Route path="/book-session" element={<ErrorBoundary><BookSessionPage /></ErrorBoundary>} />
             <Route path="/ai-video" element={<AiInterview />} />
             <Route path="/ai-mock" element={<AiInterview />} />
             <Route path="/ai-mock-interview" element={<AiInterview />} />

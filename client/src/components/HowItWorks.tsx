@@ -86,7 +86,7 @@ const HowItWorks = () => {
         <div className="mt-12 text-center">
           <a
             href="#experts"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#5B4BDB] text-white rounded-2xl font-bold text-sm shadow-lg shadow-[#5B4BDB]/25 hover:bg-[#4938C8] hover:shadow-xl hover:shadow-[#5B4BDB]/30 transition-all duration-300 active:scale-[0.98]"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#0755E8] text-white rounded-2xl font-bold text-sm shadow-lg shadow-[#0755E8]/25 hover:bg-[#0645C7] hover:shadow-xl hover:shadow-[#0755E8]/30 transition-all duration-300 active:scale-[0.98]"
           >
             Browse experts & book
             <ArrowRight className="w-4 h-4" strokeWidth={2.5} />

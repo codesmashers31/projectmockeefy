@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import {
   Star, Clock, Calendar, CheckCircle, Shield, Video,
-  ChevronLeft, ChevronRight, ChevronDown, X, ThumbsUp, MessageCircle, Briefcase,
-  Share2, Check, ArrowRight, Timer, BadgeCheck
+  ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
+  Share2, Check, ArrowRight, Timer, BadgeCheck, Code2, Compass, FileText,
+  MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2
 } from "lucide-react";
 import Swal from "sweetalert2";
-import Navigation from "./Navigation";
-import Footer from "./Footer";
+import { toast } from "sonner";
 import {
   mapExpertToProfile,
   Profile,
@@ -19,166 +19,119 @@ import {
   getKolkataDateString,
   getInitialKolkataMonth
 } from "../lib/bookSessionUtils";
-import { BookingModal } from "./BookingModal";
 
 /**
- * Enhanced Skeleton Loader matching the LinkedIn-style design
+ * Skeleton Loader matching Mockeefy clean design
  */
 const BookSessionSkeleton = () => (
-  <div className="min-h-screen bg-white pb-10">
-    <Navigation />
-    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-7">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-pulse">
-        {/* Main Content Skeleton */}
-        <div className="lg:col-span-8 space-y-6">
-        {/* Profile Header Skeleton */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="h-48 bg-gray-200"></div>
-          <div className="px-6 pb-6 relative">
-            <div className="absolute -top-16 left-6 w-32 h-32 rounded-full border-4 border-white bg-gray-100 shadow-sm"></div>
-            <div className="mt-20 space-y-3">
-              <div className="h-8 bg-gray-200 w-64 rounded-lg"></div>
-              <div className="h-4 bg-gray-200 w-96 rounded"></div>
-              <div className="h-4 bg-gray-200 w-48 rounded"></div>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <div className="h-10 bg-gray-200 w-32 rounded-full"></div>
-              <div className="h-10 bg-gray-200 w-32 rounded-full"></div>
-            </div>
+  <div className="w-full space-y-6 animate-pulse font-sans text-left">
+    <div className="h-6 w-64 bg-slate-200 rounded-lg" />
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="lg:col-span-8 space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+          <div className="h-6 bg-slate-200 w-48 rounded" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="h-24 bg-slate-100 rounded-xl" />
+            <div className="h-24 bg-slate-100 rounded-xl" />
+            <div className="h-24 bg-slate-100 rounded-xl" />
+            <div className="h-24 bg-slate-100 rounded-xl" />
           </div>
         </div>
-
-        {/* Details Content Skeleton */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-          <div className="h-6 bg-gray-200 w-48 rounded"></div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="h-24 bg-gray-100 rounded-xl"></div>
-            <div className="h-24 bg-gray-100 rounded-xl"></div>
-            <div className="h-24 bg-gray-100 rounded-xl"></div>
-          </div>
-          <div className="space-y-3">
-            <div className="h-4 w-full bg-gray-50 rounded"></div>
-            <div className="h-4 w-full bg-gray-50 rounded"></div>
-            <div className="h-4 w-3/4 bg-gray-50 rounded"></div>
-          </div>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+          <div className="h-6 bg-slate-200 w-40 rounded" />
+          <div className="h-16 bg-slate-100 rounded-xl" />
+          <div className="h-32 bg-slate-100 rounded-xl" />
         </div>
       </div>
-
-        {/* Right column placeholder so layout feels consistent */}
-        <div className="hidden lg:block lg:col-span-4 space-y-6">
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="h-6 bg-gray-200 w-2/3 rounded mb-6"></div>
-            <div className="grid grid-cols-2 gap-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-14 bg-gray-100 rounded-lg"></div>
-              ))}
-            </div>
-            <div className="mt-8 h-12 bg-gray-200 w-full rounded-xl"></div>
-          </div>
+      <div className="lg:col-span-4 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+          <div className="h-20 bg-slate-100 rounded-xl" />
+          <div className="h-10 bg-slate-100 rounded-xl" />
+          <div className="h-12 bg-slate-200 rounded-xl" />
         </div>
       </div>
     </div>
-    <Footer />
   </div>
 );
 
-type PremiumSelectOption = {
-  value: string;
-  label: string;
-};
+type SessionDuration = 30 | 60;
+const isSessionDuration = (d: unknown): d is SessionDuration => d === 30 || d === 60;
 
-function PremiumSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: PremiumSelectOption[];
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
-
-  const selected = options.find((o) => o.value === value) || options[0];
-  const isDisabled = options.length <= 1;
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        type="button"
-        disabled={isDisabled}
-        onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between gap-2 bg-white border-[1.5px] rounded-xl px-3.5 py-3 text-left transition-all ${
-          isDisabled
-            ? "cursor-default border-[#E3E8F5] text-[#5A6284]"
-            : open
-              ? "border-[#2F5FFF] cursor-pointer"
-              : "border-[#E3E8F5] hover:border-[#B9CBF5] cursor-pointer"
-        }`}
-      >
-        <div className="min-w-0">
-          <p className="text-[13.5px] font-extrabold text-[#141A33] truncate">{selected?.label || "Select option"}</p>
-        </div>
-        {!isDisabled && (
-          <ChevronDown size={15} className={`text-[#5A6284] shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        )}
-      </button>
-
-      {open && !isDisabled && (
-        <div className="absolute z-30 mt-1.5 w-full min-w-full rounded-[14px] border border-[#EAEEF7] bg-white shadow-[0_16px_34px_-14px_rgba(20,26,51,.3)] p-1.5 max-h-60 overflow-y-auto">
-          {options.map((option) => {
-            const isActive = option.value === value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-                className={`w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-[10px] text-left transition-colors ${
-                  isActive ? "bg-[#F0F5FF] text-[#2F5FFF]" : "hover:bg-[#F5F7FC] text-[#141A33]"
-                }`}
-              >
-                <div className="min-w-0">
-                  <p className="text-[13.5px] font-extrabold truncate">{option.label}</p>
-                </div>
-                {isActive ? <Check className="w-3.5 h-3.5 shrink-0 text-[#2F5FFF]" /> : null}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+interface Review {
+  id: string;
+  name: string;
+  role: string;
+  rating: number;
+  comment: string;
+  date: string;
+  avatar?: string;
+  strengths?: string[];
 }
 
-const BookSessionPage = () => {
-  type SessionDuration = 30 | 60;
-  const isSessionDuration = (d: unknown): d is SessionDuration => d === 30 || d === 60;
+const SESSION_GOALS = [
+  {
+    id: "technical",
+    title: "Technical Interview Preparation",
+    desc: "Practice coding problems, data structures, algorithms, and technical concepts.",
+    icon: Code2,
+  },
+  {
+    id: "career",
+    title: "Career Guidance",
+    desc: "Discuss career progression paths, role requirements, and professional growth.",
+    icon: Compass,
+  },
+  {
+    id: "resume",
+    title: "Resume Review",
+    desc: "Receive actionable feedback on your resume structure, ATS alignment, and presentation.",
+    icon: FileText,
+  },
+  {
+    id: "mentorship",
+    title: "General Mentorship",
+    desc: "Ask personalized industry questions, discuss roadmap challenges, and plan next steps.",
+    icon: MessageSquare,
+  },
+];
 
-  const [discountCode, setDiscountCode] = useState("");
-  const [appliedFreePromo, setAppliedFreePromo] = useState(false);
+export default function BookSessionPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+
   const { profile: existingProfile, expertId: stateExpertId, price: overridePrice } = location.state || {};
   const queryExpertId = searchParams.get("expertId");
-
   const expertId = stateExpertId || existingProfile?.id || queryExpertId;
 
-  // React Query: Fetch specific expert profile by ID (cached, public endpoint)
+  // Selected session goal
+  const [selectedGoal, setSelectedGoal] = useState<string>("technical");
+  const [userDiscussionNotes, setUserDiscussionNotes] = useState<string>("");
+
+  // Promo code & pricing states
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedFreePromo, setAppliedFreePromo] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [expertAvatarError, setExpertAvatarError] = useState(false);
+  const [activeTab, setActiveTab] = useState<"about" | "reviews">("about");
+
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // Close share menu on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
+        setIsShareMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Fetch expert profile
   const { data: profile, isLoading: isQueryLoading, error: queryError } = useQuery<Profile | null>({
     queryKey: ["expertProfile", expertId],
     queryFn: async () => {
@@ -191,15 +144,13 @@ const BookSessionPage = () => {
     },
     initialData: existingProfile || undefined,
     enabled: !!expertId,
-    staleTime: 0,
+    staleTime: 2 * 60 * 1000,
     refetchOnMount: "always",
   });
 
   const loading = isQueryLoading && !profile;
 
-  const sessionPrice = overridePrice ? overridePrice : (profile?.price || 0);
-
-  // Computed allowed durations options
+  // Computed allowed durations
   const durationOptions = useMemo<SessionDuration[]>(() => {
     const prof = profile || existingProfile;
     const allowed = prof?.availability?.allowedDurations;
@@ -207,134 +158,41 @@ const BookSessionPage = () => {
       Array.isArray(allowed) ? allowed.filter(isSessionDuration) : []
     );
 
-    // If allowedSet is empty, fallback to sessionDuration or [30]
     if (allowedSet.size === 0) {
       const single = prof?.availability?.sessionDuration;
       if (isSessionDuration(single)) allowedSet.add(single);
       else allowedSet.add(30);
     }
 
-    const weekly = prof?.availability?.weekly || {};
-    const configuredDurations = new Set<SessionDuration>();
+    const arr = Array.from(allowedSet).sort((a, b) => a - b);
+    return arr.length > 0 ? arr : [30];
+  }, [profile?.availability?.allowedDurations, profile?.availability?.sessionDuration, existingProfile]);
 
-    Object.values(weekly).forEach((slots: any) => {
-      if (Array.isArray(slots)) {
-        slots.forEach((slot: any) => {
-          if (slot.from && slot.to) {
-            const fromParts = slot.from.split(':');
-            const toParts = slot.to.split(':');
-            if (fromParts.length >= 2 && toParts.length >= 2) {
-              const fromMin = parseInt(fromParts[0], 10) * 60 + parseInt(fromParts[1], 10);
-              let toMin = parseInt(toParts[0], 10) * 60 + parseInt(toParts[1], 10);
-              if (toMin < fromMin) {
-                toMin += 24 * 60;
-              }
-              const diff = toMin - fromMin;
-              if (diff === 30 || diff === 60) {
-                configuredDurations.add(diff as SessionDuration);
-              }
-            }
-          }
-        });
-      }
-    });
+  const [sessionDuration, setSessionDuration] = useState<SessionDuration>(() => durationOptions[0] || 30);
 
-    // If the expert has configured weekly slots, intersect with configuredDurations
-    // so we only show durations that actually have slots.
-    const finalDurations = Array.from(allowedSet).filter(d => 
-      configuredDurations.size === 0 || configuredDurations.has(d)
-    );
+  useEffect(() => {
+    if (durationOptions.length > 0 && !durationOptions.includes(sessionDuration)) {
+      setSessionDuration(durationOptions[0]);
+    }
+  }, [durationOptions, sessionDuration]);
 
-    if (finalDurations.length > 0) return finalDurations.sort((a, b) => a - b);
-    return [30];
-  }, [profile?.availability?.allowedDurations, profile?.availability?.sessionDuration, profile?.availability?.weekly, existingProfile]);
-
-  // Initial duration based on state profile or first load to avoid jumps
-  const initialDuration = useMemo<SessionDuration>(() => {
-    return durationOptions[0] || 30;
-  }, [durationOptions]);
-
-  const [sessionDuration, setSessionDuration] = useState<SessionDuration>(initialDuration);
-
-  // Skill (for pricing): expert's skills only
-  const skillOptions = useMemo(() => {
-    const prof = profile || existingProfile;
-    return prof?.skills?.length ? prof.skills : (prof?.category ? [prof.category] : ["General"]);
-  }, [profile?.skills, profile?.category, existingProfile]);
-
-  const [selectedSkill, setSelectedSkill] = useState<string>(() => skillOptions[0] || "General");
-  const [expertLevel, setExpertLevel] = useState(() => existingProfile?.levels?.[0] || existingProfile?.level || "Rising Mentor");
-
+  // Expert Level & calculated pricing
+  const expertLevel = profile?.level || existingProfile?.level || "Senior";
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
 
-  const skillSelectOptions = useMemo<PremiumSelectOption[]>(
-    () => skillOptions.map((skill) => ({ value: skill, label: skill })),
-    [skillOptions]
-  );
-  const durationSelectOptions = useMemo<PremiumSelectOption[]>(
-    () =>
-      durationOptions.map((duration) => ({
-        value: String(duration),
-        label: `${duration} Minutes`,
-      })),
-    [durationOptions]
-  );
-
-  const levelOptions = useMemo(() => {
-    const prof = profile || existingProfile;
-    return prof?.levels && prof.levels.length > 0
-      ? prof.levels
-      : [prof?.level || "Rising Mentor"];
-  }, [profile?.levels, profile?.level, existingProfile]);
-
-  const levelSelectOptions = useMemo<PremiumSelectOption[]>(
-    () =>
-      (levelOptions || []).map((lvl) => ({
-        value: lvl,
-        label: lvl,
-      })),
-    [levelOptions]
-  );
-
-  // Synchronize expert Level selection when profile options change
-  useEffect(() => {
-    if (levelOptions.length > 0 && !levelOptions.includes(expertLevel)) {
-      setExpertLevel(levelOptions[0]);
+  const basePrice = useMemo(() => {
+    if (overridePrice) return Number(overridePrice) || 0;
+    if (profile?.price) {
+      const parsed = parseInt(String(profile.price).replace(/[^\d]/g, ""), 10);
+      return Number.isFinite(parsed) ? parsed : 499;
     }
-  }, [levelOptions, expertLevel]);
+    return 499;
+  }, [profile?.price, overridePrice]);
 
-  // Synchronize Skill selection when profile options change
-  useEffect(() => {
-    if (skillOptions.length > 0 && !skillOptions.includes(selectedSkill)) {
-      setSelectedSkill(skillOptions[0]);
-    }
-  }, [skillOptions, selectedSkill]);
-
-  // Synchronize Session Duration when profile options change
-  useEffect(() => {
-    const prof = profile || existingProfile;
-    if (prof) {
-      const allowed = prof.availability?.allowedDurations;
-      const valid = Array.isArray(allowed) ? allowed.filter(isSessionDuration) : [];
-      const defaultDur = valid.length > 0 ? valid[0] : (isSessionDuration(prof.availability?.sessionDuration) ? prof.availability.sessionDuration : 30);
-      if (!durationOptions.includes(sessionDuration)) {
-        setSessionDuration(defaultDur);
-      }
-    }
-  }, [profile, existingProfile, durationOptions, sessionDuration]);
-  const [errorValue, setErrorValue] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (queryError) {
-      setErrorValue((queryError as any)?.message || "Failed to load expert data");
-    }
-  }, [queryError]);
-
-  // Price is category-based only (expert's category + level + duration). No skill.
   useEffect(() => {
     const fetchPrice = async () => {
       if (!profile?.id || ![30, 60].includes(sessionDuration)) {
-        setCalculatedPrice(0);
+        setCalculatedPrice(basePrice);
         return;
       }
       try {
@@ -344,165 +202,72 @@ const BookSessionPage = () => {
         if (res.data?.finalPrice != null) {
           setCalculatedPrice(res.data.finalPrice);
         } else {
-          setCalculatedPrice(0);
+          setCalculatedPrice(basePrice);
         }
       } catch (err) {
-        console.error("Pricing fetch failed", err);
-        setCalculatedPrice(0);
+        setCalculatedPrice(basePrice);
       }
     };
     fetchPrice();
-  }, [profile?.id, sessionDuration, expertLevel]);
+  }, [profile?.id, sessionDuration, expertLevel, basePrice]);
 
+  // Actual session fee for the chosen duration & level
+  const sessionFee = calculatedPrice > 0 ? calculatedPrice : basePrice;
+  const promoDiscount = appliedFreePromo ? sessionFee : 0;
+  const finalPayable = Math.max(0, sessionFee - promoDiscount);
+  const displayPrice = finalPayable;
+
+  // Calendar dates in Asia/Kolkata timezone
   const [currentMonth, setCurrentMonth] = useState<Date>(getInitialKolkataMonth);
-  const [selectedDate, setSelectedDate] = useState(0); // Default to first available date (Today)
-  // Better: selectedDate as index is tricky with switching months. 
-  // Let's keep selectedDate as index of 'dates' array but reset it on month change.
-
+  const [selectedDate, setSelectedDate] = useState<number>(0);
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
-  const [showMobileBooking, setShowMobileBooking] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(() => {
-    return searchParams.get("bookNow") === "true" || !!(location.state as any)?.openBooking;
-  });
-  const [activeTab, setActiveTab] = useState("details");
-  const [expertAvatarError, setExpertAvatarError] = useState(false);
-  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
-  const shareMenuRef = useRef<HTMLDivElement>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (searchParams.get("bookNow") === "true" || (location.state as any)?.openBooking) {
-      setIsBookingModalOpen(true);
-    }
-  }, [searchParams, location.state]);
-
-  // Scroll active date into view horizontally on mount or when navigation drawer opens (without scrolling the window vertically)
-  useEffect(() => {
-    if (carouselRef.current) {
-      const activeBtn = carouselRef.current.querySelector('[data-active="true"]') as HTMLElement;
-      if (activeBtn) {
-        const container = carouselRef.current;
-        const leftPos = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2);
-        container.scrollTo({
-          left: leftPos,
-          behavior: 'smooth'
-        });
-      }
-    }
-  }, [selectedDate, showMobileBooking]);
-
-  useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
-        setIsShareMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
-
-  const getShareUrl = () => {
-    const id = expertId || profile?.id || "";
-    if (typeof window === "undefined") return `/book-session?expertId=${encodeURIComponent(id)}`;
-    return `${window.location.origin}/book-session?expertId=${encodeURIComponent(id)}`;
-  };
-
-  const handleShare = (platform: "whatsapp" | "linkedin" | "x" | "facebook" | "telegram" | "email" | "copy" | "native") => {
-    const shareUrl = getShareUrl();
-    const text = `Book a mock interview with ${profile?.name || "expert"} on Mockeefy`;
-    const encodedText = encodeURIComponent(text);
-    const encodedUrl = encodeURIComponent(shareUrl);
-
-    const open = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
-
-    if (platform === "native") {
-      if (navigator.share) {
-        navigator.share({ title: "Mockeefy Expert Booking", text, url: shareUrl }).catch(() => {});
-      } else {
-        handleShare("copy");
-      }
-      return;
-    }
-
-    switch (platform) {
-      case "whatsapp":
-        open(`https://wa.me/?text=${encodedText}%20${encodedUrl}`);
-        break;
-      case "linkedin":
-        open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`);
-        break;
-      case "x":
-        open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`);
-        break;
-      case "facebook":
-        open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`);
-        break;
-      case "telegram":
-        open(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`);
-        break;
-      case "email":
-        window.location.href = `mailto:?subject=${encodeURIComponent("Mock Interview Booking")}&body=${encodedText}%0A${encodedUrl}`;
-        break;
-      case "copy":
-      default:
-        navigator.clipboard.writeText(shareUrl);
-        Swal.fire({ title: "Copied", text: "Booking link copied to clipboard.", icon: "success", timer: 1800, showConfirmButton: false });
-        break;
-    }
-    setIsShareMenuOpen(false);
-  };
-
-  // Reviews
-  interface Review {
-    id: string;
-    name: string;
-    role: string;
-    rating: number;
-    comment: string;
-    date: string;
-    avatar?: string;
-    strengths?: string[];
-  }
-
+  // Fetch booked sessions & reviews
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
-    if (expertId) {
-      const fetchSessions = async () => {
-        try {
-          const res = await axios.get(`/api/sessions/expert/${expertId}`);
-          if (Array.isArray(res.data)) {
-            setBookedSessions(res.data);
-          }
-        } catch (err) {
-          console.error("Failed to fetch booked sessions", err);
-        }
-      };
-      fetchSessions();
+    if (!expertId) return;
 
-      const fetchReviews = async () => {
-        try {
-          setReviewsLoading(true);
-          const response = await axios.get(`/api/reviews/expert/${expertId}`);
-          if (response.data.success) {
-            const formattedReviews = response.data.data.map((r: any) => ({
-              ...r,
-              date: new Date(r.date).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' })
-            }));
-            setReviews(formattedReviews);
-          }
-        } catch (error) {
-          console.error("Failed to fetch reviews", error);
-        } finally {
-          setReviewsLoading(false);
+    const fetchSessions = async () => {
+      try {
+        const res = await axios.get(`/api/sessions/expert/${expertId}`);
+        if (Array.isArray(res.data)) {
+          setBookedSessions(res.data);
         }
-      };
-      fetchReviews();
-    }
+      } catch (err) {
+        console.error("Failed to load booked sessions", err);
+      }
+    };
+    fetchSessions();
+
+    const fetchReviews = async () => {
+      try {
+        setReviewsLoading(true);
+        const res = await axios.get(`/api/reviews/expert/${expertId}`);
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setReviews(res.data.data.map((r: any) => ({
+            id: r._id || r.id || String(Math.random()),
+            name: r.candidateName || r.name || "Candidate",
+            role: r.candidateRole || r.role || "Software Engineer",
+            rating: r.overallRating || r.rating || 5,
+            comment: r.feedback || r.comment || "Great mock interview with insightful feedback.",
+            date: r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "Recently",
+            avatar: r.candidateAvatar || r.avatar,
+            strengths: r.strengths || [],
+          })));
+        }
+      } catch (err) {
+        console.error("Failed to fetch reviews", err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    fetchReviews();
   }, [expertId]);
 
+  // Compute valid dates for currentMonth
   const dates = useMemo(() => {
     const parts = getKolkataTimeParts(currentMonth);
     const year = parts.year;
@@ -510,47 +275,32 @@ const BookSessionPage = () => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const allDates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
 
-    // Filter out past dates for the current month (Kolkata time)
     const today = getKolkataToday();
     const weekly = profile?.availability?.weekly || {};
     const breakDates = profile?.availability?.breakDates || [];
 
-    // Find all days of the week (e.g., 'friday', 'mon') that have at least one slot configured
     const activeDays = Object.keys(weekly).filter(day => {
       const slots = weekly[day];
       return Array.isArray(slots) && slots.length > 0;
     }).map(d => d.toLowerCase());
 
     return allDates.filter(date => {
-      const kolkataDateStr = getKolkataDateString(date); // "YYYY-MM-DD"
-      const isBreakDate = breakDates.some((breakDate: any) => {
-        return getKolkataDateString(breakDate.start) === kolkataDateStr;
-      });
+      const kolkataDateStr = getKolkataDateString(date);
+      const isBreakDate = breakDates.some((b: any) => getKolkataDateString(b.start) === kolkataDateStr);
       if (isBreakDate) return false;
 
-      // Compare calendar dates safely using Kolkata year/month
-      if (date.getMonth() > today.getMonth() || date.getFullYear() > today.getFullYear()) {
-        if (activeDays.length > 0) {
-          const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase();
-          const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();
-          if (!activeDays.includes(dayShort) && !activeDays.includes(dayLong)) {
-            return false;
-          }
-        }
-        return true;
-      }
+      // In current month, cannot pick past days
+      if (date < today) return false;
 
-      if (date >= today) {
-        if (activeDays.length > 0) {
-          const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase();
-          const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();
-          if (!activeDays.includes(dayShort) && !activeDays.includes(dayLong)) {
-            return false;
-          }
+      // If activeDays configured, check weekday
+      if (activeDays.length > 0) {
+        const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase();
+        const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();
+        if (!activeDays.includes(dayShort) && !activeDays.includes(dayLong)) {
+          return false;
         }
-        return true;
       }
-      return false;
+      return true;
     });
   }, [currentMonth, profile?.availability?.weekly, profile?.availability?.breakDates]);
 
@@ -563,9 +313,8 @@ const BookSessionPage = () => {
   const prevMonth = () => {
     const todayKolkata = getKolkataToday();
     const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-    // Allow going back only if it's same month or future in Kolkata
     if (prev.getMonth() < todayKolkata.getMonth() && prev.getFullYear() <= todayKolkata.getFullYear()) {
-      setCurrentMonth(getInitialKolkataMonth()); // Reset to today's month in Kolkata
+      setCurrentMonth(getInitialKolkataMonth());
     } else {
       setCurrentMonth(prev);
     }
@@ -573,110 +322,79 @@ const BookSessionPage = () => {
     setSelectedSlot(null);
   };
 
+  // Generate slots for selected date
+  const currentSlots = useMemo(() => {
+    if (!profile?.availability || !dates[selectedDate]) return [];
 
-  const getAvailableSlots = (dateIndex: number) => {
-    if (!profile?.availability) return [];
+    const date = dates[selectedDate];
+    const kolkataDateStr = getKolkataDateString(date);
 
-    const date = dates[dateIndex];
-    if (!date) return [];
-
-    const kolkataDateStr = getKolkataDateString(date); // "YYYY-MM-DD"
-
-    const isBreakDate = (profile.availability.breakDates || []).some((breakDate: any) => {
-      return getKolkataDateString(breakDate.start) === kolkataDateStr;
-    });
-
-    if (isBreakDate) return [];
-
-    // Robust Day Matching (mon, Mon, Monday, etc.) in Asia/Kolkata timezone
     const weekly = profile.availability.weekly || {};
-    const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase(); // mon
-    const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();   // monday
+    const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase();
+    const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();
 
-    const availableKey = Object.keys(weekly).find(key => {
-      const k = key.toLowerCase();
-      return k === dayShort || k === dayLong;
+    const activeKey = Object.keys(weekly).find(k => {
+      const lower = k.toLowerCase();
+      return lower === dayShort || lower === dayLong;
     });
 
-    const weeklyRanges = availableKey ? weekly[availableKey] : [];
-
+    const weeklyRanges = activeKey ? weekly[activeKey] : [];
     if (!weeklyRanges || weeklyRanges.length === 0) return [];
 
-    const parseTimeToMinutes = (timeStr: string) => {
-      const parts = timeStr.split(':');
-      if (parts.length < 2) return 0;
-      const hours = parseInt(parts[0], 10);
-      const minutes = parseInt(parts[1], 10);
-      return hours * 60 + minutes;
+    const parseTimeToMinutes = (t: string) => {
+      const parts = t.split(":");
+      return parseInt(parts[0] || "0", 10) * 60 + parseInt(parts[1] || "0", 10);
     };
 
-    const formatMinutesToTime = (totalMinutes: number) => {
-      const adjustedMinutes = totalMinutes % (24 * 60);
-      const hours = Math.floor(adjustedMinutes / 60);
-      const minutes = adjustedMinutes % 60;
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      return `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+    const formatMinutesToTime = (min: number) => {
+      const adjusted = min % (24 * 60);
+      const h = Math.floor(adjusted / 60);
+      const m = adjusted % 60;
+      const period = h >= 12 ? "PM" : "AM";
+      const displayHours = h % 12 || 12;
+      return `${displayHours.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${period}`;
     };
 
-    const formatMinutesToHHMM = (totalMinutes: number) => {
-      const adjusted = totalMinutes % (24 * 60);
-      const hours = Math.floor(adjusted / 60);
-      const minutes = adjusted % 60;
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    const formatMinutesToHHMM = (min: number) => {
+      const adjusted = min % (24 * 60);
+      return `${Math.floor(adjusted / 60).toString().padStart(2, "0")}:${(adjusted % 60).toString().padStart(2, "0")}`;
     };
 
     const generatedSlots: { time: string; available: boolean }[] = [];
-    const duration = Number(sessionDuration);
-    // Step by sessionDuration so we get clean, non-overlapping slots (e.g. 09:00 - 10:00, 10:00 - 11:00)
-    const SLOT_STEP_MINUTES = duration;
+    const duration = sessionDuration;
 
     weeklyRanges.forEach((range: { from: string; to: string }) => {
       if (!range.from || !range.to) return;
+      let currentMin = parseTimeToMinutes(range.from);
+      let endMin = parseTimeToMinutes(range.to);
+      if (endMin < currentMin) endMin += 24 * 60;
 
-      let currentMinutes = parseTimeToMinutes(range.from);
-      let endMinutes = parseTimeToMinutes(range.to);
-
-      if (endMinutes < currentMinutes) {
-        endMinutes += 24 * 60;
-      }
-
-      const rangeDuration = endMinutes - currentMinutes;
-      if (rangeDuration !== duration) return;
-
-      while (currentMinutes + duration <= endMinutes) {
+      while (currentMin + duration <= endMin) {
         const nowKolkata = getKolkataTimeParts();
-        const todayKolkataStr = getKolkataDateString(new Date());
-        const isToday = kolkataDateStr === todayKolkataStr;
-        const currentTimeMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
+        const isToday = kolkataDateStr === getKolkataDateString(new Date());
+        const nowMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
 
-        // Only hide slots whose start time has already passed (today in Kolkata)
-        if (isToday && currentMinutes < currentTimeMinutes) {
-          currentMinutes += SLOT_STEP_MINUTES;
+        // Do not display past times today
+        if (isToday && currentMin < nowMinutes) {
+          currentMin += duration;
           continue;
         }
 
-        const slotStartStr = formatMinutesToHHMM(currentMinutes);
-        const slotEndStr = formatMinutesToHHMM(currentMinutes + duration);
-
-        // Build exact slot boundary Dates using Asia/Kolkata offset (+05:30)
+        const slotStartStr = formatMinutesToHHMM(currentMin);
+        const slotEndStr = formatMinutesToHHMM(currentMin + duration);
         const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
         const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
 
-        // Only mark booked if a confirmed session overlaps this exact slot
         const isBooked = bookedSessions.some(session => {
           if (session.status === 'cancelled') return false;
           const sStart = new Date(session.startTime);
           const sEnd = new Date(session.endTime);
           if (isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
-          // Same calendar day only (India timezone)
           if (getKolkataDateString(sStart) !== kolkataDateStr) return false;
           return slotDate < sEnd && slotEndDate > sStart;
         });
 
-        const slotStart = formatMinutesToTime(currentMinutes);
-        const slotEnd = formatMinutesToTime(currentMinutes + duration);
-        const timeStr = `${slotStart} - ${slotEnd}`;
+        const timeStr = `${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(currentMin + duration)}`;
         const available = !isBooked;
 
         const existing = generatedSlots.find(s => s.time === timeStr);
@@ -685,957 +403,958 @@ const BookSessionPage = () => {
         } else {
           generatedSlots.push({ time: timeStr, available });
         }
-        currentMinutes += SLOT_STEP_MINUTES;
+        currentMin += duration;
       }
     });
 
     return generatedSlots.sort((a, b) => a.time.localeCompare(b.time));
+  }, [dates, selectedDate, profile?.availability, sessionDuration, bookedSessions]);
+
+  const handleApplyPromo = () => {
+    const code = discountCode.trim().toUpperCase();
+    if (!code) {
+      toast.error("Please enter a discount code.");
+      return;
+    }
+    if (code === "FREEMU001") {
+      setAppliedFreePromo(true);
+      toast.success("Promo code applied! 100% Free Mentorship Session unlocked.");
+    } else {
+      toast.error("Invalid or expired promo code.");
+    }
   };
 
-  const currentSlots = getAvailableSlots(selectedDate);
+  const handleRemovePromo = () => {
+    setAppliedFreePromo(false);
+    setDiscountCode("");
+    toast.info("Promo code removed.");
+  };
 
-  const handlePremiumCreditBooking = async () => {
-    if (!profile || !selectedSlot) return;
-    
-    const payload = buildFreeBookingPayload();
-    if (!payload) return;
+  // Share handlers
+  const handleShare = (type: string) => {
+    const shareUrl = window.location.href;
+    const shareText = `Book a 1:1 mentorship session with ${profile?.name || "Mentor"} on Mockeefy!`;
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const encodedText = encodeURIComponent(shareText);
+
+    switch (type) {
+      case "linkedin":
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`);
+        break;
+      case "x":
+        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`);
+        break;
+      case "whatsapp":
+        window.open(`https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`);
+        break;
+      case "copy":
+      default:
+        navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard!");
+        break;
+    }
+    setIsShareMenuOpen(false);
+  };
+
+  // Booking Execution
+  const handleProceedBooking = async () => {
+    if (!selectedSlot) {
+      toast.error("Please select an available time slot before continuing.");
+      const slotsElement = document.getElementById("time-slots-section");
+      if (slotsElement) {
+        slotsElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    if (!user) {
+      Swal.fire({
+        title: "Sign In Required",
+        text: "Please sign in to confirm your mentorship booking.",
+        icon: "info",
+        showCancelButton: true,
+        confirmButtonText: "Sign In",
+        confirmButtonColor: "#0755E8",
+      }).then((res) => {
+        if (res.isConfirmed) {
+          navigate("/signin", { state: { returnUrl: `/book-session?expertId=${expertId}` } });
+        }
+      });
+      return;
+    }
+
+    const date = dates[selectedDate];
+    if (!date || !profile) return;
+
+    const kolkataDateStr = getKolkataDateString(date);
+    const [startRaw, endRaw] = selectedSlot.time.split(/\s*[-–]\s*/);
+
+    const parseToHHMM = (timeStr: string) => {
+      const match = (timeStr || "").trim().match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      if (!match) return "00:00";
+      let h = parseInt(match[1], 10);
+      const m = match[2];
+      const mer = (match[3] || "").toUpperCase();
+      if (mer === "PM" && h < 12) h += 12;
+      if (mer === "AM" && h === 12) h = 0;
+      return `${h.toString().padStart(2, "0")}:${m}`;
+    };
+
+    const startTime = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`).toISOString();
+    const endTime = new Date(`${kolkataDateStr}T${parseToHHMM(endRaw)}:00+05:30`).toISOString();
+    const currentGoalObj = SESSION_GOALS.find(g => g.id === selectedGoal);
+
+    const payload = {
+      expertId: profile.id || expertId,
+      expertName: profile.name,
+      expertEmail: (profile as any).email || "",
+      expertPhone: (profile as any).phone || "",
+      expertCategory: profile.category || "IT",
+      userCategory: profile.category || "IT",
+      sessionCategory: profile.category || "IT",
+      sessionType: currentGoalObj?.title || "1:1 Mock Interview",
+      sessionDuration: Number(sessionDuration),
+      startTime,
+      endTime,
+      price: appliedFreePromo ? 0 : sessionFee,
+      originalPrice: sessionFee,
+      discount: appliedFreePromo ? sessionFee : 0,
+      status: "scheduled",
+      isPremiumSession: !!(user?.isPremium),
+      notes: userDiscussionNotes.trim() ? `${userDiscussionNotes.trim()} [Goal: ${currentGoalObj?.title}]` : `[Goal: ${currentGoalObj?.title}]`,
+    };
 
     try {
       setIsProcessing(true);
-      const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
-      if (res.data?.success) {
-        Swal.fire({
-          title: "Booked with Credit!",
-          text: `Session confirmed. You have ${res.data.remainingCredits} credits left.`,
-          icon: "success",
-          confirmButtonColor: "#004fcb",
-        }).then(() => navigate("/my-sessions"));
+
+      // 1. Free promo booking
+      if (appliedFreePromo) {
+        const res = await axios.post("/api/sessions/book-free", payload);
+        if (res.data?.success) {
+          Swal.fire({
+            title: "Booking Confirmed! 🎉",
+            text: `Your free session with ${profile.name} has been scheduled for ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
+            icon: "success",
+            confirmButtonColor: "#0755E8",
+          }).then(() => navigate("/my-sessions"));
+        }
+        return;
       }
+
+      // 2. Premium user credit booking
+      if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
+        const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
+        if (res.data?.success) {
+          Swal.fire({
+            title: "Booked with Credit! 🎯",
+            text: `Session confirmed. You have ${res.data.remainingCredits ?? 0} free credits remaining.`,
+            icon: "success",
+            confirmButtonColor: "#0755E8",
+          }).then(() => navigate("/my-sessions"));
+        }
+        return;
+      }
+
+      // 3. Paid Standard Checkout: route to Payment gateway
+      navigate("/payment", {
+        state: {
+          bookingDetails: {
+            expertId: profile.id || expertId,
+            expertName: profile.name,
+            expertRole: profile.role,
+            date: date,
+            slot: selectedSlot,
+            price: sessionFee,
+            duration: sessionDuration,
+            category: profile.category || "IT",
+            level: expertLevel,
+            skill: profile.category || "Technical Interview",
+            sessionGoal: currentGoalObj?.title,
+            userNotes: userDiscussionNotes.trim(),
+            topics: [currentGoalObj?.title || "1:1 Mentorship"]
+          }
+        }
+      });
     } catch (err: any) {
-      Swal.fire({ title: "Error", text: err.response?.data?.message || "Failed to book with credit.", icon: "error" });
+      console.error("Booking error:", err);
+      toast.error(err?.response?.data?.message || "Failed to initiate booking. Please try again.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const showPaymentPage = () => {
-    if (!profile) return;
-    navigate("/payment", {
-      state: {
-        bookingDetails: {
-          expertId: expertId,
-          expertName: profile.name,
-          expertRole: profile.role,
-          date: dates[selectedDate],
-          slot: selectedSlot,
-          price: displayPrice,
-          duration: sessionDuration,
-          category: profile.category,
-          level: expertLevel,
-          skill: selectedSkill,
-          topics: [selectedSkill]
-        }
-      }
-    });
-  };
-
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const buildFreeBookingPayload = () => {
-    const dateStr = dates[selectedDate];
-    const slot = selectedSlot;
-    if (!dateStr || !slot?.time) return null;
-
-    const kolkataDateStr = getKolkataDateString(dateStr); // e.g. "2026-06-30"
-    const timeParts = slot.time.split(/\s*[-–]\s*/);
-    const startStr = timeParts[0]; // e.g. "09:00 AM"
-    
-    // Parse time and period
-    const [time, period] = startStr.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
-    if (period === "PM" && hours !== 12) hours += 12;
-    if (period === "AM" && hours === 12) hours = 0;
-
-    const hh = hours.toString().padStart(2, '0');
-    const mm = minutes.toString().padStart(2, '0');
-
-    // Create correct Date objects using India timezone offset (+05:30)
-    const startKolkata = new Date(`${kolkataDateStr}T${hh}:${mm}:00+05:30`);
-    const endKolkata = new Date(startKolkata.getTime() + (sessionDuration || 60) * 60000);
-
-    return {
-      expertId,
-      candidateId: user?.id || user?.userId || (user as any)?._id,
-      startTime: startKolkata.toISOString(),
-      endTime: endKolkata.toISOString(),
-      topics: [selectedSkill],
-      duration: sessionDuration,
-      skill: selectedSkill,
-      category: profile?.category,
-      notes: appliedFreePromo 
-        ? `Booked with promo code: ${discountCode.trim().toUpperCase()}` 
-        : "Booked with free promo code",
-    };
-  };
-
-  const handleFreeBooking = async () => {
-    if (!appliedFreePromo || !selectedSlot || !profile) return;
-    const payload = buildFreeBookingPayload();
-    if (!payload?.candidateId) {
-      Swal.fire({ title: "Login required", text: "Please sign in to book a session.", icon: "warning" });
-      return;
-    }
-    if (!payload) {
-      Swal.fire({ title: "Error", text: "Invalid date or slot.", icon: "error" });
-      return;
-    }
-    try {
-      const res = await axios.post("/api/payment/create-free-booking", { bookingDetails: payload });
-      if (res.data?.success) {
-        Swal.fire({
-          title: "Booked!",
-          text: "Your free session has been confirmed. Check My Sessions for details.",
-          icon: "success",
-          confirmButtonColor: "#004fcb",
-        }).then(() => navigate("/my-sessions"));
-      } else {
-        throw new Error(res.data?.message || "Booking failed");
-      }
-    } catch (err: any) {
-      Swal.fire({ title: "Error", text: err.message || "Failed to confirm free booking.", icon: "error" });
-    }
-  };
-
-  const handleApplyPromo = () => {
-    const code = discountCode.trim().toUpperCase();
-    if (code === "FREEMU001") {
-      setAppliedFreePromo(true);
-      Swal.fire({ title: "Applied!", text: "Free session — no payment required. Click Confirm & Book to complete.", icon: "success", timer: 2500 });
-    } else {
-      Swal.fire({ title: "Invalid", text: "Code not found.", icon: "error" });
-    }
-  };
-
-  if (!expertId) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (loading) return <BookSessionSkeleton />;
-
-  if (!profile) {
+  // Fallback for missing/invalid expertId
+  if (!expertId || (!loading && !profile)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">{errorValue || "Profile Not Found"}</h2>
-          <button
-            onClick={() => navigate("/book-session")}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+      <div className="w-full font-sans text-left py-12">
+        <div className="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4 shadow-xs">
+            <AlertCircle className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Mentor Not Found</h2>
+          <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
+            We couldn't locate the requested mentor profile. Browse our verified mentor directory to choose an expert for your session.
+          </p>
+          <Link
+            to="/find-mentor"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
           >
-            Back to Home
-          </button>
+            <Briefcase className="w-4 h-4" />
+            <span>Browse All Mentors</span>
+          </Link>
         </div>
       </div>
     );
   }
 
-  // Derived display data for the new design
-  const ratingDist = [5, 4, 3, 2, 1].map((star) => {
-    const count = reviews.filter((r) => Math.round(r.rating) === star).length;
-    const pct = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
-    return { star, pct };
-  });
-  const sessionsTaken = bookedSessions.filter((s) => s.status !== "cancelled").length;
+  if (loading) {
+    return <BookSessionSkeleton />;
+  }
+
   const expertInitials = (profile.name || "EX").trim().substring(0, 2).toUpperCase();
-  const firstName = profile.name.split(" ")[0];
-
-  const parsePriceToNumber = (value: unknown): number | null => {
-    if (typeof value === "number") return Number.isFinite(value) ? value : null;
-    if (typeof value !== "string") return null;
-    // Accept formats like "₹700/hr", "700", "700.00", "INR 700"
-    const match = value.replace(/,/g, "").match(/(\d+(\.\d+)?)/);
-    if (!match?.[1]) return null;
-    const num = Number(match[1]);
-    return Number.isFinite(num) ? num : null;
-  };
-
-  // Single source for price display — avoids double rupee symbol and handles string prices like "₹700/hr"
-  const basePrice = parsePriceToNumber(sessionPrice) ?? 0;
-  const displayPrice = calculatedPrice || basePrice;
-  const formatPrice = (amount: number | null | undefined) => {
-    if (amount == null || !Number.isFinite(amount)) return "—";
-    return `₹${amount}`;
-  };
-
-  // Hero card — Expert Detail design
-  const ProfileHeader = () => (
-    <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
-      {/* Gradient banner */}
-      <div
-        className="relative h-[112px]"
-        style={{ background: "linear-gradient(110deg,#0E1B4D 0%,#1E3FCC 58%,#2F5FFF 100%)" }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "repeating-linear-gradient(115deg,rgba(255,255,255,.05) 0 1px,transparent 1px 26px),radial-gradient(circle at 85% 0%,rgba(255,255,255,.16),transparent 45%)",
-          }}
-        />
-        <div className="absolute top-3.5 right-3.5 flex gap-2" ref={shareMenuRef}>
-          <span className="inline-flex items-center gap-[7px] bg-white/15 border border-white/25 text-white text-[11.5px] font-extrabold px-3.5 py-[7px] rounded-full backdrop-blur whitespace-nowrap">
-            {profile.category} Interview Mentor
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsShareMenuOpen((v) => !v)}
-            className="w-[34px] h-[34px] rounded-full bg-white/15 border border-white/25 flex items-center justify-center cursor-pointer text-white backdrop-blur focus:outline-none"
-            title="Share"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-          </button>
-          {isShareMenuOpen && (
-            <div className="absolute right-0 top-11 w-52 bg-white border border-[#EAEEF7] rounded-[14px] shadow-[0_16px_34px_-14px_rgba(20,26,51,.3)] p-1.5 z-30">
-              <button onClick={() => handleShare("native")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Share...</button>
-              <button onClick={() => handleShare("whatsapp")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">WhatsApp</button>
-              <button onClick={() => handleShare("linkedin")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">LinkedIn</button>
-              <button onClick={() => handleShare("x")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">X (Twitter)</button>
-              <button onClick={() => handleShare("facebook")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Facebook</button>
-              <button onClick={() => handleShare("telegram")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Telegram</button>
-              <button onClick={() => handleShare("email")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Email</button>
-              <button onClick={() => handleShare("copy")} className="w-full text-left px-3 py-2 rounded-[10px] hover:bg-[#F5F7FC] text-[13.5px] font-bold text-[#141A33]">Copy link</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="px-5 sm:px-7 pb-[22px]">
-        {/* Avatar + chips row */}
-        <div className="flex items-end justify-between gap-4 flex-wrap -mt-10">
-          <div className="relative w-[88px] h-[88px] rounded-full bg-white p-1 box-border shadow-[0_8px_20px_-10px_rgba(20,26,51,.35)]">
-            {profile.avatar && !profile.avatar.includes("mockeefy.png") && !profile.avatar.includes("default-avatar.png") && !expertAvatarError ? (
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                className="w-full h-full rounded-full object-cover"
-                onError={() => setExpertAvatarError(true)}
-              />
-            ) : (
-              <div className="w-full h-full rounded-full bg-[#EEF2FF] text-[#2F5FFF] flex items-center justify-center text-[27px] font-bold uppercase">
-                {expertInitials}
-              </div>
-            )}
-            <div className="absolute bottom-[5px] right-[5px] w-[15px] h-[15px] rounded-full bg-[#22C55E] border-[3px] border-white" />
-          </div>
-          <div className="flex gap-2 flex-wrap pb-1">
-            <span className="inline-flex items-center gap-[7px] bg-white text-[#33395B] border-[1.5px] border-[#E3E8F5] text-[12.5px] font-bold px-[15px] py-[7px] rounded-full whitespace-nowrap">
-              <Briefcase className="w-[13px] h-[13px] text-[#2F5FFF]" />
-              {profile.category} Specialist
-            </span>
-            {profile.isVerified && (
-              <span className="inline-flex items-center gap-[7px] bg-white text-[#33395B] border-[1.5px] border-[#E3E8F5] text-[12.5px] font-bold px-[15px] py-[7px] rounded-full whitespace-nowrap">
-                <Check className="w-[13px] h-[13px] text-[#0E9D5C]" strokeWidth={2.6} />
-                Verified Expert
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Name + verified badge */}
-        <div className="flex items-center gap-2.5 flex-wrap mt-3.5">
-          <h1 className="text-[25px] font-bold text-[#141A33] tracking-tight leading-tight m-0">{profile.name}</h1>
-          {profile.isVerified && <BadgeCheck className="w-[19px] h-[19px] text-white fill-[#2F5FFF]" />}
-        </div>
-
-        {/* Role • location • experience */}
-        <div className="flex items-center gap-2 flex-wrap mt-[7px] text-[13.5px] font-bold text-[#5A6284]">
-          <span className="font-extrabold text-[#33395B] whitespace-nowrap">{profile.role}</span>
-          <span className="text-[#D5DAE8]">•</span>
-          <span className="whitespace-nowrap">{profile.location}</span>
-          <span className="text-[#D5DAE8]">•</span>
-          <span className="whitespace-nowrap">{profile.experience} experience</span>
-        </div>
-
-        {/* Stats strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 mt-5 pt-[18px] border-t border-[#F0F2F8] text-center gap-y-4">
-          <div className="sm:border-r border-[#F0F2F8]">
-            <div className="flex items-center justify-center gap-1.5 font-extrabold text-base text-[#141A33]">
-              <Star className="w-3.5 h-3.5 text-[#F5A524] fill-[#F5A524]" />
-              {profile.rating ?? 0}
-            </div>
-            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">
-              {profile.reviews === 1 ? "1 Review" : `${profile.reviews ?? 0} Reviews`}
-            </div>
-          </div>
-          <div className="sm:border-r border-[#F0F2F8]">
-            <div className="font-extrabold text-base text-[#141A33]">{sessionsTaken > 0 ? `${sessionsTaken}+` : "New"}</div>
-            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Sessions Taken</div>
-          </div>
-          <div className="sm:border-r border-[#F0F2F8]">
-            <div className="font-extrabold text-base text-[#141A33]">{profile.experience}</div>
-            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Experience</div>
-          </div>
-          <div>
-            <div className="font-extrabold text-base text-[#141A33]">
-              {profile.responseTime && profile.responseTime !== "New expert" ? profile.responseTime : "< 2 hrs"}
-            </div>
-            <div className="text-[11px] text-[#8B93B2] font-bold mt-[3px]">Response Time</div>
-          </div>
-        </div>
-
-        {/* Action Row with Book Session Button */}
-        <div className="flex items-center justify-between gap-3 mt-4 pt-3.5 border-t border-[#F0F2F8] flex-wrap">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#2F5FFF]">{formatPrice(displayPrice)}</span>
-            <span className="text-xs text-slate-500 font-bold">per session ({sessionDuration} mins)</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsBookingModalOpen(true)}
-            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-full flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Book Session</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Booking card — Expert Detail design; used in sidebar (desktop) and mobile sheet
-  const BookingCard = () => (
-    <div className="bg-white rounded-[22px] border border-[#EDF1FB] p-6 shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
-      <h3 className="text-[19px] font-bold text-[#141A33] tracking-tight m-0">Configure Session</h3>
-      <p className="text-[12.5px] text-[#8B93B2] font-bold mt-[3px] mb-5">Topic, duration, date &amp; time</p>
-
-      {/* Level & Duration */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <div className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] mb-2 whitespace-nowrap">EXPERT LEVEL</div>
-          <PremiumSelect
-            value={expertLevel}
-            options={levelSelectOptions}
-            onChange={(value) => setExpertLevel(value)}
-          />
-        </div>
-        <div>
-          <div className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] mb-2 whitespace-nowrap">DURATION</div>
-          <PremiumSelect
-            value={String(durationOptions.includes(sessionDuration) ? sessionDuration : durationOptions[0])}
-            options={durationSelectOptions}
-            onChange={(value) => {
-              const next = Number(value);
-              if (isSessionDuration(next)) setSessionDuration(next);
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Total Amount */}
-      <div className="bg-[#F0F5FF] border border-[#DCE8FF] rounded-2xl px-[18px] py-4 mb-[18px]">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10.5px] font-extrabold text-[#5A6284] tracking-[.08em] whitespace-nowrap">TOTAL AMOUNT</span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#5A6284]">
-            <Timer className="w-[13px] h-[13px]" /> {sessionDuration} min
-          </span>
-        </div>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className={`text-[26px] font-bold ${appliedFreePromo ? "text-[#0E9D5C]" : "text-[#2F5FFF]"}`}>
-              {appliedFreePromo ? "Free" : formatPrice(displayPrice)}
-            </span>
-            {!appliedFreePromo && (
-              <span className="text-[12.5px] text-[#5A6284] font-bold whitespace-nowrap">for {sessionDuration} min · INR</span>
-            )}
-          </div>
-          <span className="bg-[#DCE8FF] text-[#2F5FFF] text-[11.5px] font-extrabold px-3 py-[5px] rounded-full whitespace-nowrap">
-            {expertLevel}
-          </span>
-        </div>
-      </div>
-
-      {/* Promo code */}
-      <div className="flex gap-2.5 mb-[22px]">
-        <input
-          type="text"
-          placeholder="Enter promo code"
-          className="flex-1 min-w-0 bg-[#F7F9FE] border border-[#E3E8F5] rounded-xl px-3.5 py-3 text-[13.5px] font-bold text-[#141A33] placeholder:text-[#8B93B2] outline-none focus:border-[#2F5FFF] transition-colors"
-          value={discountCode}
-          onChange={(e) => setDiscountCode(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={handleApplyPromo}
-          className="px-5 bg-[#E3EDFF] text-[#2F5FFF] rounded-xl font-extrabold text-[13.5px] cursor-pointer hover:bg-[#D5E3FF] transition-colors focus:outline-none"
-        >
-          Apply
-        </button>
-      </div>
-      {appliedFreePromo && (
-        <p className="text-[#0E9D5C] text-xs font-bold -mt-4 mb-4">✓ Free session — no payment. Click the button below to complete.</p>
-      )}
-
-      {/* Pick a date */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] whitespace-nowrap">PICK A DATE</span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={prevMonth}
-            disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
-            className="p-1.5 rounded-lg hover:bg-[#F5F7FC] disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none"
-          >
-            <ChevronLeft size={16} className="text-[#4A5170]" />
-          </button>
-          <span className="font-extrabold text-[13.5px] text-[#141A33] whitespace-nowrap">
-            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </span>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[#F5F7FC] transition-colors focus:outline-none">
-            <ChevronRight size={16} className="text-[#4A5170]" />
-          </button>
-        </div>
-      </div>
-      <div
-        ref={carouselRef}
-        className="flex gap-2 overflow-x-auto pb-1 mb-5 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {dates.map((date, index) => {
-          const isToday = new Date().toDateString() === date.toDateString();
-          const isActive = selectedDate === index;
-          return (
-            <button
-              key={index}
-              data-active={isActive}
-              onClick={() => {
-                setSelectedDate(index);
-                setSelectedSlot(null);
-              }}
-              className={`min-w-[64px] text-center px-1.5 py-[11px] rounded-[14px] cursor-pointer shrink-0 border-[1.5px] transition-colors focus:outline-none ${
-                isActive
-                  ? "bg-[#2F5FFF] border-[#2F5FFF] text-white"
-                  : "bg-white border-[#E3E8F5] text-[#33395B] hover:border-[#B9CBF5]"
-              }`}
-            >
-              <div className="text-[9.5px] font-extrabold tracking-[.06em] opacity-85">
-                {isToday ? "TODAY" : date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
-              </div>
-              <div className="font-bold text-[19px] my-0.5 leading-none tabular-nums">{date.getDate()}</div>
-              <div className="text-[9.5px] font-extrabold tracking-[.06em] opacity-85">
-                {date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Pick a time */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10.5px] font-extrabold text-[#8B93B2] tracking-[.08em] whitespace-nowrap">PICK A TIME</span>
-        <span className="bg-[#EEF2FF] text-[#2F5FFF] text-[11px] font-extrabold px-2.5 py-1 rounded-full">
-          {currentSlots.length} slots
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 mb-5 max-h-[320px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {currentSlots.length > 0 ? (
-          currentSlots.map((slot, index) => {
-            const isSelected = selectedSlot?.time === slot.time;
-            const isUnavailable = slot.available === false;
-            const timeParts = (slot.time || "").split(/\s*[-–]\s*/);
-            const startRaw = timeParts[0]?.trim() ?? "";
-            const endRaw = timeParts[1]?.trim() ?? "";
-            const compact = (t: string) => t.replace(/^0(\d)/, "$1");
-            const start = compact(startRaw);
-            const end = compact(endRaw);
-            // Same format for every slot: "1:00–1:30 PM" or "12:00–12:30 AM"
-            const timeLabel = (() => {
-              if (!start || !end) return slot.time || "—";
-              const s = start.match(/^(.+?)\s*(AM|PM)$/i);
-              const e = end.match(/^(.+?)\s*(AM|PM)$/i);
-              const sTime = s ? s[1]!.trim() : start;
-              const eTime = e ? e[1]!.trim() : end;
-              const sMer = (s && s[2]) ? s[2].toUpperCase() : (e && e[2]) ? e[2].toUpperCase() : "";
-              const eMer = (e && e[2]) ? e[2].toUpperCase() : sMer;
-              if (sMer && eMer) {
-                return sMer === eMer ? `${sTime}–${eTime} ${eMer}` : `${sTime} ${sMer}–${eTime} ${eMer}`;
-              }
-              return `${start}–${end}`;
-            })();
-            return (
-              <button
-                key={index}
-                type="button"
-                disabled={isUnavailable}
-                onClick={() => setSelectedSlot(slot)}
-                className={`relative flex items-center justify-center gap-[7px] px-2 py-[11px] rounded-xl font-extrabold text-[12.5px] whitespace-nowrap border-[1.5px] transition-colors focus:outline-none ${
-                  isUnavailable
-                    ? "bg-[#F5F7FC] border-[#EAEEF7] text-[#B2B8D0] cursor-not-allowed"
-                    : isSelected
-                      ? "bg-[#F0F5FF] border-[#2F5FFF] text-[#2F5FFF] cursor-pointer"
-                      : "bg-white border-[#E3E8F5] text-[#33395B] hover:border-[#B9CBF5] cursor-pointer"
-                }`}
-                title={slot.time}
-              >
-                <Clock className="w-[13px] h-[13px] shrink-0" strokeWidth={2} aria-hidden />
-                {timeLabel}
-                {isUnavailable && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl z-10 bg-[#F5F7FC]/95" aria-hidden>
-                    <span className="bg-[#E9EDF7] px-2 py-0.5 rounded text-[9px] font-extrabold text-[#8B93B2] uppercase tracking-wider">
-                      Unavailable
-                    </span>
-                  </div>
-                )}
-              </button>
-            );
-          })
-        ) : (
-          <div className="col-span-2 py-10 text-center bg-[#F7F9FE] rounded-2xl border-2 border-dashed border-[#E3E8F5] flex flex-col items-center justify-center">
-            <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-              <Calendar className="w-5 h-5 text-[#8B93B2]" />
-            </div>
-            <p className="text-[#141A33] font-extrabold text-sm mb-0.5">No slots available</p>
-            <p className="text-xs text-[#8B93B2] font-bold">Try another date or the next month</p>
-          </div>
-        )}
-      </div>
-
-      {/* Selected slot summary */}
-      {selectedSlot && (
-        <div className="mb-4 bg-[#F0F5FF] px-4 py-3.5 rounded-2xl border border-[#DCE8FF]">
-          <div className="flex justify-between items-start mb-1">
-            <span className="text-[10.5px] font-extrabold text-[#5A6284] tracking-[.08em]">SELECTED SLOT</span>
-            <button onClick={() => setSelectedSlot(null)} className="text-[#2F5FFF] text-xs font-extrabold hover:underline focus:outline-none">
-              Clear
-            </button>
-          </div>
-          <p className="text-[13.5px] font-extrabold text-[#141A33] leading-tight m-0">
-            {dates[selectedDate]?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) || ""}
-          </p>
-          <p className="text-[#2F5FFF] font-extrabold text-[13px] mt-0.5 m-0">At {selectedSlot.time}</p>
-        </div>
-      )}
-
-      {/* CTA */}
-      <button
-        onClick={() => {
-          if (!selectedSlot) return;
-          if (appliedFreePromo) {
-            handleFreeBooking();
-          } else if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
-            handlePremiumCreditBooking();
-          } else {
-            if (!user) {
-              Swal.fire({
-                title: "Login Required",
-                text: "Please sign in to book a session.",
-                icon: "info",
-                showCancelButton: true,
-                confirmButtonText: "Sign In",
-                confirmButtonColor: "#004fcb",
-              }).then((res) => {
-                if (res.isConfirmed) navigate("/signin");
-              });
-              return;
-            }
-            showPaymentPage();
-          }
-        }}
-        disabled={!selectedSlot || isProcessing}
-        className={`w-full flex items-center justify-center gap-[9px] py-[15px] rounded-[14px] font-extrabold text-[15px] transition-colors ${
-          selectedSlot
-            ? appliedFreePromo
-              ? "bg-[#0E9D5C] text-white hover:bg-[#0C8A50] cursor-pointer"
-              : "bg-[#2F5FFF] text-white hover:bg-[#1E3FCC] cursor-pointer"
-            : "bg-[#E9EDF7] text-[#8B93B2] cursor-not-allowed"
-        }`}
-      >
-        {isProcessing ? (
-          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-        ) : selectedSlot ? (
-          <>
-            {appliedFreePromo
-              ? "Confirm free booking"
-              : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
-                ? `Book with Credit (${user.freeInterviewsCount} left)`
-                : `Book Session — ${formatPrice(displayPrice)}`
-            }
-            <ArrowRight className="w-[15px] h-[15px]" />
-          </>
-        ) : (
-          "Select a Slot"
-        )}
-      </button>
-
-      <div className="flex flex-col gap-2 mt-4">
-        <span className="inline-flex items-center justify-center gap-2 text-xs font-bold text-[#5A6284]">
-          <Shield className="w-[13px] h-[13px] text-[#0E9D5C]" />
-          Secure 256-bit SSL encrypted payment
-        </span>
-        <span className="inline-flex items-center justify-center gap-2 text-xs font-bold text-[#5A6284]">
-          <Clock className="w-[13px] h-[13px] text-[#2F5FFF]" />
-          24-hour cancellation policy applies
-        </span>
-      </div>
-    </div>
-  );
-
-  const MobileBookingFAB = () => (
-    <div className="lg:hidden fixed bottom-4 right-4 z-40">
-      <button
-        onClick={() => setShowMobileBooking(true)}
-        className="flex items-center gap-1.5 px-5 py-3 bg-[#2F5FFF] text-white rounded-full shadow-lg shadow-blue-900/20 hover:bg-[#1E3FCC] active:scale-95 transition-all font-extrabold text-sm"
-      >
-        <Calendar className="w-4 h-4" />
-        Book
-      </button>
-    </div>
-  );
-
-  const CareerAdsSection = () => (
-    <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
-      <div className="px-6 py-4 border-b border-[#F0F2F8]">
-        <h4 className="text-[15px] font-bold text-[#141A33] m-0">Recommended for you</h4>
-      </div>
-      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-[#DCE8FF] bg-[#F0F5FF] p-4 h-full min-h-[164px] flex flex-col">
-          <p className="text-[10.5px] font-extrabold text-[#2F5FFF] tracking-[.08em] mb-1">CAREER BOOST</p>
-          <p className="text-sm font-extrabold text-[#141A33]">Resume Review Add-on</p>
-          <p className="text-xs text-[#5A6284] font-semibold mt-1 leading-relaxed">Get targeted edits from experts and improve shortlisting chances.</p>
-          <button className="mt-auto pt-3 text-xs font-extrabold text-[#2F5FFF] hover:underline text-left">Learn more</button>
-        </div>
-        <div className="rounded-2xl border border-[#FCE3C2] bg-[#FFF6EA] p-4 h-full min-h-[164px] flex flex-col">
-          <p className="text-[10.5px] font-extrabold text-[#D9720C] tracking-[.08em] mb-1">NEW OFFER</p>
-          <p className="text-sm font-extrabold text-[#141A33]">Bundle &amp; Save</p>
-          <p className="text-xs text-[#5A6284] font-semibold mt-1 leading-relaxed">Book 3 sessions together and unlock discount pricing.</p>
-          <button className="mt-auto pt-3 text-xs font-extrabold text-[#D9720C] hover:underline text-left">View plans</button>
-        </div>
-      </div>
-    </div>
-  );
+  const selectedGoalObj = SESSION_GOALS.find(g => g.id === selectedGoal) || SESSION_GOALS[0];
+  const selectedDateObj = dates[selectedDate];
 
   return (
-    <>
-      <div className="min-h-screen bg-[#F5F7FC] pb-10">
-        <Navigation />
+    <div className="w-full space-y-6 font-sans text-left pb-16 animate-in fade-in duration-200">
+      
+      {/* 1. Page Header with Clean Breadcrumbs */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 px-5 sm:px-6 py-4 shadow-xs">
+        {/* Breadcrumb Navigation */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1.5 flex-wrap">
+          <Link to="/find-mentor" className="text-slate-600 hover:text-[#0755E8] transition-colors">
+            Find Mentors
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-600 truncate max-w-[200px]">
+            {profile.name}
+          </span>
+          <span className="text-slate-300">/</span>
+          <span className="text-[#0755E8] font-bold">Book a Session</span>
+        </nav>
 
-        <div className="max-w-[1040px] mx-auto px-4 sm:px-6 py-5">
-          <button
-            onClick={() => navigate('/')}
-            className="inline-flex items-center gap-[9px] bg-white border border-[#EAEEF7] rounded-full pl-4 pr-5 py-2.5 font-extrabold text-sm text-[#141A33] mb-[18px] shadow-[0_4px_10px_-6px_rgba(20,26,51,.12)] hover:text-[#2F5FFF] transition-colors focus:outline-none cursor-pointer"
-          >
-            <ChevronLeft className="w-[15px] h-[15px]" strokeWidth={2.4} />
-            Back to Home
-          </button>
+        {/* Title & Subtitle */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-0.5">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
+              Book Your Mentorship Session
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-2xl">
+              Get personalized guidance to help you prepare, build confidence, and reach your career goals.
+            </p>
+          </div>
 
-          <div className="w-full space-y-6">
-            {ProfileHeader()}
+          {/* Quick Share action */}
+          <div className="relative shrink-0" ref={shareMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsShareMenuOpen(v => !v)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+              title="Share mentor profile"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share</span>
+            </button>
 
-              {/* Tabs Section */}
-              <div className="bg-white rounded-[22px] border border-[#EDF1FB] overflow-hidden shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
-                <div className="flex gap-1 px-5 pt-3.5 border-b border-[#F0F2F8]">
-                  <button
-                    onClick={() => setActiveTab("details")}
-                    className={`px-[18px] py-[11px] font-bold text-[15.5px] rounded-t-xl border-b-[2.5px] whitespace-nowrap transition-colors focus:outline-none ${
-                      activeTab === "details"
-                        ? "text-[#2F5FFF] bg-[#F0F5FF] border-[#2F5FFF]"
-                        : "text-[#8B93B2] border-transparent hover:text-[#4A5170]"
-                    }`}
-                  >
-                    About Session
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("reviews")}
-                    className={`px-[18px] py-[11px] font-bold text-[15.5px] rounded-t-xl border-b-[2.5px] whitespace-nowrap transition-colors focus:outline-none ${
-                      activeTab === "reviews"
-                        ? "text-[#2F5FFF] bg-[#F0F5FF] border-[#2F5FFF]"
-                        : "text-[#8B93B2] border-transparent hover:text-[#4A5170]"
-                    }`}
-                  >
-                    Reviews &amp; Ratings ({reviews.length})
-                  </button>
-                </div>
+            {isShareMenuOpen && (
+              <div className="absolute right-0 top-10 w-48 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-30 animate-in fade-in slide-in-from-top-1 duration-150">
+                <button
+                  type="button"
+                  onClick={() => handleShare("copy")}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0755E8] rounded-lg transition-colors cursor-pointer"
+                >
+                  Copy Link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare("linkedin")}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0755E8] rounded-lg transition-colors cursor-pointer"
+                >
+                  Share to LinkedIn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare("whatsapp")}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0755E8] rounded-lg transition-colors cursor-pointer"
+                >
+                  Share to WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare("x")}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0755E8] rounded-lg transition-colors cursor-pointer"
+                >
+                  Share to X (Twitter)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-                <div className="p-6">
-                  {activeTab === "details" ? (
-                    <div className="animate-fadeIn">
-                      {/* Session Quick Stats */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-[26px]">
-                        <div
-                          onClick={() => {
-                            if (durationOptions.length > 1) {
-                              const currentIndex = durationOptions.indexOf(sessionDuration);
-                              const nextIndex = (currentIndex + 1) % durationOptions.length;
-                              setSessionDuration(durationOptions[nextIndex]);
-                              setSelectedSlot(null);
-                            }
-                          }}
-                          className={`flex items-center gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4 select-none ${
-                            durationOptions.length > 1
-                              ? "cursor-pointer hover:border-[#B9CBF5] active:scale-[0.98] transition-all"
-                              : ""
-                          }`}
-                        >
-                          <div className="w-[42px] h-[42px] rounded-[13px] bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
-                            <Timer className="w-[19px] h-[19px]" />
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-[15px] text-[#141A33] tabular-nums flex items-center gap-1.5">
-                              {sessionDuration}m
-                              {durationOptions.length > 1 && (
-                                <span className="text-[9px] font-extrabold text-[#2F5FFF] bg-[#EEF2FF] px-1.5 py-0.5 rounded-lg">
-                                  Click to change
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-[#8B93B2] font-bold">Session duration</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4">
-                          <div className="w-[42px] h-[42px] rounded-[13px] bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
-                            <Video className="w-[19px] h-[19px]" />
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-[15px] text-[#141A33]">1:1 Video</div>
-                            <div className="text-xs text-[#8B93B2] font-bold">Live interaction</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4">
-                          <div className="w-[42px] h-[42px] rounded-[13px] bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
-                            <CheckCircle className="w-[19px] h-[19px]" />
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-[15px] text-[#141A33]">Customized</div>
-                            <div className="text-xs text-[#8B93B2] font-bold">Tailored plan</div>
-                          </div>
-                        </div>
-                      </div>
+      {/* 2. Main Workspace: Two-Column Balanced Desktop Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* ======================================================== */}
+        {/* LEFT / MAIN COLUMN (lg:col-span-8): Booking Form Sections */}
+        {/* ======================================================== */}
+        <div className="lg:col-span-8 space-y-6">
 
-                      {/* Expertise Tags */}
-                      <div className="text-[11.5px] font-extrabold text-[#8B93B2] tracking-[.08em] mb-3">AREAS OF EXPERTISE</div>
-                      <div className="flex flex-wrap gap-2 mb-[30px]">
-                        {[...profile.skills, "Mock Interviews", "Technical Round", "Behavioral"].map((skill, idx) => (
+          {/* Mentor Profile Overview: About Mentor & Reviews Tabs */}
+          <div id="mentor-reviews-tabs" className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs scroll-mt-20">
+            {/* Tabs Bar */}
+            <div className="flex items-center gap-1 px-5 pt-3 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveTab("about")}
+                className={`px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
+                  activeTab === "about"
+                    ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/50 rounded-t-xl"
+                    : "text-slate-500 border-transparent hover:text-slate-900"
+                }`}
+              >
+                About Mentor
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("reviews")}
+                className={`px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
+                  activeTab === "reviews"
+                    ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/50 rounded-t-xl"
+                    : "text-slate-500 border-transparent hover:text-slate-900"
+                }`}
+              >
+                Reviews &amp; Ratings ({reviews.length})
+              </button>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="p-5 sm:p-6">
+              {activeTab === "about" ? (
+                <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                  <div>
+                    <h3 className="font-bold text-slate-900 mb-1">About {profile.name}</h3>
+                    <p className="text-slate-600">
+                      {(profile as any).bio || `${profile.name} is a verified ${profile.category} mentor with ${profile.experience ? (profile.experience.toLowerCase().includes("fresher") ? "early-stage industry experience" : `${profile.experience} of industry experience`) : "industry experience"} specializing in mock interviews, career guidance, and practical technical preparation.`}
+                    </p>
+                  </div>
+
+                  {profile.skills && profile.skills.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Core Competencies &amp; Technologies
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {profile.skills.map((skill, i) => (
                           <span
-                            key={idx}
-                            className="inline-flex items-center gap-[7px] bg-white text-[#33395B] border-[1.5px] border-[#E3E8F5] text-[13px] font-bold px-4 py-2 rounded-full whitespace-nowrap hover:border-[#B9CBF5] hover:text-[#141A33] transition-colors cursor-default"
+                            key={i}
+                            className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 rounded-lg text-xs font-semibold text-slate-700"
                           >
                             {skill}
-                            <ChevronRight className="w-3 h-3 text-[#8B93B2]" strokeWidth={2.4} />
                           </span>
                         ))}
-                      </div>
-
-                      {/* Session Structure */}
-                      <h4 className="text-[19px] font-bold text-[#141A33] mb-1.5 m-0">Session flow</h4>
-                      <p className="text-[13.5px] text-[#5A6284] font-semibold mb-4">
-                        A structured mock interview with clear outcomes — optimized for fast improvement.
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-                        {[
-                          { title: "Align goals", desc: "We confirm your target role, seniority, and focus areas." },
-                          { title: "Mock interview", desc: "Real questions, realistic pacing, and professional evaluation." },
-                          { title: "Feedback & scorecard", desc: "Strengths, gaps, and specific fixes — no generic advice." },
-                          { title: "Next steps", desc: "A short action plan + resources to practice right away." }
-                        ].map((step, idx) => (
-                          <div key={idx} className="flex gap-3.5 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-4">
-                            <div className="w-[30px] h-[30px] rounded-[10px] bg-[#EEF2FF] text-[#2F5FFF] flex items-center justify-center font-extrabold text-[13.5px] shrink-0">
-                              {idx + 1}
-                            </div>
-                            <div>
-                              <div className="font-extrabold text-sm text-[#141A33] mb-[3px]">{step.title}</div>
-                              <div className="text-[12.5px] text-[#5A6284] font-semibold leading-normal">{step.desc}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Benefits Checklist */}
-                      <div className="bg-[#F0F5FF] border border-[#DCE8FF] rounded-2xl px-[22px] py-5">
-                        <div className="text-[11.5px] font-extrabold text-[#2F5FFF] tracking-[.08em] mb-3.5">INCLUDED IN EVERY SESSION</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2.5 gap-x-6">
-                          {[
-                            "Performance scorecard",
-                            "Actionable improvement plan",
-                            "Curated question bank",
-                            "Session recording",
-                            "Resume review tips",
-                            "Follow-up email support"
-                          ].map((b, i) => (
-                            <span key={i} className="inline-flex items-start gap-[9px] text-[13.5px] font-bold text-[#33395B] leading-snug">
-                              <Check className="w-3.5 h-3.5 text-[#0E9D5C] shrink-0 mt-0.5" strokeWidth={2.6} />
-                              {b}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="animate-fadeIn">
-                      {/* Rating Summary Card */}
-                      <div className="flex gap-7 items-center bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl p-[22px] mb-[18px] flex-wrap">
-                        <div className="text-center min-w-[110px]">
-                          <div className="text-[44px] font-bold text-[#141A33] leading-none">{profile.rating}</div>
-                          <div className="flex gap-0.5 justify-center my-2">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-[15px] h-[15px] ${i < Math.round(profile.rating) ? "text-[#F5A524] fill-[#F5A524]" : "text-[#E9EDF7] fill-[#E9EDF7]"}`}
-                              />
-                            ))}
-                          </div>
-                          <div className="text-[12.5px] text-[#8B93B2] font-bold">
-                            {profile.reviews === 1 ? "1 total review" : `${profile.reviews} total reviews`}
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-[220px] flex flex-col gap-[7px]">
-                          {ratingDist.map((bar) => (
-                            <div key={bar.star} className="flex items-center gap-3">
-                              <span className="text-xs font-extrabold text-[#5A6284] w-2.5">{bar.star}</span>
-                              <div className="flex-1 h-[7px] rounded-full bg-[#E9EDF7] overflow-hidden">
-                                <div className="h-full rounded-full bg-[#F5A524]" style={{ width: `${bar.pct}%` }} />
-                              </div>
-                              <span className="text-xs font-bold text-[#8B93B2] w-[34px] text-right">{bar.pct}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Reviews List */}
-                      <div className="space-y-4">
-                        {reviewsLoading ? (
-                          <div className="py-14 text-center">
-                            <div className="w-10 h-10 border-4 border-[#2F5FFF]/20 border-t-[#2F5FFF] rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-sm font-bold text-[#8B93B2]">Curating client feedback...</p>
-                          </div>
-                        ) : reviews.length > 0 ? (
-                          reviews.map((review) => (
-                            <div key={review.id} className="border border-[#EFF2FA] rounded-2xl p-5">
-                              <div className="flex items-start justify-between gap-3 flex-wrap">
-                                <div className="flex gap-3.5">
-                                  <div className="w-[46px] h-[46px] rounded-full bg-[#EEF2FF] text-[#2F5FFF] overflow-hidden shrink-0 flex items-center justify-center font-bold text-[15px]">
-                                    {review.avatar ? (
-                                      <img src={review.avatar} alt={review.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      review.name.trim().substring(0, 2).toUpperCase()
-                                    )}
-                                  </div>
-                                  <div>
-                                    <div className="font-extrabold text-[15px] text-[#141A33]">{review.name}</div>
-                                    <div className="text-xs text-[#8B93B2] font-bold">{review.role}</div>
-                                    <div className="flex gap-0.5 mt-1.5">
-                                      {[...Array(5)].map((_, i) => (
-                                        <Star key={i} className={`w-[13px] h-[13px] ${i < review.rating ? "text-[#F5A524] fill-[#F5A524]" : "text-[#E9EDF7] fill-[#E9EDF7]"}`} />
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                                <span className="text-xs text-[#8B93B2] font-extrabold uppercase">{review.date}</span>
-                              </div>
-                              <p className="text-sm text-[#33395B] font-semibold italic my-3.5">"{review.comment}"</p>
-                              {review.strengths && review.strengths.length > 0 && (
-                                <div className="mb-3.5 flex flex-wrap gap-2">
-                                  {review.strengths.map((s, idx) => (
-                                    <span key={idx} className="text-[10px] bg-[#E7FBF1] text-[#0E9D5C] px-2 py-1 rounded-md font-extrabold uppercase">
-                                      {s}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                              <button className="inline-flex items-center gap-[7px] text-[13px] font-extrabold text-[#5A6284] hover:text-[#2F5FFF] transition-colors focus:outline-none">
-                                <ThumbsUp className="w-3.5 h-3.5" strokeWidth={1.8} />
-                                Helpful
-                              </button>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-14 bg-[#F7F9FE] rounded-2xl border-2 border-dashed border-[#E3E8F5]">
-                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                              <MessageCircle className="w-8 h-8 text-[#C7CDE0]" />
-                            </div>
-                            <h4 className="text-base font-extrabold text-[#141A33] m-0">No reviews yet</h4>
-                            <p className="text-sm text-[#8B93B2] font-bold mt-1 max-w-xs mx-auto">Be the first to share your experience after completing a session.</p>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviewsLoading ? (
+                    <div className="py-8 text-center text-xs text-slate-500">Loading reviews...</div>
+                  ) : reviews.length > 0 ? (
+                    <div className="space-y-3">
+                      {reviews.map((r) => (
+                        <div key={r.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-slate-900">{r.name}</span>
+                              <span className="text-[11px] text-slate-400">• {r.role}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              <span>{r.rating}.0</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 italic">"{r.comment}"</p>
+                          <p className="text-[10px] text-slate-400 pt-1">{r.date}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                      <MessageCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs sm:text-sm font-bold text-slate-800">No reviews yet</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Be the first candidate to book a session and leave a review for {profile.name}!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
-            {/* Proof Card ("Why learn from Mia?") */}
-            <div className="bg-white rounded-[22px] border border-[#EDF1FB] p-6 sm:p-7 shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)]">
-              <h4 className="text-[18px] font-bold text-[#141A33] mb-4 m-0">Why learn from {firstName}?</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  {
-                    title: "Trusted Guidance",
-                    desc: profile.reviews > 0
-                      ? `${profile.reviews}+ reviews with strong learner feedback.`
-                      : "Verified mentor profile with a structured mock interview approach.",
-                  },
-                  {
-                    title: "Real Interview Experience",
-                    desc: `${profile.experience} of hands-on ${profile.category} experience across production teams.`,
-                  },
-                  {
-                    title: "Actionable Feedback",
-                    desc: "Every session ends with a scorecard and a concrete practice plan.",
-                  },
-                ].map((p, i) => (
-                  <div key={i} className="flex gap-[13px] p-4 bg-[#F7F9FE] border border-[#EFF2FA] rounded-2xl">
-                    <div className="w-[38px] h-[38px] rounded-xl bg-[#EEF2FF] flex items-center justify-center shrink-0 text-[#2F5FFF]">
-                      <Check className="w-4 h-4" strokeWidth={2} />
-                    </div>
+          {/* Section A: Session Goal Selection */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
+                <Sparkles className="w-3 h-3 text-[#0755E8]" />
+                <span>Step 1</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                What would you like help with?
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Choose the primary focus area so {profile.name.split(" ")[0]} can tailor questions and advice to your needs.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {SESSION_GOALS.map((goal) => {
+                const isSelected = selectedGoal === goal.id;
+                const IconComponent = goal.icon;
+                return (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => setSelectedGoal(goal.id)}
+                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                      isSelected
+                        ? "bg-[#F0F5FF] border-[#0755E8] shadow-xs ring-2 ring-[#0755E8]/15"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
+                    }`}
+                  >
                     <div>
-                      <div className="font-extrabold text-[13.5px] text-[#141A33]">{p.title}</div>
-                      <div className="text-[12.5px] text-[#8B93B2] font-semibold leading-normal mt-0.5">{p.desc}</div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                          isSelected ? "bg-[#0755E8] text-white" : "bg-[#EAF2FF] text-[#0755E8]"
+                        }`}>
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          isSelected ? "border-[#0755E8] bg-[#0755E8] text-white" : "border-slate-300 bg-white"
+                        }`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                      </div>
+                      <h3 className={`text-sm font-bold leading-snug ${
+                        isSelected ? "text-[#0755E8]" : "text-slate-900"
+                      }`}>
+                        {goal.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-normal mt-1 leading-relaxed">
+                        {goal.desc}
+                      </p>
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section B: Scheduling (Date & Time) */}
+          <div id="time-slots-section" className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs scroll-mt-20">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
+                <Calendar className="w-3 h-3 text-[#0755E8]" />
+                <span>Step 2</span>
+              </div>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                    Select Date &amp; Available Time Slot
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    All session times are displayed in your local India Standard Time (IST / GMT+5:30).
+                  </p>
+                </div>
+
+                {/* Duration Toggle Buttons */}
+                {durationOptions.length > 1 && (
+                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    {durationOptions.map(dur => (
+                      <button
+                        key={dur}
+                        type="button"
+                        onClick={() => {
+                          setSessionDuration(dur);
+                          setSelectedSlot(null);
+                        }}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          sessionDuration === dur
+                            ? "bg-white text-[#0755E8] shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        {dur} Min
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
-            {CareerAdsSection()}
+            {/* Month Header & Picker Controls */}
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 mb-3">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Date
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={prevMonth}
+                  disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
+                  className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  title="Previous month"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-bold text-slate-800 min-w-[110px] text-center">
+                  {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </span>
+                <button
+                  type="button"
+                  onClick={nextMonth}
+                  className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  title="Next month"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Date Carousel */}
+            <div
+              ref={carouselRef}
+              className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none"
+            >
+              {dates.length > 0 ? (
+                dates.map((date, index) => {
+                  const isToday = new Date().toDateString() === date.toDateString();
+                  const isSelected = selectedDate === index;
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(index);
+                        setSelectedSlot(null);
+                      }}
+                      className={`min-w-[66px] text-center px-2 py-2.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+                        isSelected
+                          ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/20"
+                          : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
+                        {isToday ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" })}
+                      </div>
+                      <div className="font-extrabold text-lg my-0.5 tabular-nums leading-none">
+                        {date.getDate()}
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider opacity-85">
+                        {date.toLocaleDateString("en-US", { month: "short" })}
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="w-full py-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No availability dates configured for this month.
+                </div>
+              )}
+            </div>
+
+            {/* Available Time Slots Header */}
+            <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Available Slots for {selectedDateObj ? selectedDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
+              </span>
+              <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
+                {currentSlots.filter(s => s.available).length} slots available
+              </span>
+            </div>
+
+            {/* Time Slot Grid (Natural flow, non-truncated time ranges) */}
+            {currentSlots.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {currentSlots.map((slot, index) => {
+                  const isSelected = selectedSlot?.time === slot.time;
+                  const isUnavailable = !slot.available;
+
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      disabled={isUnavailable}
+                      onClick={() => setSelectedSlot(slot)}
+                      className={`relative flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-[#0755E8] ${
+                        isUnavailable
+                          ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-75"
+                          : isSelected
+                          ? "bg-[#0755E8] border-[#0755E8] text-white shadow-sm ring-2 ring-[#0755E8]/25 cursor-pointer"
+                          : "bg-white border-slate-200 text-slate-700 hover:border-[#0755E8] hover:bg-[#F5F8FF] hover:text-[#0755E8] cursor-pointer"
+                      }`}
+                      title={isUnavailable ? `${slot.time} (Already Booked)` : slot.time}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : isUnavailable ? "text-slate-300" : "text-[#0755E8]"}`} />
+                        <span className={`whitespace-nowrap tabular-nums tracking-tight font-semibold text-xs ${
+                          isUnavailable ? "line-through text-slate-400" : isSelected ? "text-white font-bold" : "text-slate-800"
+                        }`}>
+                          {slot.time}
+                        </span>
+                      </div>
+                      {isUnavailable ? (
+                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded shrink-0">
+                          Booked
+                        </span>
+                      ) : isSelected ? (
+                        <Check className="w-4 h-4 text-white stroke-[3] shrink-0" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center bg-slate-50/60 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4">
+                <Calendar className="w-8 h-8 text-slate-400 mb-2" />
+                <p className="text-xs sm:text-sm font-bold text-slate-800">No time slots available on this day</p>
+                <p className="text-xs text-slate-500 mt-0.5 max-w-sm">
+                  {profile.name} has no remaining openings for this date. Please select another date from the carousel above.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Section C: Session Preferences & Discussion Details */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
+                <Video className="w-3 h-3 text-[#0755E8]" />
+                <span>Step 3</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                Session Preferences &amp; Discussion Notes
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Provide optional context so your mentor can prepare specific interview questions or feedback.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Meeting Format Pill */}
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#0755E8] shrink-0">
+                  <Video className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-900">Meeting Format: 1-on-1 Live Video</p>
+                  <p className="text-[11px] text-slate-500">Includes interactive shared notes and built-in screen sharing.</p>
+                </div>
+                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                  Live
+                </span>
+              </div>
+
+              {/* Discussion Topics Textarea */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                  What would you like to discuss? <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={userDiscussionNotes}
+                  onChange={(e) => setUserDiscussionNotes(e.target.value)}
+                  placeholder="e.g. Practicing system design for Senior Backend roles at tier-1 tech companies, reviewing specific LeetCode patterns, or refining resume bullet points."
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/20 transition-all resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section D: What You'll Get & Before Your Session */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-4 leading-tight">
+              What to Expect &amp; How to Prepare
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* What You'll Get */}
+              <div className="p-4 bg-[#F0F5FF]/70 border border-[#DCE8FF] rounded-xl space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#0755E8] uppercase tracking-wider">
+                  <CheckCircle2 className="w-4 h-4 text-[#0755E8]" />
+                  <span>What You'll Get</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Focused one-on-one video coaching tailored to your target company.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Real-time technical or behavioral interview simulation.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Actionable scorecard identifying your strengths and core blindspots.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Targeted next steps and suggested preparation materials.</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Before Your Session */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <Info className="w-4 h-4 text-slate-600" />
+                  <span>Before Your Session</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-600 font-medium">
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                    <span>Have your resume or portfolio links accessible for reference.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                    <span>List 2-3 specific topics or algorithmic patterns you want to drill.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                    <span>Join from a quiet environment with a working microphone and camera.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                    <span>Log in 3-5 minutes early to test your connection.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Floating Book Session Action FAB for easy booking on all screens */}
-        <div className="fixed bottom-6 right-6 z-40">
-          <button
-            onClick={() => setIsBookingModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all font-black text-sm cursor-pointer"
-          >
-            <Calendar className="w-4.5 h-4.5" />
-            <span>Book Session</span>
-          </button>
+        {/* ======================================================== */}
+        {/* RIGHT / SECONDARY COLUMN (lg:col-span-4): Sticky Summary */}
+        {/* ======================================================== */}
+        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-6 lg:self-start">
+          
+          {/* Card 1: Mentor Summary Card */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <div className="flex items-start gap-3.5 pb-4 border-b border-slate-100">
+              <div className="relative w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-[#0755E8] text-base">
+                {profile.avatar && !profile.avatar.includes("default-avatar") && !expertAvatarError ? (
+                  <img
+                    src={profile.avatar}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                    onError={() => setExpertAvatarError(true)}
+                  />
+                ) : (
+                  expertInitials
+                )}
+                <div className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-bold text-sm text-slate-900 leading-tight truncate">
+                    {profile.name}
+                  </h3>
+                  {profile.isVerified && (
+                    <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8] shrink-0" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                  {profile.role}
+                </p>
+                <div className="flex items-center gap-2 mt-1 text-[11px] font-semibold text-slate-600 flex-wrap">
+                  <span className="flex items-center gap-0.5 text-amber-600">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span>{profile.rating || "4.9"}</span>
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span>{profile.experience}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-[#0755E8] font-bold tabular-nums">₹{sessionFee} ({sessionDuration}m)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Profile Links */}
+            <div className="pt-3 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Verified Mentor</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const tabs = document.getElementById("mentor-reviews-tabs");
+                  if (tabs) tabs.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="text-[#0755E8] font-bold hover:underline cursor-pointer"
+              >
+                View Full Profile &amp; Reviews
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Interactive Booking Summary */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Booking Summary
+            </h3>
+
+            {/* Selected Goal Item */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+                <selectedGoalObj.icon className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session Goal</p>
+                <p className="text-xs font-bold text-slate-900 truncate mt-0.5">
+                  {selectedGoalObj.title}
+                </p>
+              </div>
+            </div>
+
+            {/* Selected Date & Time Slot (Updates immediately with honest placeholders) */}
+            <div className="p-3 bg-[#F0F5FF]/60 rounded-xl border border-[#DCE8FF] flex items-start gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#0755E8] text-white flex items-center justify-center shrink-0 mt-0.5">
+                <Calendar className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold text-[#0755E8] uppercase tracking-wider">Scheduled Time</p>
+                {selectedDateObj ? (
+                  <p className="text-xs font-bold text-slate-900 mt-0.5">
+                    {selectedDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                ) : (
+                  <p className="text-xs font-semibold text-slate-400 italic mt-0.5">
+                    Please select a date on the left
+                  </p>
+                )}
+                {selectedSlot ? (
+                  <p className="text-xs font-bold text-[#0755E8] mt-0.5 flex items-center gap-1.5">
+                    <span>{selectedSlot.time}</span>
+                    <span className="text-slate-400 font-normal">•</span>
+                    <span>{sessionDuration} mins</span>
+                  </p>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 mt-1">
+                    Select a time slot
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Promo Code Input */}
+            <div className="space-y-1.5 pt-1 border-t border-slate-100">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Promo Code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value)}
+                  placeholder="Enter code (e.g. FREEMU001)"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0755E8]"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  className="px-3.5 py-2 bg-[#EAF2FF] hover:bg-[#dbe7fd] text-[#0755E8] rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
+              {appliedFreePromo && (
+                <div className="flex items-center justify-between text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 mt-1">
+                  <span className="flex items-center gap-1">
+                    <Check className="w-3 h-3 stroke-[3]" /> Free Promo Applied (100% off)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemovePromo}
+                    className="text-red-500 hover:text-red-700 underline text-[10px] cursor-pointer font-bold"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Price Breakdown (Fully synchronized) */}
+            <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-600 font-medium">
+                <span>Session Fee ({sessionDuration} mins)</span>
+                <span className="text-slate-900 font-bold tabular-nums">₹{sessionFee}</span>
+              </div>
+              {appliedFreePromo && (
+                <div className="flex justify-between text-emerald-600 font-semibold">
+                  <span>Promo Discount (100% off)</span>
+                  <span className="tabular-nums">-₹{sessionFee}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-900 font-bold text-sm pt-2 border-t border-slate-100 items-baseline">
+                <div>
+                  <span>Total Payable</span>
+                  <span className="block text-[10px] font-normal text-slate-400">All fees &amp; taxes included</span>
+                </div>
+                <span className={`text-base font-extrabold tabular-nums ${appliedFreePromo ? "text-emerald-600" : "text-[#0755E8]"}`}>
+                  {appliedFreePromo ? "Free" : `₹${finalPayable}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Single Prominent Confirmation CTA Button */}
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={handleProceedBooking}
+              className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
+                selectedSlot
+                  ? appliedFreePromo
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                    : "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white shadow-[#0755E8]/20"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : selectedSlot ? (
+                <>
+                  <span>
+                    {appliedFreePromo
+                      ? "Confirm Free Booking"
+                      : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
+                      ? `Book with Credit (${user.freeInterviewsCount} left)`
+                      : `Proceed to Payment — ₹${finalPayable}`}
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  <span>Select an Available Slot</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            {/* Trust and Authenticity Badges */}
+            <div className="pt-2 border-t border-slate-100 space-y-1.5 text-[11px] font-medium text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Secure 256-bit encrypted checkout via Razorpay</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                <span>Direct in-browser 1:1 video room provided on confirmation</span>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* In-place Booking Box Modal */}
-        <BookingModal
-          isOpen={isBookingModalOpen}
-          onClose={() => setIsBookingModalOpen(false)}
-          expertId={expertId}
-          initialProfile={profile}
-        />
-
       </div>
-      <Footer />
-
-      <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-slideUp { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .white-glass { background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); }
-      `}</style>
-    </>
+    </div>
   );
-};
-
-export default BookSessionPage;
+}

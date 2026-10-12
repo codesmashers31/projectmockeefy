@@ -78,11 +78,11 @@ const ModernHeroBanner = () => {
 
           {/* CTA Buttons - Executive Styling */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-            <button className="group px-10 py-4 bg-[#5B4BDB] text-white rounded-2xl font-black text-[11px] tracking-tight hover:bg-[#4938C8] transition-all flex items-center gap-2.5 shadow-xl shadow-[#5B4BDB]/20 active:scale-95">
+            <button className="group px-10 py-4 bg-[#0755E8] text-white rounded-2xl font-black text-[11px] tracking-tight hover:bg-[#0645C7] transition-all flex items-center gap-2.5 shadow-xl shadow-[#0755E8]/20 active:scale-95">
               Initiate Simulation
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="px-10 py-4 bg-white border border-slate-200 rounded-2xl font-black text-[11px] text-slate-600 hover:text-[#5B4BDB] hover:border-[#D8D1FF] transition-all flex items-center gap-2.5 shadow-sm active:scale-95">
+            <button className="px-10 py-4 bg-white border border-slate-200 rounded-2xl font-black text-[11px] text-slate-600 hover:text-[#0755E8] hover:border-[#93B8FF] transition-all flex items-center gap-2.5 shadow-sm active:scale-95">
               <Play className="w-4 h-4 fill-current" />
               Watch Demo
             </button>
@@ -106,11 +106,11 @@ const ModernHeroBanner = () => {
       <div className="bg-slate-50/50 border-t border-slate-100 p-8">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
-            <div className="inline-block px-2 py-0.5 rounded bg-[#5B4BDB] text-white text-[9px] font-black mb-2 uppercase tracking-tight">Protocol V2.0</div>
-            <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none">Chennai's Premier <span className="text-[#5B4BDB]">Sim Studio</span></h3>
+            <div className="inline-block px-2 py-0.5 rounded bg-[#0755E8] text-white text-[9px] font-black mb-2 uppercase tracking-tight">Protocol V2.0</div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none">Chennai's Premier <span className="text-[#0755E8]">Sim Studio</span></h3>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-tight mt-2">Join 15,000+ candidates in the global pipeline</p>
           </div>
-          <button className="whitespace-nowrap px-8 py-3.5 bg-[#5B4BDB] text-white rounded-xl text-[10px] font-black tracking-tight hover:bg-[#4938C8] transition-all shadow-lg shadow-[#5B4BDB]/20 active:scale-95 flex items-center gap-2">
+          <button className="whitespace-nowrap px-8 py-3.5 bg-[#0755E8] text-white rounded-xl text-[10px] font-black tracking-tight hover:bg-[#0645C7] transition-all shadow-lg shadow-[#0755E8]/20 active:scale-95 flex items-center gap-2">
             Get Started
             <ArrowRight size={14} strokeWidth={3} />
           </button>

@@ -7,8 +7,8 @@ interface FooterProps {
 }
 
 const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
-  <footer className="w-full border-t border-slate-100 bg-white">
-    <div className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'py-8 md:py-10'}`}>
+  <footer className="w-full border-t border-[#E2E8F0]/80 bg-white">
+    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'py-8 md:py-10'}`}>
       {!minimal && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand Column */}
@@ -66,8 +66,8 @@ const Footer = ({ minimal = false, showSkeletons = false }: FooterProps) => {
   }
 
   return (
-    <footer className="w-full border-t border-slate-100 bg-white">
-      <div className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'py-8 md:py-10'}`}>
+    <footer className="w-full border-t border-[#E2E8F0]/80 bg-white">
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'py-8 md:py-10'}`}>
         {/* Main Footer Content */}
         {!minimal && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">

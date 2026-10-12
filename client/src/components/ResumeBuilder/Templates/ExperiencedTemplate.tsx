@@ -7,7 +7,7 @@ export function ExperiencedTemplate() {
     resumeData;
 
   return (
-    <div className="bg-white p-10 text-gray-900 font-sans">
+    <div className="bg-white p-8 sm:p-10 text-gray-900 font-sans break-words [overflow-wrap:anywhere]">
       <div className="grid grid-cols-3 gap-8">
         {/* Right Column - Main Content */}
         <div className="col-span-2 space-y-6">

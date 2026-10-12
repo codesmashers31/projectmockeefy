@@ -58,11 +58,7 @@ export default function UserProfile() {
   const ringOffset = ringCircumference - (completion / 100) * ringCircumference;
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
-
+    <div className="relative w-full bg-white border border-slate-200/80 rounded-2xl p-6 md:p-8 shadow-xs overflow-hidden pb-12 font-sans text-left">
       <div className="w-full space-y-6 relative z-10">
 
         {/* Header Section: Title, Completion, Resume Button */}
@@ -82,11 +78,11 @@ export default function UserProfile() {
                 <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
                   <defs>
                     <linearGradient id="profileCompletionRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#5B4BDB" />
-                      <stop offset="100%" stopColor="#4938C8" />
+                      <stop offset="0%" stopColor="#0755E8" />
+                      <stop offset="100%" stopColor="#0645C7" />
                     </linearGradient>
                   </defs>
-                  <circle cx="24" cy="24" r={ringRadius} fill="none" stroke="#F0EDFF" strokeWidth="4" />
+                  <circle cx="24" cy="24" r={ringRadius} fill="none" stroke="#EAF2FF" strokeWidth="4" />
                   <circle
                     cx="24" cy="24" r={ringRadius}
                     fill="none"
@@ -98,7 +94,7 @@ export default function UserProfile() {
                     className="transition-all duration-1000 ease-out"
                   />
                 </svg>
-                <span className="text-[11px] font-black text-[#5B4BDB]">{isLoading ? "…" : `${completion}%`}</span>
+                <span className="text-[11px] font-black text-[#0755E8]">{isLoading ? "…" : `${completion}%`}</span>
               </div>
               <div className="leading-tight">
                 <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Profile</p>
@@ -120,7 +116,7 @@ export default function UserProfile() {
                 className={`
                   flex items-center gap-2 px-4 py-2.5 text-[13px] font-bold transition-all duration-200 rounded-2xl border whitespace-nowrap snap-start shrink-0 cursor-pointer
                   ${isActive
-                     ? "bg-[#5B4BDB] text-white border-[#5B4BDB] shadow-md shadow-[#5B4BDB]/20"
+                     ? "bg-[#0755E8] text-white border-[#0755E8] shadow-md shadow-[#0755E8]/20"
                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"}
                 `}
               >
@@ -154,7 +150,7 @@ export default function UserProfile() {
         <div className="min-h-[360px] md:min-h-[480px] pt-2">
           {isLoading ? (
             <div className="w-full flex flex-col items-center justify-center text-slate-400 gap-3 min-h-[300px]">
-              <div className="w-6 h-6 border-2 border-slate-200 border-t-[#5B4BDB] rounded-full animate-spin"></div>
+              <div className="w-6 h-6 border-2 border-slate-200 border-t-[#0755E8] rounded-full animate-spin"></div>
               <span className="text-xs font-medium">Loading profile section...</span>
             </div>
           ) : isError ? (
@@ -166,7 +162,7 @@ export default function UserProfile() {
               <p className="text-xs text-gray-500 mb-4 max-w-sm">We couldn't retrieve your profile data. Please check your connection and try again.</p>
               <button
                 onClick={() => refetch()}
-                className="px-4 py-2 bg-[#5B4BDB] hover:bg-[#4938C8] text-white rounded-xl text-xs font-bold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB]"
+                className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
               >
                 Retry Loading
               </button>

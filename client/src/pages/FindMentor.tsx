@@ -319,7 +319,13 @@ export default function FindMentor() {
       if (sortBy === "rating") {
         return (b.rating || 0) - (a.rating || 0);
       }
-      if (sortBy === "sessions") {
+      if (sortBy === "experience" || sortBy === "sessions") {
+        const getExpYears = (m: any) => {
+          const match = (m.experience || "").match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        const expDiff = getExpYears(b) - getExpYears(a);
+        if (expDiff !== 0) return expDiff;
         return (b.totalSessions || 0) - (a.totalSessions || 0);
       }
       if (sortBy === "price-low") {
@@ -332,7 +338,7 @@ export default function FindMentor() {
         const priceB = b.minPrice ?? parseInt((b.price || "0").replace(/[^\d]/g, ""), 10) ?? 0;
         return priceB - priceA;
       }
-      // Default: recommended
+      // Default: recommended / relevance
       return (
         (b.rating || 0) * 10 +
         (b.totalSessions || 0) -
@@ -372,10 +378,10 @@ export default function FindMentor() {
     <div className="bg-white rounded-2xl border border-slate-200/80 p-4.5 space-y-4 text-left">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-[#5B4BDB]" />
+          <SlidersHorizontal className="w-4 h-4 text-[#0755E8]" />
           <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
           {activeFilterCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-[#F0EDFF] text-[#5B4BDB] text-[10.5px] font-bold">
+            <span className="px-1.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold">
               {activeFilterCount}
             </span>
           )}
@@ -400,7 +406,7 @@ export default function FindMentor() {
             <span className="flex items-center gap-1.5">
               <span>Company</span>
               {selectedCompanies.length > 0 && (
-                <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+                <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
                   {selectedCompanies.length}
                 </span>
               )}
@@ -421,7 +427,7 @@ export default function FindMentor() {
                     <div
                       className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
                         checked
-                          ? "bg-[#5B4BDB] border-[#5B4BDB] text-white"
+                          ? "bg-[#0755E8] border-[#0755E8] text-white"
                           : "border-slate-300 bg-white"
                       }`}
                     >
@@ -448,7 +454,7 @@ export default function FindMentor() {
           <span className="flex items-center gap-1.5">
             <span>Experience</span>
             {selectedExpRanges.length > 0 && (
-              <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
                 {selectedExpRanges.length}
               </span>
             )}
@@ -474,7 +480,7 @@ export default function FindMentor() {
                   <div
                     className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
                       checked
-                        ? "bg-[#5B4BDB] border-[#5B4BDB] text-white"
+                        ? "bg-[#0755E8] border-[#0755E8] text-white"
                         : "border-slate-300 bg-white"
                     }`}
                   >
@@ -498,7 +504,7 @@ export default function FindMentor() {
           <span className="flex items-center gap-1.5">
             <span>Session Price</span>
             {selectedPriceRanges.length > 0 && (
-              <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
                 {selectedPriceRanges.length}
               </span>
             )}
@@ -523,7 +529,7 @@ export default function FindMentor() {
                   <div
                     className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
                       checked
-                        ? "bg-[#5B4BDB] border-[#5B4BDB] text-white"
+                        ? "bg-[#0755E8] border-[#0755E8] text-white"
                         : "border-slate-300 bg-white"
                     }`}
                   >
@@ -547,7 +553,7 @@ export default function FindMentor() {
           <span className="flex items-center gap-1.5">
             <span>Availability</span>
             {availabilityFilter !== "All" && (
-              <span className="text-[10px] bg-[#F0EDFF] text-[#5B4BDB] px-1.5 py-0.2 rounded-full font-bold">
+              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
                 1
               </span>
             )}
@@ -570,12 +576,12 @@ export default function FindMentor() {
                 <div
                   className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
                     availabilityFilter === opt.id
-                      ? "border-[#5B4BDB]"
+                      ? "border-[#0755E8]"
                       : "border-slate-300 bg-white"
                   }`}
                 >
                   {availabilityFilter === opt.id && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#5B4BDB]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
                   )}
                 </div>
                 <span className="flex-1 font-medium">{opt.label}</span>
@@ -594,8 +600,8 @@ export default function FindMentor() {
       {/* ======================================================== */}
       <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F0EDFF] border border-[#D8D1FF] text-[#5B4BDB] text-xs font-bold uppercase tracking-wider mb-2">
-            <Sparkles size={13} className="text-[#5B4BDB]" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] text-xs font-bold uppercase tracking-wider mb-2">
+            <Sparkles size={13} className="text-[#0755E8]" />
             Mentor Directory
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -607,7 +613,7 @@ export default function FindMentor() {
         </div>
 
         <div className="bg-slate-50 border border-slate-200/70 rounded-xl px-4 py-3 shrink-0 text-center sm:text-right">
-          <p className="text-2xl font-black text-[#5B4BDB] leading-none">
+          <p className="text-2xl font-black text-[#0755E8] leading-none">
             {isLoading ? "--" : allMentors.length}
           </p>
           <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">
@@ -619,7 +625,7 @@ export default function FindMentor() {
       {/* ======================================================== */}
       {/* SECTION 2: PROMINENT SEARCH & CATEGORY CHIPS             */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-3.5">
+      <div className="space-y-3">
         <div className="relative w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
@@ -627,7 +633,7 @@ export default function FindMentor() {
             placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2.5 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white border border-slate-200/90 focus:border-[#5B4BDB] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#5B4BDB]/10 transition-all"
+            className="w-full pl-10 pr-10 py-3 bg-white hover:border-slate-300 focus:bg-white border border-slate-200/90 focus:border-[#0755E8] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#93B8FF]/20 shadow-xs transition-all"
           />
           {searchQuery && (
             <button
@@ -648,10 +654,10 @@ export default function FindMentor() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
                   isSelected
-                    ? "bg-[#5B4BDB] text-white font-semibold shadow-xs"
-                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70 font-medium"
+                    ? "bg-[#0755E8] text-white font-semibold shadow-xs"
+                    : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80 font-medium shadow-xs"
                 }`}
               >
                 {cat}
@@ -682,7 +688,7 @@ export default function FindMentor() {
                 <span className="text-slate-900 font-bold">
                   {Math.min(startIndex + ITEMS_PER_PAGE, filteredMentors.length)}
                 </span>{" "}
-                of <span className="text-[#5B4BDB] font-bold">{filteredMentors.length}</span>)
+                of <span className="text-[#0755E8] font-bold">{filteredMentors.length}</span>)
               </span>
             </div>
 
@@ -695,7 +701,7 @@ export default function FindMentor() {
                 <SlidersHorizontal size={13} />
                 <span>Filters</span>
                 {activeFilterCount > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-[#5B4BDB] text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
@@ -706,11 +712,11 @@ export default function FindMentor() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#5B4BDB] cursor-pointer"
+                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer"
                 >
-                  <option value="recommended">Sort: Recommended</option>
-                  <option value="rating">Sort: Highest Rated</option>
-                  <option value="sessions">Sort: Most Experienced</option>
+                  <option value="recommended">Sort: Relevance</option>
+                  <option value="rating">Sort: Rating (High to Low)</option>
+                  <option value="experience">Sort: Experience (High to Low)</option>
                   <option value="price-low">Sort: Price (Low to High)</option>
                   <option value="price-high">Sort: Price (High to Low)</option>
                 </select>
@@ -725,7 +731,7 @@ export default function FindMentor() {
               <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
 
               {selectedCategory !== "All" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F0EDFF] border border-[#D8D1FF] text-xs font-bold text-[#5B4BDB]">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
                   {selectedCategory}
                   <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
                     <X size={12} />
@@ -866,7 +872,7 @@ export default function FindMentor() {
                           onClick={() => handlePageChange(page)}
                           className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                             isCurrent
-                              ? "bg-[#5B4BDB] text-white shadow-xs"
+                              ? "bg-[#0755E8] text-white shadow-xs"
                               : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70"
                           }`}
                         >
@@ -899,7 +905,7 @@ export default function FindMentor() {
             </>
           ) : (
             <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-[#F0EDFF] text-[#5B4BDB] flex items-center justify-center mx-auto mb-2">
+              <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
                 <Users size={24} />
               </div>
               <h3 className="text-base font-bold text-slate-900">No mentors found</h3>
@@ -908,7 +914,7 @@ export default function FindMentor() {
               </p>
               <button
                 onClick={handleResetFilters}
-                className="px-4 py-2 bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
                 Show All Mentors
               </button>
@@ -922,7 +928,7 @@ export default function FindMentor() {
 
           {/* Tips Card */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-2 text-left">
-            <div className="flex items-center gap-1.5 text-[#5B4BDB]">
+            <div className="flex items-center gap-1.5 text-[#0755E8]">
               <Sparkles size={14} />
               <span className="text-xs font-bold text-slate-900">Finding the Right Mentor</span>
             </div>
@@ -968,7 +974,7 @@ export default function FindMentor() {
               </button>
               <button
                 onClick={() => setIsMobileFilterOpen(false)}
-                className="px-4 py-2 rounded-xl bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white text-xs font-semibold shadow-xs"
+                className="px-4 py-2 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white text-xs font-semibold shadow-xs"
               >
                 Apply ({filteredMentors.length} Mentors)
               </button>

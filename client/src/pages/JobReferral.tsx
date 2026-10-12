@@ -77,7 +77,7 @@ const JobReferral = () => {
     });
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-[#F5F8FF] flex flex-col font-sans">
             <div className="sticky top-0 z-50">
                 <Navigation />
             </div>
@@ -129,21 +129,21 @@ const JobReferral = () => {
                 {/* Ads Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                     <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300 group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#F0F6FF] rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
                         <div className="relative z-10">
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-full mb-3">
+                                    <span className="inline-block px-3 py-1 bg-[#EAF2FF] text-[#0755E8] text-xs font-bold rounded-full mb-3">
                                         PREMIUM
                                     </span>
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">Exclusive Job Listings</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#0755E8] transition-colors">Exclusive Job Listings</h3>
                                     <p className="text-gray-500 text-sm mb-6 max-w-xs">Access hidden job openings not available on public job boards.</p>
                                 </div>
                                 <div className="w-12 h-12 bg-white shadow-sm rounded-xl flex items-center justify-center">
-                                    <Briefcase className="w-6 h-6 text-purple-600" />
+                                    <Briefcase className="w-6 h-6 text-[#0755E8]" />
                                 </div>
                             </div>
-                            <button className="w-full py-3 bg-gray-50 hover:bg-purple-600 text-gray-700 hover:text-white rounded-xl font-bold text-sm transition-all shadow-sm">
+                            <button className="w-full py-3 bg-gray-50 hover:bg-[#0755E8] text-gray-700 hover:text-white rounded-xl font-bold text-sm transition-all shadow-sm">
                                 Browse Openings
                             </button>
                         </div>
@@ -176,7 +176,7 @@ const JobReferral = () => {
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                <Briefcase className="w-6 h-6 text-[#5B4BDB]" />
+                                <Briefcase className="w-6 h-6 text-[#0755E8]" />
                                 Latest Job Openings
                             </h2>
                             <p className="text-gray-500 mt-1">Curated opportunities from top companies</p>
@@ -194,13 +194,13 @@ const JobReferral = () => {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {jobs.map((job) => (
-                                <div key={job._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all hover:border-[#D8D1FF] group">
+                                <div key={job._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all hover:border-[#93B8FF] group">
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
-                                            <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#5B4BDB] transition-colors">{job.position}</h3>
+                                            <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#0755E8] transition-colors">{job.position}</h3>
                                             <p className="text-gray-500 font-medium text-sm mt-1">{job.company}</p>
                                         </div>
-                                        <span className="px-2.5 py-1 bg-[#F0EDFF] text-[#5B4BDB] text-xs rounded-lg font-semibold uppercase tracking-wide">
+                                        <span className="px-2.5 py-1 bg-[#EAF2FF] text-[#0755E8] text-xs rounded-lg font-semibold uppercase tracking-wide">
                                             {job.type}
                                         </span>
                                     </div>
@@ -222,7 +222,7 @@ const JobReferral = () => {
                                             href={job.applyLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="px-4 py-2 bg-gray-50 text-gray-900 hover:bg-[#5B4BDB] hover:text-white rounded-lg font-bold text-sm transition-all"
+                                            className="px-4 py-2 bg-gray-50 text-gray-900 hover:bg-[#0755E8] hover:text-white rounded-lg font-bold text-sm transition-all"
                                         >
                                             Apply Now
                                         </a>
@@ -244,7 +244,7 @@ const JobReferral = () => {
                         <input
                             type="text"
                             placeholder="Search by name or company..."
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#93B8FF] focus:border-[#0755E8] transition-all shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />

@@ -25,15 +25,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-[#F5F6FA] flex flex-col font-sans text-slate-900 antialiased selection:bg-[#F0EDFF] selection:text-[#5B4BDB]">
+    <div className="min-h-screen bg-[#F5F8FF] flex flex-col font-sans text-slate-900 antialiased selection:bg-[#EAF2FF] selection:text-[#0755E8]">
       {/* Top Navigation - Sticky */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80">
+      <header className="sticky top-0 z-40 bg-white">
         <Navigation />
       </header>
 
       {/* Main Layout Container */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-16">
-        <div className="flex items-start gap-6 lg:gap-8 w-full">
+        <div className="flex items-start gap-8 lg:gap-10 xl:gap-12 w-full">
           {/* Left Sidebar - Desktop (Sticky Command Center) */}
           {showLeftSidebar && (
             <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[240px] shrink-0 sticky top-[88px] self-start">
@@ -55,7 +55,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             onClick={() => navigate("/")}
             className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
               location.pathname === "/" || location.pathname === "/dashboard"
-                ? "text-[#5B4BDB]"
+                ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -66,8 +66,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <button
             onClick={() => navigate("/mentors")}
             className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
-              location.pathname === "/mentors" || location.pathname === "/find-mentor"
-                ? "text-[#5B4BDB]"
+              location.pathname === "/mentors" ||
+              location.pathname === "/find-mentor" ||
+              location.pathname === "/book-session"
+                ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -79,7 +81,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             onClick={() => navigate("/ai-video")}
             className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
               location.pathname === "/ai-video"
-                ? "text-[#5B4BDB]"
+                ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -91,7 +93,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             onClick={() => navigate("/my-sessions")}
             className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
               location.pathname === "/my-sessions"
-                ? "text-[#5B4BDB]"
+                ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -168,7 +170,7 @@ const BackToTopButton = () => {
   return (
     <button
       onClick={scrollToTop}
-      className={`fixed bottom-16 lg:bottom-6 right-5 z-40 p-3 rounded-full bg-slate-900 hover:bg-[#5B4BDB] text-white shadow-lg border border-slate-800/10 active:scale-95 transition-all duration-200 cursor-pointer ${
+      className={`fixed bottom-16 lg:bottom-6 right-5 z-40 p-3 rounded-full bg-slate-900 hover:bg-[#0755E8] text-white shadow-lg border border-slate-800/10 active:scale-95 transition-all duration-200 cursor-pointer ${
         isVisible
           ? "opacity-100 translate-y-0 scale-100"
           : "opacity-0 translate-y-4 scale-75 pointer-events-none"

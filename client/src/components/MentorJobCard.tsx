@@ -139,16 +139,16 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
     <article
       onClick={handleCardClick}
       aria-label={`Mentor profile for ${mentor.name}`}
-      className="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#5B4BDB]/40 hover:shadow-[0_4px_20px_-4px_rgba(91,75,219,0.08)] transition-all duration-200 p-5 flex flex-col justify-between h-full cursor-pointer text-left box-border w-full"
+      className="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#0755E8]/40 hover:shadow-[0_4px_20px_-4px_rgba(7,85,232,0.12)] transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between h-full w-full cursor-pointer text-left box-border"
     >
-      <div className="space-y-3.5">
+      <div className="space-y-2.5 flex-1 flex flex-col">
         {/* 1. Header: Avatar + Scannable Name & Title + Bookmark */}
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Standardized Avatar Container (48x48) */}
             <div className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl bg-slate-100 border border-slate-200/70 overflow-hidden shrink-0 flex items-center justify-center">
               {showPlaceholder ? (
-                <span className="text-xs font-black tracking-tight text-[#5B4BDB] bg-[#F0EDFF] w-full h-full flex items-center justify-center select-none">
+                <span className="text-xs font-black tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
                   {initials}
                 </span>
               ) : (
@@ -163,25 +163,29 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
             {/* Easily Scannable Name and Professional Title */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="text-[15px] font-bold text-slate-900 tracking-tight leading-snug truncate">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3
+                  title={mentor.name}
+                  className="text-[16px] sm:text-[18px] font-semibold text-slate-900 tracking-tight leading-snug truncate min-w-0"
+                >
                   {mentor.name}
                 </h3>
                 {mentor.isVerified && (
                   <span
                     title="Verified Mentor"
-                    className="inline-flex items-center text-[#5B4BDB] shrink-0"
+                    className="inline-flex items-center text-[#0755E8] shrink-0"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5 fill-[#F0EDFF]" />
+                    <CheckCircle2 className="w-4 h-4 fill-[#EAF2FF]" />
                   </span>
                 )}
               </div>
 
-              <p className="text-xs text-slate-600 font-medium truncate mt-0.5">
+              {/* Sensible wrapping for job title & company: standardized 2-line height */}
+              <p className="text-[13px] sm:text-[14px] text-slate-600 font-medium leading-snug mt-1 line-clamp-2 break-words min-h-[36px] sm:min-h-[38px]">
                 <span>{mentor.role || "Mentor"}</span>
                 {mentor.company && (
                   <>
-                    <span className="text-slate-400 font-normal mx-1">•</span>
+                    <span className="text-slate-400 font-normal mx-1.5">•</span>
                     <span className="font-semibold text-slate-800">
                       {mentor.company}
                     </span>
@@ -200,18 +204,18 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           >
             <Bookmark
               className={`w-4 h-4 transition-colors ${
-                isSaved ? "fill-[#5B4BDB] text-[#5B4BDB]" : "stroke-[1.8]"
+                isSaved ? "fill-[#0755E8] text-[#0755E8]" : "stroke-[1.8]"
               }`}
             />
           </button>
         </div>
 
-        {/* 2. Metadata: Rating, Experience & Location */}
-        <div className="flex items-center gap-2.5 text-xs text-slate-600 font-medium flex-wrap">
+        {/* 2. Metadata: Rating, Experience & Location with clear contrast */}
+        <div className="flex items-center gap-2.5 text-[13px] sm:text-[14px] text-slate-600 font-medium flex-wrap">
           <div className="flex items-center gap-1 font-bold text-slate-900 shrink-0">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
             <span>{mentor.rating > 0 ? mentor.rating.toFixed(1) : "4.9"}</span>
-            <span className="text-slate-400 font-normal">
+            <span className="text-slate-500 font-normal text-[12px] sm:text-[13px]">
               ({mentor.reviews || 12})
             </span>
           </div>
@@ -219,60 +223,62 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           <span className="text-slate-300">•</span>
 
           <div className="flex items-center gap-1 shrink-0">
-            <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
+            <Briefcase className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>{mentor.experience || "5+ yrs"}</span>
           </div>
 
           <span className="text-slate-300">•</span>
 
-          <div className="flex items-center gap-1 shrink-0 text-slate-500">
-            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+          <div className="flex items-center gap-1 shrink-0 text-slate-600">
+            <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>{mentor.location || "Remote"}</span>
           </div>
         </div>
 
-        {/* 3. Bio Snippet */}
-        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed min-h-[34px]">
+        {/* 3. Bio Snippet: Standardized 2-line height */}
+        <p className="text-[13px] sm:text-[14px] text-slate-600 font-normal line-clamp-2 leading-relaxed min-h-[38px] sm:min-h-[40px]">
           {bioText}
         </p>
 
-        {/* 4. Skill Tags (Limited to 3 with +N more indicator) */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+        {/* 4. Skill Tags: Guaranteed Single Line with 1+more or n+more */}
+        <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden pt-0.5">
           {mentor.skills && mentor.skills.length > 0 ? (
-            mentor.skills.slice(0, 3).map((skill, idx) => (
-              <span
-                key={idx}
-                className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium"
-              >
-                {skill}
-              </span>
-            ))
+            <>
+              {mentor.skills.slice(0, 2).map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[12px] font-medium shrink-0 max-w-[120px] truncate whitespace-nowrap"
+                >
+                  {skill}
+                </span>
+              ))}
+              {mentor.skills.length > 2 && (
+                <span className="text-[12px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap">
+                  +{mentor.skills.length - 2} more
+                </span>
+              )}
+            </>
           ) : (
             <>
-              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
+              <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[12px] font-medium shrink-0 whitespace-nowrap">
                 System Design
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
+              <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[12px] font-medium shrink-0 whitespace-nowrap">
                 Mock Interview
               </span>
             </>
           )}
-          {mentor.skills && mentor.skills.length > 3 && (
-            <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-              +{mentor.skills.length - 3} more
-            </span>
-          )}
         </div>
       </div>
 
-      {/* 5. Pricing & Availability Row (Above buttons for clean alignment) */}
-      <div className="pt-3.5 mt-3.5 border-t border-slate-100 space-y-3">
+      {/* 5. Pricing & Availability Row (Clean spacing, no empty dead space) */}
+      <div className="pt-3 mt-3 border-t border-slate-100 space-y-2.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[16px] font-bold text-slate-900 leading-none">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[17px] font-bold text-slate-900 leading-none">
               ₹{priceNum.toLocaleString("en-IN")}
             </span>
-            <span className="text-[11px] text-slate-400 font-normal">
+            <span className="text-[12px] text-slate-500 font-medium">
               / session
             </span>
           </div>
@@ -288,7 +294,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           <button
             type="button"
             onClick={handleViewProfile}
-            className="w-full py-2 px-3 rounded-xl border border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-95 text-xs font-semibold transition-all text-center cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB]"
+            className="w-full py-2.5 px-3 rounded-xl border border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-[#0755E8] active:scale-95 text-[14px] font-semibold transition-all text-center cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
             View Profile
           </button>
@@ -296,10 +302,10 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           <button
             type="button"
             onClick={handleBookNow}
-            className="w-full py-2 px-3 rounded-xl bg-[#5B4BDB] hover:bg-[#4938C8] active:bg-[#3F2FB3] text-white text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B4BDB]"
+            className="w-full py-2.5 px-3 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white text-[14px] font-semibold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
             <span>Book Session</span>
-            <ArrowRight size={13} className="shrink-0" />
+            <ArrowRight size={14} className="shrink-0" />
           </button>
         </div>
       </div>
@@ -320,22 +326,24 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 MentorJobCard.displayName = "MentorJobCard";
 
 export const MentorCardSkeleton = () => (
-  <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4">
-    <div className="flex items-start gap-3">
-      <div className="w-12 h-12 rounded-xl bg-slate-100 shimmer-shining shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 w-3/5 bg-slate-100 rounded shimmer-shining" />
-        <div className="h-3 w-4/5 bg-slate-100 rounded shimmer-shining" />
+  <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 flex flex-col justify-between h-full w-full space-y-3">
+    <div className="space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 rounded-xl bg-slate-100 shimmer-shining shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-3/5 bg-slate-100 rounded shimmer-shining" />
+          <div className="h-3 w-4/5 bg-slate-100 rounded shimmer-shining" />
+        </div>
+      </div>
+      <div className="h-3 w-2/3 bg-slate-100 rounded shimmer-shining" />
+      <div className="h-8 w-full bg-slate-100 rounded shimmer-shining" />
+      <div className="flex gap-2">
+        <div className="h-5 w-16 bg-slate-100 rounded shimmer-shining" />
+        <div className="h-5 w-20 bg-slate-100 rounded shimmer-shining" />
+        <div className="h-5 w-14 bg-slate-100 rounded shimmer-shining" />
       </div>
     </div>
-    <div className="h-3 w-2/3 bg-slate-100 rounded shimmer-shining" />
-    <div className="h-9 w-full bg-slate-100 rounded shimmer-shining" />
-    <div className="flex gap-2">
-      <div className="h-5 w-16 bg-slate-100 rounded shimmer-shining" />
-      <div className="h-5 w-20 bg-slate-100 rounded shimmer-shining" />
-      <div className="h-5 w-14 bg-slate-100 rounded shimmer-shining" />
-    </div>
-    <div className="pt-3.5 border-t border-slate-100 space-y-3">
+    <div className="pt-3 border-t border-slate-100 space-y-2.5">
       <div className="flex justify-between items-center">
         <div className="h-5 w-20 bg-slate-100 rounded shimmer-shining" />
         <div className="h-5 w-24 bg-slate-100 rounded-full shimmer-shining" />

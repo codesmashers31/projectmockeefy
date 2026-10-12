@@ -26,13 +26,13 @@ const seedDatabase = async () => {
     try {
         await connectDB();
 
-        console.log('🧹 Clearing existing expert data...');
-        // Find existing experts to delete their details
-        const expertUsers = await User.find({ userType: 'expert' });
-        const expertUserIds = expertUsers.map(u => u._id);
+        console.log('🧹 Clearing previous dummy expert data...');
+        // Find previous dummy experts with @example.com to preserve real registered experts
+        const dummyUsers = await User.find({ userType: 'expert', email: /@example\.com$/i });
+        const dummyUserIds = dummyUsers.map(u => u._id);
 
-        await ExpertDetails.deleteMany({ userId: { $in: expertUserIds } });
-        await User.deleteMany({ userType: 'expert' });
+        await ExpertDetails.deleteMany({ userId: { $in: dummyUserIds } });
+        await User.deleteMany({ _id: { $in: dummyUserIds } });
 
         console.log('🌱 Fetching categories and skills...');
         const allCategories = await Category.find({});

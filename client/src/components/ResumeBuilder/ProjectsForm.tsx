@@ -252,10 +252,10 @@ export function ProjectsForm() {
         </div>
 
         {/* Projects List */}
-        {resumeData.projects.length > 0 && (
+        {(resumeData?.projects?.length ?? 0) > 0 && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-700">Added Projects</h3>
-            {resumeData.projects.map((project) => (
+            {(resumeData?.projects || []).map((project) => (
               <motion.div
                 key={project.id}
                 initial={{ opacity: 0, x: -10 }}

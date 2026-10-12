@@ -16,8 +16,8 @@ import {
 import mainBannerImage from "@/assets/mainbanner.png";
 
 const trustBullets = [
-  { icon: ShieldCheck, title: "Verified Experts", subtitle: "Industry professionals", color: "text-blue-600", bg: "bg-blue-50" },
-  { icon: Star, title: "Real Interviews", subtitle: "Real-world practice", color: "text-purple-600", bg: "bg-purple-50" },
+  { icon: ShieldCheck, title: "Verified Experts", subtitle: "Industry professionals", color: "text-[#0755E8]", bg: "bg-[#EAF2FF]" },
+  { icon: Star, title: "Real Interviews", subtitle: "Real-world practice", color: "text-[#0755E8]", bg: "bg-[#EAF2FF]" },
   { icon: MessagesSquare, title: "Actionable Feedback", subtitle: "Improve & grow faster", color: "text-emerald-600", bg: "bg-emerald-50" },
   { icon: Lock, title: "100% Safe & Secure", subtitle: "Your data is protected", color: "text-orange-600", bg: "bg-orange-50" },
 ];
@@ -28,16 +28,16 @@ const processSteps = [
     icon: UserPlus, 
     title: "Sign up & choose your role", 
     description: "Create your profile and tell us what role you're preparing for.", 
-    color: "text-blue-600", 
-    bg: "bg-blue-50"
+    color: "text-[#0755E8]", 
+    bg: "bg-[#EAF2FF]"
   },
   { 
     number: "02", 
     icon: Search, 
     title: "Pick a category & expert", 
     description: "Choose a category and book a session with a verified expert.", 
-    color: "text-purple-600", 
-    bg: "bg-purple-50"
+    color: "text-[#0755E8]", 
+    bg: "bg-[#EAF2FF]"
   },
   { 
     number: "03", 
@@ -88,7 +88,7 @@ export default function LandingHeroSection() {
               <div className="mt-7 flex flex-col sm:flex-row gap-3.5 justify-center lg:justify-start items-center w-full">
                 <Link
                   to="/signup"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold tracking-tight rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-[0.98]"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#0755E8] hover:bg-[#0645C7] text-white text-sm font-bold tracking-tight rounded-xl shadow-md shadow-[#0755E8]/20 transition-all active:scale-[0.98]"
                 >
                   Get started free
                   <ArrowRight className="w-4 h-4" strokeWidth={2.2} />
@@ -97,7 +97,7 @@ export default function LandingHeroSection() {
                   to="/watch-mock"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold tracking-tight rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs"
                 >
-                  <PlayCircle className="w-4.5 h-4.5 text-blue-600" strokeWidth={2.2} />
+                  <PlayCircle className="w-4.5 h-4.5 text-[#0755E8]" strokeWidth={2.2} />
                   How it works
                 </Link>
               </div>
@@ -137,7 +137,7 @@ export default function LandingHeroSection() {
 
               <div className="hidden sm:flex absolute -top-4 left-2 lg:-left-6 z-20 items-center gap-3 bg-white rounded-xl shadow-[0_8px_24px_-6px_rgba(0,0,0,0.08)] border border-slate-100 px-3.5 py-2.5 hover:-translate-y-0.5 transition-all duration-300">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                  <TrendingUp className="w-4 h-4 text-[#0755E8]" />
                 </div>
                 <div className="leading-tight">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Mock Interviews</p>
@@ -163,8 +163,8 @@ export default function LandingHeroSection() {
                   <p className="text-base font-extrabold text-slate-900 tracking-tight">500+</p>
                   <p className="text-[11px] text-slate-500 font-medium whitespace-nowrap">Verified Experts</p>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-lg bg-[#EAF2FF] flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-[#0755E8]" />
                 </div>
               </div>
             </div>

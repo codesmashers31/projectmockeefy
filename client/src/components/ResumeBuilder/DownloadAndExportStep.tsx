@@ -2,12 +2,13 @@ import { useState, useRef } from 'react';
 import { useResume } from '../../context/ResumeContext';
 import { Button } from '../ui/button';
 import { motion } from 'motion/react';
-import { Download, Printer, Save, Share2, ChevronLeft } from 'lucide-react';
+import { Download, Printer, Save, Share2, ChevronLeft, Check, FileText } from 'lucide-react';
 import { downloadResumePDF, printResume } from '../../utils/pdfDownload';
 import { ModernResumeTemplate } from './Templates/ModernTemplate';
 import { FresherTemplate } from './Templates/FresherTemplate';
 import { ExperiencedTemplate } from './Templates/ExperiencedTemplate';
 import { MinimalATSTemplate } from './Templates/MinimalATSTemplate';
+import { toast } from 'sonner';
 
 export function DownloadAndExportStep() {
   const { resumeData, selectedTemplate, prevStep } = useResume();
@@ -19,17 +20,21 @@ export function DownloadAndExportStep() {
     setIsDownloading(true);
     try {
       const fileName = `${resumeData.personalDetails.fullName || 'resume'}.pdf`;
-      await downloadResumePDF(resumeRef.current, fileName);
+      const targetElement = resumeRef.current || document.getElementById('resume-a4-document');
+      await downloadResumePDF(targetElement, fileName);
+      toast.success('Resume downloaded as PDF!');
     } catch (error) {
       console.error('Failed to download PDF:', error);
-      alert('PDF download failed. Please try the Print option instead.');
+      toast.error('PDF download encountered an issue. Opening print dialog as fallback...');
+      handlePrint();
     } finally {
       setIsDownloading(false);
     }
   };
 
   const handlePrint = () => {
-    printResume(resumeRef.current);
+    const targetElement = resumeRef.current || document.getElementById('resume-a4-document');
+    printResume(targetElement);
   };
 
   const handleSaveLocally = () => {
@@ -48,6 +53,7 @@ export function DownloadAndExportStep() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    toast.success('Resume JSON data saved to device');
   };
 
   const handleCopyLink = () => {
@@ -55,99 +61,98 @@ export function DownloadAndExportStep() {
       resumeData,
       selectedTemplate,
     };
-    const encoded = btoa(JSON.stringify(data));
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
     const url = `${window.location.origin}/resume/${encoded}`;
     
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
+      toast.success('Shareable link copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     });
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Download & Export</h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Your resume is ready! Choose how you want to save it.
+        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Download & Export</h2>
+        <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+          Your resume is finalized! Select your preferred export format or print directly.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         {/* Download PDF */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handleDownloadPDF}
           disabled={isDownloading}
-          className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left disabled:opacity-50"
+          className="p-5 border-2 border-slate-200 hover:border-[#0755E8] bg-white hover:bg-[#F5F8FF] rounded-xl transition-all text-left disabled:opacity-50 cursor-pointer group shadow-xs"
         >
-          <Download className="w-8 h-8 text-blue-600 mb-3" />
-          <h3 className="font-semibold text-gray-900">Download PDF</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            {isDownloading ? 'Preparing...' : 'Save as PDF file to your device'}
+          <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            <Download className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors">
+            Download PDF
+          </h3>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            {isDownloading ? 'Preparing high-resolution PDF...' : 'Export clean, ATS-friendly A4 PDF'}
           </p>
-        </motion.button>
+        </button>
 
         {/* Print */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handlePrint}
-          className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+          className="p-5 border-2 border-slate-200 hover:border-[#0755E8] bg-white hover:bg-[#F5F8FF] rounded-xl transition-all text-left cursor-pointer group shadow-xs"
         >
-          <Printer className="w-8 h-8 text-blue-600 mb-3" />
-          <h3 className="font-semibold text-gray-900">Print Resume</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Open print dialog to print your resume
+          <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            <Printer className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors">
+            Print Resume
+          </h3>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            Open standard print dialog for immediate hard copy
           </p>
-        </motion.button>
+        </button>
 
         {/* Save JSON */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handleSaveLocally}
-          className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+          className="p-5 border-2 border-slate-200 hover:border-[#0755E8] bg-white hover:bg-[#F5F8FF] rounded-xl transition-all text-left cursor-pointer group shadow-xs"
         >
-          <Save className="w-8 h-8 text-blue-600 mb-3" />
-          <h3 className="font-semibold text-gray-900">Save Data</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Save your resume data as a JSON file
+          <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            <Save className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors">
+            Save JSON Backup
+          </h3>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            Export structured data backup to import or edit later
           </p>
-        </motion.button>
+        </button>
 
         {/* Share Link */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handleCopyLink}
-          className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+          className="p-5 border-2 border-slate-200 hover:border-[#0755E8] bg-white hover:bg-[#F5F8FF] rounded-xl transition-all text-left cursor-pointer group shadow-xs"
         >
-          <Share2 className="w-8 h-8 text-blue-600 mb-3" />
-          <h3 className="font-semibold text-gray-900">Share Link</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            {copied ? 'Link copied!' : 'Copy shareable link'}
+          <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            {copied ? <Check className="w-5 h-5 text-emerald-600" /> : <Share2 className="w-5 h-5" />}
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors">
+            {copied ? 'Link Copied!' : 'Copy Shareable Link'}
+          </h3>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            {copied ? 'Ready to share with employers' : 'Create public view link to share with mentors'}
           </p>
-        </motion.button>
+        </button>
       </div>
 
-      {/* Preview */}
-      <div className="mt-8">
-        <h3 className="font-semibold text-gray-900 mb-4">Preview</h3>
+      {/* Hidden printable element ref fallback */}
+      <div className="hidden" aria-hidden="true">
         <div
           ref={resumeRef}
-          className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200"
-          style={{
-            width: '210mm',
-            margin: '0 auto',
-            maxWidth: '100%',
-          }}
+          style={{ width: '210mm', minHeight: '297mm' }}
+          className="bg-white"
         >
           {selectedTemplate === 'modern' && <ModernResumeTemplate />}
           {selectedTemplate === 'fresher' && <FresherTemplate />}
@@ -157,11 +162,11 @@ export function DownloadAndExportStep() {
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-6 border-t border-gray-200">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-100">
         <Button
           onClick={prevStep}
           variant="outline"
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 text-slate-700 border-slate-200 hover:bg-slate-50 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to Template
@@ -169,12 +174,12 @@ export function DownloadAndExportStep() {
         <Button
           onClick={handleDownloadPDF}
           disabled={isDownloading}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          className="bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center gap-1.5 text-xs font-bold px-5 py-2 rounded-xl cursor-pointer shadow-xs"
         >
           <Download className="w-4 h-4" />
-          {isDownloading ? 'Downloading...' : 'Download PDF'}
+          {isDownloading ? 'Downloading...' : 'Download PDF Now'}
         </Button>
       </div>
-    </motion.div>
+    </div>
   );
 }

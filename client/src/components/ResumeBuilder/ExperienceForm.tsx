@@ -305,10 +305,10 @@ export function ExperienceForm() {
         </div>
 
         {/* Experience List */}
-        {resumeData.experience.length > 0 && (
+        {(resumeData?.experience?.length ?? 0) > 0 && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-700">Added Experience</h3>
-            {resumeData.experience.map((exp) => (
+            {(resumeData?.experience || []).map((exp) => (
               <motion.div
                 key={exp.id}
                 initial={{ opacity: 0, x: -10 }}

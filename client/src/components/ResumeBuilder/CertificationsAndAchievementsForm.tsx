@@ -236,9 +236,9 @@ export function CertificationsAndAchievementsForm() {
           </div>
 
           {/* Certifications List */}
-          {resumeData.certifications.length > 0 && (
+          {(resumeData?.certifications?.length ?? 0) > 0 && (
             <div className="space-y-2">
-              {resumeData.certifications.map((cert) => (
+              {(resumeData?.certifications || []).map((cert) => (
                 <motion.div
                   key={cert.id}
                   initial={{ opacity: 0, x: -10 }}
@@ -325,9 +325,9 @@ export function CertificationsAndAchievementsForm() {
           </div>
 
           {/* Achievements List */}
-          {resumeData.achievements.length > 0 && (
+          {(resumeData?.achievements?.length ?? 0) > 0 && (
             <div className="space-y-2">
-              {resumeData.achievements.map((achievement) => (
+              {(resumeData?.achievements || []).map((achievement) => (
                 <motion.div
                   key={achievement.id}
                   initial={{ opacity: 0, x: -10 }}
