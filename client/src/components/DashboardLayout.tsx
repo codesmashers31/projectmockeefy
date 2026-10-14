@@ -33,10 +33,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Layout Container */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-16">
-        <div className="flex items-start gap-8 lg:gap-10 xl:gap-12 w-full">
+        <div className="flex items-start gap-6 lg:gap-7 xl:gap-8 w-full">
           {/* Left Sidebar - Desktop (Sticky Command Center) */}
           {showLeftSidebar && (
-            <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[240px] shrink-0 sticky top-[88px] self-start">
+            <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[240px] shrink-0 sticky top-[80px] self-start">
               <Sidebar />
             </aside>
           )}

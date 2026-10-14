@@ -27,6 +27,7 @@ import {
 
 // Reusable Category Mentor Scroll Row Component
 interface MentorCategoryScrollRowProps {
+  id: string;
   title: string;
   subtitle: string;
   icon: React.ReactNode;
@@ -34,6 +35,7 @@ interface MentorCategoryScrollRowProps {
 }
 
 function MentorCategoryScrollRow({
+  id,
   title,
   subtitle,
   icon,
@@ -65,52 +67,52 @@ function MentorCategoryScrollRow({
   const handleScroll = (dir: "left" | "right") => {
     const el = rowRef.current;
     if (!el) return;
-    const scrollAmount = el.clientWidth * 0.9;
+    const scrollAmount = el.clientWidth * 0.85;
     el.scrollBy({ left: dir === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
   };
 
   if (!mentors || mentors.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div id={`track-${id}`} className="space-y-2.5 scroll-mt-24">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+          <div className="w-7.5 h-7.5 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
             {icon}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-[20px] sm:text-[22px] font-semibold text-slate-900 tracking-tight leading-snug m-0">
+              <h2 className="text-[17px] sm:text-[18.5px] font-bold text-slate-900 tracking-tight leading-snug m-0">
                 {title}
               </h2>
-              <span className="text-[12px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full">
+              <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.2 rounded-full">
                 {mentors.length}
               </span>
             </div>
-            <p className="text-[13px] sm:text-[14px] text-slate-600 mt-1 leading-normal">
+            <p className="text-[12.5px] sm:text-[13px] text-slate-500 mt-0.5 leading-normal">
               {subtitle}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
           <button
             type="button"
             onClick={() => handleScroll("left")}
             disabled={!canScrollLeft}
             aria-label={`Previous ${title}`}
-            className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-35 disabled:hover:bg-white text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-xs disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="w-7.5 h-7.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
           <button
             type="button"
             onClick={() => handleScroll("right")}
             disabled={!canScrollRight}
             aria-label={`Next ${title}`}
-            className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-35 disabled:hover:bg-white text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-xs disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="w-7.5 h-7.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
@@ -118,7 +120,7 @@ function MentorCategoryScrollRow({
       <div className="relative">
         <div
           ref={rowRef}
-          className="flex items-stretch gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-2 px-1 no-scrollbar select-none"
+          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 px-0.5 no-scrollbar select-none"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (
@@ -333,45 +335,104 @@ export default function CoachSessionCard() {
       ...def,
       mentors: allRecommendedMentors.filter((m) => def.filter(m.category || "")),
     }));
-  }, [allRecommendedMentors]);
+  const trackScrollRef = useRef<HTMLDivElement>(null);
+
+  const trackShortcuts = useMemo(() => {
+    return categoryGroups.map((group) => {
+      const shortName = group.title.includes("&")
+        ? group.title.split("&")[0].trim()
+        : group.title.split(",")[0].trim();
+      return {
+        id: group.id,
+        name: shortName,
+        fullName: group.title,
+        count: `${group.mentors.length || 10}+ Mentors >`,
+      };
+    });
+  }, [categoryGroups]);
+
+  const scrollToTrack = (trackId: string) => {
+    const el = document.getElementById(`track-${trackId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
-    <div className="w-full space-y-6 text-left font-sans">
-      {/* ======================================================== */}
+    <div className="w-full space-y-5 text-left font-sans">
       {/* ======================================================== */}
       {/* SECTION 1: PERSONALIZED WELCOME                          */}
       {/* ======================================================== */}
-      <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[11px] font-bold tracking-wide uppercase">
-            <Sparkles size={12} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="space-y-0.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold tracking-wide uppercase">
+            <Sparkles size={11} />
             <span>5 Core Technical Tracks</span>
           </div>
-          <h1 className="text-[28px] sm:text-[32px] font-bold text-slate-900 tracking-tight leading-tight">
+          <h1 className="text-[20px] sm:text-[23px] font-bold text-slate-900 tracking-tight leading-snug">
             {user?.name ? `Welcome back, ${user.name}` : "Welcome to Mockeefy"}
           </h1>
-          <p className="text-slate-600 text-[14px] sm:text-[15px] leading-relaxed mt-1">
+          <p className="text-slate-500 text-[12.5px] sm:text-[13px] leading-relaxed">
             Connect with top hiring managers and mentors across 5 core technical tracks.
           </p>
         </div>
 
         <button
           onClick={() => navigate("/mentors")}
-          className="group inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] active:scale-95 text-white text-[14px] font-semibold shadow-md shadow-[#0755E8]/20 hover:shadow-lg hover:shadow-[#0755E8]/30 transition-all cursor-pointer shrink-0 self-start sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+          className="group inline-flex items-center gap-1.5 px-4 h-9 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white text-[12.5px] sm:text-[13px] font-semibold shadow-xs hover:shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
         >
-          <Users size={16} className="text-white/90" />
+          <Users size={15} className="text-white/90" />
           <span>Explore All Mentors</span>
-          <span className="bg-white/25 text-white text-xs px-2 py-0.5 rounded-full font-bold ml-0.5">
+          <span className="bg-white/20 text-white text-[11px] px-1.5 py-0.2 rounded-full font-bold ml-0.5">
             {isExpertsLoading ? "50+" : expertsData.length}
           </span>
-          <ArrowRight size={15} className="transition-transform group-hover:translate-x-1 ml-0.5" />
+          <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5 ml-0.5" />
         </button>
       </div>
 
       {/* ======================================================== */}
-      {/* SECTION 2: 5 CATEGORY MENTORS SCROLL SECTIONS            */}
+      {/* SECTION 2: NAUKRI-STYLE TECHNICAL TRACK QUICK STRIP     */}
       {/* ======================================================== */}
-      <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[15px] sm:text-[16px] font-bold text-slate-900 tracking-tight">
+            Top Categories Hiring Now
+          </h2>
+          <span className="text-[11.5px] font-medium text-slate-400">
+            5 Core Technical Tracks
+          </span>
+        </div>
+
+        <div className="relative bg-gradient-to-r from-blue-50/60 via-slate-50/80 to-blue-50/60 p-2 sm:p-2.5 rounded-2xl border border-blue-100/70 shadow-2xs">
+          <div
+            ref={trackScrollRef}
+            className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {trackShortcuts.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => scrollToTrack(t.id)}
+                className="bg-white hover:bg-blue-50/30 active:scale-[0.98] rounded-xl px-3.5 py-2 border border-slate-200/80 hover:border-[#0755E8]/40 shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0 text-left min-w-[155px] sm:min-w-[175px]"
+              >
+                <p className="text-[12.5px] sm:text-[13px] font-bold text-slate-800 truncate">
+                  {t.name}
+                </p>
+                <p className="text-[11px] font-semibold text-[#0755E8] flex items-center justify-between mt-0.5">
+                  <span>{t.count}</span>
+                  <ChevronRight size={12} className="text-[#0755E8]/70" />
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* SECTION 3: 5 CATEGORY MENTORS SCROLL SECTIONS            */}
+      {/* ======================================================== */}
+      <div className="space-y-5">
         {isExpertsLoading ? (
           // Skeleton loading method for category mentor cards
           [
@@ -394,28 +455,28 @@ export default function CoachSessionCard() {
               icon: <Brain size={16} />,
             },
           ].map((item) => (
-            <div key={item.id} className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+            <div key={item.id} className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7.5 h-7.5 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
                   {item.icon}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[20px] sm:text-[22px] font-semibold text-slate-900 tracking-tight leading-snug m-0">
+                    <h2 className="text-[17px] sm:text-[18.5px] font-bold text-slate-900 tracking-tight leading-snug m-0">
                       {item.title}
                     </h2>
-                    <span className="text-[12px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full animate-pulse">
+                    <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.2 rounded-full animate-pulse">
                       Loading...
                     </span>
                   </div>
-                  <p className="text-[13px] sm:text-[14px] text-slate-600 mt-1 leading-normal">
+                  <p className="text-[12.5px] sm:text-[13px] text-slate-500 mt-0.5 leading-normal">
                     {item.subtitle}
                   </p>
                 </div>
               </div>
 
               <div className="relative">
-                <div className="flex items-stretch gap-4 overflow-x-auto py-2 px-1 no-scrollbar">
+                <div className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-0.5 no-scrollbar">
                   {[1, 2, 3].map((n) => (
                     <div
                       key={n}
@@ -432,6 +493,7 @@ export default function CoachSessionCard() {
           categoryGroups.map((group) => (
             <MentorCategoryScrollRow
               key={group.id}
+              id={group.id}
               title={group.title}
               subtitle={group.subtitle}
               icon={group.icon}

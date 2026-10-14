@@ -8,6 +8,7 @@ import {
   getCurrentCompany,
   getJobTitle,
 } from "../lib/expertUtils";
+import { useSearchParams } from "react-router-dom";
 import {
   Search,
   Users,
@@ -28,8 +29,18 @@ import {
 const ITEMS_PER_PAGE = 10;
 
 export default function FindMentor() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialQ = searchParams.get("q") || searchParams.get("search") || "";
+  const [searchQuery, setSearchQuery] = useState(initialQ);
   const deferredSearch = useDeferredValue(searchQuery);
+
+  // Sync when URL query param changes
+  useEffect(() => {
+    const q = searchParams.get("q") || searchParams.get("search");
+    if (q !== null && q !== searchQuery) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedExpRanges, setSelectedExpRanges] = useState<string[]>([]);

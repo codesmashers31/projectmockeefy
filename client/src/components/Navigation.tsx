@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import axios from '../lib/axios';
+import axios from "../lib/axios";
 import {
-  Home,
   Bell,
-  Users,
-  Calendar,
+  Search,
   X,
   Menu,
   LogOut,
@@ -15,15 +13,14 @@ import {
   BookOpen,
   HelpCircle,
   ChevronDown,
-  Bot,
-  Sparkles,
   Bookmark,
   Award,
   Crown,
-  MessageSquare
+  Sparkles,
+  CreditCard,
+  Compass,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getProfileImageUrl } from "../lib/imageUtils";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { io } from "socket.io-client";
 import MockeefyLogo from "./MockeefyLogo";
@@ -41,44 +38,20 @@ interface Notification {
   };
 }
 
-const MOCK_MESSAGES = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    lastMessage: "Thanks for the session! It was really helpful.",
-    time: "10:30 AM",
-    unread: true,
-  },
-  {
-    id: 2,
-    name: "Michael Chen",
-    lastMessage: "Can we reschedule our mock interview?",
-    time: "Yesterday",
-    unread: false,
-  },
-  {
-    id: 3,
-    name: "David Smith",
-    lastMessage: "I've uploaded my resume for review.",
-    time: "Yesterday",
-    unread: false,
-  }
-];
-
-const Navigation = () => {
+export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
-  const messagesDropdownRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -86,13 +59,24 @@ const Navigation = () => {
   const { data: userProfile } = useUserProfile();
   const profileImage = user?.profileImage || userProfile?.profileImage;
 
+  // Sync search input with URL params when on /mentors
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q") || params.get("search");
+    if (q) {
+      setSearchQuery(q);
+    } else if (location.pathname !== "/mentors" && location.pathname !== "/find-mentor") {
+      setSearchQuery("");
+    }
+  }, [location.pathname, location.search]);
+
   // Fetch Notifications
   const fetchNotifications = async () => {
     if (!user) return;
     try {
-      const res = await axios.get('/api/notifications?unreadOnly=true');
-      setNotifications(res.data.notifications);
-      setUnreadCount(res.data.unreadCount);
+      const res = await axios.get("/api/notifications?unreadOnly=true");
+      setNotifications(res.data.notifications || []);
+      setUnreadCount(res.data.unreadCount || 0);
     } catch (error) {
       console.error("Failed to fetch notifications", error);
     }
@@ -130,23 +114,11 @@ const Navigation = () => {
     };
   }, [user, token]);
 
-  // Close dropdowns on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      if (moreMenuRef.current && !moreMenuRef.current.contains(target)) {
-        setIsMoreOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const markAsRead = async (id: string) => {
     try {
-      await axios.put('/api/notifications/read', { notificationIds: [id] });
-      setNotifications(prev => prev.filter(n => n._id !== id));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      await axios.put("/api/notifications/read", { notificationIds: [id] });
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Failed to mark read", error);
     }
@@ -154,7 +126,7 @@ const Navigation = () => {
 
   const markAllRead = async () => {
     try {
-      await axios.put('/api/notifications/read', { notificationIds: 'all' });
+      await axios.put("/api/notifications/read", { notificationIds: "all" });
       setNotifications([]);
       setUnreadCount(0);
     } catch (error) {
@@ -162,315 +134,396 @@ const Navigation = () => {
     }
   };
 
+  const closeAllDropdowns = () => {
+    setIsNotificationOpen(false);
+    setIsProfileMenuOpen(false);
+    setIsMenuOpen(false);
+    setIsMoreOpen(false);
+  };
+
   useEffect(() => {
     closeAllDropdowns();
   }, [location.pathname]);
 
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (menuRef.current && !menuRef.current.contains(target) && isMenuOpen) setIsMenuOpen(false);
-      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) setIsProfileMenuOpen(false);
-      if (notificationRef.current && !notificationRef.current.contains(target)) setIsNotificationOpen(false);
-      if (messagesDropdownRef.current && !messagesDropdownRef.current.contains(target)) setIsMessagesOpen(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setIsProfileMenuOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
+        setIsNotificationOpen(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(target)) {
+        setIsMoreOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(target) && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen]);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-    setIsNotificationOpen(false);
-    setIsProfileMenuOpen(false);
-    setIsMessagesOpen(false);
-    setIsMoreOpen(false);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = searchQuery.trim();
+    if (query) {
+      navigate(`/mentors?q=${encodeURIComponent(query)}`);
+    } else {
+      navigate("/mentors");
+    }
   };
 
-  const closeAllDropdowns = () => {
-    setIsNotificationOpen(false);
-    setIsProfileMenuOpen(false);
-    setIsMessagesOpen(false);
-    setIsMenuOpen(false);
-    setIsMoreOpen(false);
-  };
-
+  // Primary navigation links (Naukri style: simple, clean text links right next to logo)
   const navItems = [
-    { name: "Home", href: "/", icon: <Home size={16} /> },
-    { name: "Find Mentors", href: "/mentors", icon: <Users size={16} /> },
-    { name: "My Sessions", href: "/my-sessions", icon: <Calendar size={16} /> },
+    { name: "Find Mentors", href: "/mentors" },
+    { name: "AI Mock Interview", href: "/ai-video" },
+    { name: "Resume Builder", href: "/resume-builder" },
+    { name: "My Sessions", href: "/my-sessions" },
   ];
 
   const moreItems = [
-    { name: "Profile", href: "/profile", icon: <User size={16} /> },
-    { name: "Saved Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
+    { name: "Saved Mentors", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
+    { name: "Subscription Plans", href: "/plans", icon: <CreditCard size={16} /> },
+    { name: "Tips & Guidance", href: "/tips", icon: <Sparkles size={16} /> },
+    { name: "Help & Support", href: "/help", icon: <HelpCircle size={16} /> },
   ];
-
-  const sidebarNavItems = user ? [
-    { name: "Saved Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
-    { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
-  ] : [];
 
   const profileMenuItems = [
     { name: "Profile Settings", href: "/profile", icon: <User size={16} /> },
+    { name: "My Sessions", href: "/my-sessions", icon: <Compass size={16} /> },
+    { name: "Saved Mentors", href: "/saved-experts", icon: <Bookmark size={16} /> },
+    { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
     { name: "Settings", href: "/settings", icon: <Settings size={16} /> },
-    { name: "Resume", href: "/resume", icon: <BookOpen size={16} /> },
     { name: "Help & Support", href: "/help", icon: <HelpCircle size={16} /> },
   ];
+
+  const isLinkActive = (href: string) => {
+    if (href === "/") return location.pathname === "/" || location.pathname === "/dashboard";
+    return location.pathname === href || (location.pathname.startsWith(href) && href !== "/");
+  };
 
   return (
     <>
       <nav
         ref={menuRef}
-        className="bg-white border-b border-[#E2E8F0]/80 sticky top-0 z-[100] w-full h-[72px] transition-all duration-300 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+        aria-label="Main Navigation"
+        className="bg-white border-b border-slate-200/80 sticky top-0 z-50 w-full h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)] font-sans"
       >
-        <div className="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto h-full">
-          <div className="flex items-center justify-between h-full gap-3">
-            {/* Left: Logo */}
+        <div className="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto h-full flex items-center justify-between gap-3 sm:gap-4">
+          {/* ========================================================= */}
+          {/* LEFT GROUP: Logo + Clean Text Links (Naukri Reference)    */}
+          {/* ========================================================= */}
+          <div className="flex items-center gap-6 lg:gap-8 h-full">
+            {/* Brand Logo */}
             <Link
               to="/"
               className="flex items-center gap-2.5 group active:scale-95 transition-transform shrink-0"
               onClick={closeAllDropdowns}
             >
-              <MockeefyLogo className="h-9 w-9" variant="brand" />
-              <span className="text-[18px] font-logo tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
+              <MockeefyLogo className="h-8.5 w-8.5 sm:h-9 sm:w-9" variant="brand" />
+              <span className="text-[19px] sm:text-[20px] font-logo font-bold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
                 Mockeefy
               </span>
             </Link>
 
-            {/* Center: Nav pill (includes More) */}
-            <div className="hidden md:flex flex-1 items-center justify-center">
-              <div className="flex items-center gap-1">
-                {navItems.map((item) => {
-                  const isActive = item.href === "/"
-                    ? location.pathname === "/"
-                    : location.pathname === item.href || (location.pathname.startsWith(item.href) && item.href !== "/");
-
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`flex items-center gap-2 px-5 py-2.5 text-[14px] font-semibold transition-all duration-200 rounded-xl whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF] ${isActive
-                        ? "text-[#0755E8] bg-[#EAF2FF] shadow-xs"
-                        : "text-slate-600 hover:text-[#0755E8] hover:bg-slate-50"
-                        }`}
-                      onClick={closeAllDropdowns}
-                    >
-                      <span className={`${isActive ? "text-[#0755E8]" : "text-slate-400 group-hover:text-[#0755E8]"}`}>
-                        {item.icon}
-                      </span>
-                      {item.name}
-                    </Link>
-                  );
-                })}
-
-                {/* More dropdown */}
-                <div className="relative" ref={moreMenuRef}>
-                  <button
-                    type="button"
-                    aria-haspopup="true"
-                    aria-expanded={isMoreOpen}
-                    aria-label="More navigation options"
-                    onClick={() => {
-                      setIsMoreOpen((v) => !v);
-                      setIsProfileMenuOpen(false);
-                      setIsNotificationOpen(false);
-                    }}
-                    className={`flex items-center gap-2 px-5 py-2.5 text-[14px] font-semibold transition-all duration-200 rounded-xl whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF] ${
-                      isMoreOpen
-                        ? "text-[#0755E8] bg-[#EAF2FF] shadow-xs"
-                        : "text-slate-600 hover:text-[#0755E8] hover:bg-slate-50"
+            {/* Desktop Navigation Links (Naukri style text tabs) */}
+            <div className="hidden md:flex items-center gap-5 lg:gap-7 h-full">
+              {navItems.map((item) => {
+                const active = isLinkActive(item.href);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`relative h-full flex items-center text-[14px] lg:text-[14.5px] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:text-[#0755E8] ${
+                      active
+                        ? "text-[#0755E8] font-bold"
+                        : "text-slate-600 hover:text-[#0755E8] font-medium"
                     }`}
+                    onClick={closeAllDropdowns}
                   >
-                    More
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? "rotate-180" : ""}`} />
-                  </button>
+                    <span>{item.name}</span>
+                    {active && (
+                      <span className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[#0755E8] rounded-t-full" />
+                    )}
+                  </Link>
+                );
+              })}
 
-                  {isMoreOpen && (
-                    <div className="absolute left-0 top-full mt-3 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="p-1.5 space-y-0.5">
-                        {moreItems.map((item) => (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
-                            onClick={closeAllDropdowns}
-                          >
-                            <span className="mr-3 text-slate-400">{item.icon}</span>
-                            {item.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Right side: Actions */}
-            <div className="hidden md:flex items-center space-x-1 lg:space-x-3">
-              {/* Notifications */}
-              <div className="relative" ref={notificationRef}>
+              {/* "More" Dropdown Menu */}
+              <div className="relative h-full flex items-center" ref={moreMenuRef}>
                 <button
                   type="button"
-                  aria-label="View notifications"
-                  aria-expanded={isNotificationOpen}
+                  aria-haspopup="true"
+                  aria-expanded={isMoreOpen}
+                  aria-label="More navigation options"
                   onClick={() => {
-                    setIsNotificationOpen(!isNotificationOpen);
+                    setIsMoreOpen((prev) => !prev);
                     setIsProfileMenuOpen(false);
-                    if (!isNotificationOpen) fetchNotifications();
+                    setIsNotificationOpen(false);
                   }}
-                  className="p-2.5 text-slate-500 hover:text-[#0755E8] rounded-2xl hover:bg-[#EAF2FF] transition-all active:scale-95 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+                  className={`flex items-center gap-1 text-[14px] lg:text-[14.5px] transition-colors cursor-pointer focus-visible:outline-none ${
+                    isMoreOpen
+                      ? "text-[#0755E8] font-bold"
+                      : "text-slate-600 hover:text-[#0755E8] font-medium"
+                  }`}
                 >
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2 bg-[#0755E8] text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-black border-2 border-white">
-                      {unreadCount}
-                    </span>
-                  )}
+                  <span>More</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${
+                      isMoreOpen ? "rotate-180 text-[#0755E8]" : "text-slate-400"
+                    }`}
+                  />
                 </button>
 
-                {isNotificationOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                      <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="text-xs text-[#0755E8] hover:text-[#0645C7] font-semibold">
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-10 text-center">
-                          <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-3">
-                            <Bell className="w-5 h-5 text-slate-200" />
-                          </div>
-                          <p className="text-slate-400 text-[10px] font-bold tracking-tight">All Clear</p>
-                        </div>
-                      ) : (
-                        notifications.map((notification) => (
-                          <div
-                            key={notification._id}
-                            className={`px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 cursor-pointer transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
-                            onClick={() => markAsRead(notification._id)}
-                          >
-                            <p className="font-black text-slate-800 text-[11px] tracking-tight">{notification.title}</p>
-                            <p className="text-slate-500 text-[10px] mt-1 line-clamp-2 leading-relaxed">{notification.message}</p>
-                          </div>
-                        ))
-                      )}
+                {isMoreOpen && (
+                  <div className="absolute left-0 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-1 space-y-0.5">
+                      {moreItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className="flex items-center px-3.5 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] text-[13.5px] font-medium transition-colors"
+                          onClick={closeAllDropdowns}
+                        >
+                          <span className="mr-3 text-slate-400 group-hover:text-[#0755E8]">
+                            {item.icon}
+                          </span>
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
+            </div>
+          </div>
 
-              <div className="h-6 w-px bg-slate-200 mx-2"></div>
+          {/* ========================================================= */}
+          {/* CENTER: Sleek Search Bar (Naukri Image 1 Reference)       */}
+          {/* ========================================================= */}
+          <div className="hidden lg:flex items-center flex-1 max-w-xs xl:max-w-md mx-3 xl:mx-6">
+            <form onSubmit={handleSearchSubmit} className="relative w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search mentors, skills, roles..."
+                className="w-full h-9.5 pl-4 pr-10 text-[13px] bg-[#F8FAFC] hover:bg-white focus:bg-white text-slate-800 placeholder:text-slate-400 rounded-full border border-slate-200/90 focus:border-[#0755E8] focus:outline-none focus:ring-2 focus:ring-[#0755E8]/10 transition-all shadow-2xs"
+              />
+              <button
+                type="submit"
+                aria-label="Search"
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-7.5 h-7.5 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <Search size={13} className="stroke-[2.5]" />
+              </button>
+            </form>
+          </div>
 
-              {/* Profile / Auth */}
-              {user ? (
+          {/* ========================================================= */}
+          {/* RIGHT GROUP: User Actions or Log in / Register            */}
+          {/* ========================================================= */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Authenticated User Controls */}
+            {user ? (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Notifications Bell */}
+                <div className="relative" ref={notificationRef}>
+                  <button
+                    type="button"
+                    aria-label="View notifications"
+                    aria-expanded={isNotificationOpen}
+                    onClick={() => {
+                      setIsNotificationOpen(!isNotificationOpen);
+                      setIsProfileMenuOpen(false);
+                      setIsMoreOpen(false);
+                      if (!isNotificationOpen) fetchNotifications();
+                    }}
+                    className="w-9 h-9 text-slate-600 hover:text-[#0755E8] rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+                  >
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 bg-[#0755E8] text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border-2 border-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notifications Popover */}
+                  {isNotificationOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-900 text-xs tracking-tight">
+                          Notifications
+                        </h3>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllRead}
+                            className="text-[11px] text-[#0755E8] hover:text-[#0645C7] font-semibold cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                        {notifications.length === 0 ? (
+                          <div className="p-8 text-center">
+                            <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2">
+                              <Bell className="w-4 h-4 text-slate-300" />
+                            </div>
+                            <p className="text-slate-400 text-xs font-semibold">
+                              No new notifications
+                            </p>
+                          </div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification._id}
+                              className={`px-4 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors ${
+                                !notification.isRead ? "bg-blue-50/40" : ""
+                              }`}
+                              onClick={() => markAsRead(notification._id)}
+                            >
+                              <p className="font-bold text-slate-800 text-xs leading-snug">
+                                {notification.title}
+                              </p>
+                              <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">
+                                {notification.message}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block" />
+
+                {/* Profile Pill Button */}
                 <div className="relative" ref={profileMenuRef}>
                   <button
                     onClick={() => {
                       setIsProfileMenuOpen(!isProfileMenuOpen);
                       setIsNotificationOpen(false);
+                      setIsMoreOpen(false);
                     }}
-                    className="flex items-center space-x-2.5 pl-2 pr-1.5 py-1.5 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-200 group"
+                    className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
                   >
-                    <div className="flex flex-col text-right hidden lg:block">
-                      <p className="text-sm font-semibold text-slate-900 leading-none tracking-tight">
-                        {user.name?.split(" ")[0] || "User"}
-                      </p>
-                      {user.isPremium ? (
-                        <div className="flex items-center justify-end mt-1 gap-1 text-[11px] font-bold text-[#0755E8]">
-                          <Crown size={10} /> Premium
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-slate-500 mt-1">Member</p>
-                      )}
-                    </div>
-                    <div className="w-9 h-9 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden ring-2 ring-transparent group-hover:ring-[#93B8FF]/30 transition-all">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
                       <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
                     </div>
-                    <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isProfileMenuOpen ? "rotate-180" : ""}`} />
+                    <div className="text-left hidden lg:block leading-tight">
+                      <p className="text-[13px] font-semibold text-slate-900 leading-tight truncate max-w-[110px]">
+                        {user.name?.split(" ")[0] || "User"}
+                      </p>
+                      <p className="text-[10.5px] font-medium text-slate-500 leading-none">
+                        {user.isPremium ? "Premium" : "Member"}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      size={13}
+                      className={`text-slate-400 transition-transform duration-200 ${
+                        isProfileMenuOpen ? "rotate-180" : ""
+                      }`}
+                    />
                   </button>
 
+                  {/* Profile Dropdown */}
                   {isProfileMenuOpen && (
-                    <div className="absolute right-0 top-full mt-3 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.08)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="px-4 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shadow-sm">
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
                           <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
                         </div>
                         <div className="overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-slate-900 text-sm truncate tracking-tight">{user.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-slate-900 text-xs truncate">
+                              {user.name}
+                            </p>
                             {user.isPremium && (
-                              <Crown size={12} className="text-[#0755E8] shrink-0 fill-current opacity-80" />
+                              <Crown size={11} className="text-[#0755E8] shrink-0 fill-current" />
                             )}
                           </div>
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5 tracking-tighter">{user.email}</p>
+                          <p className="text-[10.5px] text-slate-400 truncate mt-0.5">
+                            {user.email}
+                          </p>
                         </div>
                       </div>
-                      <div className="p-1.5 space-y-0.5">
+
+                      <div className="p-1 space-y-0.5">
                         {profileMenuItems.map((item) => (
                           <Link
                             key={item.name}
                             to={item.href}
-                            className="flex items-center px-3.5 py-2.5 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-sm font-medium transition-all"
+                            className="flex items-center px-3.5 py-2 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-medium transition-colors"
                             onClick={closeAllDropdowns}
                           >
-                            <span className="mr-3 text-slate-400 transition-colors group-hover:text-[#0755E8]">{item.icon}</span>
-                            {item.name}
+                            <span className="mr-3 text-slate-400">{item.icon}</span>
+                            <span>{item.name}</span>
                           </Link>
                         ))}
                       </div>
-                      <div className="border-t border-slate-100 mt-1.5 px-1.5 py-1.5">
+
+                      <div className="border-t border-slate-100 mt-1 p-1">
                         <button
-                          onClick={() => { logout(); closeAllDropdowns(); }}
-                          className="flex w-full items-center px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-medium transition-all"
+                          onClick={() => {
+                            logout();
+                            closeAllDropdowns();
+                          }}
+                          className="flex w-full items-center px-3.5 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                         >
-                          <LogOut size={16} className="mr-3" />
-                          Sign out
+                          <LogOut size={15} className="mr-3" />
+                          <span>Sign out</span>
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Link to="/signin">
-                    <Button variant="ghost" className="text-[14px] font-semibold text-gray-700 hover:text-[#0755E8] hover:bg-[#EAF2FF] rounded-xl px-5 h-10">Log in</Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button className="h-10 px-6 bg-[#0755E8] hover:bg-[#0645C7] text-white text-[14px] font-semibold rounded-xl transition-all shadow-xs border-0">Get started</Button>
+              </div>
+            ) : (
+              /* Guest Actions (Naukri Reference: Login, Register, For Mentors) */
+              <div className="flex items-center gap-2.5">
+                <Link
+                  to="/signin"
+                  className="px-4 sm:px-5 py-1.5 h-9 rounded-full text-[#0755E8] border border-[#0755E8] hover:bg-[#EAF2FF] text-[13px] sm:text-[13.5px] font-semibold transition-all inline-flex items-center justify-center whitespace-nowrap cursor-pointer"
+                >
+                  Log in
+                </Link>
+
+                <Link
+                  to="/signup"
+                  className="px-4 sm:px-5 py-1.5 h-9 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white text-[13px] sm:text-[13.5px] font-semibold transition-all shadow-xs inline-flex items-center justify-center whitespace-nowrap cursor-pointer"
+                >
+                  Register
+                </Link>
+
+                <div className="hidden lg:flex items-center pl-1">
+                  <Link
+                    to="/signup?role=expert"
+                    className="flex items-center gap-1 text-[13px] font-medium text-slate-600 hover:text-[#0755E8] transition-colors whitespace-nowrap"
+                  >
+                    <span>For Mentors</span>
+                    <ChevronDown size={13} className="text-slate-400" />
                   </Link>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Mobile Toggle */}
-            <div className="md:hidden flex items-center gap-1.5">
-              {user && (
-                <Link 
-                  to="/notifications" 
-                  className="p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-50 relative transition-all active:scale-95 flex items-center justify-center"
-                  aria-label="Notifications"
-                >
-                  <Bell size={19} />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 bg-[#0755E8] text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border border-white">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Link>
-              )}
+            {/* Mobile Menu Hamburger */}
+            <div className="md:hidden flex items-center">
               <button
                 type="button"
-                onClick={toggleMenu}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
                 aria-label={isMenuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={isMenuOpen}
-                className="p-2 text-slate-900 hover:bg-slate-50 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+                className="p-2 text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
               >
                 {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
@@ -478,66 +531,123 @@ const Navigation = () => {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* ========================================================= */}
+        {/* MOBILE DRAWER (For screen < md)                            */}
+        {/* ========================================================= */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-[68px] left-0 w-full bg-white border-b border-slate-200 shadow-2xl z-[90] animate-in slide-in-from-top-4 duration-300">
-            <div className="p-4 space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-transparent active:border-slate-100 transition-all"
-                  onClick={closeAllDropdowns}
+          <div className="md:hidden absolute top-16 left-0 w-full bg-white border-b border-slate-200 shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
+            <div className="p-4 space-y-3">
+              {/* Mobile Search Input */}
+              <form onSubmit={handleSearchSubmit} className="relative w-full">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search mentors, skills, roles..."
+                  className="w-full h-10 pl-4 pr-10 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#0755E8]"
+                />
+                <button
+                  type="submit"
+                  aria-label="Search"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-[#0755E8] text-white flex items-center justify-center"
                 >
-                  <span className="mr-3 text-slate-400">{item.icon}</span>
-                  {item.name}
-                </Link>
-              ))}
-              {sidebarNavItems.length > 0 && (
-                <>
-                  <div className="h-px bg-slate-100 my-3 mx-2" />
-                  <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Dashboard</p>
-                  {sidebarNavItems.map((item) => (
+                  <Search size={14} />
+                </button>
+              </form>
+
+              {/* Mobile Nav Links */}
+              <div className="space-y-1 pt-1">
+                {navItems.map((item) => {
+                  const active = isLinkActive(item.href);
+                  return (
                     <Link
                       key={item.name}
                       to={item.href}
-                      className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-transparent active:border-slate-100 transition-all"
+                      className={`flex items-center px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                        active
+                          ? "bg-[#EAF2FF] text-[#0755E8]"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
                       onClick={closeAllDropdowns}
                     >
-                      <span className="mr-3 text-slate-400">{item.icon}</span>
                       {item.name}
                     </Link>
-                  ))}
-                </>
-              )}
-              <div className="h-px bg-slate-100 my-3 mx-2"></div>
-              {user ? (
-                <>
-                  <Link to="/profile" className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all" onClick={closeAllDropdowns}>
-                    <span className="mr-3 text-slate-400"><User size={18} /></span> Profile Setting
+                  );
+                })}
+              </div>
+
+              {/* Extra Items */}
+              <div className="border-t border-slate-100 pt-2 space-y-1">
+                <p className="px-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  More Options
+                </p>
+                {moreItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="flex items-center gap-3 px-3.5 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl"
+                    onClick={closeAllDropdowns}
+                  >
+                    <span className="text-slate-400">{item.icon}</span>
+                    <span>{item.name}</span>
                   </Link>
-                  <button onClick={() => { logout(); closeAllDropdowns(); }} className="flex w-full items-center gap-3 px-4 py-3.5 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-medium transition-all">
-                    <span className="mr-3"><LogOut size={18} /></span> Sign out
-                  </button>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <Link to="/signin" onClick={closeAllDropdowns}>
-                    <Button variant="outline" className="w-full text-sm font-medium rounded-xl">Log in</Button>
-                  </Link>
-                  <Link to="/signup" onClick={closeAllDropdowns}>
-                    <Button className="w-full bg-[#0755E8] hover:bg-[#0645C7] text-white text-sm font-semibold rounded-xl">Get started</Button>
-                  </Link>
-                </div>
-              )}
+                ))}
+              </div>
+
+              {/* Auth Controls in Mobile */}
+              <div className="border-t border-slate-100 pt-3">
+                {user ? (
+                  <div className="space-y-2">
+                    <Link
+                      to="/profile"
+                      className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl"
+                      onClick={closeAllDropdowns}
+                    >
+                      <User size={16} className="text-slate-400" />
+                      <span>Profile & Settings</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        closeAllDropdowns();
+                      }}
+                      className="flex w-full items-center gap-3 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl"
+                    >
+                      <LogOut size={16} />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Link
+                      to="/signin"
+                      onClick={closeAllDropdowns}
+                      className="h-10 border border-[#0755E8] text-[#0755E8] rounded-xl text-xs font-semibold flex items-center justify-center hover:bg-[#EAF2FF]"
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={closeAllDropdowns}
+                      className="h-10 bg-[#0755E8] text-white rounded-xl text-xs font-semibold flex items-center justify-center hover:bg-[#0645C7]"
+                    >
+                      Register
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
       </nav>
-      {/* Overlay */}
-      {isMenuOpen && <div className="fixed inset-0 bg-black/10 backdrop-blur-sm z-30 md:hidden animate-in fade-in duration-300" onClick={() => setIsMenuOpen(false)} />}
+
+      {/* Backdrop overlay for mobile menu */}
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/20 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
     </>
   );
-};
-
-export default Navigation;
+}
