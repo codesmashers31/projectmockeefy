@@ -335,6 +335,8 @@ export default function CoachSessionCard() {
       ...def,
       mentors: allRecommendedMentors.filter((m) => def.filter(m.category || "")),
     }));
+  }, [allRecommendedMentors]);
+
   const trackScrollRef = useRef<HTMLDivElement>(null);
 
   const trackShortcuts = useMemo(() => {
