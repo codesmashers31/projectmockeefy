@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Youtube, Instagram, Linkedin, Mail, ArrowRight, Star, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import axios from '../lib/axios';
+import { getProfileImageUrl } from '../lib/imageUtils';
+import { getCurrentCompany, getJobTitle } from '../lib/expertUtils';
+import { Youtube, Instagram, Linkedin, Mail, ArrowRight, Star, Sparkles } from 'lucide-react';
 import MockeefyLogo from './MockeefyLogo';
 
 interface FooterProps {
@@ -10,91 +14,80 @@ interface FooterProps {
 }
 
 // ============================================================================
-// Verified Experts for Scrolling Marquee Strip
-// ============================================================================
-const scrollingExperts = [
-  {
-    name: 'Priya Sharma',
-    role: 'Senior SDE II',
-    company: 'Google',
-    avatar: '/media/avatars/300-1.png',
-    rating: '4.9',
-    sessions: '42 sessions',
-  },
-  {
-    name: 'Rahul Verma',
-    role: 'Staff Architect',
-    company: 'Amazon',
-    avatar: '/media/avatars/300-2.png',
-    rating: '5.0',
-    sessions: '68 sessions',
-  },
-  {
-    name: 'Ananya Iyer',
-    role: 'Frontend Lead',
-    company: 'Microsoft',
-    avatar: '/media/avatars/300-3.png',
-    rating: '4.9',
-    sessions: '35 sessions',
-  },
-  {
-    name: 'Karthik Raja',
-    role: 'Engineering Manager',
-    company: 'Meta',
-    avatar: '/media/avatars/300-5.png',
-    rating: '4.8',
-    sessions: '51 sessions',
-  },
-  {
-    name: 'Sneha Patel',
-    role: 'System Design Spec.',
-    company: 'Flipkart',
-    avatar: '/media/avatars/300-6.png',
-    rating: '4.9',
-    sessions: '29 sessions',
-  },
-  {
-    name: 'Arjun Mehta',
-    role: 'Cloud & DevOps Lead',
-    company: 'Uber',
-    avatar: '/media/avatars/300-8.png',
-    rating: '5.0',
-    sessions: '44 sessions',
-  },
-  {
-    name: 'Divya Nambiar',
-    role: 'Principal Engineer',
-    company: 'Adobe',
-    avatar: '/media/avatars/300-12.png',
-    rating: '4.9',
-    sessions: '38 sessions',
-  },
-  {
-    name: 'Vikram Malhotra',
-    role: 'Director of Eng.',
-    company: 'Netflix',
-    avatar: '/media/avatars/300-15.png',
-    rating: '5.0',
-    sessions: '73 sessions',
-  },
-  {
-    name: 'Rohan Deshmukh',
-    role: 'Backend Specialist',
-    company: 'Apple',
-    avatar: '/media/avatars/300-20.png',
-    rating: '4.9',
-    sessions: '31 sessions',
-  },
-];
-
-// Duplicate list for infinite seamless marquee loop
-const marqueeExperts = [...scrollingExperts, ...scrollingExperts];
-
-// ============================================================================
-// Pre-Footer Promo Banner with Scrolling Experts (No App / No QR Code)
+// Pre-Footer Promo Banner with Real Verified Experts Scrolling Track
 // ============================================================================
 const PreFooterExpertsBanner = () => {
   const navigate = useNavigate();
+
+  // Fetch real verified active experts from the API
+  const { data: expertsData = [], isLoading } = useQuery({
+    queryKey: ['footerVerifiedExperts'],
+    queryFn: async () => {
+      const res = await axios.get('/api/expert/verified');
+      return Array.isArray(res.data) ? res.data : res.data.data || [];
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Map to top interview experts from our real database
+  const realExperts = useMemo(() => {
+    if (!Array.isArray(expertsData) || expertsData.length === 0) {
+      return [];
+    }
+
+    const mapped = expertsData.map((expert: any) => {
+      const cat =
+        expert.personalInformation?.category ||
+        expert.category ||
+        expert.professionalDetails?.industry ||
+        'Software Engineering';
+
+      const name =
+        expert.personalInformation?.userName ||
+        expert.name ||
+        expert.userDetails?.name ||
+        'Verified Mentor';
+
+      const company = getCurrentCompany(expert.professionalDetails, cat);
+      const role = getJobTitle(expert.professionalDetails, cat);
+      const rating = expert.metrics?.avgRating
+        ? Number(expert.metrics.avgRating).toFixed(1)
+        : '5.0';
+      const totalSessions = expert.metrics?.totalSessions || expert.metrics?.totalReviews || 12;
+      const avatar = getProfileImageUrl(expert.profileImage);
+      const initials = name
+        .trim()
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+      return {
+        id: expert._id || expert.userId,
+        name,
+        role,
+        company,
+        rating,
+        sessions: `${totalSessions} sessions`,
+        avatar,
+        initials,
+        numericRating: Number(expert.metrics?.avgRating || 5),
+        numericSessions: totalSessions,
+      };
+    });
+
+    // Sort by top interview experts (rating and sessions)
+    return mapped
+      .sort((a, b) => b.numericRating * 10 + b.numericSessions - (a.numericRating * 10 + a.numericSessions))
+      .slice(0, 16);
+  }, [expertsData]);
+
+  // Duplicate for seamless infinite marquee loop
+  const marqueeList = useMemo(() => {
+    if (realExperts.length === 0) return [];
+    return [...realExperts, ...realExperts];
+  }, [realExperts]);
 
   return (
     <div className="relative overflow-hidden rounded-[28px] border border-blue-100/90 bg-gradient-to-br from-[#F4F7FE] via-[#F8FAFF] to-[#EFF4FE] p-6 sm:p-8 lg:p-9 mb-12 sm:mb-14 shadow-xs">
@@ -110,7 +103,7 @@ const PreFooterExpertsBanner = () => {
         .animate-experts-marquee {
           display: flex;
           width: max-content;
-          animation: scrollExpertsMarquee 32s linear infinite;
+          animation: scrollExpertsMarquee 34s linear infinite;
         }
         .animate-experts-marquee:hover {
           animation-play-state: paused;
@@ -134,7 +127,7 @@ const PreFooterExpertsBanner = () => {
           </p>
         </div>
 
-        {/* Action Buttons (Web Booking, no app links) */}
+        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
           <Link
             to="/mentors"
@@ -152,7 +145,7 @@ const PreFooterExpertsBanner = () => {
         </div>
       </div>
 
-      {/* Bottom Section: Scrolling Experts Track */}
+      {/* Bottom Section: Scrolling Experts Track (Using Real Mentors from DB) */}
       <div className="pt-6">
         <div className="flex items-center justify-between mb-3.5 px-1">
           <div className="flex items-center gap-2">
@@ -175,48 +168,67 @@ const PreFooterExpertsBanner = () => {
           <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-16 bg-gradient-to-r from-[#F4F7FE] to-transparent z-10" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-16 bg-gradient-to-l from-[#EFF4FE] to-transparent z-10" />
 
-          <div className="animate-experts-marquee flex items-center gap-3.5">
-            {marqueeExperts.map((expert, idx) => (
-              <div
-                key={`${expert.name}-${idx}`}
-                onClick={() => navigate('/mentors')}
-                className="flex items-center gap-3 px-3.5 py-2.5 bg-white/95 backdrop-blur-xs rounded-2xl border border-slate-200/80 shadow-2xs shrink-0 w-56 sm:w-60 hover:border-[#0755E8] hover:shadow-sm hover:-translate-y-0.5 transition-all group cursor-pointer"
-              >
-                {/* Expert Photo */}
-                <div className="relative shrink-0">
-                  <img
-                    src={expert.avatar}
-                    alt={expert.name}
-                    className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-xs group-hover:scale-105 transition-transform"
-                    loading="lazy"
-                  />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#0755E8] text-white flex items-center justify-center text-[9px] font-bold border-2 border-white">
-                    ✓
-                  </span>
-                </div>
+          {isLoading && realExperts.length === 0 ? (
+            /* Loading Skeletons */
+            <div className="flex items-center gap-3.5">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="w-56 sm:w-60 h-16 bg-white/70 rounded-2xl border border-slate-200/50 shimmer-shining shrink-0"
+                />
+              ))}
+            </div>
+          ) : (
+            /* Real Verified Mentors Marquee */
+            <div className="animate-experts-marquee flex items-center gap-3.5">
+              {marqueeList.map((expert, idx) => (
+                <div
+                  key={`${expert.id}-${idx}`}
+                  onClick={() => navigate(`/book-session?expertId=${expert.id}`)}
+                  className="flex items-center gap-3 px-3.5 py-2.5 bg-white/95 backdrop-blur-xs rounded-2xl border border-slate-200/80 shadow-2xs shrink-0 w-56 sm:w-60 hover:border-[#0755E8] hover:shadow-sm hover:-translate-y-0.5 transition-all group cursor-pointer"
+                >
+                  {/* Real Expert Photo */}
+                  <div className="relative shrink-0 w-11 h-11 rounded-full overflow-hidden border-2 border-white shadow-xs bg-slate-100 flex items-center justify-center">
+                    <img
+                      src={expert.avatar}
+                      alt={expert.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <span className="text-[11px] font-black text-[#0755E8] select-none absolute">
+                      {expert.initials}
+                    </span>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#0755E8] text-white flex items-center justify-center text-[9px] font-bold border-2 border-white z-10">
+                      ✓
+                    </span>
+                  </div>
 
-                {/* Info */}
-                <div className="min-w-0 flex-1 leading-tight">
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#0755E8] transition-colors">
-                      {expert.name}
-                    </p>
-                    <div className="flex items-center gap-0.5 text-[10px] text-amber-500 font-bold shrink-0">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      <span>{expert.rating}</span>
+                  {/* Info */}
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#0755E8] transition-colors">
+                        {expert.name}
+                      </p>
+                      <div className="flex items-center gap-0.5 text-[10px] text-amber-500 font-bold shrink-0">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span>{expert.rating}</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{expert.role}</p>
+                    <div className="flex items-center justify-between mt-1 text-[10px]">
+                      <span className="font-bold text-[#0755E8] bg-blue-50 px-1.5 py-0.5 rounded truncate max-w-[90px]">
+                        {expert.company}
+                      </span>
+                      <span className="text-slate-400 truncate">{expert.sessions}</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{expert.role}</p>
-                  <div className="flex items-center justify-between mt-1 text-[10px]">
-                    <span className="font-bold text-[#0755E8] bg-blue-50 px-1.5 py-0.5 rounded">
-                      {expert.company}
-                    </span>
-                    <span className="text-slate-400">{expert.sessions}</span>
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -306,7 +318,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
     <footer className="w-full border-t border-slate-200/80 bg-white">
       <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-10 pb-20 lg:pt-12 lg:pb-10'}`}>
         
-        {/* Pre-Footer Banner Card with Scrolling Experts */}
+        {/* Pre-Footer Banner Card with Real Verified Scrolling Experts */}
         {!minimal && showAppBanner && <PreFooterExpertsBanner />}
 
         {/* Main Footer Links & Connect Section */}
@@ -432,7 +444,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
               </ul>
             </div>
 
-            {/* Column 5: Right "Book a Mock Session" Action Card (No App references) */}
+            {/* Column 5: Right "Book a Mock Session" Action Card */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
               <h4 className="text-sm font-bold text-slate-900">Book a Mock Session</h4>
               <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">
