@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
-import { ArrowUp, Menu, X, LayoutDashboard, Users, Calendar, Bookmark, Bot } from "lucide-react";
+import { ArrowUp, Menu, X, LayoutDashboard, Users, Calendar } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
@@ -75,18 +75,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           >
             <Users size={18} />
             <span>Mentors</span>
-          </button>
-
-          <button
-            onClick={() => navigate("/ai-video")}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
-              location.pathname === "/ai-video"
-                ? "text-[#0755E8]"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Bot size={18} />
-            <span>AI Mock</span>
           </button>
 
           <button

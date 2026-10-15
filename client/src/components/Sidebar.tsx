@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
-  Bot,
-  FileText,
   Bookmark,
   Calendar,
   User,
@@ -87,19 +85,6 @@ export default function Sidebar() {
         location.pathname === "/mentors" ||
         location.pathname === "/find-mentor" ||
         location.pathname === "/book-session",
-    },
-    {
-      label: "AI Mock Interview",
-      icon: Bot,
-      path: "/ai-video",
-      isActive: location.pathname === "/ai-video",
-      badge: "AI",
-    },
-    {
-      label: "Resume Builder",
-      icon: FileText,
-      path: "/resume-builder",
-      isActive: location.pathname === "/resume-builder",
     },
     {
       label: "Saved Mentors",

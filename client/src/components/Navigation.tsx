@@ -180,8 +180,6 @@ export default function Navigation() {
   // Primary navigation links (Naukri style: simple, clean text links right next to logo)
   const navItems = [
     { name: "Find Mentors", href: "/mentors" },
-    { name: "AI Mock Interview", href: "/ai-video" },
-    { name: "Resume Builder", href: "/resume-builder" },
     { name: "My Sessions", href: "/my-sessions" },
   ];
 
