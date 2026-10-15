@@ -229,10 +229,10 @@ export default function Navigation() {
             </Link>
           </div>
 
-          {/* ========================================================= */}
-          {/* CENTER: Navigation Links (Find Mentors, My Sessions, More) */}
-          {/* ========================================================= */}
-          <div className="hidden md:flex items-center justify-center gap-6 lg:gap-8 flex-1 h-full">
+          {/* ========================================================================= */}
+          {/* CENTER EXPERTS ZONE: Nav Links start where the center experts section starts */}
+          {/* ========================================================================= */}
+          <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-2 lg:pl-6 xl:pl-7">
             {navItems.map((item) => {
               const active = isLinkActive(item.href);
               return (
@@ -282,7 +282,7 @@ export default function Navigation() {
               </button>
 
               {isMoreOpen && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute left-0 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                   <div className="p-1 space-y-0.5">
                     {moreItems.map((item) => (
                       <Link
