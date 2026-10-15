@@ -85,10 +85,34 @@ const localUserStorage = multer.diskStorage({
   },
 });
 
+const cloudResumeStorage = createCloudinaryStorage({
+  cloudinary: cloudinary,
+  params: (req, file, cb) => {
+    cb(null, {
+      folder: "mockeefy/resumes",
+      resource_type: "raw",
+    });
+  },
+});
+
+const localResumeStorage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, createLocalDir("uploads/resumes"));
+  },
+  filename(req, file, cb) {
+    const ext = path.extname(file.originalname) || ".pdf";
+    cb(null, `${Date.now()}-${Math.floor(Math.random() * 1e9)}${ext}`);
+  },
+});
+
 // --- Middleware Exports ---
 export const uploadProfile = multer({ storage: useCloudinary ? cloudProfileStorage : localProfileStorage });
 export const uploadVerification = multer({ storage: useCloudinary ? cloudVerificationStorage : localVerificationStorage });
 export const uploadUserProfile = multer({ storage: useCloudinary ? cloudUserStorage : localUserStorage });
+export const uploadResume = multer({
+  storage: useCloudinary ? cloudResumeStorage : localResumeStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 // Helper to get consistent file URL (works for both Cloudinary and local storage)
 export const getFileUrl = (req, file) => {
@@ -105,6 +129,7 @@ export const getFileUrl = (req, file) => {
   if (file.path && typeof file.path === "string") {
     if (file.path.includes("verification")) return `/uploads/verification/${filename}`;
     if (file.path.includes("userProfileImages")) return `/uploads/userProfileImages/${filename}`;
+    if (file.path.includes("resumes")) return `/uploads/resumes/${filename}`;
   }
   return `/uploads/profileImages/${filename}`;
 };

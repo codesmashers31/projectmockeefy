@@ -328,16 +328,16 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
             <div className="space-y-5">
               <Link to="/" className="inline-flex items-center gap-2.5 group">
                 <MockeefyLogo className="h-8.5 w-8.5" variant="brand" />
-                <span className="text-[20px] font-logo font-bold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
+                <span className="text-[20px] font-logo font-black tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
                   Mockeefy
                 </span>
               </Link>
 
               <div>
-                <p className="text-xs font-bold text-slate-800 tracking-wide mb-3">
+                <p className="text-[13px] font-extrabold text-slate-900 tracking-tight mb-3">
                   Connect with us
                 </p>
-                <div className="flex items-center gap-3.5 text-slate-400">
+                <div className="flex items-center gap-2.5 text-slate-500">
                   {/* YouTube */}
                   <a
                     href="https://www.youtube.com/@mockeefy"
@@ -345,9 +345,9 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                     rel="noopener noreferrer"
                     aria-label="YouTube"
                     title="YouTube"
-                    className="hover:text-[#FF0000] hover:scale-110 active:scale-95 transition-all"
+                    className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#FF0000]/10 hover:text-[#FF0000] flex items-center justify-center transition-all active:scale-95 border border-slate-200/60"
                   >
-                    <Youtube className="w-5 h-5 stroke-[1.8]" />
+                    <Youtube className="w-4 h-4 stroke-[2]" />
                   </a>
 
                   {/* Instagram */}
@@ -357,9 +357,9 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                     rel="noopener noreferrer"
                     aria-label="Instagram"
                     title="Instagram"
-                    className="hover:text-[#E4405F] hover:scale-110 active:scale-95 transition-all"
+                    className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#E4405F]/10 hover:text-[#E4405F] flex items-center justify-center transition-all active:scale-95 border border-slate-200/60"
                   >
-                    <Instagram className="w-5 h-5 stroke-[1.8]" />
+                    <Instagram className="w-4 h-4 stroke-[2]" />
                   </a>
 
                   {/* LinkedIn */}
@@ -369,9 +369,9 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                     rel="noopener noreferrer"
                     aria-label="LinkedIn"
                     title="LinkedIn"
-                    className="hover:text-[#0A66C2] hover:scale-110 active:scale-95 transition-all"
+                    className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#0A66C2]/10 hover:text-[#0A66C2] flex items-center justify-center transition-all active:scale-95 border border-slate-200/60"
                   >
-                    <Linkedin className="w-5 h-5 stroke-[1.8]" />
+                    <Linkedin className="w-4 h-4 stroke-[2]" />
                   </a>
 
                   {/* Email */}
@@ -379,9 +379,9 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                     href="mailto:support@mockeefy.com"
                     aria-label="Email support@mockeefy.com"
                     title="Email Us"
-                    className="hover:text-[#0755E8] hover:scale-110 active:scale-95 transition-all"
+                    className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#0755E8]/10 hover:text-[#0755E8] flex items-center justify-center transition-all active:scale-95 border border-slate-200/60"
                   >
-                    <Mail className="w-5 h-5 stroke-[1.8]" />
+                    <Mail className="w-4 h-4 stroke-[2]" />
                   </a>
                 </div>
               </div>
@@ -389,7 +389,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
             {/* Column 2: Platform Links */}
             <div>
-              <p className="text-xs font-bold text-slate-800 tracking-wide mb-3">
+              <p className="text-[13px] font-extrabold text-slate-900 tracking-tight mb-3">
                 Platform
               </p>
               <ul className="space-y-2.5">
@@ -397,7 +397,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                   <li key={link.name}>
                     <Link
                       to={link.href}
-                      className="text-[13px] text-slate-600 hover:text-[#0755E8] transition-colors block py-0.5 leading-snug"
+                      className="text-[13px] font-medium text-slate-600 hover:text-[#0755E8] hover:translate-x-0.5 transition-all block py-0.5 leading-snug"
                     >
                       {link.name}
                     </Link>
@@ -408,7 +408,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
             {/* Column 3: For Mentors */}
             <div>
-              <p className="text-xs font-bold text-slate-800 tracking-wide mb-3">
+              <p className="text-[13px] font-extrabold text-slate-900 tracking-tight mb-3">
                 For Mentors
               </p>
               <ul className="space-y-2.5">
@@ -416,7 +416,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                   <li key={link.name}>
                     <Link
                       to={link.href}
-                      className="text-[13px] text-slate-600 hover:text-[#0755E8] transition-colors block py-0.5 leading-snug"
+                      className="text-[13px] font-medium text-slate-600 hover:text-[#0755E8] hover:translate-x-0.5 transition-all block py-0.5 leading-snug"
                     >
                       {link.name}
                     </Link>
@@ -427,7 +427,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
             {/* Column 4: Legal & Policies */}
             <div>
-              <p className="text-xs font-bold text-slate-800 tracking-wide mb-3">
+              <p className="text-[13px] font-extrabold text-slate-900 tracking-tight mb-3">
                 Legal & Trust
               </p>
               <ul className="space-y-2.5">
@@ -435,7 +435,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                   <li key={link.name}>
                     <Link
                       to={link.href}
-                      className="text-[13px] text-slate-600 hover:text-[#0755E8] transition-colors block py-0.5 leading-snug"
+                      className="text-[13px] font-medium text-slate-600 hover:text-[#0755E8] hover:translate-x-0.5 transition-all block py-0.5 leading-snug"
                     >
                       {link.name}
                     </Link>
@@ -446,8 +446,8 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
             {/* Column 5: Right "Book a Mock Session" Action Card */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-              <h4 className="text-sm font-bold text-slate-900">Book a Mock Session</h4>
-              <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">
+              <h4 className="text-sm font-extrabold text-slate-900">Book a Mock Session</h4>
+              <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed font-medium">
                 Practice 1-on-1 with verified tech leaders and get real-time feedback.
               </p>
               <Link
@@ -457,7 +457,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                 <span>Find Mentors</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-              <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-semibold">
                 <span>500+ Active Mentors</span>
                 <span className="text-emerald-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Now
@@ -470,27 +470,75 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
         {/* Bottom Horizontal Bar: Copyright & Trusted Mentors Strip */}
         <hr className="border-slate-200/80 my-7" />
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-5 text-xs text-slate-500">
           {/* Left: Trademark Notice */}
-          <div className="text-center sm:text-left leading-relaxed">
+          <div className="text-center lg:text-left leading-relaxed">
             <p className="text-slate-400">All trademarks are the property of their respective owners.</p>
-            <p className="font-medium text-slate-600 mt-0.5">
+            <p className="font-semibold text-slate-700 mt-0.5">
               All rights reserved © {new Date().getFullYear()} Mockeefy Technologies Pvt. Ltd.
             </p>
           </div>
 
-          {/* Right: Top Mentors From Brand Tags */}
-          <div className="flex items-center gap-3 text-xs flex-wrap justify-center sm:justify-end">
-            <span className="font-semibold text-slate-400">Top Mentors From:</span>
-            <span className="font-bold text-slate-600 hover:text-[#0755E8] transition-colors cursor-default">Google</span>
-            <span className="text-slate-300">·</span>
-            <span className="font-bold text-slate-600 hover:text-[#0755E8] transition-colors cursor-default">Microsoft</span>
-            <span className="text-slate-300">·</span>
-            <span className="font-bold text-slate-600 hover:text-[#0755E8] transition-colors cursor-default">Amazon</span>
-            <span className="text-slate-300">·</span>
-            <span className="font-bold text-slate-600 hover:text-[#0755E8] transition-colors cursor-default">Meta</span>
-            <span className="text-slate-300">·</span>
-            <span className="font-bold text-slate-600 hover:text-[#0755E8] transition-colors cursor-default">Flipkart</span>
+          {/* Right: Top Mentors From Branded Badges */}
+          <div className="flex items-center gap-2 text-xs flex-wrap justify-center lg:justify-end">
+            <span className="font-extrabold text-slate-700 tracking-tight mr-1 text-[12.5px]">
+              Top Mentors From:
+            </span>
+
+            {/* Google Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-white border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-xs transition-all cursor-default select-none">
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Google</span>
+            </span>
+
+            {/* Microsoft Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-white border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-xs transition-all cursor-default select-none">
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 23 23">
+                <path fill="#f35325" d="M1 1h10v10H1z" />
+                <path fill="#81bc06" d="M12 1h10v10H12z" />
+                <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                <path fill="#ffba08" d="M12 12h10v10H12z" />
+              </svg>
+              <span>Microsoft</span>
+            </span>
+
+            {/* Amazon Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-white border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-xs transition-all cursor-default select-none">
+              <svg className="w-3.5 h-3.5 shrink-0 text-[#FF9900]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13.9 14.8c-2.4 1.7-5.9 2.6-8.9 2.6-4.2 0-8-1.5-10.8-4.1-.2-.2-.2-.5 0-.7.3-.2.6-.2.8 0 2.6 2.4 6.2 3.8 10.1 3.8 2.8 0 6.1-.8 8.4-2.4.4-.3.9.1.8.5-.1.1-.2.2-.4.3zm6.6-1.5c-.3-.4-1.8-.2-2.5 0-.2 0-.3-.2-.1-.3 1.3-.9 3.4-.6 3.7-.3.3.3.1 2.5-1.1 3.5-.2.2-.4.1-.3-.1.4-.7.6-2.4.3-2.8z" />
+                <path d="M14.5 3.5c-3.1 0-5.7 2.1-5.7 5.6 0 3.2 2.1 5.3 5.4 5.3 1.6 0 3.1-.6 4-1.7v1.4c0 .2.2.4.4.4h1.7c.2 0 .4-.2.4-.4V3.8c0-.2-.2-.4-.4-.4h-1.7c-.2 0-.4.2-.4.4v1.2c-1-.9-2.3-1.5-3.7-1.5zm.7 2.3c1.7 0 3 1.4 3 3.3s-1.3 3.3-3 3.3-3-1.4-3-3.3 1.3-3.3 3-3.3z" />
+              </svg>
+              <span>Amazon</span>
+            </span>
+
+            {/* Meta Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-white border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-xs transition-all cursor-default select-none">
+              <svg className="w-3.5 h-3.5 shrink-0 text-[#0668E1]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 5.7c-2.3 0-4.3 1.2-5.7 3-1.6 2.2-2.5 5.2-2.5 8.3 0 1.9.4 3.7 1.3 5.3.2.4.6.7 1.1.7.7 0 1.3-.6 1.3-1.3 0-.3-.1-.6-.2-.8-.7-1.2-1-2.5-1-3.9 0-2.6.7-5.1 2.1-7 1.1-1.4 2.5-2.2 4-2.2 1.6 0 3 .8 4.1 2.2 1.4 1.9 2.1 4.4 2.1 7 0 1.4-.3 2.7-1 3.9-.1.2-.2.5-.2.8 0 .7.6 1.3 1.3 1.3.5 0 .9-.3 1.1-.7.9-1.6 1.3-3.4 1.3-5.3 0-3.1-.9-6.1-2.5-8.3-1.4-1.8-3.4-3-5.7-3z" />
+              </svg>
+              <span>Meta</span>
+            </span>
+
+            {/* Flipkart Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-white border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-xs transition-all cursor-default select-none">
+              <span className="w-3.5 h-3.5 rounded-full bg-[#2874F0] text-[#FFE500] text-[10px] font-black flex items-center justify-center leading-none italic shrink-0">
+                f
+              </span>
+              <span>Flipkart</span>
+            </span>
+
+            {/* Apple Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-white border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-xs transition-all cursor-default select-none">
+              <svg className="w-3.5 h-3.5 shrink-0 fill-current text-slate-900" viewBox="0 0 170 170">
+                <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.67-7.81-11.96-14.34-5.78-8.8-10.27-18.91-13.48-30.33-3.21-11.41-4.82-22.12-4.82-32.13 0-14.54 3.65-26.68 10.96-36.41 7.3-9.74 16.59-14.7 27.86-14.89 5.35 0 11.16 1.41 17.43 4.24 6.27 2.83 10.19 4.3 11.76 4.41 1.79-.11 5.92-1.63 12.39-4.57 6.47-2.93 12.18-4.29 17.13-4.08 12.63.65 22.84 5.33 30.63 14.04-11.09 6.74-16.52 16.09-16.3 28.05.22 9.57 3.86 17.61 10.92 24.14 7.07 6.52 15.38 10.33 24.95 11.41-2.07 6.31-4.79 12.55-8.16 18.72zm-35.84-112.59c0 7.4-2.67 14.36-8.02 20.88-5.35 6.52-11.85 10.43-19.5 11.73-.22-.87-.33-1.85-.33-2.93 0-7.17 2.88-14.24 8.64-21.2 5.76-6.95 12.44-10.97 20.05-12.06.11 1.19.16 2.38.16 3.58z" />
+              </svg>
+              <span>Apple</span>
+            </span>
           </div>
         </div>
 

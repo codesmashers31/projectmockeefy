@@ -635,3 +635,76 @@ export const getAISuggestions = async (req, res) => {
         return res.status(500).json({ success: false, message: "AI Engine error" });
     }
 };
+
+/* ----------------- Upload Resume File (PDF / DOC / DOCX) ------------------ */
+export const uploadResumeFile = async (req, res) => {
+    try {
+        const userId = req.headers.userid || req.user?.id;
+        if (!userId) {
+            return res.status(400).json({ success: false, message: "User ID required" });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "No resume file provided" });
+        }
+
+        let fileUrl = getFileUrl(req, req.file);
+        if (!fileUrl && req.file) {
+            fileUrl = req.file.secure_url || req.file.url || (req.file.path && req.file.path.startsWith("http") ? req.file.path : "") || "";
+        }
+
+        const title = req.body.title || req.file.originalname.replace(/\.[^/.]+$/, "") || "Uploaded Resume";
+        const fileSize = req.file.size ? `${(req.file.size / (1024 * 1024)).toFixed(2)} MB` : "1.2 MB";
+        const fileName = req.file.originalname || "resume.pdf";
+
+        // If user has 0 resumes, make this the default
+        const existingCount = await Resume.countDocuments({ userId });
+        const isDefault = existingCount === 0;
+
+        const newResume = await Resume.create({
+            userId,
+            title,
+            fileName,
+            fileSize,
+            fileUrl,
+            isDefault
+        });
+
+        return res.json({
+            success: true,
+            message: "Resume uploaded successfully",
+            data: newResume
+        });
+    } catch (err) {
+        console.error("uploadResumeFile error:", err);
+        return res.status(500).json({ success: false, message: "Failed to upload resume file" });
+    }
+};
+
+/* ----------------- Delete Profile Image ------------------ */
+export const deleteProfileImage = async (req, res) => {
+    try {
+        const userId = req.headers.userid || req.user?.id;
+        if (!userId) {
+            return res.status(400).json({ success: false, message: "User ID required" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        user.profileImage = "";
+        user.profileCompletion = calculateProfileCompletion(user);
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: "Profile image removed successfully",
+            imageUrl: ""
+        });
+    } catch (err) {
+        console.error("deleteProfileImage error:", err);
+        return res.status(500).json({ success: false, message: "Internal error" });
+    }
+};
+

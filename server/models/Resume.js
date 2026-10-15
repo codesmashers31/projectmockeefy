@@ -91,6 +91,18 @@ const resumeSchema = new mongoose.Schema({
   isDefault: {
     type: Boolean,
     default: false
+  },
+  fileUrl: {
+    type: String,
+    default: ""
+  },
+  fileName: {
+    type: String,
+    default: ""
+  },
+  fileSize: {
+    type: String,
+    default: ""
   }
 }, { timestamps: true });
 
