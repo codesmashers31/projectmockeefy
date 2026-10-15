@@ -23,7 +23,11 @@ export default function FeaturedExpertsLandingSection() {
     if (!Array.isArray(expertsData)) return [];
 
     return expertsData.map((expert: any) => {
-      const cat = expert.category || expert.professionalDetails?.industry || "Software Engineering";
+      const cat =
+        expert.personalInformation?.category ||
+        expert.category ||
+        expert.professionalDetails?.industry ||
+        "Software Engineering";
 
       const skills = (() => {
         if (Array.isArray(expert.skillsAndExpertise?.tools) && expert.skillsAndExpertise.tools.length) {

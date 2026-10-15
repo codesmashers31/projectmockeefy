@@ -177,11 +177,17 @@ export default function Navigation() {
     }
   };
 
-  // Primary navigation links (Naukri style: simple, clean text links right next to logo)
-  const navItems = [
-    { name: "Find Mentors", href: "/mentors" },
-    { name: "My Sessions", href: "/my-sessions" },
-  ];
+  // Primary navigation links tailored for user vs guest
+  const navItems = user
+    ? [
+        { name: "Find Mentors", href: "/mentors" },
+        { name: "My Sessions", href: "/my-sessions" },
+      ]
+    : [
+        { name: "Find Mentors", href: "/mentors" },
+        { name: "Pricing & Plans", href: "/plans" },
+        { name: "Interview Tips", href: "/tips" },
+      ];
 
   const moreItems = [
     { name: "Saved Mentors", href: "/saved-experts", icon: <Bookmark size={16} /> },
@@ -214,9 +220,9 @@ export default function Navigation() {
       >
         <div className="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto h-full flex items-center justify-between gap-3 sm:gap-4">
           {/* ========================================================= */}
-          {/* LEFT: Mockeefy Logo centered over the 240px Side Nav       */}
+          {/* LEFT: Mockeefy Logo left-aligned over the 240px Side Nav   */}
           {/* ========================================================= */}
-          <div className="flex items-center justify-start lg:w-[240px] lg:justify-center shrink-0 h-full">
+          <div className="flex items-center justify-start lg:w-[240px] shrink-0 h-full">
             <Link
               to="/"
               className="flex items-center gap-2.5 group active:scale-95 transition-transform"
@@ -232,7 +238,7 @@ export default function Navigation() {
           {/* ========================================================================= */}
           {/* CENTER EXPERTS ZONE: Nav Links start where the center experts section starts */}
           {/* ========================================================================= */}
-          <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-2 lg:pl-6 xl:pl-7">
+          <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8">
             {navItems.map((item) => {
               const active = isLinkActive(item.href);
               return (

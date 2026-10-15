@@ -1,28 +1,12 @@
-import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/DashboardLayout";
 import CoachSessionCard from "../components/CoachSessionCard";
-import MarketingLanding from "../components/MarketingLanding";
-import Navigation from "../components/Navigation";
-import Footer from "../components/Footer";
 
 /**
- * "/" route:
- * - Not logged in: marketing landing (ads for Mockeefy). No "How it works", no experts.
- * - Logged in: app layout with experts only (categories + mentor cards).
+ * "/" route (Home Page):
+ * Displays Mockeefy's main DashboardLayout with CoachSessionCard (all verified mentor categories).
+ * Both guests and registered candidates see our full list of mentors immediately, with no empty state.
  */
 const Index = () => {
-  const { user } = useAuth();
-
-  if (!user) {
-    return (
-      <>
-        <Navigation />
-        <MarketingLanding />
-        <Footer />
-      </>
-    );
-  }
-
   return (
     <DashboardLayout>
       <CoachSessionCard />
