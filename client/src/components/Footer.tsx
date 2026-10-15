@@ -1,57 +1,106 @@
 import { Link } from 'react-router-dom';
-import MockeefyLogo from "./MockeefyLogo";
+import { Youtube, Instagram, Linkedin, Mail } from 'lucide-react';
+import MockeefyLogo from './MockeefyLogo';
 
 interface FooterProps {
   minimal?: boolean;
   showSkeletons?: boolean;
 }
 
+const socialLinks = [
+  {
+    name: 'YouTube',
+    href: 'https://www.youtube.com/@mockeefy',
+    icon: Youtube,
+    hoverClass: 'hover:text-[#FF0000] hover:border-red-200 hover:bg-red-50/70',
+    ariaLabel: 'Visit Mockeefy on YouTube',
+  },
+  {
+    name: 'Instagram',
+    href: 'https://www.instagram.com/mockeefy',
+    icon: Instagram,
+    hoverClass: 'hover:text-[#E4405F] hover:border-pink-200 hover:bg-pink-50/70',
+    ariaLabel: 'Follow Mockeefy on Instagram',
+  },
+  {
+    name: 'LinkedIn',
+    href: 'https://www.linkedin.com/company/mockeefy',
+    icon: Linkedin,
+    hoverClass: 'hover:text-[#0A66C2] hover:border-blue-200 hover:bg-blue-50/70',
+    ariaLabel: 'Connect with Mockeefy on LinkedIn',
+  },
+  {
+    name: 'Email',
+    href: 'mailto:support@mockeefy.com',
+    icon: Mail,
+    hoverClass: 'hover:text-[#0755E8] hover:border-blue-200 hover:bg-blue-50/70',
+    ariaLabel: 'Email Mockeefy Support',
+  },
+];
+
+const platformLinks = [
+  { name: 'Find Mentors', href: '/mentors' },
+  { name: 'Pricing & Plans', href: '/plans' },
+  { name: 'My Sessions', href: '/my-sessions' },
+  { name: 'Interview Tips', href: '/tips' },
+  { name: 'Watch Mock Interviews', href: '/watch-mock' },
+];
+
+const expertLinks = [
+  { name: 'Become a Mentor', href: '/signup?role=expert' },
+  { name: 'Mentor Sign In', href: '/signin' },
+  { name: 'Verify Credentials', href: '/certificates' },
+  { name: 'Demo Booking', href: '/demo/booking' },
+];
+
+const policyLinks = [
+  { name: 'Terms & Conditions', href: '/terms' },
+  { name: 'Privacy Policy', href: '/privacy' },
+  { name: 'Refund & Cancellation', href: '/refund-cancellation' },
+  { name: 'Return Policy', href: '/return-policy' },
+  { name: 'Shipping Policy', href: '/shipping-policy' },
+];
+
 const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
-  <footer className="w-full border-t border-[#E2E8F0]/80 bg-white">
-    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'py-8 md:py-10'}`}>
+  <footer className="w-full border-t border-slate-200/80 bg-white">
+    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-10 pb-20 lg:pt-12 lg:pb-10'}`}>
       {!minimal && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          {/* Brand Column */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-slate-100 shimmer-shining border border-slate-200/50" />
-              <div className="h-8 w-28 rounded-lg bg-slate-100 shimmer-shining border border-slate-200/50" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 mb-10">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-slate-100 shimmer-shining border border-slate-200/50" />
+              <div className="h-6 w-24 rounded-lg bg-slate-100 shimmer-shining border border-slate-200/50" />
             </div>
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               <div className="h-3 w-56 bg-slate-100 rounded shimmer-shining border border-slate-200/50" />
               <div className="h-3 w-48 bg-slate-100 rounded shimmer-shining border border-slate-200/50" />
             </div>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 shimmer-shining border border-slate-200/50" />
-              <div className="w-10 h-10 rounded-xl bg-slate-100 shimmer-shining border border-slate-200/50" />
+            <div className="flex gap-2.5 pt-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="w-9 h-9 rounded-xl bg-slate-100 shimmer-shining border border-slate-200/50" />
+              ))}
             </div>
           </div>
 
-          {/* Columns */}
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-6">
-              <div className="h-4 w-20 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
-              <div className="space-y-4">
-                <div className="h-3 w-28 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
-                <div className="h-3 w-32 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
-                <div className="h-3 w-24 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
-                <div className="h-3 w-28 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
+            <div key={i} className="space-y-4">
+              <div className="h-4 w-24 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <div key={j} className="h-3 w-32 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
+                ))}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Bottom Bar */}
-      <div className={`border-t border-slate-100 ${minimal ? 'pt-2' : 'pt-8'}`}>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="h-3.5 w-60 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
-            <div className="h-3 w-72 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
-          </div>
-          <div className="flex gap-6">
+      <div className="border-t border-slate-100 pt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="h-3.5 w-60 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
+          <div className="flex gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-3.5 w-12 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
+              <div key={i} className="h-3 w-14 rounded bg-slate-100 shimmer-shining border border-slate-200/50" />
             ))}
           </div>
         </div>
@@ -66,83 +115,153 @@ const Footer = ({ minimal = false, showSkeletons = false }: FooterProps) => {
   }
 
   return (
-    <footer className="w-full border-t border-[#E2E8F0]/80 bg-white">
-      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'py-8 md:py-10'}`}>
-        {/* Main Footer Content */}
+    <footer className="w-full border-t border-slate-200/80 bg-white">
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-10 pb-20 lg:pt-12 lg:pb-10'}`}>
         {!minimal && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            {/* Brand Column */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 group">
-                <MockeefyLogo className="h-10 w-10" variant="brand" />
-                <div className="text-2xl text-[#004fcb] font-logo tracking-tight">Mockeefy</div>
-              </div>
-              <p className="text-slate-600 leading-relaxed text-sm max-w-xs">
-                The world's leading platform to <span className="text-[#004fcb] font-semibold">book real experts</span> for mock interviews. Master your interviews with live sessions and expert feedback.
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 mb-10">
+            {/* Column 1: Brand & Contact Info */}
+            <div className="space-y-4 lg:pr-4">
+              <Link to="/" className="inline-flex items-center gap-2.5 group">
+                <MockeefyLogo className="h-8.5 w-8.5" variant="brand" />
+                <span className="text-[20px] font-logo font-bold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
+                  Mockeefy
+                </span>
+              </Link>
+
+              <p className="text-slate-500 leading-relaxed text-xs sm:text-[13px] max-w-sm">
+                The premier platform to practice 1-on-1 mock interviews with verified industry leaders. Master your technical and behavioral rounds with actionable, real-time feedback.
               </p>
-              <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 bg-slate-50 border border-slate-100 hover:border-[#004fcb] hover:bg-blue-50 rounded-xl flex items-center justify-center transition-all duration-300 group">
-                  <svg className="w-5 h-5 text-slate-400 group-hover:text-[#004fcb] transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-                  </svg>
+
+              {/* Direct Email Contact Link */}
+              <div className="pt-1">
+                <a
+                  href="mailto:support@mockeefy.com"
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#0755E8] transition-colors group/mail"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-[#0755E8] group-hover/mail:bg-[#0755E8] group-hover/mail:text-white transition-colors">
+                    <Mail className="w-3.5 h-3.5" />
+                  </div>
+                  <span>support@mockeefy.com</span>
                 </a>
-                <a href="#" className="w-10 h-10 bg-slate-50 border border-slate-100 hover:border-[#004fcb] hover:bg-blue-50 rounded-xl flex items-center justify-center transition-all duration-300 group">
-                  <svg className="w-5 h-5 text-slate-400 group-hover:text-[#004fcb] transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0h.003z" />
-                  </svg>
-                </a>
+              </div>
+
+              {/* Social & Contact Logo Buttons */}
+              <div className="pt-2">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                  Connect With Us
+                </p>
+                <div className="flex items-center gap-2.5">
+                  {socialLinks.map((social) => {
+                    const IconComponent = social.icon;
+                    return (
+                      <a
+                        key={social.name}
+                        href={social.href}
+                        target={social.href.startsWith('http') ? '_blank' : undefined}
+                        rel={social.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        aria-label={social.ariaLabel}
+                        title={social.name}
+                        className={`w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/90 flex items-center justify-center text-slate-500 transition-all duration-200 shadow-2xs hover:scale-105 active:scale-95 ${social.hoverClass}`}
+                      >
+                        <IconComponent className="w-4.5 h-4.5 stroke-[1.9]" />
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Product Column */}
-            <div className="space-y-6">
-              <h3 className="font-bold text-[#004fcb] text-sm uppercase tracking-widest">Product</h3>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Features</a></li>
-                <li><Link to="/plans" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Pricing</Link></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Use Cases</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Testimonials</a></li>
+            {/* Column 2: Platform Links */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                Platform
+              </h3>
+              <ul className="space-y-2.5">
+                {platformLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      to={link.href}
+                      className="text-slate-500 hover:text-[#0755E8] transition-colors text-xs sm:text-[13px] font-medium inline-flex items-center gap-2 group"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#0755E8] transition-colors shrink-0" />
+                      <span>{link.name}</span>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {/* Resources Column */}
-            <div className="space-y-6">
-              <h3 className="font-bold text-[#004fcb] text-sm uppercase tracking-widest">Resources</h3>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Blog</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Documentation</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Support Center</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>API Status</a></li>
+            {/* Column 3: For Experts */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                For Mentors
+              </h3>
+              <ul className="space-y-2.5">
+                {expertLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      to={link.href}
+                      className="text-slate-500 hover:text-[#0755E8] transition-colors text-xs sm:text-[13px] font-medium inline-flex items-center gap-2 group"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#0755E8] transition-colors shrink-0" />
+                      <span>{link.name}</span>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {/* Company Column */}
-            <div className="space-y-6">
-              <h3 className="font-bold text-[#004fcb] text-sm uppercase tracking-widest">Company</h3>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>About Us</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Careers</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Contact Us</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-[#004fcb] transition-all duration-200 text-sm font-medium flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#004fcb] transition-colors"></span>Partners</a></li>
+            {/* Column 4: Policies & Legal */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                Legal & Trust
+              </h3>
+              <ul className="space-y-2.5">
+                {policyLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      to={link.href}
+                      className="text-slate-500 hover:text-[#0755E8] transition-colors text-xs sm:text-[13px] font-medium inline-flex items-center gap-2 group"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#0755E8] transition-colors shrink-0" />
+                      <span>{link.name}</span>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
         )}
 
-        {/* Bottom Bar */}
-        <div className={`border-t border-slate-100 ${minimal ? 'pt-2' : 'pt-8'}`}>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-sm text-slate-400 font-medium text-center md:text-left">
-              © {new Date().getFullYear()} <span className="text-[#004fcb] font-bold">Mockeefy</span>. All rights reserved.
-              <p className="mt-1 text-xs text-slate-400 font-normal">Professional interview preparation with verified experts</p>
+        {/* Bottom Bar: Copyright & Quick Links */}
+        <div className={`border-t border-slate-200/80 ${minimal ? 'pt-2' : 'pt-6'}`}>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div className="text-center sm:text-left">
+              © {new Date().getFullYear()} <span className="font-semibold text-slate-700">Mockeefy</span>. All rights reserved.
+              <span className="hidden sm:inline text-slate-300 mx-2">|</span>
+              <span className="text-slate-400">1-on-1 Mock Interviews with Verified Experts</span>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-8 text-xs font-semibold uppercase tracking-wider">
-              <Link to="/terms" className="text-slate-400 hover:text-[#004fcb] transition-all">Terms</Link>
-              <Link to="/privacy" className="text-slate-400 hover:text-[#004fcb] transition-all">Privacy</Link>
-              <Link to="/refund-cancellation" className="text-slate-400 hover:text-[#004fcb] transition-all">Refunds</Link>
-              <Link to="/return-policy" className="text-slate-400 hover:text-[#004fcb] transition-all">Returns</Link>
-              <Link to="/shipping-policy" className="text-slate-400 hover:text-[#004fcb] transition-all">Shipping</Link>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 sm:gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
+              <Link to="/terms" className="hover:text-[#0755E8] transition-colors">
+                Terms
+              </Link>
+              <span className="text-slate-300">·</span>
+              <Link to="/privacy" className="hover:text-[#0755E8] transition-colors">
+                Privacy
+              </Link>
+              <span className="text-slate-300">·</span>
+              <Link to="/refund-cancellation" className="hover:text-[#0755E8] transition-colors">
+                Refunds
+              </Link>
+              <span className="text-slate-300">·</span>
+              <Link to="/return-policy" className="hover:text-[#0755E8] transition-colors">
+                Returns
+              </Link>
+              <span className="text-slate-300">·</span>
+              <Link to="/shipping-policy" className="hover:text-[#0755E8] transition-colors">
+                Shipping
+              </Link>
             </div>
           </div>
         </div>
