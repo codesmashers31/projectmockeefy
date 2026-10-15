@@ -214,13 +214,12 @@ export default function Navigation() {
       >
         <div className="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto h-full flex items-center justify-between gap-3 sm:gap-4">
           {/* ========================================================= */}
-          {/* LEFT GROUP: Logo + Clean Text Links (Naukri Reference)    */}
+          {/* LEFT: Mockeefy Logo centered over the 240px Side Nav       */}
           {/* ========================================================= */}
-          <div className="flex items-center gap-6 lg:gap-8 h-full">
-            {/* Brand Logo */}
+          <div className="flex items-center justify-start lg:w-[240px] lg:justify-center shrink-0 h-full">
             <Link
               to="/"
-              className="flex items-center gap-2.5 group active:scale-95 transition-transform shrink-0"
+              className="flex items-center gap-2.5 group active:scale-95 transition-transform"
               onClick={closeAllDropdowns}
             >
               <MockeefyLogo className="h-8.5 w-8.5 sm:h-9 sm:w-9" variant="brand" />
@@ -228,106 +227,105 @@ export default function Navigation() {
                 Mockeefy
               </span>
             </Link>
+          </div>
 
-            {/* Desktop Navigation Links (Naukri style text tabs) */}
-            <div className="hidden md:flex items-center gap-5 lg:gap-7 h-full">
-              {navItems.map((item) => {
-                const active = isLinkActive(item.href);
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`relative h-full flex items-center text-[14px] lg:text-[14.5px] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:text-[#0755E8] ${
-                      active
-                        ? "text-[#0755E8] font-bold"
-                        : "text-slate-600 hover:text-[#0755E8] font-medium"
-                    }`}
-                    onClick={closeAllDropdowns}
-                  >
-                    <span>{item.name}</span>
-                    {active && (
-                      <span className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[#0755E8] rounded-t-full" />
-                    )}
-                  </Link>
-                );
-              })}
-
-              {/* "More" Dropdown Menu */}
-              <div className="relative h-full flex items-center" ref={moreMenuRef}>
-                <button
-                  type="button"
-                  aria-haspopup="true"
-                  aria-expanded={isMoreOpen}
-                  aria-label="More navigation options"
-                  onClick={() => {
-                    setIsMoreOpen((prev) => !prev);
-                    setIsProfileMenuOpen(false);
-                    setIsNotificationOpen(false);
-                  }}
-                  className={`flex items-center gap-1 text-[14px] lg:text-[14.5px] transition-colors cursor-pointer focus-visible:outline-none ${
-                    isMoreOpen
+          {/* ========================================================= */}
+          {/* CENTER: Navigation Links (Find Mentors, My Sessions, More) */}
+          {/* ========================================================= */}
+          <div className="hidden md:flex items-center justify-center gap-6 lg:gap-8 flex-1 h-full">
+            {navItems.map((item) => {
+              const active = isLinkActive(item.href);
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`relative h-full flex items-center text-[14px] lg:text-[14.5px] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:text-[#0755E8] ${
+                    active
                       ? "text-[#0755E8] font-bold"
                       : "text-slate-600 hover:text-[#0755E8] font-medium"
                   }`}
+                  onClick={closeAllDropdowns}
                 >
-                  <span>More</span>
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform duration-200 ${
-                      isMoreOpen ? "rotate-180 text-[#0755E8]" : "text-slate-400"
-                    }`}
-                  />
-                </button>
+                  <span>{item.name}</span>
+                  {active && (
+                    <span className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[#0755E8] rounded-t-full" />
+                  )}
+                </Link>
+              );
+            })}
 
-                {isMoreOpen && (
-                  <div className="absolute left-0 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="p-1 space-y-0.5">
-                      {moreItems.map((item) => (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          className="flex items-center px-3.5 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] text-[13.5px] font-medium transition-colors"
-                          onClick={closeAllDropdowns}
-                        >
-                          <span className="mr-3 text-slate-400 group-hover:text-[#0755E8]">
-                            {item.icon}
-                          </span>
-                          <span>{item.name}</span>
-                        </Link>
-                      ))}
-                    </div>
+            {/* "More" Dropdown Menu */}
+            <div className="relative h-full flex items-center" ref={moreMenuRef}>
+              <button
+                type="button"
+                aria-haspopup="true"
+                aria-expanded={isMoreOpen}
+                aria-label="More navigation options"
+                onClick={() => {
+                  setIsMoreOpen((prev) => !prev);
+                  setIsProfileMenuOpen(false);
+                  setIsNotificationOpen(false);
+                }}
+                className={`flex items-center gap-1 text-[14px] lg:text-[14.5px] transition-colors cursor-pointer focus-visible:outline-none ${
+                  isMoreOpen
+                    ? "text-[#0755E8] font-bold"
+                    : "text-slate-600 hover:text-[#0755E8] font-medium"
+                }`}
+              >
+                <span>More</span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    isMoreOpen ? "rotate-180 text-[#0755E8]" : "text-slate-400"
+                  }`}
+                />
+              </button>
+
+              {isMoreOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-1 space-y-0.5">
+                    {moreItems.map((item) => (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className="flex items-center px-3.5 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] text-[13.5px] font-medium transition-colors"
+                        onClick={closeAllDropdowns}
+                      >
+                        <span className="mr-3 text-slate-400 group-hover:text-[#0755E8]">
+                          {item.icon}
+                        </span>
+                        <span>{item.name}</span>
+                      </Link>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* ========================================================= */}
-          {/* CENTER: Sleek Search Bar (Naukri Image 1 Reference)       */}
+          {/* RIGHT GROUP: Small Search Bar + Notifications + Profile   */}
           {/* ========================================================= */}
-          <div className="hidden lg:flex items-center flex-1 max-w-xs xl:max-w-md mx-3 xl:mx-6">
-            <form onSubmit={handleSearchSubmit} className="relative w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search mentors, skills, roles..."
-                className="w-full h-9.5 pl-4 pr-10 text-[13px] bg-[#F8FAFC] hover:bg-white focus:bg-white text-slate-800 placeholder:text-slate-400 rounded-full border border-slate-200/90 focus:border-[#0755E8] focus:outline-none focus:ring-2 focus:ring-[#0755E8]/10 transition-all shadow-2xs"
-              />
-              <button
-                type="submit"
-                aria-label="Search"
-                className="absolute right-1 top-1/2 -translate-y-1/2 w-7.5 h-7.5 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Search size={13} className="stroke-[2.5]" />
-              </button>
-            </form>
-          </div>
-
-          {/* ========================================================= */}
-          {/* RIGHT GROUP: User Actions or Log in / Register            */}
-          {/* ========================================================= */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Small Compact Search Bar */}
+            <div className="hidden md:flex items-center">
+              <form onSubmit={handleSearchSubmit} className="relative w-36 sm:w-40 md:w-44 lg:w-48">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search mentors..."
+                  className="w-full h-8 pl-3 pr-7 text-[12px] bg-[#F8FAFC] hover:bg-white focus:bg-white text-slate-800 placeholder:text-slate-400 rounded-full border border-slate-200/90 focus:border-[#0755E8] focus:outline-none focus:ring-1 focus:ring-[#0755E8]/20 transition-all shadow-2xs"
+                />
+                <button
+                  type="submit"
+                  aria-label="Search"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  <Search size={11} className="stroke-[2.5]" />
+                </button>
+              </form>
+            </div>
             {/* Authenticated User Controls */}
             {user ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
