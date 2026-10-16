@@ -45,20 +45,41 @@ function MentorCategoryScrollRow({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
+  // Mouse drag-to-scroll state
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const hasMoved = useRef(false);
+
   const checkScroll = () => {
     const el = rowRef.current;
     if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 6);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
   };
 
   useEffect(() => {
     const el = rowRef.current;
     if (!el) return;
+
     checkScroll();
+    const t1 = setTimeout(checkScroll, 60);
+    const t2 = setTimeout(checkScroll, 350);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => checkScroll());
+      ro.observe(el);
+    }
+
     el.addEventListener("scroll", checkScroll, { passive: true });
     window.addEventListener("resize", checkScroll);
+
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      if (ro) ro.disconnect();
       el.removeEventListener("scroll", checkScroll);
       window.removeEventListener("resize", checkScroll);
     };
@@ -67,14 +88,68 @@ function MentorCategoryScrollRow({
   const handleScroll = (dir: "left" | "right") => {
     const el = rowRef.current;
     if (!el) return;
-    const scrollAmount = el.clientWidth * 0.85;
-    el.scrollBy({ left: dir === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
+
+    // Calculate exact single profile step: card width + gap (16px)
+    const firstCard = el.querySelector<HTMLElement>(":scope > div");
+    const cardWidth = firstCard ? firstCard.offsetWidth : 280;
+    const gap = 16;
+    const step = cardWidth + gap;
+
+    // Scroll exactly one profile at a time
+    el.scrollBy({
+      left: dir === "left" ? -step : step,
+      behavior: "smooth",
+    });
+
+    setTimeout(checkScroll, 350);
+  };
+
+  // Drag-to-scroll mouse handlers (1:1 tracking, stops dead on mouse release)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = rowRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    hasMoved.current = false;
+    startX.current = e.pageX - el.offsetLeft;
+    scrollLeftStart.current = el.scrollLeft;
+    el.style.scrollBehavior = "auto";
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const el = rowRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = x - startX.current; // Exact 1:1 mouse movement
+    if (Math.abs(walk) > 4) {
+      hasMoved.current = true;
+    }
+    el.scrollLeft = scrollLeftStart.current - walk;
+    checkScroll();
+  };
+
+  const handleMouseUpOrLeave = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const el = rowRef.current;
+    if (!el) return;
+    // Stays exactly where released: no animation, no glide, no snap
+    el.style.scrollBehavior = "auto";
+    checkScroll();
+  };
+
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (hasMoved.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      hasMoved.current = false;
+    }
   };
 
   if (!mentors || mentors.length === 0) return null;
 
   return (
-    <div id={`track-${id}`} className="space-y-2.5 scroll-mt-24">
+    <div id={`track-${id}`} className="space-y-2.5 scroll-mt-24 group/section">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
           <div className="w-7.5 h-7.5 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
@@ -95,6 +170,7 @@ function MentorCategoryScrollRow({
           </div>
         </div>
 
+        {/* Top Header Arrow Controls */}
         <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
           <button
             type="button"
@@ -118,15 +194,21 @@ function MentorCategoryScrollRow({
       </div>
 
       <div className="relative">
+        {/* Scrollable Cards Track */}
         <div
           ref={rowRef}
-          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 px-0.5 no-scrollbar select-none"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          onClickCapture={handleClickCapture}
+          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (
             <div
               key={mentor.id}
-              className="w-[85%] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] shrink-0 snap-start flex flex-col h-auto"
+              className="w-[85%] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] shrink-0 flex flex-col h-auto"
             >
               <MentorJobCard mentor={mentor} />
             </div>
@@ -338,6 +420,21 @@ export default function CoachSessionCard() {
   }, [allRecommendedMentors]);
 
   const trackScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollTrackLeft, setCanScrollTrackLeft] = useState(false);
+  const [canScrollTrackRight, setCanScrollTrackRight] = useState(false);
+
+  // Track Shortcuts Drag-to-Scroll state
+  const isTrackDragging = useRef(false);
+  const trackStartX = useRef(0);
+  const trackScrollStart = useRef(0);
+  const trackHasDragged = useRef(false);
+
+  const checkTrackScroll = () => {
+    const el = trackScrollRef.current;
+    if (!el) return;
+    setCanScrollTrackLeft(el.scrollLeft > 4);
+    setCanScrollTrackRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
 
   const trackShortcuts = useMemo(() => {
     return categoryGroups.map((group) => {
@@ -352,6 +449,68 @@ export default function CoachSessionCard() {
       };
     });
   }, [categoryGroups]);
+
+  useEffect(() => {
+    const el = trackScrollRef.current;
+    if (!el) return;
+    checkTrackScroll();
+    const t = setTimeout(checkTrackScroll, 100);
+    el.addEventListener("scroll", checkTrackScroll, { passive: true });
+    window.addEventListener("resize", checkTrackScroll);
+    return () => {
+      clearTimeout(t);
+      el.removeEventListener("scroll", checkTrackScroll);
+      window.removeEventListener("resize", checkTrackScroll);
+    };
+  }, [trackShortcuts]);
+
+  const handleTrackScroll = (dir: "left" | "right") => {
+    const el = trackScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -240 : 240, behavior: "smooth" });
+    setTimeout(checkTrackScroll, 300);
+  };
+
+  const handleTrackMouseDown = (e: React.MouseEvent) => {
+    const el = trackScrollRef.current;
+    if (!el) return;
+    isTrackDragging.current = true;
+    trackHasDragged.current = false;
+    trackStartX.current = e.pageX - el.offsetLeft;
+    trackScrollStart.current = el.scrollLeft;
+    el.style.scrollBehavior = "auto";
+  };
+
+  const handleTrackMouseMove = (e: React.MouseEvent) => {
+    if (!isTrackDragging.current) return;
+    const el = trackScrollRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = x - trackStartX.current; // 1:1 direct tracking
+    if (Math.abs(walk) > 4) {
+      trackHasDragged.current = true;
+    }
+    el.scrollLeft = trackScrollStart.current - walk;
+    checkTrackScroll();
+  };
+
+  const handleTrackMouseUp = () => {
+    if (!isTrackDragging.current) return;
+    isTrackDragging.current = false;
+    const el = trackScrollRef.current;
+    if (!el) return;
+    // Stays exactly where released
+    el.style.scrollBehavior = "auto";
+    checkTrackScroll();
+  };
+
+  const handleTrackClickCapture = (e: React.MouseEvent) => {
+    if (trackHasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      trackHasDragged.current = false;
+    }
+  };
 
   const scrollToTrack = (trackId: string) => {
     const el = document.getElementById(`track-${trackId}`);
@@ -408,7 +567,12 @@ export default function CoachSessionCard() {
         <div className="relative bg-gradient-to-r from-blue-50/60 via-slate-50/80 to-blue-50/60 p-2 sm:p-2.5 rounded-2xl border border-blue-100/70 shadow-2xs">
           <div
             ref={trackScrollRef}
-            className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5"
+            onMouseDown={handleTrackMouseDown}
+            onMouseMove={handleTrackMouseMove}
+            onMouseUp={handleTrackMouseUp}
+            onMouseLeave={handleTrackMouseUp}
+            onClickCapture={handleTrackClickCapture}
+            className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 select-none cursor-grab active:cursor-grabbing"
             style={{ scrollbarWidth: "none" }}
           >
             {trackShortcuts.map((t) => (
