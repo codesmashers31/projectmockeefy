@@ -77,12 +77,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   };
 
   const handleCardClick = () => {
-    navigate(`/book-session?expertId=${mentor.expertID}`, {
-      state: {
-        expertId: mentor.expertID,
-        profile: { ...mentor },
-      },
-    });
+    setIsBookingModalOpen(true);
   };
 
   const toggleSave = (e: React.MouseEvent) => {

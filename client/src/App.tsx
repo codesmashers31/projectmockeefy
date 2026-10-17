@@ -143,7 +143,7 @@ function AppRoutes() {
         {/* Adjust allowedRoles as needed. 'expert' is definitely one. If 'candidate' exists, add it. */}
         <Route element={<RoleBasedRoute allowedRoles={['expert', 'candidate', 'user']} />}>
           <Route path="/watch-mock" element={<WatchMock />} />
-          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/payment" element={<Navigate to="/my-sessions" replace />} />
           <Route path="/live-meeting/:sessionId?" element={<LiveMeeting />} />
 
           {/* App shell (keeps nav/side panels stable, no flicker) */}

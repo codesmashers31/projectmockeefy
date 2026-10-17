@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, Sparkles, AlertCircle
 } from "lucide-react";
 import Swal from "sweetalert2";
+import { toast } from "sonner";
 import {
   getKolkataToday,
   getKolkataTimeParts,
@@ -333,6 +334,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return generatedSlots.sort((a, b) => a.time.localeCompare(b.time));
   }, [dates, selectedDate, profile?.availability, sessionDuration, bookedSessions]);
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   // Booking Execution
   const buildPayload = () => {
     if (!profile || !selectedSlot || !dates[selectedDate]) return null;
@@ -429,30 +441,101 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return;
       }
 
-      // 3. Paid standard checkout: Navigate to PaymentPage to open Razorpay gateway
-      onClose();
-      navigate("/payment", {
-        state: {
-          bookingDetails: {
-            expertId: profile?.id || expertId,
-            expertName: profile?.name,
-            expertRole: profile?.role,
-            date: dates[selectedDate],
-            slot: selectedSlot,
-            price: displayPrice,
-            duration: sessionDuration,
-            category: profile?.category || "IT",
-            level: "Senior",
-            skill: profile?.category || "Technical Interview",
-            topics: [profile?.category || "Technical Interview"]
+      // 3. Paid standard checkout: DIRECTLY OPEN RAZORPAY GATEWAY MODAL (NO /payment REDIRECT!)
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error("Razorpay payment gateway failed to load. Please check your internet connection.");
+      }
+
+      // Create order with Razorpay backend
+      const orderResponse = await axios.post("/api/payment/create-order", {
+        amount: displayPrice,
+        currency: "INR",
+        receipt: `rcpt_${Date.now()}`
+      });
+
+      if (!orderResponse.data?.success || !orderResponse.data?.order) {
+        throw new Error(orderResponse.data?.message || "Failed to create payment order.");
+      }
+
+      const { order } = orderResponse.data;
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SqNEn1MzouLlsg";
+
+      const options = {
+        key: razorpayKey,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Mockeefy",
+        description: `${sessionDuration} Min Mock Interview with ${profile?.name || "Mentor"}`,
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            setIsProcessing(true);
+            const verifyRes = await axios.post("/api/payment/verify-payment", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              paymentType: "booking",
+              bookingDetails: {
+                expertId: profile?.id || expertId,
+                candidateId: user?.id || user?.userId || (user as any)?._id,
+                startTime: payload.startTime,
+                endTime: payload.endTime,
+                price: displayPrice,
+                topics: [profile?.category || "Technical Interview"],
+                duration: Number(sessionDuration),
+                notes: "Booked via Mockeefy Modal"
+              }
+            });
+
+            if (verifyRes.data?.success) {
+              onClose();
+              Swal.fire({
+                title: "Session Booked Successfully! 🎉",
+                text: `Your mock interview with ${profile?.name || "the mentor"} is confirmed for ${dates[selectedDate]?.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
+                icon: "success",
+                confirmButtonColor: "#0755E8",
+                confirmButtonText: "View My Bookings"
+              }).then(() => {
+                navigate("/my-sessions");
+              });
+            } else {
+              throw new Error(verifyRes.data?.message || "Payment verification failed.");
+            }
+          } catch (verifyErr: any) {
+            console.error("Payment Verification Error:", verifyErr);
+            Swal.fire({
+              title: "Payment Verification Failed",
+              text: verifyErr?.response?.data?.message || verifyErr.message || "Could not verify payment.",
+              icon: "error"
+            });
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: user?.name || "",
+          email: user?.email || "",
+          contact: user?.phone || "",
+        },
+        theme: {
+          color: "#0755E8",
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+            toast.info("Payment was cancelled. Your slot is still selected.");
           }
         }
-      });
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (err: any) {
       console.error("Booking error", err);
       Swal.fire({
         title: "Booking Failed",
-        text: err?.response?.data?.message || "An error occurred while booking. Please try again.",
+        text: err?.response?.data?.message || err.message || "An error occurred while booking. Please try again.",
         icon: "error",
         confirmButtonColor: "#0755E8",
       });
