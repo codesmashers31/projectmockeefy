@@ -837,30 +837,8 @@ export default function FindMentor() {
                 </div>
               </div>
 
-              {/* Scrollable Pills Container with floating arrows */}
-              <div className="relative group/cat bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/60 shadow-2xs">
-                {canCatScrollLeft && (
-                  <button
-                    type="button"
-                    onClick={() => handleCatScroll("left")}
-                    className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                    title="Scroll left"
-                  >
-                    <ChevronLeft size={12} />
-                  </button>
-                )}
-
-                {canCatScrollRight && (
-                  <button
-                    type="button"
-                    onClick={() => handleCatScroll("right")}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                    title="Scroll right"
-                  >
-                    <ChevronRight size={12} />
-                  </button>
-                )}
-
+              {/* Scrollable Pills Container (Arrows only on top header as requested) */}
+              <div className="bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/60 shadow-2xs">
                 <div
                   ref={catScrollRef}
                   onMouseDown={handleCatMouseDown}
