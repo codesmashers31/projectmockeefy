@@ -25,9 +25,203 @@ import {
   RefreshCw,
   AlertCircle,
   Hand,
+  Code2,
+  Cloud,
+  Brain,
+  Palette,
 } from "lucide-react";
 
-const ITEMS_PER_PAGE = 10;
+interface MentorCategoryScrollRowProps {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  mentors: MentorProfile[];
+}
+
+function MentorCategoryScrollRow({
+  id,
+  title,
+  subtitle,
+  icon,
+  mentors,
+}: MentorCategoryScrollRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  // Mouse drag-to-scroll state
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const hasMoved = useRef(false);
+
+  const checkScroll = () => {
+    const el = rowRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+
+    checkScroll();
+    const t1 = setTimeout(checkScroll, 60);
+    const t2 = setTimeout(checkScroll, 350);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => checkScroll());
+      ro.observe(el);
+    }
+
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      if (ro) ro.disconnect();
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [mentors]);
+
+  const handleScroll = (dir: "left" | "right") => {
+    const el = rowRef.current;
+    if (!el) return;
+
+    const firstCard = el.querySelector<HTMLElement>(":scope > div");
+    const cardWidth = firstCard ? firstCard.offsetWidth : 290;
+    const gap = 16;
+    const step = cardWidth + gap;
+
+    el.scrollBy({
+      left: dir === "left" ? -step : step,
+      behavior: "smooth",
+    });
+
+    setTimeout(checkScroll, 350);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = rowRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    hasMoved.current = false;
+    startX.current = e.pageX - el.offsetLeft;
+    scrollLeftStart.current = el.scrollLeft;
+    el.style.scrollBehavior = "auto";
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const el = rowRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = x - startX.current;
+    if (Math.abs(walk) > 4) {
+      hasMoved.current = true;
+    }
+    el.scrollLeft = scrollLeftStart.current - walk;
+    checkScroll();
+  };
+
+  const handleMouseUpOrLeave = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const el = rowRef.current;
+    if (!el) return;
+    el.style.scrollBehavior = "auto";
+    checkScroll();
+  };
+
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (hasMoved.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      hasMoved.current = false;
+    }
+  };
+
+  if (!mentors || mentors.length === 0) return null;
+
+  return (
+    <div id={`track-${id}`} className="space-y-2.5 scroll-mt-24 group/section">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7.5 h-7.5 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-[16px] sm:text-[17px] font-bold text-slate-900 tracking-tight leading-snug m-0">
+                {title}
+              </h3>
+              <span className="text-[10.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.2 rounded-full">
+                {mentors.length}
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-[10.5px] font-bold text-slate-600 select-none shadow-2xs">
+                <Hand size={11} className="text-[#0755E8]" />
+                <span>Drag to scroll</span>
+              </span>
+            </div>
+            <p className="text-[12px] sm:text-[12.5px] text-slate-500 mt-0.5 leading-normal truncate">
+              {subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Top Header Arrow Controls */}
+        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+          <button
+            type="button"
+            onClick={() => handleScroll("left")}
+            disabled={!canScrollLeft}
+            aria-label={`Previous ${title}`}
+            className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScroll("right")}
+            disabled={!canScrollRight}
+            aria-label={`Next ${title}`}
+            className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      </div>
+
+      <div className="relative">
+        <div
+          ref={rowRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          onClickCapture={handleClickCapture}
+          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {mentors.map((mentor) => (
+            <div
+              key={mentor.id}
+              className="w-[82%] sm:w-[calc(50%-8px)] shrink-0 flex flex-col h-auto"
+            >
+              <MentorJobCard mentor={mentor} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function FindMentor() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -424,7 +618,106 @@ export default function FindMentor() {
     sortBy,
   ]);
 
-  // Pagination calculations
+  // Group filtered mentors into Curated Carousel Tracks
+  const filteredCategoryGroups = useMemo(() => {
+    const definitions = [
+      {
+        id: "software-web",
+        title: "Software & Web Development",
+        subtitle: "Frontend, backend, mobile engineers and system architects.",
+        icon: <Code2 size={16} />,
+        match: (cat: string) => {
+          const c = cat.toLowerCase().trim();
+          return (
+            c.includes("software") ||
+            c.includes("web") ||
+            c.includes("mobile") ||
+            c.includes("mern") ||
+            c.includes("it") ||
+            c.includes("qa") ||
+            c.includes("testing")
+          );
+        },
+      },
+      {
+        id: "cloud-security",
+        title: "Cloud, DevOps & Security",
+        subtitle: "Cloud architects, DevOps leads, system design and cybersecurity.",
+        icon: <Cloud size={16} />,
+        match: (cat: string) => {
+          const c = cat.toLowerCase().trim();
+          return (
+            c.includes("cloud") ||
+            c.includes("devops") ||
+            c.includes("security") ||
+            c.includes("database") ||
+            c.includes("system design")
+          );
+        },
+      },
+      {
+        id: "ai-data",
+        title: "AI & Data Science",
+        subtitle: "Machine learning engineers, AI researchers, and data scientists.",
+        icon: <Brain size={16} />,
+        match: (cat: string) => {
+          const c = cat.toLowerCase().trim();
+          return c.includes("ai") || c.includes("data") || c.includes("ml") || c.includes("learning");
+        },
+      },
+      {
+        id: "product-design",
+        title: "Product, Design & Management",
+        subtitle: "UI/UX product designers, agile project leads, and business strategists.",
+        icon: <Palette size={16} />,
+        match: (cat: string) => {
+          const c = cat.toLowerCase().trim();
+          return (
+            c.includes("design") ||
+            c.includes("agile") ||
+            c.includes("project") ||
+            c.includes("business")
+          );
+        },
+      },
+      {
+        id: "hr-behavioral",
+        title: "HR & Behavioral Prep",
+        subtitle: "Hiring managers and tech recruiters for behavioral & HR rounds.",
+        icon: <Users size={16} />,
+        match: (cat: string) => {
+          const c = cat.toLowerCase().trim();
+          return c.includes("hr") || c.includes("human resources") || c.includes("recruit");
+        },
+      },
+    ];
+
+    const groupedMentors = new Set<string>();
+    const groups = definitions.map((def) => {
+      const mentorsInGroup = filteredMentors.filter((m) => def.match(m.category || ""));
+      mentorsInGroup.forEach((m) => groupedMentors.add(m.id));
+      return {
+        ...def,
+        mentors: mentorsInGroup,
+      };
+    });
+
+    const otherMentors = filteredMentors.filter((m) => !groupedMentors.has(m.id));
+    if (otherMentors.length > 0) {
+      groups.push({
+        id: "other-experts",
+        title: selectedCategory !== "All" ? selectedCategory : "Specialized Industry Mentors",
+        subtitle: "Industry leaders and domain specialists across diverse tech domains.",
+        icon: <Sparkles size={16} />,
+        match: () => true,
+        mentors: otherMentors,
+      });
+    }
+
+    return groups.filter((g) => g.mentors.length > 0);
+  }, [filteredMentors, selectedCategory]);
+
+  // Pagination calculations (kept for fallback)
   const totalPages = Math.max(1, Math.ceil(filteredMentors.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedMentors = useMemo(() => {
@@ -1005,9 +1298,18 @@ export default function FindMentor() {
 
             {/* Mentors Grid / Empty / Error States */}
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <MentorCardSkeleton key={i} />
+              <div className="space-y-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-3">
+                    <div className="h-6 w-48 bg-slate-100 rounded-lg animate-pulse" />
+                    <div className="flex gap-4 overflow-hidden">
+                      {[1, 2].map((n) => (
+                        <div key={n} className="w-[82%] sm:w-[calc(50%-8px)] shrink-0">
+                          <MentorCardSkeleton />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : isError ? (
@@ -1025,94 +1327,19 @@ export default function FindMentor() {
                   <span>Retry</span>
                 </button>
               </div>
-            ) : filteredMentors.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {paginatedMentors.map((mentor) => (
-                    <MentorJobCard key={mentor.id} mentor={mentor} />
-                  ))}
-                </div>
-
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3 mt-5">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handlePageChange(1)}
-                        disabled={currentPage === 1}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                        title="First Page"
-                      >
-                        <ChevronsLeft size={14} />
-                      </button>
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                      >
-                        <ChevronLeft size={14} />
-                        <span>Prev</span>
-                      </button>
-                    </div>
-
-                    {/* Page Numbers */}
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }).map((_, idx) => {
-                        const page = idx + 1;
-                        if (
-                          totalPages > 6 &&
-                          Math.abs(page - currentPage) > 2 &&
-                          page !== 1 &&
-                          page !== totalPages
-                        ) {
-                          if (Math.abs(page - currentPage) === 3) {
-                            return (
-                              <span key={page} className="px-1 text-slate-400 text-xs">
-                                ...
-                              </span>
-                            );
-                          }
-                          return null;
-                        }
-
-                        const isCurrent = page === currentPage;
-                        return (
-                          <button
-                            key={page}
-                            onClick={() => handlePageChange(page)}
-                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              isCurrent
-                                ? "bg-[#0755E8] text-white shadow-xs"
-                                : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                      >
-                        <span>Next</span>
-                        <ChevronRight size={14} />
-                      </button>
-                      <button
-                        onClick={() => handlePageChange(totalPages)}
-                        disabled={currentPage === totalPages}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                        title="Last Page"
-                      >
-                        <ChevronsRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+            ) : filteredCategoryGroups.length > 0 ? (
+              <div className="space-y-7">
+                {filteredCategoryGroups.map((group) => (
+                  <MentorCategoryScrollRow
+                    key={group.id}
+                    id={group.id}
+                    title={group.title}
+                    subtitle={group.subtitle}
+                    icon={group.icon}
+                    mentors={group.mentors}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
                 <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
@@ -1134,7 +1361,7 @@ export default function FindMentor() {
         </div>
 
         {/* RIGHT COLUMN: Sticky Filter Sidebar (Desktop xl+ screens) */}
-        <aside aria-label="Filters Panel" className="hidden xl:block w-[245px] shrink-0 sticky top-[80px] self-start space-y-4">
+        <aside aria-label="Filters Panel" className="hidden xl:block w-[250px] shrink-0 sticky top-[80px] self-start space-y-4">
           {renderFilterPanel()}
 
           {/* Tips Card */}
