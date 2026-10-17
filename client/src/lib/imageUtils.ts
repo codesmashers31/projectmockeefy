@@ -1,28 +1,69 @@
 import { API_BASE_URL } from '../config';
 
+const REAL_AVATAR_POOL = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20,
+    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34
+];
+
+/**
+ * Returns a stable, deterministic real human avatar photo from public/media/avatars/
+ */
+export const getDeterministicAvatar = (seed?: string | null): string => {
+    if (!seed || typeof seed !== 'string') {
+        return '/media/avatars/300-1.png';
+    }
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+    }
+    const avatarId = REAL_AVATAR_POOL[hash % REAL_AVATAR_POOL.length];
+    return `/media/avatars/300-${avatarId}.png`;
+};
+
 /**
  * Generates the full profile image URL.
+ * Automatically resolves ui-avatars.com or missing avatars to real high-resolution headshots.
  * 
  * @param path - The image path from the database (e.g., "/uploads/..." or "http://...")
- * @returns The full URL to the image, or a default fallback if invalid.
+ * @param seed - Optional identifier (e.g., mentor name or ID) for stable photo mapping
+ * @returns The full URL to the image, or a real professional photo fallback.
  */
-export const getProfileImageUrl = (path?: string | null): string => {
-    if (!path) {
-        return '/mockeefy.png';
+export const getProfileImageUrl = (path?: string | null, seed?: string | null): string => {
+    // Check if path is empty or a placeholder / text avatar generator
+    const isPlaceholder =
+        !path ||
+        path.includes('ui-avatars.com') ||
+        path.includes('default-avatar.png') ||
+        path.includes('blank.png') ||
+        path.includes('mockeefy.png');
+
+    if (isPlaceholder) {
+        let nameSeed = seed;
+        if (!nameSeed && path && path.includes('name=')) {
+            const match = path.match(/name=([^&]+)/);
+            if (match && match[1]) {
+                nameSeed = decodeURIComponent(match[1].replace(/\+/g, ' '));
+            }
+        }
+        return getDeterministicAvatar(nameSeed || path || seed);
     }
 
-    // If it's already a full URL (including UI avatars or external links), return it
+    // If it's already a full URL (Cloudinary or valid external image)
     if (path.startsWith('http')) {
-        // Cloudinary or external URLs should be returned as-is
-        if (path.includes('cloudinary.com') || path.includes('ui-avatars.com')) {
+        if (path.includes('cloudinary.com')) {
             return path;
         }
 
-        // Legacy local uploads (if any exist) might need rebasing, but usually not needed for Cloudinary
+        // Legacy local uploads
         if (path.includes('/uploads/')) {
             const relativePath = path.substring(path.indexOf('/uploads/'));
             return `${API_BASE_URL}${relativePath}`;
         }
+        return path;
+    }
+
+    // If it's already pointing to a local public media path
+    if (path.startsWith('/media/') || path.startsWith('/images/')) {
         return path;
     }
 
