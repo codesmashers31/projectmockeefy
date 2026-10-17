@@ -1,20 +1,13 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import axios from '../lib/axios';
-import { getProfileImageUrl } from '../lib/imageUtils';
-import { getCurrentCompany, getJobTitle } from '../lib/expertUtils';
 import { 
   Youtube, 
   Instagram, 
   Linkedin, 
   Mail, 
   ArrowRight, 
-  Star, 
   Sparkles,
   CheckCircle2,
-  Video,
-  Award,
   Users,
   ChevronLeft,
   ChevronRight
@@ -28,100 +21,6 @@ interface FooterProps {
 }
 
 // ============================================================================
-// Curated fallback mentors for instant display and robust error resilience
-// ============================================================================
-const FALLBACK_MENTORS = [
-  {
-    id: 'mentor-1',
-    name: 'Sarah Johnson',
-    role: 'Staff Software Engineer',
-    company: 'Google',
-    rating: '5.0',
-    sessions: '48 sessions',
-    avatar: '/media/avatars/300-1.png',
-    numericRating: 5.0,
-    numericSessions: 48,
-  },
-  {
-    id: 'mentor-2',
-    name: 'Michael Williams',
-    role: 'Lead Architect',
-    company: 'Amazon',
-    rating: '5.0',
-    sessions: '36 sessions',
-    avatar: '/media/avatars/300-2.png',
-    numericRating: 5.0,
-    numericSessions: 36,
-  },
-  {
-    id: 'mentor-3',
-    name: 'Emma Brown',
-    role: 'Senior Engineering Manager',
-    company: 'Meta',
-    rating: '5.0',
-    sessions: '42 sessions',
-    avatar: '/media/avatars/300-3.png',
-    numericRating: 5.0,
-    numericSessions: 42,
-  },
-  {
-    id: 'mentor-4',
-    name: 'Robert Jones',
-    role: 'Senior Cloud & DevOps Lead',
-    company: 'Microsoft',
-    rating: '4.9',
-    sessions: '29 sessions',
-    avatar: '/media/avatars/300-4.png',
-    numericRating: 4.9,
-    numericSessions: 29,
-  },
-  {
-    id: 'mentor-5',
-    name: 'Priya Sharma',
-    role: 'Principal System Architect',
-    company: 'Netflix',
-    rating: '5.0',
-    sessions: '54 sessions',
-    avatar: '/media/avatars/300-5.png',
-    numericRating: 5.0,
-    numericSessions: 54,
-  },
-  {
-    id: 'mentor-6',
-    name: 'David Kim',
-    role: 'Senior Staff Frontend Lead',
-    company: 'Apple',
-    rating: '5.0',
-    sessions: '31 sessions',
-    avatar: '/media/avatars/300-6.png',
-    numericRating: 5.0,
-    numericSessions: 31,
-  },
-  {
-    id: 'mentor-7',
-    name: 'Elena Rostova',
-    role: 'Lead AI & ML Scientist',
-    company: 'OpenAI',
-    rating: '5.0',
-    sessions: '39 sessions',
-    avatar: '/media/avatars/300-7.png',
-    numericRating: 5.0,
-    numericSessions: 39,
-  },
-  {
-    id: 'mentor-8',
-    name: 'Marcus Vance',
-    role: 'VP of Technology & Hiring',
-    company: 'Uber',
-    rating: '4.9',
-    sessions: '45 sessions',
-    avatar: '/media/avatars/300-8.png',
-    numericRating: 4.9,
-    numericSessions: 45,
-  },
-];
-
-// ============================================================================
 // Minimalist Vector Illustration for 1-on-1 Mock Interviews Banner
 // ============================================================================
 const BANNER_ILLUSTRATION = {
@@ -131,87 +30,14 @@ const BANNER_ILLUSTRATION = {
 };
 
 // ============================================================================
-// Pre-Footer Promo Banner with Real Verified Experts Scrolling Track
+// Pre-Footer Promo Banner (1-on-1 Mock Interviews Mentorship)
 // ============================================================================
 const PreFooterExpertsBanner = () => {
   const navigate = useNavigate();
 
-  // Fetch real verified active experts from the API
-  const { data: expertsData = [], isLoading } = useQuery({
-    queryKey: ['footerVerifiedExperts'],
-    queryFn: async () => {
-      const res = await axios.get('/api/expert/verified');
-      return Array.isArray(res.data) ? res.data : res.data.data || [];
-    },
-    staleTime: 1000 * 60 * 10,
-  });
-
-  // Map to top interview experts with guaranteed real photo headshots
-  const realExperts = useMemo(() => {
-    if (!Array.isArray(expertsData) || expertsData.length === 0) {
-      return FALLBACK_MENTORS;
-    }
-
-    const mapped = expertsData.map((expert: any) => {
-      const cat =
-        expert.personalInformation?.category ||
-        expert.category ||
-        expert.professionalDetails?.industry ||
-        'Software Engineering';
-
-      const name =
-        expert.personalInformation?.userName ||
-        expert.name ||
-        expert.userDetails?.name ||
-        'Verified Mentor';
-
-      const company = getCurrentCompany(expert.professionalDetails, cat);
-      const role = getJobTitle(expert.professionalDetails, cat);
-      const rating = expert.metrics?.avgRating
-        ? Number(expert.metrics.avgRating).toFixed(1)
-        : '5.0';
-      const totalSessions = expert.metrics?.totalSessions || expert.metrics?.totalReviews || 12;
-      
-      // Automatically maps ui-avatars.com or placeholders to authentic real person headshot photos
-      const avatar = getProfileImageUrl(expert.profileImage, expert._id || expert.userId || name);
-
-      return {
-        id: expert._id || expert.userId,
-        name,
-        role,
-        company,
-        rating,
-        sessions: `${totalSessions} sessions`,
-        avatar,
-        numericRating: Number(expert.metrics?.avgRating || 5),
-        numericSessions: totalSessions,
-      };
-    });
-
-    const sorted = mapped
-      .sort((a, b) => b.numericRating * 10 + b.numericSessions - (a.numericRating * 10 + a.numericSessions))
-      .slice(0, 16);
-
-    return sorted.length >= 4 ? sorted : [...sorted, ...FALLBACK_MENTORS].slice(0, 16);
-  }, [expertsData]);
-
-  // Duplicate for seamless infinite marquee loop
-  const marqueeList = useMemo(() => {
-    const list = realExperts.length > 0 ? realExperts : FALLBACK_MENTORS;
-    return [...list, ...list, ...list];
-  }, [realExperts]);
-
   return (
     <div className="relative overflow-hidden rounded-[28px] border border-blue-100/90 bg-gradient-to-br from-[#F4F7FE] via-[#F8FAFF] to-[#EFF4FE] p-6 sm:p-8 lg:p-9 mb-12 sm:mb-14 shadow-xs">
       <style>{`
-        @keyframes scrollExpertsMarquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-33.333%);
-          }
-        }
         @keyframes floatSlow {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-5px); }
@@ -220,40 +46,16 @@ const PreFooterExpertsBanner = () => {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(5px); }
         }
-        @keyframes soundWave1 {
-          0%, 100% { height: 4px; }
-          50% { height: 12px; }
-        }
-        @keyframes soundWave2 {
-          0%, 100% { height: 11px; }
-          50% { height: 4px; }
-        }
-        @keyframes soundWave3 {
-          0%, 100% { height: 6px; }
-          50% { height: 14px; }
-        }
-        .animate-experts-marquee {
-          display: flex;
-          width: max-content;
-          animation: scrollExpertsMarquee 38s linear infinite;
-        }
-        .animate-experts-marquee:hover {
-          animation-play-state: paused;
-        }
         .animate-float-slow {
           animation: floatSlow 4s ease-in-out infinite;
         }
         .animate-float-reverse {
           animation: floatReverse 4.5s ease-in-out infinite;
         }
-        .wave-bar-1 { animation: soundWave1 0.8s ease-in-out infinite; }
-        .wave-bar-2 { animation: soundWave2 0.6s ease-in-out infinite; }
-        .wave-bar-3 { animation: soundWave3 1s ease-in-out infinite; }
       `}</style>
 
-      {/* Top Section: Split Hero Grid with Interactive Find Mentor Illustration */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center pb-8 border-b border-blue-100/70">
-        
+      {/* Split Hero Grid with Interactive Find Mentor Illustration */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
         {/* Left: Headline, Tagline, Highlights & Direct Actions (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-xs font-bold uppercase tracking-wider shadow-2xs">
@@ -270,7 +72,7 @@ const PreFooterExpertsBanner = () => {
             Practice live technical, system design, and HR rounds with verified mentors from Google, Amazon, Microsoft, and top startups. Receive detailed rubrics and actionable feedback to crack your dream role.
           </p>
 
-          {/* Quick Value Highlights matching Model 3 */}
+          {/* Quick Value Highlights */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs sm:text-sm font-semibold text-slate-600">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#0755E8]" />
@@ -312,7 +114,7 @@ const PreFooterExpertsBanner = () => {
             </Link>
           </div>
 
-          {/* Social Proof matching reference model */}
+          {/* Social Proof */}
           <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-1">
             <Users className="w-4 h-4 text-[#0755E8]" />
             <span>Trusted by 10,000+ candidates across Google, Meta & Amazon</span>
@@ -321,7 +123,6 @@ const PreFooterExpertsBanner = () => {
 
         {/* Right: Clean Vector Illustration (5 cols) */}
         <div className="lg:col-span-5 relative flex items-center justify-center lg:justify-end">
-          {/* Clean, Open Visual - Directly on Banner without Heavy Faux-Browser Box */}
           <div
             onClick={() => navigate('/mentors')}
             className="group relative w-full max-w-[420px] rounded-2xl overflow-hidden cursor-pointer"
@@ -360,92 +161,6 @@ const PreFooterExpertsBanner = () => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Bottom Section: Scrolling Experts Track (Using Real Mentors from DB) */}
-      <div className="pt-6">
-        <div className="flex items-center justify-between mb-3.5 px-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Top Verified Mentors
-            </span>
-            <span className="hidden sm:inline text-xs text-slate-400 font-normal">
-              · Ready for live sessions
-            </span>
-          </div>
-          <Link to="/mentors" className="text-xs font-bold text-[#0755E8] hover:underline flex items-center gap-1">
-            <span>Explore All</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {/* Marquee Container with Gradient Fade Edges */}
-        <div className="relative overflow-hidden w-full py-1">
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-16 bg-gradient-to-r from-[#F4F7FE] to-transparent z-10" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-16 bg-gradient-to-l from-[#EFF4FE] to-transparent z-10" />
-
-          {isLoading && realExperts.length === 0 ? (
-            /* Loading Skeletons */
-            <div className="flex items-center gap-3.5">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="w-60 sm:w-64 h-16 bg-white/70 rounded-2xl border border-slate-200/50 shimmer-shining shrink-0"
-                />
-              ))}
-            </div>
-          ) : (
-            /* Real Verified Mentors Marquee with authentic photos and NO text inside */
-            <div className="animate-experts-marquee flex items-center gap-3.5">
-              {marqueeList.map((expert, idx) => (
-                <div
-                  key={`${expert.id}-${idx}`}
-                  onClick={() => navigate(`/book-session?expertId=${expert.id}`)}
-                  className="flex items-center gap-3 px-3.5 py-2.5 bg-white/95 backdrop-blur-xs rounded-2xl border border-slate-200/80 shadow-2xs shrink-0 w-60 sm:w-64 hover:border-[#0755E8] hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer"
-                >
-                  {/* Real Expert Photo - Pure portrait, NO letters or text */}
-                  <div className="relative shrink-0 w-11 h-11 rounded-full overflow-hidden border-2 border-white shadow-xs bg-slate-100 flex items-center justify-center">
-                    <img
-                      src={expert.avatar}
-                      alt={expert.name}
-                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        const safeIdx = ((idx * 3) % 33) + 1;
-                        e.currentTarget.src = `/media/avatars/300-${safeIdx === 14 ? 15 : safeIdx}.png`;
-                      }}
-                    />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#0755E8] text-white flex items-center justify-center text-[9px] font-bold border-2 border-white z-10 shadow-xs">
-                      ✓
-                    </span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="min-w-0 flex-1 leading-tight">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#0755E8] transition-colors">
-                        {expert.name}
-                      </p>
-                      <div className="flex items-center gap-0.5 text-[10px] text-amber-500 font-bold shrink-0">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        <span>{expert.rating}</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{expert.role}</p>
-                    <div className="flex items-center justify-between mt-1 text-[10px]">
-                      <span className="font-bold text-[#0755E8] bg-blue-50 px-1.5 py-0.5 rounded truncate max-w-[95px]">
-                        {expert.company}
-                      </span>
-                      <span className="text-slate-400 truncate">{expert.sessions}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
