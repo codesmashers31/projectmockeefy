@@ -23,6 +23,7 @@ import {
   Cloud,
   Brain,
   Palette,
+  Hand,
 } from "lucide-react";
 
 // Reusable Category Mentor Scroll Row Component
@@ -156,12 +157,17 @@ function MentorCategoryScrollRow({
             {icon}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[17px] sm:text-[18.5px] font-bold text-slate-900 tracking-tight leading-snug m-0">
                 {title}
               </h2>
               <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.2 rounded-full">
                 {mentors.length}
+              </span>
+              {/* Hand drag scroll indicator */}
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-[10.5px] font-bold text-slate-600 select-none shadow-2xs">
+                <Hand size={11} className="text-[#0755E8]" />
+                <span>Drag to scroll</span>
               </span>
             </div>
             <p className="text-[12.5px] sm:text-[13px] text-slate-500 mt-0.5 leading-normal">
@@ -556,15 +562,80 @@ export default function CoachSessionCard() {
       {/* ======================================================== */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] sm:text-[16px] font-bold text-slate-900 tracking-tight">
-            Top Categories Hiring Now
-          </h2>
-          <span className="text-[11.5px] font-medium text-slate-400">
-            5 Core Technical Tracks
-          </span>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-[15px] sm:text-[16px] font-bold text-slate-900 tracking-tight">
+              Top Categories Hiring Now
+            </h2>
+            {/* Hand symbol indicator for dragging */}
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/70 text-[11px] font-bold text-[#0755E8] select-none shadow-2xs">
+              <Hand size={12} className="text-[#0755E8] animate-pulse" />
+              <span>Drag to explore</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11.5px] font-medium text-slate-400 hidden md:inline">
+              5 Core Technical Tracks
+            </span>
+
+            {/* Left & Right Arrow Buttons for Scrolling */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleTrackScroll("left")}
+                disabled={!canScrollTrackLeft}
+                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                  canScrollTrackLeft
+                    ? "bg-white hover:bg-slate-100 text-slate-700 shadow-2xs border border-slate-200/90 active:scale-95 cursor-pointer"
+                    : "bg-slate-100/50 text-slate-300 border border-slate-200/40 cursor-not-allowed"
+                }`}
+                title="Scroll categories left"
+                aria-label="Scroll categories left"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTrackScroll("right")}
+                disabled={!canScrollTrackRight}
+                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                  canScrollTrackRight
+                    ? "bg-white hover:bg-slate-100 text-slate-700 shadow-2xs border border-slate-200/90 active:scale-95 cursor-pointer"
+                    : "bg-slate-100/50 text-slate-300 border border-slate-200/40 cursor-not-allowed"
+                }`}
+                title="Scroll categories right"
+                aria-label="Scroll categories right"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="relative bg-gradient-to-r from-blue-50/60 via-slate-50/80 to-blue-50/60 p-2 sm:p-2.5 rounded-2xl border border-blue-100/70 shadow-2xs">
+        <div className="relative group/track bg-gradient-to-r from-blue-50/60 via-slate-50/80 to-blue-50/60 p-2 sm:p-2.5 rounded-2xl border border-blue-100/70 shadow-2xs">
+          {/* Subtle floating side arrows on hover */}
+          {canScrollTrackLeft && (
+            <button
+              type="button"
+              onClick={() => handleTrackScroll("left")}
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+              title="Scroll left"
+            >
+              <ChevronLeft size={14} />
+            </button>
+          )}
+
+          {canScrollTrackRight && (
+            <button
+              type="button"
+              onClick={() => handleTrackScroll("right")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+              title="Scroll right"
+            >
+              <ChevronRight size={14} />
+            </button>
+          )}
+
           <div
             ref={trackScrollRef}
             onMouseDown={handleTrackMouseDown}

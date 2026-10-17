@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Star, Clock, Calendar, CheckCircle, Shield, Video,
   ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
-  Share2, Check, ArrowRight, Timer, BadgeCheck, Code2, Compass, FileText,
+  Share2, Check, ArrowRight, ArrowLeft, Timer, BadgeCheck, Code2, Compass, FileText,
   MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2
 } from "lucide-react";
 import Swal from "sweetalert2";
@@ -103,7 +103,31 @@ export default function BookSessionPage() {
 
   const { profile: existingProfile, expertId: stateExpertId, price: overridePrice } = location.state || {};
   const queryExpertId = searchParams.get("expertId");
-  const expertId = stateExpertId || existingProfile?.id || queryExpertId;
+  const storedExpertId = typeof window !== "undefined" ? sessionStorage.getItem("current_booking_expert_id") : null;
+  const expertId = stateExpertId || existingProfile?.id || queryExpertId || storedExpertId;
+
+  // Immediately sanitize browser address bar so database ID is never exposed
+  useEffect(() => {
+    if (queryExpertId) {
+      sessionStorage.setItem("current_booking_expert_id", queryExpertId);
+      // Strip query parameter from address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (expertId) {
+      sessionStorage.setItem("current_booking_expert_id", expertId);
+    }
+  }, [queryExpertId, expertId]);
+
+  // Load Razorpay Checkout SDK dynamically on this page
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   // Selected session goal
   const [selectedGoal, setSelectedGoal] = useState<string>("technical");
@@ -555,29 +579,98 @@ export default function BookSessionPage() {
         return;
       }
 
-      // 3. Paid Standard Checkout: route to Payment gateway
-      navigate("/payment", {
-        state: {
-          bookingDetails: {
-            expertId: profile.id || expertId,
-            expertName: profile.name,
-            expertRole: profile.role,
-            date: date,
-            slot: selectedSlot,
-            price: sessionFee,
-            duration: sessionDuration,
-            category: profile.category || "IT",
-            level: expertLevel,
-            skill: profile.category || "Technical Interview",
-            sessionGoal: currentGoalObj?.title,
-            userNotes: userDiscussionNotes.trim(),
-            topics: [currentGoalObj?.title || "1:1 Mentorship"]
+      // 3. Paid Standard Checkout: DIRECTLY OPEN RAZORPAY GATEWAY ON THIS SAME PAGE!
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error("Razorpay payment gateway failed to load. Please check your internet connection.");
+      }
+
+      // Create order with Razorpay backend
+      const orderResponse = await axios.post("/api/payment/create-order", {
+        amount: sessionFee,
+        currency: "INR",
+        receipt: `rcpt_${Date.now()}`
+      });
+
+      if (!orderResponse.data?.success || !orderResponse.data?.order) {
+        throw new Error(orderResponse.data?.message || "Failed to create payment order.");
+      }
+
+      const { order } = orderResponse.data;
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SqNEn1MzouLlsg";
+
+      const options = {
+        key: razorpayKey,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Mockeefy",
+        description: `${sessionDuration} Min Mock Interview with ${profile.name}`,
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            setIsProcessing(true);
+            const verifyRes = await axios.post("/api/payment/verify-payment", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              paymentType: "booking",
+              bookingDetails: {
+                expertId: profile.id || expertId,
+                candidateId: user?.id || user?.userId || (user as any)?._id,
+                startTime,
+                endTime,
+                price: sessionFee,
+                topics: [currentGoalObj?.title || "1:1 Mentorship"],
+                duration: Number(sessionDuration),
+                notes: userDiscussionNotes.trim() ? `${userDiscussionNotes.trim()} [Goal: ${currentGoalObj?.title}]` : `[Goal: ${currentGoalObj?.title}]`
+              }
+            });
+
+            if (verifyRes.data?.success) {
+              Swal.fire({
+                title: "Booking Confirmed! 🎉",
+                text: `Your mock interview with ${profile.name} is scheduled for ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
+                icon: "success",
+                confirmButtonColor: "#0755E8",
+                confirmButtonText: "View My Bookings"
+              }).then(() => {
+                navigate("/my-sessions");
+              });
+            } else {
+              throw new Error(verifyRes.data?.message || "Payment verification failed.");
+            }
+          } catch (verifyErr: any) {
+            console.error("Payment Verification Error:", verifyErr);
+            Swal.fire({
+              title: "Payment Verification Failed",
+              text: verifyErr?.response?.data?.message || verifyErr.message || "Could not verify payment.",
+              icon: "error"
+            });
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: user?.name || "",
+          email: user?.email || "",
+          contact: user?.phone || "",
+        },
+        theme: {
+          color: "#0755E8",
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+            toast.info("Payment was cancelled. Your slot is still selected.");
           }
         }
-      });
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (err: any) {
       console.error("Booking error:", err);
-      toast.error(err?.response?.data?.message || "Failed to initiate booking. Please try again.");
+      toast.error(err?.response?.data?.message || err.message || "Failed to initiate payment. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -618,20 +711,39 @@ export default function BookSessionPage() {
   return (
     <div className="w-full space-y-6 font-sans text-left pb-16 animate-in fade-in duration-200">
       
-      {/* 1. Page Header with Clean Breadcrumbs */}
+      {/* 1. Page Header with Clean Breadcrumbs & Back Button */}
       <div className="bg-white rounded-2xl border border-slate-200/80 px-5 sm:px-6 py-4 shadow-xs">
-        {/* Breadcrumb Navigation */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1.5 flex-wrap">
-          <Link to="/find-mentor" className="text-slate-600 hover:text-[#0755E8] transition-colors">
-            Find Mentors
-          </Link>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-600 truncate max-w-[200px]">
-            {profile.name}
-          </span>
-          <span className="text-slate-300">/</span>
-          <span className="text-[#0755E8] font-bold">Book a Session</span>
-        </nav>
+        <div className="flex items-center justify-between gap-4 mb-2">
+          {/* Back Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/mentors");
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
+            title="Back to Mentors"
+          >
+            <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+            <span>Back to Mentors</span>
+          </button>
+
+          {/* Breadcrumb Navigation */}
+          <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+            <Link to="/mentors" className="text-slate-600 hover:text-[#0755E8] transition-colors">
+              Find Mentors
+            </Link>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-600 truncate max-w-[200px]">
+              {profile.name}
+            </span>
+            <span className="text-slate-300">/</span>
+            <span className="text-[#0755E8] font-bold">Book a Session</span>
+          </nav>
+        </div>
 
         {/* Title & Subtitle */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-0.5">
