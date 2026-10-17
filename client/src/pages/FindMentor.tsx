@@ -984,27 +984,7 @@ export default function FindMentor() {
     <div ref={listTopRef} className="w-full font-sans text-left animate-in fade-in duration-200">
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
-        <div className="flex-1 min-w-0 space-y-5">
-          {/* Prominent Search Bar */}
-          <div className="relative w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-3 bg-white hover:border-slate-300 focus:bg-white border border-slate-200/90 focus:border-[#0755E8] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#93B8FF]/20 shadow-xs transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
+        <div className="flex-1 min-w-0 space-y-4">
 
           {/* ======================================================== */}
           {/* SECTION 3: AVAILABLE MENTORS DIRECTORY & CARDS GRID      */}
