@@ -36,7 +36,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex items-start gap-5 lg:gap-6 w-full">
           {/* Left Sidebar - Desktop (Sticky Command Center) */}
           {showLeftSidebar && (
-            <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[220px] shrink-0 sticky top-[80px] self-start">
+            <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[245px] shrink-0 sticky top-[80px] self-start">
               <Sidebar />
             </aside>
           )}

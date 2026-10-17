@@ -213,9 +213,9 @@ export default function Navigation() {
       >
         <div className="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto h-full flex items-center justify-between gap-3 sm:gap-4 lg:gap-0">
           {/* ========================================================= */}
-          {/* LEFT: Mockeefy Logo aligned with the 220px Side Nav       */}
+          {/* LEFT: Mockeefy Logo aligned with the 245px Side Nav       */}
           {/* ========================================================= */}
-          <div className="flex items-center justify-start lg:justify-center lg:w-[220px] shrink-0 h-full">
+          <div className="flex items-center justify-start lg:justify-center lg:w-[245px] shrink-0 h-full">
             <Link
               to="/"
               className="flex items-center gap-2.5 group active:scale-95 transition-transform"
