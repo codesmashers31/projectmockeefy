@@ -111,23 +111,19 @@ export default function Sidebar() {
     return counts;
   }, [expertsData]);
 
-  // Synchronize active filter with URL parameter when browsing mentors
+  // Synchronize active filter with URL parameter
   useEffect(() => {
-    if (location.pathname === "/mentors" || location.pathname === "/find-mentor") {
-      const cat = searchParams.get("category");
-      if (!cat || cat === "All") {
-        setSelectedFilter("all");
-      } else {
-        const lower = cat.toLowerCase();
-        if (lower.includes("software") || lower.includes("web")) setSelectedFilter("software-web");
-        else if (lower.includes("cloud") || lower.includes("devops")) setSelectedFilter("cloud-security");
-        else if (lower.includes("ai") || lower.includes("data")) setSelectedFilter("ai-data");
-        else if (lower.includes("product") || lower.includes("design")) setSelectedFilter("product-design");
-        else if (lower.includes("hr") || lower.includes("behavioral")) setSelectedFilter("hr-behavioral");
-        else setSelectedFilter("all");
-      }
-    } else if (location.pathname !== "/") {
+    const cat = searchParams.get("category");
+    if (!cat || cat === "All") {
       setSelectedFilter("all");
+    } else {
+      const lower = cat.toLowerCase();
+      if (lower.includes("software") || lower.includes("web")) setSelectedFilter("software-web");
+      else if (lower.includes("cloud") || lower.includes("devops")) setSelectedFilter("cloud-security");
+      else if (lower.includes("ai") || lower.includes("data")) setSelectedFilter("ai-data");
+      else if (lower.includes("product") || lower.includes("design")) setSelectedFilter("product-design");
+      else if (lower.includes("hr") || lower.includes("behavioral")) setSelectedFilter("hr-behavioral");
+      else setSelectedFilter("all");
     }
   }, [location.pathname, searchParams]);
 
@@ -224,32 +220,15 @@ export default function Sidebar() {
     },
   ];
 
-  const handleTrackFilter = (trackId: string, anchorId: string, queryValue: string) => {
+  const handleTrackFilter = (trackId: string, _anchorId: string, queryValue: string) => {
     setSelectedFilter(trackId);
 
-    if (location.pathname === "/") {
-      if (trackId === "all") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        const el = document.getElementById(anchorId);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          navigate(`/mentors?category=${encodeURIComponent(queryValue)}`);
-        }
-      }
-    } else if (location.pathname === "/mentors" || location.pathname === "/find-mentor") {
-      if (trackId === "all") {
-        navigate("/mentors");
-      } else {
-        navigate(`/mentors?category=${encodeURIComponent(queryValue)}`);
-      }
+    if (trackId === "all") {
+      navigate("/");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      if (trackId === "all") {
-        navigate("/");
-      } else {
-        navigate(`/mentors?category=${encodeURIComponent(queryValue)}`);
-      }
+      navigate(`/?category=${encodeURIComponent(queryValue)}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 

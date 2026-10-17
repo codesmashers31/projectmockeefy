@@ -1,15 +1,15 @@
 import DashboardLayout from "../components/DashboardLayout";
-import CoachSessionCard from "../components/CoachSessionCard";
+import FindMentor from "./FindMentor";
 
 /**
- * "/" route (Home Page):
- * Displays Mockeefy's main DashboardLayout with CoachSessionCard (all verified mentor categories).
- * Both guests and registered candidates see our full list of mentors immediately, with no empty state.
+ * "/" route (Home Page / Interview Experts):
+ * Displays Mockeefy's main DashboardLayout with FindMentor.
+ * Visitors and candidates immediately land on the "Find Your Mentor" discovery directory.
  */
 const Index = () => {
   return (
     <DashboardLayout>
-      <CoachSessionCard />
+      <FindMentor />
     </DashboardLayout>
   );
 };

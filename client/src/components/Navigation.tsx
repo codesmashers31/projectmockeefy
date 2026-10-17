@@ -59,13 +59,13 @@ export default function Navigation() {
   const { data: userProfile } = useUserProfile();
   const profileImage = user?.profileImage || userProfile?.profileImage;
 
-  // Sync search input with URL params when on /mentors
+  // Sync search input with URL params when on home page
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || params.get("search");
     if (q) {
       setSearchQuery(q);
-    } else if (location.pathname !== "/mentors" && location.pathname !== "/find-mentor") {
+    } else if (location.pathname !== "/" && location.pathname !== "/mentors" && location.pathname !== "/find-mentor") {
       setSearchQuery("");
     }
   }, [location.pathname, location.search]);
@@ -171,20 +171,20 @@ export default function Navigation() {
     e.preventDefault();
     const query = searchQuery.trim();
     if (query) {
-      navigate(`/mentors?q=${encodeURIComponent(query)}`);
+      navigate(`/?q=${encodeURIComponent(query)}`);
     } else {
-      navigate("/mentors");
+      navigate("/");
     }
   };
 
   // Primary navigation links tailored for user vs guest
   const navItems = user
     ? [
-        { name: "Interview Experts", href: "/mentors" },
+        { name: "Interview Experts", href: "/" },
         { name: "My Sessions", href: "/my-sessions" },
       ]
     : [
-        { name: "Interview Experts", href: "/mentors" },
+        { name: "Interview Experts", href: "/" },
         { name: "Pricing & Plans", href: "/plans" },
         { name: "Interview Tips", href: "/tips" },
       ];

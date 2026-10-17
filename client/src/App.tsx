@@ -1,6 +1,6 @@
 import { Toaster } from "./components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import Login from "./components/Login";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -69,6 +69,11 @@ import MockeefyLogo from "./components/MockeefyLogo";
 
 const queryClient = new QueryClient();
 
+function MentorsRedirect() {
+  const location = useLocation();
+  return <Navigate to={{ pathname: "/", search: location.search }} replace />;
+}
+
 // Initial Auth Check Loader
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -126,6 +131,10 @@ function AppRoutes() {
           )
         } />
 
+        {/* Public Mentors routes redirect seamlessly to / */}
+        <Route path="/mentors" element={<MentorsRedirect />} />
+        <Route path="/find-mentor" element={<MentorsRedirect />} />
+
         <Route path="/signin" element={<ErrorBoundary><GuestRoute><Login /></GuestRoute></ErrorBoundary>} />
         <Route path="/signup" element={<GuestRoute><Register /></GuestRoute>} />
         <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
@@ -153,8 +162,8 @@ function AppRoutes() {
             <Route path="/ai-mock" element={<AiInterview />} />
             <Route path="/ai-mock-interview" element={<AiInterview />} />
             <Route path="/resume-builder" element={<ResumeBuilderPage />} />
-            <Route path="/mentors" element={<FindMentor />} />
-            <Route path="/find-mentor" element={<FindMentor />} />
+            <Route path="/mentors" element={<MentorsRedirect />} />
+            <Route path="/find-mentor" element={<MentorsRedirect />} />
             <Route path="/my-sessions" element={<MySessions key="my-sessions" />} />
             <Route path="/saved-experts" element={<MySessions key="saved-experts" initialViewOverride="saved" />} />
             <Route path="/tips" element={<TipsPage />} />

@@ -29,7 +29,7 @@ import {
 const ITEMS_PER_PAGE = 10;
 
 export default function FindMentor() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(initialQ);
   const deferredSearch = useDeferredValue(searchQuery);
@@ -43,6 +43,8 @@ export default function FindMentor() {
     const cat = searchParams.get("category");
     if (cat !== null) {
       setSelectedCategory(cat);
+    } else {
+      setSelectedCategory("All");
     }
   }, [searchParams]);
   const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") || "All");
@@ -716,7 +718,15 @@ export default function FindMentor() {
             return (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    if (cat === "All") next.delete("category");
+                    else next.set("category", cat);
+                    return next;
+                  });
+                }}
                 className={`px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
                   isSelected
                     ? "bg-[#0755E8] text-white font-semibold shadow-xs"
