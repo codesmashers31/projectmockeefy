@@ -24,8 +24,8 @@ interface FooterProps {
 // Minimalist Vector Illustration for 1-on-1 Mock Interviews Banner
 // ============================================================================
 const BANNER_ILLUSTRATION = {
-  src: '/media/illustrations/mentor_banner_simple.jpg',
-  alt: '1-on-1 Mock Interview Mentorship',
+  src: '/media/illustrations/Friendly%20Headset%20Support%20Guide.png',
+  alt: 'Friendly Mentor & 1-on-1 Mock Interview Guide',
 };
 
 // ============================================================================
@@ -152,7 +152,7 @@ const PreFooterExpertsBanner = () => {
               <img
                 src={BANNER_ILLUSTRATION.src}
                 alt={BANNER_ILLUSTRATION.alt}
-                className="w-full h-auto max-h-[300px] sm:max-h-[330px] object-contain mix-blend-multiply drop-shadow-md select-none pointer-events-none"
+                className="w-full h-auto max-h-[300px] sm:max-h-[340px] md:max-h-[360px] object-contain drop-shadow-xl select-none pointer-events-none"
                 loading="lazy"
               />
             </div>
