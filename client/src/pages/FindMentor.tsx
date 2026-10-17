@@ -659,344 +659,346 @@ export default function FindMentor() {
   );
 
   return (
-    <div ref={listTopRef} className="w-full font-sans space-y-6 text-left animate-in fade-in duration-200">
-      {/* ======================================================== */}
-      {/* SECTION 1: DISCOVERY HEADING                             */}
-      {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] text-xs font-bold uppercase tracking-wider mb-2">
-            <Sparkles size={13} className="text-[#0755E8]" />
-            Mentor Directory
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Find Your Mentor
-          </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl">
-            Connect with experienced professionals who can help you prepare for your next interview.
-          </p>
-        </div>
-
-        <div className="bg-slate-50 border border-slate-200/70 rounded-xl px-4 py-3 shrink-0 text-center sm:text-right">
-          <p className="text-2xl font-black text-[#0755E8] leading-none">
-            {isLoading ? "--" : allMentors.length}
-          </p>
-          <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">
-            Verified Mentors
-          </p>
-        </div>
-      </div>
-
-      {/* ======================================================== */}
-      {/* SECTION 2: PROMINENT SEARCH & CATEGORY CHIPS             */}
-      {/* ======================================================== */}
-      <div className="space-y-3">
-        <div className="relative w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 bg-white hover:border-slate-300 focus:bg-white border border-slate-200/90 focus:border-[#0755E8] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#93B8FF]/20 shadow-xs transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
-              aria-label="Clear search"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => {
-                  setSelectedCategory(cat);
-                  setSearchParams((prev) => {
-                    const next = new URLSearchParams(prev);
-                    if (cat === "All") next.delete("category");
-                    else next.set("category", cat);
-                    return next;
-                  });
-                }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
-                  isSelected
-                    ? "bg-[#0755E8] text-white font-semibold shadow-xs"
-                    : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80 font-medium shadow-xs"
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ======================================================== */}
-      {/* SECTION 3: TWO-COLUMN DISCOVERY & FILTER LAYOUT          */}
-      {/* ======================================================== */}
-      <div className="flex items-start gap-6 scroll-mt-24">
-        {/* Left Column: Mentors Directory */}
-        <div className="flex-1 min-w-0 space-y-4">
-          {/* Header Controls: Result Count & Sort Dropdown */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 m-0">
-                Available Mentors
-              </h2>
-              <span className="text-xs text-slate-500 font-medium">
-                (Showing{" "}
-                <span className="text-slate-900 font-bold">
-                  {filteredMentors.length > 0 ? startIndex + 1 : 0}
-                </span>
-                –
-                <span className="text-slate-900 font-bold">
-                  {Math.min(startIndex + ITEMS_PER_PAGE, filteredMentors.length)}
-                </span>{" "}
-                of <span className="text-[#0755E8] font-bold">{filteredMentors.length}</span>)
-              </span>
+    <div ref={listTopRef} className="w-full font-sans text-left animate-in fade-in duration-200">
+      <div className="flex items-start gap-6 lg:gap-7 xl:gap-8 w-full">
+        {/* CENTER COLUMN: All Experts Content */}
+        <div className="flex-1 min-w-0 space-y-5">
+          {/* ======================================================== */}
+          {/* SECTION 1: DISCOVERY HEADING                             */}
+          {/* ======================================================== */}
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] text-xs font-bold uppercase tracking-wider mb-2">
+                <Sparkles size={13} className="text-[#0755E8]" />
+                Mentor Directory
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Find Your Perfect Interview Experts
+              </h1>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl">
+                Crack your interview before mock — 1-on-1 practice with top tech engineers and hiring mentors.
+              </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Mobile Filter Button */}
-              <button
-                onClick={() => setIsMobileFilterOpen(true)}
-                className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
-              >
-                <SlidersHorizontal size={13} />
-                <span>Filters</span>
-                {activeFilterCount > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
-                    {activeFilterCount}
+            <div className="bg-slate-50 border border-slate-200/70 rounded-xl px-4 py-3 shrink-0 text-center sm:text-right">
+              <p className="text-2xl font-black text-[#0755E8] leading-none">
+                {isLoading ? "--" : allMentors.length}
+              </p>
+              <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">
+                Verified Mentors
+              </p>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* SECTION 2: PROMINENT SEARCH & CATEGORY CHIPS             */}
+          {/* ======================================================== */}
+          <div className="space-y-3">
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-3 bg-white hover:border-slate-300 focus:bg-white border border-slate-200/90 focus:border-[#0755E8] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#93B8FF]/20 shadow-xs transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {categories.map((cat) => {
+                const isSelected = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setSearchParams((prev) => {
+                        const next = new URLSearchParams(prev);
+                        if (cat === "All") next.delete("category");
+                        else next.set("category", cat);
+                        return next;
+                      });
+                    }}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                      isSelected
+                        ? "bg-[#0755E8] text-white font-semibold shadow-xs"
+                        : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80 font-medium shadow-xs"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* SECTION 3: AVAILABLE MENTORS DIRECTORY & CARDS GRID      */}
+          {/* ======================================================== */}
+          <div className="space-y-4">
+            {/* Header Controls: Result Count & Sort Dropdown */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 m-0">
+                  Available Mentors
+                </h2>
+                <span className="text-xs text-slate-500 font-medium">
+                  (Showing{" "}
+                  <span className="text-slate-900 font-bold">
+                    {filteredMentors.length > 0 ? startIndex + 1 : 0}
+                  </span>
+                  –
+                  <span className="text-slate-900 font-bold">
+                    {Math.min(startIndex + ITEMS_PER_PAGE, filteredMentors.length)}
+                  </span>{" "}
+                  of <span className="text-[#0755E8] font-bold">{filteredMentors.length}</span>)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Mobile Filter Button */}
+                <button
+                  onClick={() => setIsMobileFilterOpen(true)}
+                  className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                >
+                  <SlidersHorizontal size={13} />
+                  <span>Filters</span>
+                  {activeFilterCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Sort Control */}
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer"
+                  >
+                    <option value="recommended">Sort: Relevance</option>
+                    <option value="rating">Sort: Rating (High to Low)</option>
+                    <option value="experience">Sort: Experience (High to Low)</option>
+                    <option value="price-low">Sort: Price (Low to High)</option>
+                    <option value="price-high">Sort: Price (High to Low)</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Active Filter Badges */}
+            {activeFilterCount > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
+
+                {selectedCategory !== "All" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
+                    {selectedCategory}
+                    <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
+                      <X size={12} />
+                    </button>
                   </span>
                 )}
-              </button>
 
-              {/* Sort Control */}
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer"
+                {selectedCompanies.map((c) => (
+                  <span
+                    key={c}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                  >
+                    {c}
+                    <button onClick={() => toggleCompany(c)} className="hover:text-red-500">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedExpRanges.map((exp) => (
+                  <span
+                    key={exp}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                  >
+                    Exp: {exp} yrs
+                    <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedPriceRanges.map((pr) => (
+                  <span
+                    key={pr}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                  >
+                    Price: {pr}
+                    <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+
+                {availabilityFilter !== "All" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                    {availabilityFilter}
+                    <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+
+                <button
+                  onClick={handleResetFilters}
+                  className="text-xs font-semibold text-rose-600 hover:underline ml-1 cursor-pointer"
                 >
-                  <option value="recommended">Sort: Relevance</option>
-                  <option value="rating">Sort: Rating (High to Low)</option>
-                  <option value="experience">Sort: Experience (High to Low)</option>
-                  <option value="price-low">Sort: Price (Low to High)</option>
-                  <option value="price-high">Sort: Price (High to Low)</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  Clear all
+                </button>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Active Filter Badges */}
-          {activeFilterCount > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-              <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
-
-              {selectedCategory !== "All" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
-                  {selectedCategory}
-                  <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              {selectedCompanies.map((c) => (
-                <span
-                  key={c}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
-                >
-                  {c}
-                  <button onClick={() => toggleCompany(c)} className="hover:text-red-500">
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-
-              {selectedExpRanges.map((exp) => (
-                <span
-                  key={exp}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
-                >
-                  Exp: {exp} yrs
-                  <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500">
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-
-              {selectedPriceRanges.map((pr) => (
-                <span
-                  key={pr}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
-                >
-                  Price: {pr}
-                  <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500">
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-
-              {availabilityFilter !== "All" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
-                  {availabilityFilter}
-                  <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              <button
-                onClick={handleResetFilters}
-                className="text-xs font-semibold text-rose-600 hover:underline ml-1 cursor-pointer"
-              >
-                Clear all
-              </button>
-            </div>
-          )}
-
-          {/* Mentors Grid / Empty / Error States */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <MentorCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="text-center py-12 bg-white rounded-2xl border border-rose-200 p-6 space-y-3">
-              <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-              <h3 className="text-sm font-bold text-slate-900">Failed to load mentors</h3>
-              <p className="text-xs text-slate-500">
-                {error instanceof Error ? error.message : "Error connecting to mentor API."}
-              </p>
-              <button
-                onClick={() => refetch()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <RefreshCw size={13} />
-                <span>Retry</span>
-              </button>
-            </div>
-          ) : filteredMentors.length > 0 ? (
-            <>
+            {/* Mentors Grid / Empty / Error States */}
+            {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {paginatedMentors.map((mentor) => (
-                  <MentorJobCard key={mentor.id} mentor={mentor} />
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <MentorCardSkeleton key={i} />
                 ))}
               </div>
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3 mt-5">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handlePageChange(1)}
-                      disabled={currentPage === 1}
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                      title="First Page"
-                    >
-                      <ChevronsLeft size={14} />
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                    >
-                      <ChevronLeft size={14} />
-                      <span>Prev</span>
-                    </button>
-                  </div>
-
-                  {/* Page Numbers */}
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const page = idx + 1;
-                      if (
-                        totalPages > 6 &&
-                        Math.abs(page - currentPage) > 2 &&
-                        page !== 1 &&
-                        page !== totalPages
-                      ) {
-                        if (Math.abs(page - currentPage) === 3) {
-                          return (
-                            <span key={page} className="px-1 text-slate-400 text-xs">
-                              ...
-                            </span>
-                          );
-                        }
-                        return null;
-                      }
-
-                      const isCurrent = page === currentPage;
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                            isCurrent
-                              ? "bg-[#0755E8] text-white shadow-xs"
-                              : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                    >
-                      <span>Next</span>
-                      <ChevronRight size={14} />
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(totalPages)}
-                      disabled={currentPage === totalPages}
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                      title="Last Page"
-                    >
-                      <ChevronsRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
-                <Users size={24} />
+            ) : isError ? (
+              <div className="text-center py-12 bg-white rounded-2xl border border-rose-200 p-6 space-y-3">
+                <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                <h3 className="text-sm font-bold text-slate-900">Failed to load mentors</h3>
+                <p className="text-xs text-slate-500">
+                  {error instanceof Error ? error.message : "Error connecting to mentor API."}
+                </p>
+                <button
+                  onClick={() => refetch()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  <span>Retry</span>
+                </button>
               </div>
-              <h3 className="text-base font-bold text-slate-900">No mentors found</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                We couldn't find any mentors matching your search or filters. Try resetting to explore all experts.
-              </p>
-              <button
-                onClick={handleResetFilters}
-                className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-              >
-                Show All Mentors
-              </button>
-            </div>
-          )}
+            ) : filteredMentors.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {paginatedMentors.map((mentor) => (
+                    <MentorJobCard key={mentor.id} mentor={mentor} />
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3 mt-5">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        title="First Page"
+                      >
+                        <ChevronsLeft size={14} />
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                      >
+                        <ChevronLeft size={14} />
+                        <span>Prev</span>
+                      </button>
+                    </div>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }).map((_, idx) => {
+                        const page = idx + 1;
+                        if (
+                          totalPages > 6 &&
+                          Math.abs(page - currentPage) > 2 &&
+                          page !== 1 &&
+                          page !== totalPages
+                        ) {
+                          if (Math.abs(page - currentPage) === 3) {
+                            return (
+                              <span key={page} className="px-1 text-slate-400 text-xs">
+                                ...
+                              </span>
+                            );
+                          }
+                          return null;
+                        }
+
+                        const isCurrent = page === currentPage;
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              isCurrent
+                                ? "bg-[#0755E8] text-white shadow-xs"
+                                : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={14} />
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        title="Last Page"
+                      >
+                        <ChevronsRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
+                <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
+                  <Users size={24} />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">No mentors found</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  We couldn't find any mentors matching your search or filters. Try resetting to explore all experts.
+                </p>
+                <button
+                  onClick={handleResetFilters}
+                  className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  Show All Mentors
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right Column: Sticky Filter Sidebar (Desktop xl+ screens) */}
-        <aside aria-label="Filters Panel" className="hidden xl:block w-[270px] shrink-0 sticky top-[88px] self-start space-y-4">
+        {/* RIGHT COLUMN: Sticky Filter Sidebar (Desktop xl+ screens) */}
+        <aside aria-label="Filters Panel" className="hidden xl:block w-[265px] 2xl:w-[280px] shrink-0 sticky top-[80px] self-start space-y-4">
           {renderFilterPanel()}
 
           {/* Tips Card */}

@@ -32,7 +32,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </header>
 
       {/* Main Layout Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-16">
+      <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-16">
         <div className="flex items-start gap-6 lg:gap-7 xl:gap-8 w-full">
           {/* Left Sidebar - Desktop (Sticky Command Center) */}
           {showLeftSidebar && (

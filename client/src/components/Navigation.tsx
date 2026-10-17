@@ -211,7 +211,7 @@ export default function Navigation() {
         aria-label="Main Navigation"
         className="bg-white border-b border-slate-200/80 sticky top-0 z-50 w-full h-16 shadow-[0_1px_2px_rgba(0,0,0,0.02)] font-sans"
       >
-        <div className="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto h-full flex items-center justify-between gap-3 sm:gap-4 lg:gap-0">
+        <div className="max-w-7xl 2xl:max-w-[1536px] px-4 sm:px-6 lg:px-8 mx-auto h-full flex items-center justify-between gap-3 sm:gap-4 lg:gap-0">
           {/* ========================================================= */}
           {/* LEFT: Mockeefy Logo centered over the 240px Side Nav     */}
           {/* ========================================================= */}
