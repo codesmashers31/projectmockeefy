@@ -256,7 +256,7 @@ export default function FindMentor() {
 
   // Filter Accordions
   const [expandedSections, setExpandedSections] = useState({
-    company: true,
+    track: true,
     experience: true,
     price: false,
     availability: false,
@@ -351,6 +351,17 @@ export default function FindMentor() {
       if (m.category?.trim()) set.add(m.category.trim());
     });
     return ["All", ...Array.from(set).sort()];
+  }, [allMentors]);
+
+  const categoryCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    allMentors.forEach((m) => {
+      const cat = m.category?.trim();
+      if (cat) {
+        map[cat] = (map[cat] || 0) + 1;
+      }
+    });
+    return map;
   }, [allMentors]);
 
   const uniqueCompanies = useMemo(() => {
@@ -734,83 +745,6 @@ export default function FindMentor() {
     }
   };
 
-  // Category Filter Pills Drag-to-Scroll state
-  const catScrollRef = useRef<HTMLDivElement>(null);
-  const [canCatScrollLeft, setCanCatScrollLeft] = useState(false);
-  const [canCatScrollRight, setCanCatScrollRight] = useState(false);
-  const isCatDragging = useRef(false);
-  const catStartX = useRef(0);
-  const catScrollStart = useRef(0);
-  const catHasDragged = useRef(false);
-
-  const checkCatScroll = () => {
-    const el = catScrollRef.current;
-    if (!el) return;
-    setCanCatScrollLeft(el.scrollLeft > 4);
-    setCanCatScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    const el = catScrollRef.current;
-    if (!el) return;
-    checkCatScroll();
-    const t = setTimeout(checkCatScroll, 100);
-    el.addEventListener("scroll", checkCatScroll, { passive: true });
-    window.addEventListener("resize", checkCatScroll);
-    return () => {
-      clearTimeout(t);
-      el.removeEventListener("scroll", checkCatScroll);
-      window.removeEventListener("resize", checkCatScroll);
-    };
-  }, [categories]);
-
-  const handleCatScroll = (dir: "left" | "right") => {
-    const el = catScrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir === "left" ? -220 : 220, behavior: "smooth" });
-    setTimeout(checkCatScroll, 300);
-  };
-
-  const handleCatMouseDown = (e: React.MouseEvent) => {
-    const el = catScrollRef.current;
-    if (!el) return;
-    isCatDragging.current = true;
-    catHasDragged.current = false;
-    catStartX.current = e.pageX - el.offsetLeft;
-    catScrollStart.current = el.scrollLeft;
-    el.style.scrollBehavior = "auto";
-  };
-
-  const handleCatMouseMove = (e: React.MouseEvent) => {
-    if (!isCatDragging.current) return;
-    const el = catScrollRef.current;
-    if (!el) return;
-    const x = e.pageX - el.offsetLeft;
-    const walk = x - catStartX.current;
-    if (Math.abs(walk) > 4) {
-      catHasDragged.current = true;
-    }
-    el.scrollLeft = catScrollStart.current - walk;
-    checkCatScroll();
-  };
-
-  const handleCatMouseUp = () => {
-    if (!isCatDragging.current) return;
-    isCatDragging.current = false;
-    const el = catScrollRef.current;
-    if (!el) return;
-    el.style.scrollBehavior = "auto";
-    checkCatScroll();
-  };
-
-  const handleCatClickCapture = (e: React.MouseEvent) => {
-    if (catHasDragged.current) {
-      e.stopPropagation();
-      e.preventDefault();
-      catHasDragged.current = false;
-    }
-  };
-
   // Dedicated Filter Sidebar Component
   const renderFilterPanel = () => (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-4.5 space-y-4 text-left">
@@ -824,64 +758,79 @@ export default function FindMentor() {
             </span>
           )}
         </div>
-        {activeFilterCount > 0 && (
-          <button
-            onClick={handleResetFilters}
-            className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
-          >
-            Clear all
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {activeFilterCount > 0 && (
+            <button
+              onClick={handleResetFilters}
+              className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
+            >
+              Clear all
+            </button>
+          )}
+          <span className="text-[11px] font-extrabold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full">
+            {allMentors.length} Mentors
+          </span>
+        </div>
       </div>
 
-      {/* 1. Companies */}
-      {uniqueCompanies.length > 0 && (
-        <div className="space-y-2">
-          <button
-            onClick={() => toggleSection("company")}
-            className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
-          >
-            <span className="flex items-center gap-1.5">
-              <span>Company</span>
-              {selectedCompanies.length > 0 && (
-                <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
-                  {selectedCompanies.length}
-                </span>
-              )}
-            </span>
-            {expandedSections.company ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+      {/* 1. Track Filter (from image) */}
+      <div className="space-y-2">
+        <button
+          onClick={() => toggleSection("track")}
+          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+        >
+          <span className="flex items-center gap-1.5">
+            <span>Filter by Track</span>
+            {selectedCategory !== "All" && (
+              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
+                1
+              </span>
+            )}
+          </span>
+          {expandedSections.track ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
 
-          {expandedSections.company && (
-            <div className="space-y-1">
-              {uniqueCompanies.slice(0, 7).map((comp) => {
-                const checked = selectedCompanies.includes(comp);
-                return (
-                  <label
-                    key={comp}
-                    onClick={() => toggleCompany(comp)}
-                    className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+        {expandedSections.track && (
+          <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+            {categories.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              const count = cat === "All" ? allMentors.length : categoryCounts[cat] || 0;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    const newCat = cat;
+                    setSelectedCategory(newCat);
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev);
+                      if (newCat === "All") next.delete("category");
+                      else next.set("category", newCat);
+                      return next;
+                    });
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 cursor-pointer text-left ${
+                    isSelected
+                      ? "bg-[#0755E8] text-white font-bold shadow-xs"
+                      : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                  }`}
+                >
+                  <span className="truncate pr-1">{cat === "All" ? "All Tracks" : cat}</span>
+                  <span
+                    className={`text-[11px] px-1.5 py-0.2 rounded-full shrink-0 ${
+                      isSelected
+                        ? "bg-white/20 text-white font-bold"
+                        : "text-slate-400 bg-slate-100"
+                    }`}
                   >
-                    <div
-                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
-                        checked
-                          ? "bg-[#0755E8] border-[#0755E8] text-white"
-                          : "border-slate-300 bg-white"
-                      }`}
-                    >
-                      {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                    </div>
-                    <span className="truncate flex-1 font-medium">{comp}</span>
-                    <span className="text-slate-400 text-[11px]">
-                      ({companyCounts[comp] || 0})
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 2. Experience */}
       <div className="space-y-2 pt-3 border-t border-slate-100">
@@ -1036,142 +985,25 @@ export default function FindMentor() {
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
         <div className="flex-1 min-w-0 space-y-5">
-          {/* ======================================================== */}
-          {/* SECTION 1: DISCOVERY HEADING                             */}
-          {/* ======================================================== */}
-          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] text-xs font-bold uppercase tracking-wider mb-2">
-                <Sparkles size={13} className="text-[#0755E8]" />
-                Mentor Directory
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Find Your Perfect Interview Experts
-              </h1>
-              <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl">
-                Crack your interview before mock — 1-on-1 practice with top tech engineers and hiring mentors.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-200/70 rounded-xl px-4 py-3 shrink-0 text-center sm:text-right">
-              <p className="text-2xl font-black text-[#0755E8] leading-none">
-                {isLoading ? "--" : allMentors.length}
-              </p>
-              <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-wider">
-                Verified Mentors
-              </p>
-            </div>
-          </div>
-
-          {/* ======================================================== */}
-          {/* SECTION 2: PROMINENT SEARCH & CATEGORY CHIPS             */}
-          {/* ======================================================== */}
-          <div className="space-y-3">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 bg-white hover:border-slate-300 focus:bg-white border border-slate-200/90 focus:border-[#0755E8] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#93B8FF]/20 shadow-xs transition-all"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
-                  aria-label="Clear search"
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-
-            {/* Category Filter Pills Track with Hand Indicator & Drag Scrolling */}
-            <div className="space-y-1.5 pt-0.5">
-              <div className="flex items-center justify-between gap-2 px-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">Filter by Track</span>
-                  {/* Hand symbol indicator for dragging */}
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/70 text-[11px] font-bold text-[#0755E8] select-none shadow-2xs">
-                    <Hand size={11} className="text-[#0755E8] animate-pulse" />
-                    <span>Drag to explore</span>
-                  </span>
-                </div>
-
-                {/* Left & Right Arrow Buttons for Scrolling */}
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCatScroll("left")}
-                    disabled={!canCatScrollLeft}
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
-                      canCatScrollLeft
-                        ? "bg-white hover:bg-slate-100 text-slate-700 shadow-2xs border border-slate-200/90 active:scale-95 cursor-pointer"
-                        : "bg-slate-100/50 text-slate-300 border border-slate-200/40 cursor-not-allowed"
-                    }`}
-                    title="Scroll categories left"
-                    aria-label="Scroll categories left"
-                  >
-                    <ChevronLeft size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCatScroll("right")}
-                    disabled={!canCatScrollRight}
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
-                      canCatScrollRight
-                        ? "bg-white hover:bg-slate-100 text-slate-700 shadow-2xs border border-slate-200/90 active:scale-95 cursor-pointer"
-                        : "bg-slate-100/50 text-slate-300 border border-slate-200/40 cursor-not-allowed"
-                    }`}
-                    title="Scroll categories right"
-                    aria-label="Scroll categories right"
-                  >
-                    <ChevronRight size={13} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Pills Container (Arrows only on top header as requested) */}
-              <div className="bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/60 shadow-2xs">
-                <div
-                  ref={catScrollRef}
-                  onMouseDown={handleCatMouseDown}
-                  onMouseMove={handleCatMouseMove}
-                  onMouseUp={handleCatMouseUp}
-                  onMouseLeave={handleCatMouseUp}
-                  onClickCapture={handleCatClickCapture}
-                  className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 select-none cursor-grab active:cursor-grabbing"
-                  style={{ scrollbarWidth: "none" }}
-                >
-                  {categories.map((cat) => {
-                    const isSelected = selectedCategory === cat;
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory(cat);
-                          setSearchParams((prev) => {
-                            const next = new URLSearchParams(prev);
-                            if (cat === "All") next.delete("category");
-                            else next.set("category", cat);
-                            return next;
-                          });
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 ${
-                          isSelected
-                            ? "bg-[#0755E8] text-white font-semibold shadow-xs"
-                            : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80 font-medium shadow-xs"
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+          {/* Prominent Search Bar */}
+          <div className="relative w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by mentor name, role, company (Google, Amazon), or skills..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-3 bg-white hover:border-slate-300 focus:bg-white border border-slate-200/90 focus:border-[#0755E8] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#93B8FF]/20 shadow-xs transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
 
           {/* ======================================================== */}
