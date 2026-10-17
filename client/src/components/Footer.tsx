@@ -6,6 +6,8 @@ import {
   Linkedin, 
   Mail, 
   ArrowRight, 
+  Sparkles,
+  Users,
   CheckCircle2,
   ChevronLeft,
   ChevronRight
@@ -24,77 +26,136 @@ interface FooterProps {
 const BANNER_ILLUSTRATION = {
   src: '/media/illustrations/mentor_banner_simple.jpg',
   alt: '1-on-1 Mock Interview Mentorship',
-  tag: 'Expert Mentorship',
 };
 
 // ============================================================================
-// Pre-Footer Interactive Illustration Card (Only Image with Floating Animations)
+// Pre-Footer Promo Banner (1-on-1 Mock Interviews Mentorship)
 // ============================================================================
 const PreFooterExpertsBanner = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex justify-center items-center py-3 mb-10 sm:mb-12">
+    <div className="relative overflow-hidden rounded-[28px] border border-blue-100/90 bg-gradient-to-br from-[#F4F7FE] via-[#F8FAFF] to-[#EFF4FE] p-6 sm:p-8 lg:p-9 mb-12 sm:mb-14 shadow-xs">
       <style>{`
-        @keyframes floatSlow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-7px) rotate(-0.5deg); }
+        @keyframes playfulFloat {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          33% {
+            transform: translateY(-9px) rotate(-1.2deg);
+          }
+          66% {
+            transform: translateY(6px) rotate(1deg);
+          }
         }
-        @keyframes floatReverse {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(7px) rotate(0.5deg); }
+        @keyframes auraGlow {
+          0%, 100% {
+            opacity: 0.45;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.8;
+            transform: scale(1.08);
+          }
         }
-        @keyframes gentleFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-4px); }
+        .animate-playful-float {
+          animation: playfulFloat 4.8s ease-in-out infinite;
         }
-        .animate-float-slow {
-          animation: floatSlow 3.8s ease-in-out infinite;
-        }
-        .animate-float-reverse {
-          animation: floatReverse 4.2s ease-in-out infinite;
-        }
-        .animate-gentle-float {
-          animation: gentleFloat 3s ease-in-out infinite;
+        .animate-aura-glow {
+          animation: auraGlow 5s ease-in-out infinite;
         }
       `}</style>
 
-      {/* Main Illustration Card (Exact match to User Screenshot with Interactive Floating Badges) */}
-      <div
-        onClick={() => navigate('/mentors')}
-        className="group relative w-full max-w-[440px] sm:max-w-[480px] rounded-3xl cursor-pointer select-none transition-all duration-300"
-        title="Click to Find Verified Mentors"
-      >
-        {/* Soft ambient background aura glow */}
-        <div className="absolute -inset-3 bg-gradient-to-tr from-blue-100/60 via-indigo-50/40 to-transparent rounded-3xl blur-2xl pointer-events-none group-hover:scale-105 transition-transform duration-500" />
-
-        <div className="relative rounded-3xl overflow-hidden border border-blue-100/90 bg-white/95 shadow-sm group-hover:shadow-xl group-hover:border-blue-200/90 transition-all duration-300 group-hover:-translate-y-1">
-          <img
-            src={BANNER_ILLUSTRATION.src}
-            alt={BANNER_ILLUSTRATION.alt}
-            className="w-full h-[260px] sm:h-[300px] md:h-[320px] object-cover object-top group-hover:scale-103 transition-transform duration-500 ease-out"
-            loading="lazy"
-          />
-
-          {/* Bottom soft gradient blend */}
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white/95 via-white/40 to-transparent pointer-events-none" />
-
-          {/* Top Right: Expert Mentorship Badge */}
-          <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-blue-200/90 shadow-2xs text-xs font-bold text-[#0755E8] animate-gentle-float">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Expert Mentorship</span>
+      {/* Split Hero Grid with Left Content & Right Floating Illustration */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+        {/* Left: Headline, Tagline, Highlights & Direct Actions (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-xs font-bold uppercase tracking-wider shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-[#0755E8] animate-pulse" />
+            <span>1-on-1 Mock Interviews</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
           </div>
 
-          {/* Bottom Left: Be interview ready */}
-          <div className="absolute bottom-3.5 left-3.5 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md text-xs font-bold text-slate-800 animate-float-slow">
-            <span>💼</span>
-            <span>Be interview ready</span>
+          <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-slate-900 tracking-tight leading-tight">
+            Stand out among candidates with{' '}
+            <span className="bg-gradient-to-r from-[#0755E8] to-blue-600 bg-clip-text text-transparent">
+              1-on-1 mock interviews
+            </span>
+          </h2>
+
+          <p className="text-slate-600 text-xs sm:text-sm md:text-[15px] font-medium leading-relaxed max-w-xl">
+            Practice live technical, system design, and HR rounds with verified mentors from Google, Amazon, Microsoft, and top startups. Receive detailed rubrics and actionable feedback to crack your dream role.
+          </p>
+
+          {/* Quick Value Highlights */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs sm:text-sm font-semibold text-slate-600">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#0755E8]" />
+              <span>FAANG Mentors</span>
+            </span>
+            <span className="text-slate-300 font-bold">—</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#0755E8]" />
+              <span>Live 1-on-1 Call</span>
+            </span>
+            <span className="text-slate-300 font-bold">—</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#0755E8]" />
+              <span>Actionable Feedback</span>
+            </span>
           </div>
 
-          {/* Bottom Right: Detailed evaluation */}
-          <div className="absolute bottom-3.5 right-3.5 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md text-xs font-bold text-slate-800 animate-float-reverse">
-            <span className="text-[#0755E8]">📊</span>
-            <span>Detailed evaluation</span>
+          {/* Action Buttons: Find Mentors & Become a Mentor */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
+            <Link
+              to="/mentors"
+              className="relative group overflow-hidden inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3.5 rounded-xl text-white text-xs sm:text-sm font-black tracking-tight bg-gradient-to-r from-[#0755E8] via-[#2A72FF] to-[#0440BD] bg-[length:200%_auto] hover:bg-[position:right_center] shadow-lg shadow-[#0755E8]/30 hover:shadow-xl hover:shadow-[#0755E8]/45 hover:-translate-y-0.5 active:scale-95 transition-all duration-500 border border-white/25 text-center cursor-pointer"
+            >
+              {/* Interactive sweeping light sheen */}
+              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+
+              {/* Glowing soft radial highlight */}
+              <span className="absolute -top-6 -left-6 w-16 h-16 bg-white/20 rounded-full blur-md group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+
+              <span className="relative z-10">Find Mentors</span>
+              <ArrowRight className="relative z-10 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+            </Link>
+
+            <Link
+              to="/signup?role=expert"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 hover:text-[#0755E8] hover:border-blue-300 text-xs sm:text-sm font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all active:scale-95 text-center cursor-pointer"
+            >
+              <Users className="w-4 h-4 text-slate-500" />
+              <span>Become a Mentor</span>
+            </Link>
+          </div>
+
+          {/* Social Proof */}
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-1">
+            <Users className="w-4 h-4 text-[#0755E8]" />
+            <span>Trusted by 10,000+ candidates across Google, Meta & Amazon</span>
+          </div>
+        </div>
+
+        {/* Right: Pure Illustration with NO card background or text badges, with playful floating animations */}
+        <div className="lg:col-span-5 relative flex items-center justify-center lg:justify-end">
+          <div
+            onClick={() => navigate('/mentors')}
+            className="group relative w-full max-w-[420px] cursor-pointer select-none"
+            title="Click to Find Verified Mentors"
+          >
+            {/* Soft ambient aura / glow behind the illustration */}
+            <div className="absolute -inset-4 bg-gradient-to-tr from-blue-200/50 via-indigo-100/40 to-cyan-100/30 rounded-full blur-3xl pointer-events-none animate-aura-glow" />
+
+            {/* Seamless floating illustration (No card border, no white card box, no text badges) */}
+            <div className="relative animate-playful-float transition-transform duration-500 group-hover:scale-105">
+              <img
+                src={BANNER_ILLUSTRATION.src}
+                alt={BANNER_ILLUSTRATION.alt}
+                className="w-full h-auto max-h-[300px] sm:max-h-[330px] object-contain mix-blend-multiply drop-shadow-md select-none pointer-events-none"
+                loading="lazy"
+              />
+            </div>
           </div>
         </div>
       </div>
