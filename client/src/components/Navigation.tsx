@@ -177,21 +177,14 @@ export default function Navigation() {
     }
   };
 
-  // Primary navigation links tailored for user vs guest
-  const navItems = user
-    ? [
-        { name: "Interview Experts", href: "/" },
-        { name: "My Sessions", href: "/my-sessions" },
-      ]
-    : [
-        { name: "Interview Experts", href: "/" },
-        { name: "Pricing & Plans", href: "/plans" },
-        { name: "Interview Tips", href: "/tips" },
-      ];
+  // Primary navigation links: My Sessions, Certificates, and More
+  const navItems = [
+    { name: "My Sessions", href: "/my-sessions" },
+    { name: "Certificates", href: "/certificates" },
+  ];
 
   const moreItems = [
     { name: "Saved Mentors", href: "/saved-experts", icon: <Bookmark size={16} /> },
-    { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
     { name: "Subscription Plans", href: "/plans", icon: <CreditCard size={16} /> },
     { name: "Tips & Guidance", href: "/tips", icon: <Sparkles size={16} /> },
     { name: "Help & Support", href: "/help", icon: <HelpCircle size={16} /> },
