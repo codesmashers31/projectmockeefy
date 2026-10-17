@@ -40,8 +40,12 @@ export default function FindMentor() {
     if (q !== null && q !== searchQuery) {
       setSearchQuery(q);
     }
+    const cat = searchParams.get("category");
+    if (cat !== null) {
+      setSelectedCategory(cat);
+    }
   }, [searchParams]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") || "All");
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedExpRanges, setSelectedExpRanges] = useState<string[]>([]);
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
@@ -263,10 +267,58 @@ export default function FindMentor() {
     let list = [...allMentors];
     const q = deferredSearch.toLowerCase().trim();
 
-    // 1. Category filter
+    // 1. Category filter (supports exact matches and track groups)
     if (selectedCategory !== "All") {
       const selectedCatLower = selectedCategory.toLowerCase();
-      list = list.filter((m) => m.category?.toLowerCase() === selectedCatLower);
+      list = list.filter((m) => {
+        const cat = (m.category || "").toLowerCase();
+        if (cat === selectedCatLower) return true;
+        if (selectedCatLower.includes("software") || selectedCatLower.includes("web")) {
+          return (
+            cat.includes("software") ||
+            cat.includes("web") ||
+            cat.includes("mobile") ||
+            cat.includes("mern") ||
+            cat.includes("it") ||
+            cat.includes("qa") ||
+            cat.includes("testing")
+          );
+        }
+        if (selectedCatLower.includes("cloud") || selectedCatLower.includes("devops")) {
+          return (
+            cat.includes("cloud") ||
+            cat.includes("devops") ||
+            cat.includes("cyber") ||
+            cat.includes("security") ||
+            cat.includes("database") ||
+            cat.includes("system design")
+          );
+        }
+        if (selectedCatLower.includes("ai") || selectedCatLower.includes("data")) {
+          return (
+            cat.includes("ai") ||
+            cat.includes("data") ||
+            cat.includes("ml") ||
+            cat.includes("learning")
+          );
+        }
+        if (selectedCatLower.includes("product") || selectedCatLower.includes("design")) {
+          return (
+            cat.includes("design") ||
+            cat.includes("agile") ||
+            cat.includes("project") ||
+            cat.includes("business")
+          );
+        }
+        if (selectedCatLower.includes("hr") || selectedCatLower.includes("behavioral")) {
+          return (
+            cat.includes("hr") ||
+            cat.includes("human resources") ||
+            cat.includes("recruit")
+          );
+        }
+        return cat.includes(selectedCatLower) || selectedCatLower.includes(cat);
+      });
     }
 
     // 2. Search query (matches name, role, company, skills, or category)

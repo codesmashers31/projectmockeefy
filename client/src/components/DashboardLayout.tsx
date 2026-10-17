@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
-import { ArrowUp, Menu, X, LayoutDashboard, Users, Calendar } from "lucide-react";
+import { ArrowUp, Menu, X, Users, Calendar, Bookmark } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
@@ -54,18 +54,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <button
             onClick={() => navigate("/")}
             className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
-              location.pathname === "/" || location.pathname === "/dashboard"
-                ? "text-[#0755E8]"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => navigate("/mentors")}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
+              location.pathname === "/" ||
+              location.pathname === "/dashboard" ||
               location.pathname === "/mentors" ||
               location.pathname === "/find-mentor" ||
               location.pathname === "/book-session"
@@ -74,7 +64,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             }`}
           >
             <Users size={18} />
-            <span>Mentors</span>
+            <span>Experts</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/saved-experts")}
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
+              location.pathname === "/saved-experts"
+                ? "text-[#0755E8]"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <Bookmark size={18} />
+            <span>Saved</span>
           </button>
 
           <button

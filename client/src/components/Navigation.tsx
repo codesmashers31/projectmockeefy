@@ -180,11 +180,11 @@ export default function Navigation() {
   // Primary navigation links tailored for user vs guest
   const navItems = user
     ? [
-        { name: "Find Mentors", href: "/mentors" },
+        { name: "Interview Experts", href: "/mentors" },
         { name: "My Sessions", href: "/my-sessions" },
       ]
     : [
-        { name: "Find Mentors", href: "/mentors" },
+        { name: "Interview Experts", href: "/mentors" },
         { name: "Pricing & Plans", href: "/plans" },
         { name: "Interview Tips", href: "/tips" },
       ];
