@@ -35,17 +35,17 @@ const PreFooterExpertsBanner = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-blue-100/90 bg-gradient-to-br from-[#F4F7FE] via-[#F8FAFF] to-[#EFF4FE] p-6 sm:p-8 lg:p-9 mb-12 sm:mb-14 shadow-xs">
+    <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-blue-100/90 bg-gradient-to-br from-[#F4F7FE] via-[#F8FAFF] to-[#EFF4FE] p-5 sm:p-6 lg:py-6 lg:px-8 mb-8 sm:mb-10 shadow-xs">
       <style>{`
         @keyframes playfulFloat {
           0%, 100% {
             transform: translateY(0px) rotate(0deg);
           }
           33% {
-            transform: translateY(-9px) rotate(-1.2deg);
+            transform: translateY(-7px) rotate(-1deg);
           }
           66% {
-            transform: translateY(6px) rotate(1deg);
+            transform: translateY(5px) rotate(0.8deg);
           }
         }
         @keyframes auraGlow {
@@ -54,8 +54,8 @@ const PreFooterExpertsBanner = () => {
             transform: scale(1);
           }
           50% {
-            opacity: 0.8;
-            transform: scale(1.08);
+            opacity: 0.75;
+            transform: scale(1.06);
           }
         }
         .animate-playful-float {
@@ -67,28 +67,28 @@ const PreFooterExpertsBanner = () => {
       `}</style>
 
       {/* Split Hero Grid with Left Content & Right Floating Illustration */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
         {/* Left: Headline, Tagline, Highlights & Direct Actions (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-xs font-bold uppercase tracking-wider shadow-2xs">
+        <div className="lg:col-span-7 space-y-3 sm:space-y-3.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-xs font-bold uppercase tracking-wider shadow-2xs">
             <Sparkles className="w-3.5 h-3.5 text-[#0755E8] animate-pulse" />
             <span>1-on-1 Mock Interviews</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
           </div>
 
-          <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-black text-slate-900 tracking-tight leading-tight">
+          <h2 className="text-xl sm:text-2xl lg:text-[26px] font-heading font-black text-slate-900 tracking-tight leading-snug">
             Stand out among candidates with{' '}
             <span className="bg-gradient-to-r from-[#0755E8] to-blue-600 bg-clip-text text-transparent">
               1-on-1 mock interviews
             </span>
           </h2>
 
-          <p className="text-slate-600 text-xs sm:text-sm md:text-[15px] font-medium leading-relaxed max-w-xl">
+          <p className="text-slate-600 text-xs sm:text-[13px] font-medium leading-relaxed max-w-lg">
             Practice live technical, system design, and HR rounds with verified mentors from Google, Amazon, Microsoft, and top startups. Receive detailed rubrics and actionable feedback to crack your dream role.
           </p>
 
           {/* Quick Value Highlights */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs sm:text-sm font-semibold text-slate-600">
+          <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs font-semibold text-slate-600">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#0755E8]" />
               <span>FAANG Mentors</span>
@@ -106,16 +106,16 @@ const PreFooterExpertsBanner = () => {
           </div>
 
           {/* Action Buttons: Find Mentors & Become a Mentor */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
             <Link
               to="/mentors"
-              className="relative group overflow-hidden inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3.5 rounded-xl text-white text-xs sm:text-sm font-black tracking-tight bg-gradient-to-r from-[#0755E8] via-[#2A72FF] to-[#0440BD] bg-[length:200%_auto] hover:bg-[position:right_center] shadow-lg shadow-[#0755E8]/30 hover:shadow-xl hover:shadow-[#0755E8]/45 hover:-translate-y-0.5 active:scale-95 transition-all duration-500 border border-white/25 text-center cursor-pointer"
+              className="relative group overflow-hidden inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-black tracking-tight bg-gradient-to-r from-[#0755E8] via-[#2A72FF] to-[#0440BD] bg-[length:200%_auto] hover:bg-[position:right_center] shadow-md shadow-[#0755E8]/25 hover:shadow-lg hover:shadow-[#0755E8]/35 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 border border-white/25 text-center cursor-pointer"
             >
               {/* Interactive sweeping light sheen */}
               <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
 
               {/* Glowing soft radial highlight */}
-              <span className="absolute -top-6 -left-6 w-16 h-16 bg-white/20 rounded-full blur-md group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+              <span className="absolute -top-6 -left-6 w-14 h-14 bg-white/20 rounded-full blur-md group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
 
               <span className="relative z-10">Find Mentors</span>
               <ArrowRight className="relative z-10 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
@@ -123,7 +123,7 @@ const PreFooterExpertsBanner = () => {
 
             <Link
               to="/signup?role=expert"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 hover:text-[#0755E8] hover:border-blue-300 text-xs sm:text-sm font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all active:scale-95 text-center cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4.5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:text-[#0755E8] hover:border-blue-300 text-xs sm:text-sm font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all active:scale-95 text-center cursor-pointer"
             >
               <Users className="w-4 h-4 text-slate-500" />
               <span>Become a Mentor</span>
@@ -131,7 +131,7 @@ const PreFooterExpertsBanner = () => {
           </div>
 
           {/* Social Proof */}
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-1">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-0.5">
             <Users className="w-4 h-4 text-[#0755E8]" />
             <span>Trusted by 10,000+ candidates across Google, Meta & Amazon</span>
           </div>
@@ -141,18 +141,18 @@ const PreFooterExpertsBanner = () => {
         <div className="lg:col-span-5 relative flex items-center justify-center lg:justify-end">
           <div
             onClick={() => navigate('/mentors')}
-            className="group relative w-full max-w-[420px] cursor-pointer select-none"
+            className="group relative w-full max-w-[280px] sm:max-w-[320px] cursor-pointer select-none"
             title="Click to Find Verified Mentors"
           >
             {/* Soft ambient aura / glow behind the illustration */}
-            <div className="absolute -inset-4 bg-gradient-to-tr from-blue-200/50 via-indigo-100/40 to-cyan-100/30 rounded-full blur-3xl pointer-events-none animate-aura-glow" />
+            <div className="absolute -inset-4 bg-gradient-to-tr from-blue-200/50 via-indigo-100/40 to-cyan-100/30 rounded-full blur-2xl pointer-events-none animate-aura-glow" />
 
-            {/* Seamless floating illustration (No card border, no white card box, no text badges) */}
+            {/* Seamless floating illustration */}
             <div className="relative animate-playful-float transition-transform duration-500 group-hover:scale-105">
               <img
                 src={BANNER_ILLUSTRATION.src}
                 alt={BANNER_ILLUSTRATION.alt}
-                className="w-full h-auto max-h-[300px] sm:max-h-[340px] md:max-h-[360px] object-contain drop-shadow-xl select-none pointer-events-none"
+                className="w-full h-auto max-h-[180px] sm:max-h-[210px] md:max-h-[230px] object-contain drop-shadow-md select-none pointer-events-none"
                 loading="lazy"
               />
             </div>
@@ -195,7 +195,7 @@ const legalLinks = [
 // ============================================================================
 const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
   <footer className="w-full border-t border-slate-200/80 bg-white">
-    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-10 pb-20 lg:pt-12 lg:pb-10'}`}>
+    <div className={`max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
       {!minimal && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-10">
           <div className="space-y-4">
@@ -235,96 +235,29 @@ const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
 );
 
 // ============================================================================
-// Top Mentors Companies Data (Paginated 3 per page for auto-scrolling)
+// Top MNCs & Chennai-Based Companies Data (Names only, no logos as requested)
 // ============================================================================
 const COMPANY_PAGES = [
-  // Page 1: Google, Microsoft, Amazon
+  // Page 1: Google, Microsoft, Zoho, HCL
   [
-    {
-      name: 'Google',
-      search: 'Google',
-      hoverBorder: 'hover:border-blue-400',
-      hoverBg: 'hover:bg-blue-50/50',
-      hoverShadow: 'hover:shadow-blue-500/15',
-      logo: (
-        <svg className="w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-        </svg>
-      ),
-    },
-    {
-      name: 'Microsoft',
-      search: 'Microsoft',
-      hoverBorder: 'hover:border-sky-400',
-      hoverBg: 'hover:bg-sky-50/50',
-      hoverShadow: 'hover:shadow-sky-500/15',
-      logo: (
-        <svg className="w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 23 23">
-          <path fill="#f35325" d="M1 1h10v10H1z" />
-          <path fill="#81bc06" d="M12 1h10v10H12z" />
-          <path fill="#05a6f0" d="M1 12h10v10H1z" />
-          <path fill="#ffba08" d="M12 12h10v10H12z" />
-        </svg>
-      ),
-    },
-    {
-      name: 'Amazon',
-      search: 'Amazon',
-      hoverBorder: 'hover:border-amber-400',
-      hoverBg: 'hover:bg-amber-50/50',
-      hoverShadow: 'hover:shadow-amber-500/15',
-      logo: (
-        <svg className="w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 24 24" fill="none">
-          <path d="M20.1 19.11c-9.14 4.32-14.81.71-18.44-1.49-.22-.14-.6.03-.27.41 1.21 1.46 5.17 4.97 10.34 4.97 5.18 0 8.26-2.81 8.65-3.3.38-.48.11-.75-.28-.59zm2.57-1.41c-.25-.32-1.5-.38-2.28-.28-.79.09-1.97.57-1.87.86.05.11.16.06.7.01.54-.05 2.06-.24 2.37.17.32.41-.48 2.38-.63 2.7-.14.32.05.4.32.19.26-.21.74-.76 1.05-1.53.32-.78.52-1.87.34-2.12z" fill="#FF9900"/>
-          <path fillRule="evenodd" clipRule="evenodd" d="M13.95 10.29c0 1.13.03 2.08-.55 3.09-.46.82-1.2 1.32-2.02 1.32-1.13 0-1.78-.85-1.78-2.11 0-2.48 2.23-2.93 4.35-2.93v.63zm2.95 7.1c-.19.17-.47.18-.69.07-.97-.8-1.14-1.18-1.68-1.94-1.6 1.63-2.74 2.11-4.83 2.11-2.46 0-4.38-1.51-4.38-4.54 0-2.36 1.29-3.97 3.12-4.75 1.59-.7 3.81-.82 5.51-1.02V6.95c0-.69.05-1.51-.35-2.11-.36-.53-1.05-.75-1.65-.75-1.12 0-2.11.57-2.36 1.75-.05.26-.24.52-.5.53l-2.84-.3c-.24-.05-.51-.25-.44-.61.65-3.42 3.76-4.46 6.55-4.46 1.43 0 3.29.38 4.41 1.45 1.43 1.32 1.29 3.09 1.29 5.01v4.54c0 1.36.57 1.96 1.1 2.7.19.26.23.58-.01.77-.6.5-1.66 1.42-2.25 1.94z" fill="#232F3E"/>
-        </svg>
-      ),
-    },
+    { name: 'Google', search: 'Google' },
+    { name: 'Microsoft', search: 'Microsoft' },
+    { name: 'Zoho', search: 'Zoho' },
+    { name: 'HCL', search: 'HCL' },
   ],
-  // Page 2: Meta, Flipkart, Apple
+  // Page 2: Amazon, Freshworks, Cognizant, TCS
   [
-    {
-      name: 'Meta',
-      search: 'Meta',
-      hoverBorder: 'hover:border-[#0081FB]',
-      hoverBg: 'hover:bg-blue-50/50',
-      hoverShadow: 'hover:shadow-blue-500/15',
-      logo: (
-        <svg className="w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 24 24" fill="none">
-          <path d="M16.92 5.05c-1.89 0-3.41 1.05-4.92 2.92-1.51-1.87-3.03-2.92-4.92-2.92C3.12 5.05 0 8.35 0 12.87c0 4.7 3.39 7.78 6.94 7.78 2.05 0 3.73-1.03 5.06-2.67 1.33 1.64 3.01 2.67 5.06 2.67 3.55 0 6.94-3.08 6.94-7.78 0-4.52-3.12-7.82-7.08-7.82zm-9.84 12.8c-2.34 0-4.32-2.14-4.32-5.02 0-2.88 1.98-5.02 4.32-5.02 1.62 0 2.98 1.05 4.19 3.06-1.39 2.5-2.73 6.98-4.19 6.98zm9.68 0c-1.46 0-2.8-4.48-4.19-6.98 1.21-2.01 2.57-3.06 4.19-3.06 2.34 0 4.32 2.14 4.32 5.02 0 2.88-1.98 5.02-4.32 5.02z" fill="#0081FB"/>
-        </svg>
-      ),
-    },
-    {
-      name: 'Flipkart',
-      search: 'Flipkart',
-      hoverBorder: 'hover:border-[#2874F0]',
-      hoverBg: 'hover:bg-blue-50/50',
-      hoverShadow: 'hover:shadow-blue-500/15',
-      logo: (
-        <svg className="w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="11" fill="#2874F0"/>
-          <path d="M9.5 8C9.5 6.6 10.6 5.5 12 5.5s2.5 1.1 2.5 2.5" stroke="#FFE500" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
-          <path d="M7 8.5L8.2 18.5C8.3 19.3 9 20 9.8 20h4.4c.8 0 1.5-.7 1.6-1.5L17 8.5H7z" fill="#FFE500"/>
-          <path d="M12.8 11.2h-2v1.5h1.6v1.2h-1.6V17h-1.4v-6.8h3.4v1z" fill="#2874F0"/>
-        </svg>
-      ),
-    },
-    {
-      name: 'Apple',
-      search: 'Apple',
-      hoverBorder: 'hover:border-slate-800',
-      hoverBg: 'hover:bg-slate-100/70',
-      hoverShadow: 'hover:shadow-slate-500/15',
-      logo: (
-        <svg className="w-3.5 h-3.5 shrink-0 fill-current text-slate-900 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 170 170">
-          <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.67-7.81-11.96-14.34-5.78-8.8-10.27-18.91-13.48-30.33-3.21-11.41-4.82-22.12-4.82-32.13 0-14.54 3.65-26.68 10.96-36.41 7.3-9.74 16.59-14.7 27.86-14.89 5.35 0 11.16 1.41 17.43 4.24 6.27 2.83 10.19 4.3 11.76 4.41 1.79-.11 5.92-1.63 12.39-4.57 6.47-2.93 12.18-4.29 17.13-4.08 12.63.65 22.84 5.33 30.63 14.04-11.09 6.74-16.52 16.09-16.3 28.05.22 9.57 3.86 17.61 10.92 24.14 7.07 6.52 15.38 10.33 24.95 11.41-2.07 6.31-4.79 12.55-8.16 18.72zm-35.84-112.59c0 7.4-2.67 14.36-8.02 20.88-5.35 6.52-11.85 10.43-19.5 11.73-.22-.87-.33-1.85-.33-2.93 0-7.17 2.88-14.24 8.64-21.2 5.76-6.95 12.44-10.97 20.05-12.06.11 1.19.16 2.38.16 3.58z" />
-        </svg>
-      ),
-    },
+    { name: 'Amazon', search: 'Amazon' },
+    { name: 'Freshworks', search: 'Freshworks' },
+    { name: 'Cognizant', search: 'Cognizant' },
+    { name: 'TCS', search: 'TCS' },
+  ],
+  // Page 3: PayPal, Meta, Infosys, Wipro
+  [
+    { name: 'PayPal', search: 'PayPal' },
+    { name: 'Meta', search: 'Meta' },
+    { name: 'Infosys', search: 'Infosys' },
+    { name: 'Wipro', search: 'Wipro' },
   ],
 ];
 
@@ -352,11 +285,11 @@ const TopMentorsCompanySlider = () => {
       onMouseLeave={() => setIsPaused(false)}
     >
       <span className="font-extrabold text-slate-700 tracking-tight mr-1 text-[12.5px] shrink-0 flex items-center gap-1.5">
-        <span>Top Mentors From:</span>
+        <span>Get Hired at Top MNCs:</span>
       </span>
 
       {/* Horizontal Page-to-Page Sliding Viewport */}
-      <div className="relative overflow-hidden w-[310px] sm:w-[325px] py-1">
+      <div className="relative overflow-hidden w-[310px] sm:w-[350px] md:w-[370px] py-1">
         <div
           className="flex transition-transform duration-600 ease-in-out"
           style={{ transform: `translateX(-${currentPage * 100}%)` }}
@@ -364,16 +297,15 @@ const TopMentorsCompanySlider = () => {
           {COMPANY_PAGES.map((page, pageIdx) => (
             <div
               key={pageIdx}
-              className="w-full shrink-0 flex items-center justify-center lg:justify-end gap-2 px-0.5"
+              className="w-full shrink-0 flex items-center justify-center lg:justify-end gap-1.5 sm:gap-2 px-0.5"
             >
               {page.map((company) => (
                 <Link
                   key={company.name}
-                  to={`/mentors?search=${company.search}`}
+                  to={`/mentors?search=${encodeURIComponent(company.search)}`}
                   title={`Explore ${company.name} Mentors`}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-white ${company.hoverBg} border border-slate-200/90 ${company.hoverBorder} rounded-xl text-xs font-extrabold text-slate-800 shadow-2xs hover:shadow-md ${company.hoverShadow} hover:-translate-y-0.5 active:scale-95 transition-all duration-200 group cursor-pointer shrink-0`}
+                  className="inline-flex items-center px-2.5 sm:px-3 py-1 bg-white hover:bg-blue-50/80 border border-slate-200/90 hover:border-[#0755E8]/60 rounded-lg text-xs font-bold text-slate-800 hover:text-[#0755E8] shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:scale-95 transition-all duration-150 cursor-pointer shrink-0"
                 >
-                  {company.logo}
                   <span>{company.name}</span>
                 </Link>
               ))}
@@ -434,7 +366,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
   return (
     <footer className="w-full border-t border-slate-200/80 bg-white">
-      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-10 pb-20 lg:pt-12 lg:pb-10'}`}>
+      <div className={`max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
         
         {/* Pre-Footer Banner Card with Real Verified Scrolling Experts */}
         {!minimal && showAppBanner && <PreFooterExpertsBanner />}

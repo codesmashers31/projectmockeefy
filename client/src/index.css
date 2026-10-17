@@ -5,7 +5,7 @@
 
 @theme {
     --font-sans: "Source Sans 3", "Segoe UI", Arial, sans-serif;
-    --font-logo: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --font-logo: "Source Sans 3", "Segoe UI", Arial, sans-serif;
 
     /* STANDARDIZED BRAND TOKENS */
     --color-primary: #0755E8;
@@ -145,9 +145,9 @@
     }
 
   .font-logo {
-      font-family: var(--font-logo) !important;
+      font-family: var(--font-sans) !important;
       font-weight: 800 !important;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.02em;
   }
 
     .animate-fade-in {

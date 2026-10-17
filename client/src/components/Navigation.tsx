@@ -222,7 +222,7 @@ export default function Navigation() {
               onClick={closeAllDropdowns}
             >
               <MockeefyLogo className="h-8.5 w-8.5 sm:h-9 sm:w-9" variant="brand" />
-              <span className="text-[19px] sm:text-[20px] font-logo font-bold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
+              <span className="text-[19px] sm:text-[20px] font-sans font-extrabold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
                 Mockeefy
               </span>
             </Link>

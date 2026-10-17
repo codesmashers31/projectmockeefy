@@ -24,6 +24,7 @@ import {
   ChevronsRight,
   RefreshCw,
   AlertCircle,
+  Hand,
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 10;
@@ -438,6 +439,83 @@ export default function FindMentor() {
     }
   };
 
+  // Category Filter Pills Drag-to-Scroll state
+  const catScrollRef = useRef<HTMLDivElement>(null);
+  const [canCatScrollLeft, setCanCatScrollLeft] = useState(false);
+  const [canCatScrollRight, setCanCatScrollRight] = useState(false);
+  const isCatDragging = useRef(false);
+  const catStartX = useRef(0);
+  const catScrollStart = useRef(0);
+  const catHasDragged = useRef(false);
+
+  const checkCatScroll = () => {
+    const el = catScrollRef.current;
+    if (!el) return;
+    setCanCatScrollLeft(el.scrollLeft > 4);
+    setCanCatScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    const el = catScrollRef.current;
+    if (!el) return;
+    checkCatScroll();
+    const t = setTimeout(checkCatScroll, 100);
+    el.addEventListener("scroll", checkCatScroll, { passive: true });
+    window.addEventListener("resize", checkCatScroll);
+    return () => {
+      clearTimeout(t);
+      el.removeEventListener("scroll", checkCatScroll);
+      window.removeEventListener("resize", checkCatScroll);
+    };
+  }, [categories]);
+
+  const handleCatScroll = (dir: "left" | "right") => {
+    const el = catScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -220 : 220, behavior: "smooth" });
+    setTimeout(checkCatScroll, 300);
+  };
+
+  const handleCatMouseDown = (e: React.MouseEvent) => {
+    const el = catScrollRef.current;
+    if (!el) return;
+    isCatDragging.current = true;
+    catHasDragged.current = false;
+    catStartX.current = e.pageX - el.offsetLeft;
+    catScrollStart.current = el.scrollLeft;
+    el.style.scrollBehavior = "auto";
+  };
+
+  const handleCatMouseMove = (e: React.MouseEvent) => {
+    if (!isCatDragging.current) return;
+    const el = catScrollRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = x - catStartX.current;
+    if (Math.abs(walk) > 4) {
+      catHasDragged.current = true;
+    }
+    el.scrollLeft = catScrollStart.current - walk;
+    checkCatScroll();
+  };
+
+  const handleCatMouseUp = () => {
+    if (!isCatDragging.current) return;
+    isCatDragging.current = false;
+    const el = catScrollRef.current;
+    if (!el) return;
+    el.style.scrollBehavior = "auto";
+    checkCatScroll();
+  };
+
+  const handleCatClickCapture = (e: React.MouseEvent) => {
+    if (catHasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      catHasDragged.current = false;
+    }
+  };
+
   // Dedicated Filter Sidebar Component
   const renderFilterPanel = () => (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-4.5 space-y-4 text-left">
@@ -714,32 +792,112 @@ export default function FindMentor() {
               )}
             </div>
 
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {categories.map((cat) => {
-                const isSelected = selectedCategory === cat;
-                return (
+            {/* Category Filter Pills Track with Hand Indicator & Drag Scrolling */}
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex items-center justify-between gap-2 px-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700">Filter by Track</span>
+                  {/* Hand symbol indicator for dragging */}
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/70 text-[11px] font-bold text-[#0755E8] select-none shadow-2xs">
+                    <Hand size={11} className="text-[#0755E8] animate-pulse" />
+                    <span>Drag to explore</span>
+                  </span>
+                </div>
+
+                {/* Left & Right Arrow Buttons for Scrolling */}
+                <div className="flex items-center gap-1">
                   <button
-                    key={cat}
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setSearchParams((prev) => {
-                        const next = new URLSearchParams(prev);
-                        if (cat === "All") next.delete("category");
-                        else next.set("category", cat);
-                        return next;
-                      });
-                    }}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
-                      isSelected
-                        ? "bg-[#0755E8] text-white font-semibold shadow-xs"
-                        : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80 font-medium shadow-xs"
+                    type="button"
+                    onClick={() => handleCatScroll("left")}
+                    disabled={!canCatScrollLeft}
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                      canCatScrollLeft
+                        ? "bg-white hover:bg-slate-100 text-slate-700 shadow-2xs border border-slate-200/90 active:scale-95 cursor-pointer"
+                        : "bg-slate-100/50 text-slate-300 border border-slate-200/40 cursor-not-allowed"
                     }`}
+                    title="Scroll categories left"
+                    aria-label="Scroll categories left"
                   >
-                    {cat}
+                    <ChevronLeft size={13} />
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => handleCatScroll("right")}
+                    disabled={!canCatScrollRight}
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                      canCatScrollRight
+                        ? "bg-white hover:bg-slate-100 text-slate-700 shadow-2xs border border-slate-200/90 active:scale-95 cursor-pointer"
+                        : "bg-slate-100/50 text-slate-300 border border-slate-200/40 cursor-not-allowed"
+                    }`}
+                    title="Scroll categories right"
+                    aria-label="Scroll categories right"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Pills Container with floating arrows */}
+              <div className="relative group/cat bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/60 shadow-2xs">
+                {canCatScrollLeft && (
+                  <button
+                    type="button"
+                    onClick={() => handleCatScroll("left")}
+                    className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                    title="Scroll left"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                )}
+
+                {canCatScrollRight && (
+                  <button
+                    type="button"
+                    onClick={() => handleCatScroll("right")}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                    title="Scroll right"
+                  >
+                    <ChevronRight size={12} />
+                  </button>
+                )}
+
+                <div
+                  ref={catScrollRef}
+                  onMouseDown={handleCatMouseDown}
+                  onMouseMove={handleCatMouseMove}
+                  onMouseUp={handleCatMouseUp}
+                  onMouseLeave={handleCatMouseUp}
+                  onClickCapture={handleCatClickCapture}
+                  className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 select-none cursor-grab active:cursor-grabbing"
+                  style={{ scrollbarWidth: "none" }}
+                >
+                  {categories.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          setSearchParams((prev) => {
+                            const next = new URLSearchParams(prev);
+                            if (cat === "All") next.delete("category");
+                            else next.set("category", cat);
+                            return next;
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 ${
+                          isSelected
+                            ? "bg-[#0755E8] text-white font-semibold shadow-xs"
+                            : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80 font-medium shadow-xs"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
