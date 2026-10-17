@@ -31,6 +31,8 @@ import {
   Palette,
 } from "lucide-react";
 
+const ITEMS_PER_PAGE = 8;
+
 interface MentorCategoryScrollRowProps {
   id: string;
   title: string;
@@ -1183,15 +1185,7 @@ export default function FindMentor() {
                   Available Mentors
                 </h2>
                 <span className="text-xs text-slate-500 font-medium">
-                  (Showing{" "}
-                  <span className="text-slate-900 font-bold">
-                    {filteredMentors.length > 0 ? startIndex + 1 : 0}
-                  </span>
-                  –
-                  <span className="text-slate-900 font-bold">
-                    {Math.min(startIndex + ITEMS_PER_PAGE, filteredMentors.length)}
-                  </span>{" "}
-                  of <span className="text-[#0755E8] font-bold">{filteredMentors.length}</span>)
+                  (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "expert" : "experts"} across <span className="text-slate-900 font-bold">{filteredCategoryGroups.length}</span> tracks)
                 </span>
               </div>
 
