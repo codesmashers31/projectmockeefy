@@ -195,7 +195,7 @@ const legalLinks = [
 // ============================================================================
 const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
   <footer className="w-full border-t border-slate-200/80 bg-white">
-    <div className={`max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
+    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
       {!minimal && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-10">
           <div className="space-y-4">
@@ -366,7 +366,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
   return (
     <footer className="w-full border-t border-slate-200/80 bg-white">
-      <div className={`max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
         
         {/* Pre-Footer Banner Card with Real Verified Scrolling Experts */}
         {!minimal && showAppBanner && <PreFooterExpertsBanner />}

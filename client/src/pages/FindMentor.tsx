@@ -738,7 +738,7 @@ export default function FindMentor() {
 
   return (
     <div ref={listTopRef} className="w-full font-sans text-left animate-in fade-in duration-200">
-      <div className="flex items-start gap-6 lg:gap-7 xl:gap-8 w-full">
+      <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
         <div className="flex-1 min-w-0 space-y-5">
           {/* ======================================================== */}
@@ -1156,7 +1156,7 @@ export default function FindMentor() {
         </div>
 
         {/* RIGHT COLUMN: Sticky Filter Sidebar (Desktop xl+ screens) */}
-        <aside aria-label="Filters Panel" className="hidden xl:block w-[265px] 2xl:w-[280px] shrink-0 sticky top-[80px] self-start space-y-4">
+        <aside aria-label="Filters Panel" className="hidden xl:block w-[245px] shrink-0 sticky top-[80px] self-start space-y-4">
           {renderFilterPanel()}
 
           {/* Tips Card */}
