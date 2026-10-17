@@ -136,7 +136,13 @@ export default function Sidebar() {
             return (
               <button
                 key={item.label}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  if (location.pathname === item.path && !location.search) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-all duration-150 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF] ${
                   item.isActive
                     ? "bg-[#EAF2FF] text-[#0755E8] font-bold shadow-xs"

@@ -438,8 +438,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
       navigate('/certificates', { replace: true });
       return;
     }
-    if (view) setActiveView(view);
-  }, [location.search, initialViewOverride]);
+    if (view) {
+      setActiveView(view as any);
+    } else {
+      setActiveView('overview');
+    }
+  }, [location.pathname, location.search, initialViewOverride, navigate]);
 
   const [savedExperts, setSavedExperts] = useState<any[]>([]);
   const [reviewModalSession, setReviewModalSession] = useState<Session | null>(null);
@@ -585,7 +589,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, [user?.id, user?._id]);
+  }, [user?.id, user?._id, activeView]);
 
   const handleJoin = (session: Session) => {
     navigate(`/live-meeting/${session.sessionId}`, { state: { session } });
