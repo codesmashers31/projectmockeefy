@@ -5,13 +5,13 @@ const steps = [
     number: "01",
     icon: UserPlus,
     title: "Sign up & choose your role",
-    description: "Create your account as a Student, Company, or Mentor. Set up your profile in seconds and get instant access.",
+    description: "Create your account as a Student, Company, or Interview Expert. Set up your profile in seconds and get instant access.",
   },
   {
     number: "02",
     icon: Search,
     title: "Pick a category & expert",
-    description: "Browse verified mentors by category (IT, HR, Business, Design). Compare ratings, experience, and session fees.",
+    description: "Browse verified interview experts by category (IT, HR, Business, Design). Compare ratings, experience, and session fees.",
   },
   {
     number: "03",

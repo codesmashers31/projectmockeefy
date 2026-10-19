@@ -142,7 +142,7 @@ export function DownloadAndExportStep() {
             {copied ? 'Link Copied!' : 'Copy Shareable Link'}
           </h3>
           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-            {copied ? 'Ready to share with employers' : 'Create public view link to share with mentors'}
+            {copied ? 'Ready to share with employers' : 'Create public view link to share with interview experts'}
           </p>
         </button>
       </div>

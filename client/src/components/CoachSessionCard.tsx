@@ -320,7 +320,7 @@ export default function CoachSessionCard() {
       return {
         id: expert._id || expert.userId,
         expertID: expert._id || expert.userId,
-        name: expert.personalInformation?.userName || expert.name || "Verified Mentor",
+        name: expert.personalInformation?.userName || expert.name || "Verified Interview Expert",
         role: getJobTitle(expert.professionalDetails, cat),
         company: getCurrentCompany(expert.professionalDetails, cat),
         location: expert.personalInformation?.city || "Remote",
@@ -451,7 +451,7 @@ export default function CoachSessionCard() {
         id: group.id,
         name: shortName,
         fullName: group.title,
-        count: `${group.mentors.length || 10}+ Mentors >`,
+        count: `${group.mentors.length || 10}+ Interview Experts >`,
       };
     });
   }, [categoryGroups]);
@@ -540,7 +540,7 @@ export default function CoachSessionCard() {
             {user?.name ? `Welcome back, ${user.name}` : "Welcome to Mockeefy"}
           </h1>
           <p className="text-slate-500 text-[12.5px] sm:text-[13px] leading-relaxed">
-            Connect with top hiring managers and mentors across 5 core technical tracks.
+            Connect with top hiring managers and interview experts across 5 core technical tracks.
           </p>
         </div>
 
@@ -549,7 +549,7 @@ export default function CoachSessionCard() {
           className="group inline-flex items-center gap-1.5 px-4 h-9 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white text-[12.5px] sm:text-[13px] font-semibold shadow-xs hover:shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
         >
           <Users size={15} className="text-white/90" />
-          <span>Explore All Mentors</span>
+          <span>Explore All Interview Experts</span>
           <span className="bg-white/20 text-white text-[11px] px-1.5 py-0.2 rounded-full font-bold ml-0.5">
             {isExpertsLoading ? "50+" : expertsData.length}
           </span>
@@ -748,7 +748,7 @@ export default function CoachSessionCard() {
           onClick={() => navigate("/mentors")}
           className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#EAF2FF] hover:bg-[#0755E8] text-[#0755E8] hover:text-white font-semibold text-[14px] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
         >
-          <span>View all mentors</span>
+          <span>View all interview experts</span>
           <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
         </button>
       </div>
@@ -860,14 +860,14 @@ export default function CoachSessionCard() {
               No upcoming sessions scheduled
             </p>
             <p className="text-[13px] text-slate-600 max-w-sm mx-auto leading-relaxed">
-              Schedule your next 1-on-1 technical mock interview or system design drill with an experienced mentor.
+              Schedule your next 1-on-1 technical mock interview or system design drill with an experienced interview expert.
             </p>
             <div className="pt-1">
               <button
                 onClick={() => navigate("/mentors")}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white text-[13px] font-semibold shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
               >
-                <span>Find a Mentor</span>
+                <span>Find an Interview Expert</span>
                 <ArrowRight size={14} />
               </button>
             </div>

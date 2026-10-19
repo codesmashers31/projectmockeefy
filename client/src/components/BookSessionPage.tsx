@@ -7,7 +7,8 @@ import {
   Star, Clock, Calendar, CheckCircle, Shield, Video,
   ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
   Share2, Check, ArrowRight, ArrowLeft, Timer, BadgeCheck, Code2, Compass, FileText,
-  MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2
+  MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2, CreditCard,
+  ShieldCheck, HelpCircle, Award, RotateCcw, Headphones
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -24,30 +25,35 @@ import {
  * Skeleton Loader matching Mockeefy clean design
  */
 const BookSessionSkeleton = () => (
-  <div className="w-full space-y-6 animate-pulse font-sans text-left">
-    <div className="h-6 w-64 bg-slate-200 rounded-lg" />
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-8 space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="h-6 bg-slate-200 w-48 rounded" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="h-24 bg-slate-100 rounded-xl" />
-            <div className="h-24 bg-slate-100 rounded-xl" />
-            <div className="h-24 bg-slate-100 rounded-xl" />
-            <div className="h-24 bg-slate-100 rounded-xl" />
+  <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+    {/* Decorative gradient glow */}
+    <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+    <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+    <div className="w-full space-y-6 animate-pulse font-sans text-left relative z-10">
+      <div className="h-6 w-64 bg-slate-200 rounded-lg" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+            <div className="h-6 bg-slate-200 w-48 rounded" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="h-24 bg-slate-100 rounded-xl" />
+              <div className="h-24 bg-slate-100 rounded-xl" />
+              <div className="h-24 bg-slate-100 rounded-xl" />
+              <div className="h-24 bg-slate-100 rounded-xl" />
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+            <div className="h-6 bg-slate-200 w-40 rounded" />
+            <div className="h-16 bg-slate-100 rounded-xl" />
+            <div className="h-32 bg-slate-100 rounded-xl" />
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="h-6 bg-slate-200 w-40 rounded" />
-          <div className="h-16 bg-slate-100 rounded-xl" />
-          <div className="h-32 bg-slate-100 rounded-xl" />
-        </div>
-      </div>
-      <div className="lg:col-span-4 space-y-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="h-20 bg-slate-100 rounded-xl" />
-          <div className="h-10 bg-slate-100 rounded-xl" />
-          <div className="h-12 bg-slate-200 rounded-xl" />
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+            <div className="h-20 bg-slate-100 rounded-xl" />
+            <div className="h-10 bg-slate-100 rounded-xl" />
+            <div className="h-12 bg-slate-200 rounded-xl" />
+          </div>
         </div>
       </div>
     </div>
@@ -95,6 +101,25 @@ const SESSION_GOALS = [
   },
 ];
 
+const BOOKING_FAQS = [
+  {
+    q: "How do I access the live video session?",
+    a: "You'll receive a direct meeting link via email and on your dashboard. When your slot arrives, simply click 'Join Meeting Room' right from your browser—no downloads or complex setup required."
+  },
+  {
+    q: "Can I reschedule my session if needed?",
+    a: "Yes! You can reschedule your slot free of charge up to 2 hours before the scheduled time directly from your 'My Sessions' dashboard."
+  },
+  {
+    q: "When will I receive my scorecard & feedback?",
+    a: "Your interview expert submits an in-depth scorecard covering technical depth, communication, and problem-solving metrics within 24 hours of session completion."
+  },
+  {
+    q: "Will I get an official Certificate of Completion?",
+    a: "Yes, every completed mock interview issues a verified Mockeefy Certificate of Interview Completion that you can add directly to LinkedIn or your resume."
+  }
+];
+
 export default function BookSessionPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -136,10 +161,12 @@ export default function BookSessionPage() {
   // Promo code & pricing states
   const [discountCode, setDiscountCode] = useState("");
   const [appliedFreePromo, setAppliedFreePromo] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"not_paid" | "paid">("not_paid");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [expertAvatarError, setExpertAvatarError] = useState(false);
   const [activeTab, setActiveTab] = useState<"about" | "reviews">("about");
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -173,6 +200,26 @@ export default function BookSessionPage() {
   });
 
   const loading = isQueryLoading && !profile;
+
+  // Auto-scroll directly to Step 1 (Select Date & Available Time Slot) when navigated from Book Session
+  useEffect(() => {
+    if (!loading && profile) {
+      if (
+        location.hash === "#time-slots-section" ||
+        location.hash === "#step-1" ||
+        location.state?.scrollToSlots ||
+        searchParams.get("step") === "1"
+      ) {
+        const timer = setTimeout(() => {
+          const el = document.getElementById("time-slots-section");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, profile, location.hash, location.state, searchParams]);
 
   // Computed allowed durations
   const durationOptions = useMemo<SessionDuration[]>(() => {
@@ -442,7 +489,7 @@ export default function BookSessionPage() {
     }
     if (code === "FREEMU001") {
       setAppliedFreePromo(true);
-      toast.success("Promo code applied! 100% Free Mentorship Session unlocked.");
+      toast.success("Promo code applied! 100% Free Mock Interview Session unlocked.");
     } else {
       toast.error("Invalid or expired promo code.");
     }
@@ -457,7 +504,7 @@ export default function BookSessionPage() {
   // Share handlers
   const handleShare = (type: string) => {
     const shareUrl = window.location.href;
-    const shareText = `Book a 1:1 mentorship session with ${profile?.name || "Mentor"} on Mockeefy!`;
+    const shareText = `Book a 1:1 session with ${profile?.name || "Interview Expert"} on Mockeefy!`;
     const encodedUrl = encodeURIComponent(shareUrl);
     const encodedText = encodeURIComponent(shareText);
 
@@ -494,7 +541,7 @@ export default function BookSessionPage() {
     if (!user) {
       Swal.fire({
         title: "Sign In Required",
-        text: "Please sign in to confirm your mentorship booking.",
+        text: "Please sign in to confirm your session booking.",
         icon: "info",
         showCancelButton: true,
         confirmButtonText: "Sign In",
@@ -555,6 +602,7 @@ export default function BookSessionPage() {
       if (appliedFreePromo) {
         const res = await axios.post("/api/sessions/book-free", payload);
         if (res.data?.success) {
+          setPaymentStatus("paid");
           Swal.fire({
             title: "Booking Confirmed! 🎉",
             text: `Your free session with ${profile.name} has been scheduled for ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
@@ -569,6 +617,7 @@ export default function BookSessionPage() {
       if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
         const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
         if (res.data?.success) {
+          setPaymentStatus("paid");
           Swal.fire({
             title: "Booked with Credit! 🎯",
             text: `Session confirmed. You have ${res.data.remainingCredits ?? 0} free credits remaining.`,
@@ -620,13 +669,14 @@ export default function BookSessionPage() {
                 startTime,
                 endTime,
                 price: sessionFee,
-                topics: [currentGoalObj?.title || "1:1 Mentorship"],
+                topics: [currentGoalObj?.title || "1:1 Mock Interview"],
                 duration: Number(sessionDuration),
                 notes: userDiscussionNotes.trim() ? `${userDiscussionNotes.trim()} [Goal: ${currentGoalObj?.title}]` : `[Goal: ${currentGoalObj?.title}]`
               }
             });
 
             if (verifyRes.data?.success) {
+              setPaymentStatus("paid");
               Swal.fire({
                 title: "Booking Confirmed! 🎉",
                 text: `Your mock interview with ${profile.name} is scheduled for ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
@@ -679,22 +729,28 @@ export default function BookSessionPage() {
   // Fallback for missing/invalid expertId
   if (!expertId || (!loading && !profile)) {
     return (
-      <div className="w-full font-sans text-left py-12">
-        <div className="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4 shadow-xs">
-            <AlertCircle className="w-7 h-7" />
+      <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+        {/* Decorative gradient glow */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+        <div className="w-full relative z-10 py-12">
+          <div className="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4 shadow-xs">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Interview Expert Not Found</h2>
+            <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
+              We couldn't locate the requested interview expert profile. Browse our verified directory to choose an expert for your session.
+            </p>
+            <Link
+              to="/find-mentor"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Browse All Interview Experts</span>
+            </Link>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Mentor Not Found</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
-            We couldn't locate the requested mentor profile. Browse our verified mentor directory to choose an expert for your session.
-          </p>
-          <Link
-            to="/find-mentor"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
-          >
-            <Briefcase className="w-4 h-4" />
-            <span>Browse All Mentors</span>
-          </Link>
         </div>
       </div>
     );
@@ -709,10 +765,15 @@ export default function BookSessionPage() {
   const selectedDateObj = dates[selectedDate];
 
   return (
-    <div className="w-full space-y-6 font-sans text-left pb-16 animate-in fade-in duration-200">
-      
-      {/* 1. Page Header with Clean Breadcrumbs & Back Button */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 px-5 sm:px-6 py-4 shadow-xs">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full space-y-6 relative z-10 animate-in fade-in duration-200">
+        
+        {/* 1. Page Header with Clean Breadcrumbs & Back Button */}
+        <div className="bg-white/95 backdrop-blur-xs rounded-2xl border border-slate-200/80 px-5 sm:px-6 py-4 shadow-2xs">
         <div className="flex items-center justify-between gap-4 mb-2">
           {/* Back Button */}
           <button
@@ -725,16 +786,16 @@ export default function BookSessionPage() {
               }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
-            title="Back to Mentors"
+            title="Back to Interview Experts"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-            <span>Back to Mentors</span>
+            <span>Back to Interview Experts</span>
           </button>
 
           {/* Breadcrumb Navigation */}
           <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
             <Link to="/mentors" className="text-slate-600 hover:text-[#0755E8] transition-colors">
-              Find Mentors
+              Find Interview Experts
             </Link>
             <span className="text-slate-300">/</span>
             <span className="text-slate-600 truncate max-w-[200px]">
@@ -749,7 +810,7 @@ export default function BookSessionPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-0.5">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-              Book Your Mentorship Session
+              Book Your Interview Session
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-2xl">
               Get personalized guidance to help you prepare, build confidence, and reach your career goals.
@@ -762,7 +823,7 @@ export default function BookSessionPage() {
               type="button"
               onClick={() => setIsShareMenuOpen(v => !v)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-xs cursor-pointer transition-colors"
-              title="Share mentor profile"
+              title="Share interview expert profile"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
@@ -808,9 +869,9 @@ export default function BookSessionPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* ======================================================== */}
-        {/* LEFT / MAIN COLUMN (lg:col-span-8): Booking Form Sections */}
+        {/* LEFT / MAIN COLUMN (lg:col-span-7): Booking Form Sections */}
         {/* ======================================================== */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-7 space-y-6">
 
           {/* Mentor Profile Overview: About Mentor & Reviews Tabs */}
           <div id="mentor-reviews-tabs" className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs scroll-mt-20">
@@ -825,7 +886,7 @@ export default function BookSessionPage() {
                     : "text-slate-500 border-transparent hover:text-slate-900"
                 }`}
               >
-                About Mentor
+                About Interview Expert
               </button>
               <button
                 type="button"
@@ -847,7 +908,7 @@ export default function BookSessionPage() {
                   <div>
                     <h3 className="font-bold text-slate-900 mb-1">About {profile.name}</h3>
                     <p className="text-slate-600">
-                      {(profile as any).bio || `${profile.name} is a verified ${profile.category} mentor with ${profile.experience ? (profile.experience.toLowerCase().includes("fresher") ? "early-stage industry experience" : `${profile.experience} of industry experience`) : "industry experience"} specializing in mock interviews, career guidance, and practical technical preparation.`}
+                      {(profile as any).bio || `${profile.name} is a verified ${profile.category} interview expert with ${profile.experience ? (profile.experience.toLowerCase().includes("fresher") ? "early-stage industry experience" : `${profile.experience} of industry experience`) : "industry experience"} specializing in mock interviews, career guidance, and practical technical preparation.`}
                     </p>
                   </div>
 
@@ -906,70 +967,12 @@ export default function BookSessionPage() {
             </div>
           </div>
 
-          {/* Section A: Session Goal Selection */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
-            <div className="mb-4">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
-                <Sparkles className="w-3 h-3 text-[#0755E8]" />
-                <span>Step 1</span>
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                What would you like help with?
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Choose the primary focus area so {profile.name.split(" ")[0]} can tailor questions and advice to your needs.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {SESSION_GOALS.map((goal) => {
-                const isSelected = selectedGoal === goal.id;
-                const IconComponent = goal.icon;
-                return (
-                  <button
-                    key={goal.id}
-                    type="button"
-                    onClick={() => setSelectedGoal(goal.id)}
-                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
-                      isSelected
-                        ? "bg-[#F0F5FF] border-[#0755E8] shadow-xs ring-2 ring-[#0755E8]/15"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2.5">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
-                          isSelected ? "bg-[#0755E8] text-white" : "bg-[#EAF2FF] text-[#0755E8]"
-                        }`}>
-                          <IconComponent className="w-4 h-4" />
-                        </div>
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          isSelected ? "border-[#0755E8] bg-[#0755E8] text-white" : "border-slate-300 bg-white"
-                        }`}>
-                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                        </div>
-                      </div>
-                      <h3 className={`text-sm font-bold leading-snug ${
-                        isSelected ? "text-[#0755E8]" : "text-slate-900"
-                      }`}>
-                        {goal.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-normal mt-1 leading-relaxed">
-                        {goal.desc}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section B: Scheduling (Date & Time) */}
+          {/* Section A: Scheduling (Date & Time) - Now Step 1 */}
           <div id="time-slots-section" className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs scroll-mt-20">
             <div className="mb-4">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
                 <Calendar className="w-3 h-3 text-[#0755E8]" />
-                <span>Step 2</span>
+                <span>Step 1</span>
               </div>
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
@@ -991,6 +994,7 @@ export default function BookSessionPage() {
                         onClick={() => {
                           setSessionDuration(dur);
                           setSelectedSlot(null);
+                          setPaymentStatus("not_paid");
                         }}
                         className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                           sessionDuration === dur
@@ -1051,6 +1055,7 @@ export default function BookSessionPage() {
                       onClick={() => {
                         setSelectedDate(index);
                         setSelectedSlot(null);
+                        setPaymentStatus("not_paid");
                       }}
                       className={`min-w-[66px] text-center px-2 py-2.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
                         isSelected
@@ -1099,7 +1104,10 @@ export default function BookSessionPage() {
                       key={index}
                       type="button"
                       disabled={isUnavailable}
-                      onClick={() => setSelectedSlot(slot)}
+                      onClick={() => {
+                        setSelectedSlot(slot);
+                        setPaymentStatus("not_paid");
+                      }}
                       className={`relative flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-[#0755E8] ${
                         isUnavailable
                           ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-75"
@@ -1137,6 +1145,168 @@ export default function BookSessionPage() {
                 </p>
               </div>
             )}
+
+            {/* Divider and Relocated Promo Code & Payment Details - Displayed only when user selects an available time slot */}
+            {selectedSlot && (
+              <div className="border-t border-slate-100 pt-5 mt-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                {/* Promo Code Input */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    Promo Code
+                  </label>
+                  <div className="flex gap-2 max-w-md">
+                    <input
+                      type="text"
+                      value={discountCode}
+                      onChange={(e) => setDiscountCode(e.target.value)}
+                      placeholder="Enter code (e.g. FREEMU001)"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0755E8] focus:bg-white transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      className="px-4 py-2.5 bg-[#EAF2FF] hover:bg-[#dbe7fd] text-[#0755E8] rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {appliedFreePromo && (
+                    <div className="flex items-center justify-between text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 mt-1 max-w-md">
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> Free Promo Applied (100% off)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemovePromo}
+                        className="text-red-500 hover:text-red-700 underline text-[10px] cursor-pointer font-bold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price Breakdown */}
+                <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-600 font-medium">
+                    <span>Session Fee ({sessionDuration} mins)</span>
+                    <span className="text-slate-900 font-bold tabular-nums">₹{sessionFee}</span>
+                  </div>
+                  {appliedFreePromo && (
+                    <div className="flex justify-between text-emerald-600 font-semibold">
+                      <span>Promo Discount (100% off)</span>
+                      <span className="tabular-nums">-₹{sessionFee}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-slate-900 font-bold text-sm pt-2.5 border-t border-slate-100 items-baseline">
+                    <div>
+                      <span className="text-sm font-bold text-slate-900">Total Payable</span>
+                      <span className="block text-[11px] font-normal text-slate-400">All fees &amp; taxes included</span>
+                    </div>
+                    <span className={`text-lg font-extrabold tabular-nums ${appliedFreePromo ? "text-emerald-600" : "text-[#0755E8]"}`}>
+                      {appliedFreePromo ? "Free" : `₹${finalPayable}`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Single Prominent Confirmation CTA Button */}
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={handleProceedBooking}
+                  className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
+                    appliedFreePromo
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                      : "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white shadow-[#0755E8]/20"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {isProcessing ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>
+                        {appliedFreePromo
+                          ? "Confirm Free Booking"
+                          : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
+                          ? `Book with Credit (${user.freeInterviewsCount} left)`
+                          : `Proceed to Payment — ₹${finalPayable}`}
+                      </span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                {/* Trust and Authenticity Badges */}
+                <div className="pt-2 border-t border-slate-100 space-y-1.5 text-[11px] font-medium text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Secure 256-bit encrypted checkout via Razorpay</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Video className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                    <span>Direct in-browser 1:1 video room provided on confirmation</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section B: Session Goal Selection - Now Step 2 */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
+                <Sparkles className="w-3 h-3 text-[#0755E8]" />
+                <span>Step 2</span>
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                What would you like help with?
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Choose the primary focus area so {profile.name.split(" ")[0]} can tailor questions and advice to your needs.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {SESSION_GOALS.map((goal) => {
+                const isSelected = selectedGoal === goal.id;
+                const IconComponent = goal.icon;
+                return (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => setSelectedGoal(goal.id)}
+                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                      isSelected
+                        ? "bg-[#F0F5FF] border-[#0755E8] shadow-xs ring-2 ring-[#0755E8]/15"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                          isSelected ? "bg-[#0755E8] text-white" : "bg-[#EAF2FF] text-[#0755E8]"
+                        }`}>
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          isSelected ? "border-[#0755E8] bg-[#0755E8] text-white" : "border-slate-300 bg-white"
+                        }`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                      </div>
+                      <h3 className={`text-sm font-bold leading-snug ${
+                        isSelected ? "text-[#0755E8]" : "text-slate-900"
+                      }`}>
+                        {goal.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-normal mt-1 leading-relaxed">
+                        {goal.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Section C: Session Preferences & Discussion Details */}
@@ -1150,7 +1320,7 @@ export default function BookSessionPage() {
                 Session Preferences &amp; Discussion Notes
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Provide optional context so your mentor can prepare specific interview questions or feedback.
+                Provide optional context so your interview expert can prepare specific interview questions or feedback.
               </p>
             </div>
 
@@ -1185,72 +1355,12 @@ export default function BookSessionPage() {
             </div>
           </div>
 
-          {/* Section D: What You'll Get & Before Your Session */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-4 leading-tight">
-              What to Expect &amp; How to Prepare
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* What You'll Get */}
-              <div className="p-4 bg-[#F0F5FF]/70 border border-[#DCE8FF] rounded-xl space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#0755E8] uppercase tracking-wider">
-                  <CheckCircle2 className="w-4 h-4 text-[#0755E8]" />
-                  <span>What You'll Get</span>
-                </div>
-                <ul className="space-y-2 text-xs text-slate-700 font-medium">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Focused one-on-one video coaching tailored to your target company.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Real-time technical or behavioral interview simulation.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Actionable scorecard identifying your strengths and core blindspots.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Targeted next steps and suggested preparation materials.</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Before Your Session */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  <Info className="w-4 h-4 text-slate-600" />
-                  <span>Before Your Session</span>
-                </div>
-                <ul className="space-y-2 text-xs text-slate-600 font-medium">
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>Have your resume or portfolio links accessible for reference.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>List 2-3 specific topics or algorithmic patterns you want to drill.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>Join from a quiet environment with a working microphone and camera.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>Log in 3-5 minutes early to test your connection.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* ======================================================== */}
-        {/* RIGHT / SECONDARY COLUMN (lg:col-span-4): Sticky Summary */}
+        {/* RIGHT / SECONDARY COLUMN (lg:col-span-5): Complete Companion Cards */}
         {/* ======================================================== */}
-        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-6 lg:self-start">
+        <div className="lg:col-span-5 space-y-5">
           
           {/* Card 1: Mentor Summary Card */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
@@ -1296,7 +1406,7 @@ export default function BookSessionPage() {
 
             {/* Quick Profile Links */}
             <div className="pt-3 flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-medium">Verified Mentor</span>
+              <span className="text-slate-500 font-medium">Verified Interview Expert</span>
               <button
                 type="button"
                 onClick={() => {
@@ -1335,7 +1445,19 @@ export default function BookSessionPage() {
                 <Calendar className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold text-[#0755E8] uppercase tracking-wider">Scheduled Time</p>
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-[10px] font-bold text-[#0755E8] uppercase tracking-wider">Scheduled Time</p>
+                  {selectedSlot && (
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full transition-colors ${
+                      paymentStatus === "paid"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : "bg-amber-100 text-amber-800 border border-amber-200"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${paymentStatus === "paid" ? "bg-emerald-600 animate-pulse" : "bg-amber-500"}`} />
+                      {paymentStatus === "paid" ? "Paid" : "Not Paid"}
+                    </span>
+                  )}
+                </div>
                 {selectedDateObj ? (
                   <p className="text-xs font-bold text-slate-900 mt-0.5">
                     {selectedDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
@@ -1359,114 +1481,200 @@ export default function BookSessionPage() {
               </div>
             </div>
 
-            {/* Promo Code Input */}
-            <div className="space-y-1.5 pt-1 border-t border-slate-100">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                Promo Code
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value)}
-                  placeholder="Enter code (e.g. FREEMU001)"
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0755E8]"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPromo}
-                  className="px-3.5 py-2 bg-[#EAF2FF] hover:bg-[#dbe7fd] text-[#0755E8] rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Apply
-                </button>
-              </div>
-              {appliedFreePromo && (
-                <div className="flex items-center justify-between text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 mt-1">
-                  <span className="flex items-center gap-1">
-                    <Check className="w-3 h-3 stroke-[3]" /> Free Promo Applied (100% off)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleRemovePromo}
-                    className="text-red-500 hover:text-red-700 underline text-[10px] cursor-pointer font-bold"
-                  >
-                    Remove
-                  </button>
+            {/* Payment Status Indicator (Dynamically displays Not Paid / Paid) */}
+            {selectedSlot && (
+              <div className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 transition-all duration-300 animate-in fade-in slide-in-from-top-1 ${
+                paymentStatus === "paid"
+                  ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                  : "bg-amber-50/70 border-amber-200/80 text-amber-900"
+              }`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    paymentStatus === "paid"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-amber-200/80 text-amber-800"
+                  }`}>
+                    {paymentStatus === "paid" ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <CreditCard className="w-3.5 h-3.5" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Payment Status
+                    </p>
+                    <p className="text-xs font-bold truncate mt-0.5">
+                      {paymentStatus === "paid" ? "Payment Completed" : "Payment Pending"}
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Price Breakdown (Fully synchronized) */}
-            <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-600 font-medium">
-                <span>Session Fee ({sessionDuration} mins)</span>
-                <span className="text-slate-900 font-bold tabular-nums">₹{sessionFee}</span>
-              </div>
-              {appliedFreePromo && (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>Promo Discount (100% off)</span>
-                  <span className="tabular-nums">-₹{sessionFee}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-slate-900 font-bold text-sm pt-2 border-t border-slate-100 items-baseline">
-                <div>
-                  <span>Total Payable</span>
-                  <span className="block text-[10px] font-normal text-slate-400">All fees &amp; taxes included</span>
-                </div>
-                <span className={`text-base font-extrabold tabular-nums ${appliedFreePromo ? "text-emerald-600" : "text-[#0755E8]"}`}>
-                  {appliedFreePromo ? "Free" : `₹${finalPayable}`}
+                <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 transition-colors ${
+                  paymentStatus === "paid"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "bg-amber-200 text-amber-900 border border-amber-300/80"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${paymentStatus === "paid" ? "bg-white" : "bg-amber-600"}`} />
+                  {paymentStatus === "paid" ? "Paid" : "Not Paid"}
                 </span>
               </div>
+            )}
+          </div>
+
+          {/* Card 3: What You'll Get */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0 border border-[#93B8FF]/60">
+                <CheckCircle2 className="w-4 h-4 text-[#0755E8]" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  What You'll Get
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">Included in every 1-on-1 interview</p>
+              </div>
             </div>
 
-            {/* Single Prominent Confirmation CTA Button */}
-            <button
-              type="button"
-              disabled={isProcessing}
-              onClick={handleProceedBooking}
-              className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
-                selectedSlot
-                  ? appliedFreePromo
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
-                    : "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white shadow-[#0755E8]/20"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {isProcessing ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : selectedSlot ? (
-                <>
-                  <span>
-                    {appliedFreePromo
-                      ? "Confirm Free Booking"
-                      : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
-                      ? `Book with Credit (${user.freeInterviewsCount} left)`
-                      : `Proceed to Payment — ₹${finalPayable}`}
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              ) : (
-                <>
-                  <span>Select an Available Slot</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Focused 1-on-1 coaching</strong> tailored to your target company &amp; role.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Live interview simulation</strong> with technical, coding, or behavioral drills.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Actionable scorecard</strong> detailing core strengths, blindspots &amp; metrics.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Official Certificate</strong> of mock interview completion for your resume.</span>
+              </li>
+            </ul>
+          </div>
 
-            {/* Trust and Authenticity Badges */}
-            <div className="pt-2 border-t border-slate-100 space-y-1.5 text-[11px] font-medium text-slate-500">
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Secure 256-bit encrypted checkout via Razorpay</span>
+          {/* Card 4: How to Prepare */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/70">
+                <Info className="w-4 h-4 text-amber-600" />
               </div>
-              <div className="flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
-                <span>Direct in-browser 1:1 video room provided on confirmation</span>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  How to Prepare
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">Quick checklist before your slot</p>
               </div>
+            </div>
+
+            <ul className="space-y-2.5 text-xs text-slate-600 font-medium">
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>Have your resume or portfolio links accessible for reference.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>List 2-3 specific topics or algorithmic patterns you want to drill.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>Join from a quiet environment with a working microphone and camera.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>Log in 3-5 minutes early to test your audio &amp; video feed.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 5: Mockeefy Guarantee */}
+          <div className="bg-gradient-to-br from-[#F0F5FF] via-white to-white rounded-2xl border border-blue-200/70 p-5 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#0755E8]" />
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Mockeefy Guarantee
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1 text-slate-700">
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <Award className="w-4 h-4 text-[#0755E8] shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">100% Vetted Experts</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <RotateCcw className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">Free Reschedule</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <Video className="w-4 h-4 text-[#0755E8] shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">HD Video Room</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">256-Bit Encrypted</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 6: Frequently Asked Questions & Support */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-[#0755E8]" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Common Questions
+                </h3>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {BOOKING_FAQS.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-slate-200/80 overflow-hidden transition-colors"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                      className="w-full text-left p-3 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-2 text-xs font-bold text-slate-800 transition-colors cursor-pointer"
+                    >
+                      <span>{faq.q}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="p-3 bg-white text-xs text-slate-600 leading-relaxed border-t border-slate-100">
+                        {faq.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Support Link */}
+            <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <Headphones className="w-3.5 h-3.5 text-[#0755E8]" />
+                <span>Need support? <a href="mailto:support@mockeefy.com" className="text-[#0755E8] font-bold hover:underline">support@mockeefy.com</a></span>
+              </span>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

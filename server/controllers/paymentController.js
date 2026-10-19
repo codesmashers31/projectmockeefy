@@ -1,6 +1,7 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 dotenv.config();
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -48,6 +49,111 @@ import ExpertDetails from '../models/expertModel.js';
 import User from '../models/User.js';
 import Session from '../models/Session.js';
 import { createNotification } from './notificationController.js';
+import {
+    sendBookingNotificationToExpert,
+    sendBookingNotificationToCandidate,
+    formatSessionDateTime
+} from '../services/emailService.js';
+
+/**
+ * Helper to dispatch rich professional confirmation emails to the Interview Expert (and Candidate).
+ */
+export const triggerBookingEmails = async ({
+    bookingDetails,
+    sessionId,
+    meetingLink,
+    paymentId,
+    orderId,
+    paymentStatus = "Paid & Verified",
+    price,
+    candidateUserFallback = null
+}) => {
+    try {
+        if (!bookingDetails) return;
+
+        const startTime = new Date(bookingDetails.startTime);
+        const endTime = new Date(bookingDetails.endTime);
+
+        // 1. Fetch Candidate User
+        let candidateUser = null;
+        if (bookingDetails.candidateId && mongoose.Types.ObjectId.isValid(bookingDetails.candidateId)) {
+            candidateUser = await User.findById(bookingDetails.candidateId).lean();
+        }
+        if (!candidateUser && candidateUserFallback) {
+            candidateUser = candidateUserFallback;
+        }
+
+        // 2. Fetch Expert & Expert User
+        let expertDoc = null;
+        let expertUser = null;
+        const expertLookup = bookingDetails.expertId;
+
+        if (expertLookup && mongoose.Types.ObjectId.isValid(expertLookup)) {
+            expertDoc = await ExpertDetails.findById(expertLookup).populate('userId').lean();
+            if (!expertDoc) {
+                expertDoc = await ExpertDetails.findOne({ userId: expertLookup }).populate('userId').lean();
+            }
+        }
+
+        if (expertDoc?.userId) {
+            expertUser = typeof expertDoc.userId === 'object' ? expertDoc.userId : await User.findById(expertDoc.userId).lean();
+        } else if (expertLookup && mongoose.Types.ObjectId.isValid(expertLookup)) {
+            expertUser = await User.findById(expertLookup).lean();
+        }
+
+        const expertEmail = expertUser?.email;
+        const expertName = expertDoc?.personalInformation?.userName || expertUser?.name || "Interview Expert";
+        const candidateName = candidateUser?.name || "Candidate";
+        const candidateEmail = candidateUser?.email || "Not specified";
+        const candidatePhone = candidateUser?.personalInfo?.phone || candidateUser?.phone || candidateUser?.mobile || "Not provided";
+
+        console.log(`[BookingPayment] Dispatching booking confirmation email to interview expert: ${expertEmail} (${expertName}) for session: ${sessionId}`);
+
+        if (expertEmail) {
+            await sendBookingNotificationToExpert({
+                expertEmail,
+                expertName,
+                candidateName,
+                candidateEmail,
+                candidatePhone,
+                startTime,
+                endTime,
+                duration: bookingDetails.duration || 60,
+                topics: bookingDetails.topics,
+                category: expertDoc?.personalInformation?.category || "Technical Interview",
+                amountPaid: price !== undefined ? price : bookingDetails.price,
+                paymentStatus,
+                paymentId: paymentId || "N/A",
+                orderId: orderId || "N/A",
+                notes: bookingDetails.notes || "",
+                meetingLink,
+                sessionId,
+            });
+        } else {
+            console.warn(`[BookingPayment] Warning: No email address found for interview expert: ${bookingDetails.expertId}`);
+        }
+
+        // Send confirmation copy to candidate as well
+        if (candidateEmail && candidateEmail !== "Not specified") {
+            const dt = formatSessionDateTime(startTime, endTime);
+            sendBookingNotificationToCandidate({
+                candidateEmail,
+                candidateName,
+                expertName,
+                date: dt.dateStr,
+                timeSlot: dt.timeSlotStr,
+                duration: bookingDetails.duration || 60,
+                topics: bookingDetails.topics,
+                amountPaid: price !== undefined ? price : bookingDetails.price,
+                paymentId: paymentId || "N/A",
+                meetingLink,
+                sessionId,
+            }).catch((err) => console.error("[BookingPayment] Candidate notification email error:", err.message));
+        }
+    } catch (err) {
+        console.error("[BookingPayment] Error in triggerBookingEmails:", err);
+    }
+};
 
 export const verifyPayment = async (req, res) => {
     try {
@@ -130,6 +236,18 @@ export const verifyPayment = async (req, res) => {
                     metadata: { sessionId: session.sessionId, link: '/my-sessions' }
                 });
 
+                // Directly send professional email notification to the specified Interview Expert with all booking and payment details
+                triggerBookingEmails({
+                    bookingDetails,
+                    sessionId: session.sessionId,
+                    meetingLink: sessionData.meetingLink,
+                    paymentId: razorpay_payment_id,
+                    orderId: razorpay_order_id,
+                    paymentStatus: "Paid & Verified",
+                    price: bookingDetails.price,
+                    candidateUserFallback: user
+                });
+
                 return res.status(200).json({
                     success: true,
                     message: 'Payment verified and session created successfully',
@@ -157,8 +275,6 @@ export const verifyPayment = async (req, res) => {
         });
     }
 };
-
-import mongoose from 'mongoose';
 
 /**
  * Premium members booking with their free credits.
@@ -225,6 +341,18 @@ export const usePremiumCredit = async (req, res) => {
             title: 'Booking Confirmed!',
             message: `Your premium free session is confirmed!`,
             metadata: { sessionId: createdSession.sessionId, link: '/my-sessions' }
+        });
+
+        // Directly send email notification to Interview Expert
+        triggerBookingEmails({
+            bookingDetails,
+            sessionId: createdSession.sessionId,
+            meetingLink: sessionData.meetingLink,
+            paymentId: "PREMIUM-CREDIT",
+            orderId: "CREDIT-REDEEMED",
+            paymentStatus: "Paid via Premium Credit",
+            price: 0,
+            candidateUserFallback: user
         });
 
         return res.status(200).json({
@@ -320,6 +448,17 @@ export const createFreeBooking = async (req, res) => {
             title: 'Booking Confirmed!',
             message: `Your free session is confirmed!`,
             metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+        });
+
+        // Directly send email notification to Interview Expert
+        triggerBookingEmails({
+            bookingDetails,
+            sessionId: session.sessionId,
+            meetingLink: sessionData.meetingLink,
+            paymentId: "FREE-PROMO",
+            orderId: "PROMO-APPLIED",
+            paymentStatus: "100% Free Promo",
+            price: 0,
         });
 
         return res.status(200).json({

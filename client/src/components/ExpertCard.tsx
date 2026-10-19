@@ -44,8 +44,8 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
 
     const goToBooking = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        navigate(`/book-session`, {
-            state: { expertId: mentor.expertID, profile: { ...mentor } },
+        navigate(`/book-session?expertId=${mentor.expertID}#time-slots-section`, {
+            state: { expertId: mentor.expertID, profile: { ...mentor }, scrollToSlots: true },
         });
     };
 

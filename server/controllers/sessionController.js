@@ -3,6 +3,7 @@ import * as meetingService from '../services/meetingService.js';
 import PricingRule from '../models/PricingRule.js';
 import ExpertDetails from '../models/expertModel.js';
 import { v4 as uuidv4 } from 'uuid';
+import { triggerBookingEmails } from './paymentController.js';
 
 export const createSession = async (req, res) => {
     try {
@@ -68,6 +69,26 @@ export const createSession = async (req, res) => {
         };
 
         const session = await sessionService.createSession(sessionData);
+
+        // Send email notification to Interview Expert
+        triggerBookingEmails({
+            bookingDetails: {
+                expertId,
+                candidateId: finalCandidateId,
+                startTime: start,
+                endTime: end,
+                topics: topics || [],
+                duration: durationMinutes,
+                notes: req.body.notes || "",
+            },
+            sessionId: session.sessionId,
+            meetingLink: sessionData.meetingLink,
+            paymentId: "DIRECT-BOOKING",
+            orderId: "DIRECT",
+            paymentStatus: "Confirmed",
+            price: finalPrice,
+        });
+
         res.status(201).json({ success: true, message: "Session created successfully", data: session });
     } catch (error) {
         console.error("Create Session Error:", error);

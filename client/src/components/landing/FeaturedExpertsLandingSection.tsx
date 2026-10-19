@@ -56,7 +56,7 @@ export default function FeaturedExpertsLandingSection() {
       return {
         id: expert._id || expert.userId,
         expertID: expert._id || expert.userId,
-        name: expert.personalInformation?.userName || "Verified Mentor",
+        name: expert.personalInformation?.userName || "Verified Interview Expert",
         role: getJobTitle(expert.professionalDetails, cat),
         company: getCurrentCompany(expert.professionalDetails, cat),
         location: expert.personalInformation?.city || "Remote",
@@ -106,10 +106,10 @@ export default function FeaturedExpertsLandingSection() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2.5">
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            Top Verified Mentors
+            Top Verified Interview Experts
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
-            Featured Mentors &amp; Experts
+            Featured Interview Experts
           </h2>
           <p className="text-sm text-slate-500 mt-1 max-w-xl font-normal">
             Practice mock interviews, get portfolio reviews, and receive 1-on-1 career guidance.
@@ -120,7 +120,7 @@ export default function FeaturedExpertsLandingSection() {
           to="/signup"
           className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline shrink-0 group"
         >
-          <span>Explore all mentors</span>
+          <span>Explore all interview experts</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
@@ -176,7 +176,7 @@ export default function FeaturedExpertsLandingSection() {
           className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 text-xs sm:text-sm font-bold tracking-tight rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs"
         >
           <Search className="w-4 h-4 text-blue-600" />
-          <span>Browse All Available Mentors</span>
+          <span>Browse All Available Interview Experts</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

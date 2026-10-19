@@ -17,7 +17,7 @@ export const PromoBanners = () => {
   const banners: Banner[] = [
     {
       title: "Become an Expert & Earn Weekly",
-      subtitle: "Mentor candidates on your own schedule and get paid out every week.",
+      subtitle: "Guide candidates on your own schedule and get paid out every week.",
       cta: "Apply as an expert",
       to: "/signup",
       icon: <Wallet className="w-5 h-5" />,

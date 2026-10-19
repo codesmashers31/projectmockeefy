@@ -166,6 +166,7 @@ function AppRoutes() {
             <Route path="/find-mentor" element={<MentorsRedirect />} />
             <Route path="/my-sessions" element={<MySessions key="my-sessions" />} />
             <Route path="/saved-experts" element={<MySessions key="saved-experts" initialViewOverride="saved" />} />
+            <Route path="/liked-mentors" element={<MySessions key="liked-mentors" initialViewOverride="saved" />} />
             <Route path="/tips" element={<TipsPage />} />
             <Route path="/certificates" element={<CertificatesPage />} />
             <Route path="/profile" element={<UserProfile />} />

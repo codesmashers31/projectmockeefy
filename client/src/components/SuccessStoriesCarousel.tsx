@@ -23,7 +23,7 @@ const STORIES: SuccessStory[] = [
     name: "Karthik S.",
     outcome: "Placed as Backend Developer",
     company: "a global product company",
-    quote: "My mentor picked apart my system design answers line by line. Walked into my real interview and it felt like I'd already done it once before.",
+    quote: "My interview expert picked apart my system design answers line by line. Walked into my real interview and it felt like I'd already done it once before.",
     rating: 5,
   },
   {

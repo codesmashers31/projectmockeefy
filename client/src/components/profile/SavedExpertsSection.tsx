@@ -160,7 +160,7 @@ export default function SavedExpertsSection() {
                             {/* Actions */}
                             <div className="mt-auto pt-2">
                                 <button
-                                    onClick={() => navigate(`/book-session`, { state: { expertId: expert._id } })}
+                                    onClick={() => navigate(`/book-session?expertId=${expert._id}#time-slots-section`, { state: { expertId: expert._id, scrollToSlots: true } })}
                                     className="w-full py-2.5 bg-blue-600 hover:bg-blue-600 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm active:scale-95"
                                 >
                                     Book Session

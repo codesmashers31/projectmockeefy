@@ -68,7 +68,7 @@ const ProfileCard = () => {
   const filters = [
     { id: 'all', label: 'All Coaches', count: 12 },
     { id: 'hr', label: 'HR Experts', count: 5 },
-    { id: 'mentor', label: 'Tech Mentors', count: 7 },
+    { id: 'mentor', label: 'Tech Experts', count: 7 },
     { id: 'available', label: 'Available Now', count: 8 }
   ];
 
@@ -85,7 +85,7 @@ const ProfileCard = () => {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold tracking-widest uppercase mb-4">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Verified Mentors
+                Verified Interview Experts
               </div>
               <h1 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight leading-tight">
                 Accelerate Your Career with <span className="text-blue-200">Expert Coaching</span>
@@ -148,7 +148,7 @@ const ProfileCard = () => {
                 </div>
                 <h3 className="text-2xl font-black mb-2">Kickstart Your Prep at <span className="text-yellow-300">₹99</span></h3>
                 <p className="text-blue-100 font-medium mb-6 opacity-90 leading-relaxed">
-                  Join exclusive mentorship sessions with experts from Microsoft, Amazon, and Google. Limited slots available this week!
+                  Join exclusive mock interview sessions with experts from Microsoft, Amazon, and Google. Limited slots available this week!
                 </p>
                 <div className="flex items-center gap-4">
                   <button className="px-8 py-3 bg-white text-blue-700 font-black rounded-2xl hover:bg-blue-50 transition-all shadow-lg shadow-black/10 active:scale-95">
@@ -297,7 +297,7 @@ const ProfileCard = () => {
             {/* Pagination/Load More */}
             <div className="pt-8 flex justify-center">
               <button className="px-10 py-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-600 font-black hover:border-blue-400 hover:text-blue-600 transition-all shadow-xl shadow-slate-200/50 active:scale-95">
-                Discover More Mentors
+                Discover More Interview Experts
               </button>
             </div>
           </div>
