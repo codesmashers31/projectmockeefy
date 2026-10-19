@@ -84,7 +84,7 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
       return;
     }
     if (selectedLevels.length === 0) {
-      toast.error("Please select at least one mentor level");
+      toast.error("Please select at least one expert level");
       return;
     }
 
@@ -148,7 +148,7 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
         </div>
         <div>
           <h3 className="text-lg font-bold text-gray-900">Category & Level</h3>
-          <p className="text-xs text-gray-500">Configure your expertise category and choose your mentor levels.</p>
+          <p className="text-xs text-gray-500">Configure your expertise category and choose your expert levels.</p>
         </div>
       </div>
 

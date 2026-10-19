@@ -9,7 +9,6 @@ import {
   Menu,
   LogOut,
   User,
-  Settings,
   BookOpen,
   HelpCircle,
   ChevronDown,
@@ -19,6 +18,7 @@ import {
   Sparkles,
   CreditCard,
   Compass,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -184,7 +184,7 @@ export default function Navigation() {
   ];
 
   const moreItems = [
-    { name: "Saved Mentors", href: "/saved-experts", icon: <Bookmark size={16} /> },
+    { name: "Saved Interview Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Subscription Plans", href: "/plans", icon: <CreditCard size={16} /> },
     { name: "Tips & Guidance", href: "/tips", icon: <Sparkles size={16} /> },
     { name: "Help & Support", href: "/help", icon: <HelpCircle size={16} /> },
@@ -193,9 +193,8 @@ export default function Navigation() {
   const profileMenuItems = [
     { name: "Profile Settings", href: "/profile", icon: <User size={16} /> },
     { name: "My Sessions", href: "/my-sessions", icon: <Compass size={16} /> },
-    { name: "Saved Mentors", href: "/saved-experts", icon: <Bookmark size={16} /> },
+    { name: "Saved Interview Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
-    { name: "Settings", href: "/settings", icon: <Settings size={16} /> },
     { name: "Help & Support", href: "/help", icon: <HelpCircle size={16} /> },
   ];
 
@@ -313,7 +312,7 @@ export default function Navigation() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search mentors..."
+                  placeholder="Search interview experts..."
                   className="w-full h-8 pl-3 pr-7 text-[12px] bg-[#F8FAFC] hover:bg-white focus:bg-white text-slate-800 placeholder:text-slate-400 rounded-full border border-slate-200/90 focus:border-[#0755E8] focus:outline-none focus:ring-1 focus:ring-[#0755E8]/20 transition-all shadow-2xs"
                 />
                 <button
@@ -504,7 +503,7 @@ export default function Navigation() {
                     to="/signup?role=expert"
                     className="flex items-center gap-1 text-[13px] font-medium text-slate-600 hover:text-[#0755E8] transition-colors whitespace-nowrap"
                   >
-                    <span>For Mentors</span>
+                    <span>For Interview Experts</span>
                     <ChevronDown size={13} className="text-slate-400" />
                   </Link>
                 </div>
@@ -538,7 +537,7 @@ export default function Navigation() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search mentors, skills, roles..."
+                  placeholder="Search interview experts, skills, roles..."
                   className="w-full h-10 pl-4 pr-10 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#0755E8]"
                 />
                 <button

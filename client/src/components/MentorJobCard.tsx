@@ -7,8 +7,8 @@ import {
   Star,
   CheckCircle2,
   ArrowRight,
+  Heart,
 } from "lucide-react";
-import { BookingModal } from "./BookingModal";
 import { toast } from "sonner";
 
 // Types
@@ -46,7 +46,7 @@ interface MentorJobCardProps {
 export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   const navigate = useNavigate();
   const [avatarFailed, setAvatarFailed] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const mentorId = mentor.expertID || mentor.id || (mentor as any)._id;
 
   const [isSaved, setIsSaved] = useState(() => {
     try {
@@ -63,21 +63,33 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const handleBookNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsBookingModalOpen(true);
+    navigate(`/book-session?expertId=${mentorId}#time-slots-section`, {
+      state: {
+        expertId: mentorId,
+        profile: { ...mentor, id: mentorId },
+        scrollToSlots: true,
+      },
+    });
   };
 
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/book-session?expertId=${mentor.expertID}`, {
+    navigate(`/book-session?expertId=${mentorId}`, {
       state: {
-        expertId: mentor.expertID,
-        profile: { ...mentor },
+        expertId: mentorId,
+        profile: { ...mentor, id: mentorId },
       },
     });
   };
 
   const handleCardClick = () => {
-    setIsBookingModalOpen(true);
+    navigate(`/book-session?expertId=${mentorId}#time-slots-section`, {
+      state: {
+        expertId: mentorId,
+        profile: { ...mentor, id: mentorId },
+        scrollToSlots: true,
+      },
+    });
   };
 
   const toggleSave = (e: React.MouseEvent) => {
@@ -88,10 +100,10 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
       if (isSaved) {
         parsed = parsed.filter((m) => m.expertID !== mentor.expertID);
-        toast.info("Removed from saved mentors");
+        toast.info("Removed from Saved Interview Experts");
       } else {
         parsed.push(mentor);
-        toast.success("Saved to your shortlist");
+        toast.success("Added to Saved Interview Experts");
       }
 
       localStorage.setItem("savedExperts", JSON.stringify(parsed));
@@ -113,7 +125,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
       ? parseInt(mentor.price.toString().replace(/[^\d]/g, ""), 10) || 799
       : mentor.minPrice || 799;
 
-  const initials = (mentor.name || "Mentor")
+  const initials = (mentor.name || "Interview Expert")
     .trim()
     .split(" ")
     .map((n) => n[0])
@@ -133,7 +145,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   return (
     <article
       onClick={handleCardClick}
-      aria-label={`Mentor profile for ${mentor.name}`}
+      aria-label={`Interview expert profile for ${mentor.name}`}
       className="group relative bg-white rounded-2xl border border-slate-200/80 hover:border-[#0755E8]/40 hover:shadow-[0_4px_18px_-4px_rgba(7,85,232,0.1)] transition-all duration-200 p-4 sm:p-4.5 flex flex-col justify-between h-full w-full cursor-pointer text-left box-border"
     >
       <div className="space-y-2.5 flex-1 flex flex-col">
@@ -167,7 +179,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
                 </h3>
                 {mentor.isVerified && (
                   <span
-                    title="Verified Mentor"
+                    title="Verified Interview Expert"
                     className="inline-flex items-center text-[#0755E8] shrink-0"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 fill-[#EAF2FF]" />
@@ -177,7 +189,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
               {/* Sensible wrapping for job title & company: standardized 2-line height */}
               <p className="text-[12.5px] sm:text-[13px] text-slate-600 font-medium leading-snug mt-0.5 line-clamp-2 break-words min-h-[34px] sm:min-h-[36px]">
-                <span>{mentor.role || "Mentor"}</span>
+                <span>{mentor.role || "Interview Expert"}</span>
                 {mentor.company && (
                   <>
                     <span className="text-slate-400 font-normal mx-1">•</span>
@@ -193,9 +205,9 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           {/* Bookmark Button */}
           <button
             onClick={toggleSave}
-            title={isSaved ? "Remove from shortlist" : "Save to shortlist"}
-            aria-label={isSaved ? "Remove from shortlist" : "Save to shortlist"}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100/70 transition-colors shrink-0 cursor-pointer"
+            title={isSaved ? "Remove from Saved Interview Experts" : "Save to Interview Experts"}
+            aria-label={isSaved ? "Remove from Saved Interview Experts" : "Save to Interview Experts"}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-[#0755E8] hover:bg-blue-50/70 transition-colors shrink-0 cursor-pointer"
           >
             <Bookmark
               className={`w-4 h-4 transition-colors ${
@@ -305,15 +317,6 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
         </div>
       </div>
 
-      {/* In-place Booking Box Modal */}
-      {isBookingModalOpen && (
-        <BookingModal
-          isOpen={true}
-          onClose={() => setIsBookingModalOpen(false)}
-          expertId={mentor.expertID}
-          initialProfile={mentor}
-        />
-      )}
     </article>
   );
 });

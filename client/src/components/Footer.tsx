@@ -25,7 +25,7 @@ interface FooterProps {
 // ============================================================================
 const BANNER_ILLUSTRATION = {
   src: '/media/illustrations/Friendly%20Headset%20Support%20Guide.png',
-  alt: 'Friendly Mentor & 1-on-1 Mock Interview Guide',
+  alt: 'Friendly Interview Expert & 1-on-1 Mock Interview Guide',
 };
 
 // ============================================================================
@@ -84,14 +84,14 @@ const PreFooterExpertsBanner = () => {
           </h2>
 
           <p className="text-slate-600 text-xs sm:text-[13px] font-medium leading-relaxed max-w-lg">
-            Practice live technical, system design, and HR rounds with verified mentors from Google, Amazon, Microsoft, and top startups. Receive detailed rubrics and actionable feedback to crack your dream role.
+            Practice live technical, system design, and HR rounds with verified interview experts from Google, Amazon, Microsoft, and top startups. Receive detailed rubrics and actionable feedback to crack your dream role.
           </p>
 
           {/* Quick Value Highlights */}
           <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs font-semibold text-slate-600">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#0755E8]" />
-              <span>FAANG Mentors</span>
+              <span>FAANG Interview Experts</span>
             </span>
             <span className="text-slate-300 font-bold">—</span>
             <span className="flex items-center gap-1.5">
@@ -117,7 +117,7 @@ const PreFooterExpertsBanner = () => {
               {/* Glowing soft radial highlight */}
               <span className="absolute -top-6 -left-6 w-14 h-14 bg-white/20 rounded-full blur-md group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
 
-              <span className="relative z-10">Find Mentors</span>
+              <span className="relative z-10">Find Interview Experts</span>
               <ArrowRight className="relative z-10 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
             </Link>
 
@@ -126,7 +126,7 @@ const PreFooterExpertsBanner = () => {
               className="inline-flex items-center justify-center gap-2 px-4.5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:text-[#0755E8] hover:border-blue-300 text-xs sm:text-sm font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all active:scale-95 text-center cursor-pointer"
             >
               <Users className="w-4 h-4 text-slate-500" />
-              <span>Become a Mentor</span>
+              <span>Become an Interview Expert</span>
             </Link>
           </div>
 
@@ -142,7 +142,7 @@ const PreFooterExpertsBanner = () => {
           <div
             onClick={() => navigate('/mentors')}
             className="group relative w-full max-w-[280px] sm:max-w-[320px] cursor-pointer select-none"
-            title="Click to Find Verified Mentors"
+            title="Click to Find Verified Interview Experts"
           >
             {/* Soft ambient aura / glow behind the illustration */}
             <div className="absolute -inset-4 bg-gradient-to-tr from-blue-200/50 via-indigo-100/40 to-cyan-100/30 rounded-full blur-2xl pointer-events-none animate-aura-glow" />
@@ -168,15 +168,15 @@ const PreFooterExpertsBanner = () => {
 // ============================================================================
 const platformLinks = [
   { name: 'About Mockeefy', href: '/' },
-  { name: 'Find Mentors', href: '/mentors' },
+  { name: 'Find Interview Experts', href: '/mentors' },
   { name: 'Pricing & Plans', href: '/plans' },
   { name: 'My Sessions', href: '/my-sessions' },
   { name: 'Interview Tips', href: '/tips' },
 ];
 
 const mentorLinks = [
-  { name: 'Become a Mentor', href: '/signup?role=expert' },
-  { name: 'Mentor Sign In', href: '/signin' },
+  { name: 'Become an Interview Expert', href: '/signup?role=expert' },
+  { name: 'Interview Expert Sign In', href: '/signin' },
   { name: 'Verify Credentials', href: '/certificates' },
   { name: 'Watch Mock Interviews', href: '/watch-mock' },
   { name: 'Help & Support', href: '/help' },
@@ -303,7 +303,7 @@ const TopMentorsCompanySlider = () => {
                 <Link
                   key={company.name}
                   to={`/mentors?search=${encodeURIComponent(company.search)}`}
-                  title={`Explore ${company.name} Mentors`}
+                  title={`Explore ${company.name} Interview Experts`}
                   className="inline-flex items-center px-2.5 sm:px-3 py-1 bg-white hover:bg-blue-50/80 border border-slate-200/90 hover:border-[#0755E8]/60 rounded-lg text-xs font-bold text-slate-800 hover:text-[#0755E8] shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:scale-95 transition-all duration-150 cursor-pointer shrink-0"
                 >
                   <span>{company.name}</span>
@@ -459,7 +459,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
             {/* Column 3: For Mentors */}
             <div>
               <p className="text-[13px] font-extrabold text-slate-900 tracking-tight mb-3">
-                For Mentors
+                For Interview Experts
               </p>
               <ul className="space-y-2.5">
                 {mentorLinks.map((link) => (
@@ -504,11 +504,11 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
                 to="/mentors"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
               >
-                <span>Find Mentors</span>
+                <span>Find Interview Experts</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-semibold">
-                <span>500+ Active Mentors</span>
+                <span>500+ Active Interview Experts</span>
                 <span className="text-emerald-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Now
                 </span>

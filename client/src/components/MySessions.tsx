@@ -244,7 +244,7 @@ const SessionCard: React.FC<{
                 <h3 className="font-black text-slate-900 text-[15px] truncate group-hover:text-[#0755E8] transition-colors">
                   {session.expert}
                 </h3>
-                <span className="inline-flex items-center text-blue-600 shrink-0" title="Verified Mentor">
+                <span className="inline-flex items-center text-blue-600 shrink-0" title="Verified Interview Expert">
                   <CheckCircle2 className="w-4 h-4 fill-blue-600 text-white" />
                 </span>
               </div>
@@ -323,7 +323,7 @@ const SessionCard: React.FC<{
                 className="flex-1 py-2 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Rate Mentor</span>
+                <span>Rate Interview Expert</span>
               </button>
             )}
 
@@ -370,7 +370,7 @@ const SessionCard: React.FC<{
             onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
             className="w-full py-2.5 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
           >
-            <span>Book Another Mentor</span>
+            <span>Book Another Interview Expert</span>
             <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
           </button>
         ) : joinable ? (
@@ -394,7 +394,7 @@ const SessionCard: React.FC<{
               onClick={() => session.expertId && navigate(`/book-session?expertId=${session.expertId}`)}
               className="py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all cursor-pointer shadow-2xs"
             >
-              View Mentor
+              View Interview Expert
             </button>
           </div>
         ) : (
@@ -648,8 +648,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   };
 
   return (
-    <div className="w-full bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 md:p-8 shadow-xs pb-12 font-sans text-left">
-      <div className="w-full space-y-6">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full space-y-6 relative z-10">
 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
         {activeView === 'overview' && (
@@ -662,7 +666,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                 </div>
                 <div>
                   <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Bookings</h1>
-                  <p className="text-xs font-semibold text-gray-500 mt-1">Real-time sessions, countdowns, and mentor feedback</p>
+                  <p className="text-xs font-semibold text-gray-500 mt-1">Real-time sessions, countdowns, and interview expert feedback</p>
                 </div>
               </div>
 
@@ -747,8 +751,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     {statusFilter === 'cancelled' && 'No cancelled sessions'}
                   </h3>
                   <p className="text-gray-500 text-xs font-medium mt-1 max-w-sm mx-auto">
-                    {statusFilter === 'all' && 'Your bookings will appear here after you schedule a session with a mentor.'}
-                    {statusFilter === 'upcoming' && 'You have no active sessions scheduled. Explore expert mentors to book a mock interview.'}
+                    {statusFilter === 'all' && 'Your bookings will appear here after you schedule a session with an interview expert.'}
+                    {statusFilter === 'upcoming' && 'You have no active sessions scheduled. Explore interview experts to book a mock interview.'}
                     {statusFilter === 'completed' && 'Your finished sessions, feedback reports, and certificates will appear here.'}
                     {statusFilter === 'cancelled' && 'All your scheduled sessions are currently active or completed.'}
                   </p>
@@ -759,7 +763,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                       className="mt-5 px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <Briefcase className="w-3.5 h-3.5" />
-                      <span>Explore Mentors</span>
+                      <span>Explore Interview Experts</span>
                     </button>
                   )}
                 </div>
@@ -805,22 +809,22 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             {/* Header - simple, flat title row with icon */}
             <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100 shrink-0">
-                  <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
+                <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
+                  <Bookmark className="w-5 h-5 text-[#0755E8] fill-[#0755E8]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Liked Mentors</h2>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Saved Interview Experts</h2>
                   <p className="text-xs font-semibold text-gray-500 mt-1">
-                    Your favorite shortlisted mentors. Book a session or view profile anytime.
+                    Your shortlisted interview experts. Book a session or view profile anytime.
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full border border-rose-100 bg-rose-50 text-[10.5px] font-black text-rose-700 uppercase tracking-wider">
-                {savedExperts.length} Liked
+              <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10.5px] font-black text-[#0755E8] uppercase tracking-wider">
+                {savedExperts.length} Saved
               </span>
             </div>
 
-            {/* List - 2-column grid matching mentors */}
+            {/* List - 2-column grid matching interview experts */}
             {savedExperts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
                 {savedExperts.map((expert) => (
@@ -831,18 +835,18 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
               </div>
             ) : (
               <div className="bg-slate-50/50 rounded-2xl border border-slate-200/80 p-12 sm:p-16 text-center flex flex-col items-center shadow-xs">
-                <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-3.5 shadow-xs">
-                  <Heart className="w-7 h-7 text-rose-500 fill-rose-500" />
+                <div className="w-14 h-14 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center mb-3.5 shadow-xs">
+                  <Bookmark className="w-7 h-7 text-[#0755E8] fill-[#0755E8]" />
                 </div>
-                <h3 className="text-gray-900 font-bold text-base mb-1">No Liked Mentors Yet</h3>
-                <p className="text-gray-500 text-xs font-medium max-w-xs mx-auto">Click the bookmark or heart icon on any mentor card to save your favorite mentors here for easy access.</p>
+                <h3 className="text-gray-900 font-bold text-base mb-1">No Saved Interview Experts Yet</h3>
+                <p className="text-gray-500 text-xs font-medium max-w-xs mx-auto">Click the bookmark icon on any card to add interview experts to your saved list for quick access.</p>
                 <button
                   type="button"
                   onClick={() => navigate('/find-mentor')}
                   className="mt-5 px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <Briefcase className="w-3.5 h-3.5" />
-                  <span>Explore Mentors</span>
+                  <span>Explore Interview Experts</span>
                 </button>
               </div>
             )}

@@ -12,11 +12,11 @@ const Features = () => {
       icon: "🏢",
       title: "For Companies",
       description: "Save time by screening better-prepared candidates.",
-      details: "Connect with pre-screened, interview-ready candidates who have practiced with our professional mentors."
+      details: "Connect with pre-screened, interview-ready candidates who have practiced with our professional interview experts."
     },
     {
       icon: "🧑‍🏫",
-      title: "For Mentors",
+      title: "For Interview Experts",
       description: "Share knowledge, guide freshers, and earn.",
       details: "Use your industry experience to help the next generation while earning additional income."
     }
@@ -30,7 +30,7 @@ const Features = () => {
             Why Choose MockHire?
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Connecting students, companies, and mentors in a comprehensive interview preparation ecosystem.
+            Connecting students, companies, and interview experts in a comprehensive interview preparation ecosystem.
           </p>
         </div>
         

@@ -67,7 +67,7 @@ export const ExpertsCarousel = ({ title, subtitle, profiles, onSeeAll }: Experts
                     {title ? (
                         <>
                             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight truncate">{title}</h2>
-                            <p className="text-xs text-slate-500 font-semibold">{subtitle || "Top rated mentors"}</p>
+                            <p className="text-xs text-slate-500 font-semibold">{subtitle || "Top rated interview experts"}</p>
                         </>
                     ) : (
                         <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">

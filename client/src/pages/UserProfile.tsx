@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Upload,
   Camera,
@@ -13,7 +14,16 @@ import {
   FileCheck,
   Sparkles,
   User as UserIcon,
-  X
+  X,
+  Calendar,
+  Award,
+  Bookmark,
+  ArrowRight,
+  TrendingUp,
+  Clock,
+  ChevronRight,
+  ShieldCheck,
+  Heart,
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
@@ -79,6 +89,86 @@ export default function UserProfile() {
   useEffect(() => {
     loadResumes();
   }, [userId]);
+
+  // Fetch candidate sessions to calculate finished interviews and stats
+  const { data: candidateSessions = [], isLoading: isLoadingSessions } = useQuery({
+    queryKey: ["candidateProfileSessions", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const res = await axios.get(`/api/sessions/candidate/${userId}`);
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  // Calculate Finished / Completed Interviews
+  const completedSessions = useMemo(() => {
+    return candidateSessions.filter(
+      (s: any) => (s.status || "").toLowerCase() === "completed"
+    );
+  }, [candidateSessions]);
+
+  const upcomingSessions = useMemo(() => {
+    const now = new Date();
+    return candidateSessions.filter(
+      (s: any) =>
+        new Date(s.startTime) > now &&
+        !["cancelled", "completed"].includes((s.status || "").toLowerCase())
+    );
+  }, [candidateSessions]);
+
+  const completedCount = completedSessions.length;
+
+  // Calculate Unlocked Certificates (Categories with 3+ completed sessions)
+  const certificatesCount = useMemo(() => {
+    const categoryMap: Record<string, number> = {};
+    completedSessions.forEach((s: any) => {
+      const cat = s.category || s.expertDetails?.category || "General";
+      categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+    });
+    return Object.values(categoryMap).filter((count) => count >= 3).length;
+  }, [completedSessions]);
+
+  // Recent completed sessions for preview
+  const recentCompleted = useMemo(() => {
+    return [...completedSessions]
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.startTime || b.date || 0).getTime() -
+          new Date(a.startTime || a.date || 0).getTime()
+      )
+      .slice(0, 2);
+  }, [completedSessions]);
+
+  const practiceMinutes = completedCount * 45;
+  const sessionsToNextCert = completedCount === 0 ? 3 : 3 - (completedCount % 3 === 0 ? 0 : completedCount % 3);
+  const milestoneProgress =
+    completedCount === 0
+      ? 0
+      : Math.round(((completedCount % 3 === 0 ? 3 : completedCount % 3) / 3) * 100);
+
+  // Sync Saved Mentors Count from localStorage
+  const [savedCount, setSavedCount] = useState<number>(0);
+  useEffect(() => {
+    const updateSavedCount = () => {
+      try {
+        const saved = localStorage.getItem("savedExperts");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setSavedCount(Array.isArray(parsed) ? parsed.length : 0);
+        } else {
+          setSavedCount(0);
+        }
+      } catch (e) {
+        setSavedCount(0);
+      }
+    };
+
+    updateSavedCount();
+    window.addEventListener("storage", updateSavedCount);
+    return () => window.removeEventListener("storage", updateSavedCount);
+  }, []);
 
   // Handle Profile Image Selection & Upload
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,8 +370,12 @@ export default function UserProfile() {
   const hasPhoto = !!currentPhoto && !currentPhoto.includes("mockeefy.png") && !currentPhoto.includes("default-avatar.png");
 
   return (
-    <div className="w-full bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-7 md:p-9 shadow-xs pb-16 font-sans text-left">
-      <div className="w-full space-y-8">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full space-y-8 relative z-10">
 
         {/* 1. Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
@@ -294,9 +388,15 @@ export default function UserProfile() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/90 text-xs font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>
+                {isLoadingSessions ? "..." : `${completedCount} ${completedCount === 1 ? "Interview Finished" : "Interviews Finished"}`}
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200/80 text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0755E8]" />
               <span>Verified Candidate</span>
             </span>
           </div>
@@ -348,12 +448,19 @@ export default function UserProfile() {
                 <p className="text-xs sm:text-[13px] font-medium text-slate-500 truncate mt-0.5">
                   {user?.email || "candidate@mockeefy.com"}
                 </p>
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-[#0755E8] text-[11px] font-bold uppercase tracking-tight">
                     Candidate Profile
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
-                    Visible to mentors
+                    Visible to interview experts
+                  </span>
+                  <span className="text-slate-300 hidden sm:inline">•</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>
+                      {isLoadingSessions ? "..." : `${completedCount} ${completedCount === 1 ? "Interview Finished" : "Interviews Finished"}`}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -406,6 +513,265 @@ export default function UserProfile() {
           </div>
         </section>
 
+        {/* 2. INTERACTIVE INTERVIEW STATS & CANDIDATE METRICS */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-[#0755E8]" />
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Interview Track Record &amp; Activity
+              </h2>
+            </div>
+            <Link
+              to="/my-sessions"
+              className="text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:underline inline-flex items-center gap-1 transition-colors"
+            >
+              <span>View All Sessions</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {/* 4 Interactive Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* 1. Finished Interviews Card (Primary Requested Metric) */}
+            <Link
+              to="/my-sessions"
+              className="group relative bg-white hover:bg-gradient-to-b hover:from-emerald-50/30 hover:to-white border border-slate-200/90 hover:border-emerald-400/80 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(16,185,129,0.15)] flex flex-col justify-between cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/70 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Finished
+                </span>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+                    {isLoadingSessions ? "..." : completedCount}
+                  </span>
+                  <span className="text-xs text-slate-500 font-bold">
+                    {completedCount === 1 ? "session" : "sessions"}
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
+                  <span>Finished Mock Tests</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
+                </p>
+              </div>
+            </Link>
+
+            {/* 2. Upcoming / Scheduled Sessions */}
+            <Link
+              to="/my-sessions"
+              className="group relative bg-white hover:bg-gradient-to-b hover:from-blue-50/30 hover:to-white border border-slate-200/90 hover:border-[#0755E8]/40 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(7,85,232,0.15)] flex flex-col justify-between cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/60 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
+                  <Calendar className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/50 uppercase tracking-wider">
+                  Upcoming
+                </span>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+                    {isLoadingSessions ? "..." : upcomingSessions.length}
+                  </span>
+                  <span className="text-xs text-slate-500 font-bold">
+                    {upcomingSessions.length === 1 ? "session" : "sessions"}
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
+                  <span>Scheduled Slots</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0755E8] group-hover:translate-x-1 transition-all" />
+                </p>
+              </div>
+            </Link>
+
+            {/* 3. Verified Certificates Earned */}
+            <Link
+              to="/certificates"
+              className="group relative bg-white hover:bg-gradient-to-b hover:from-amber-50/30 hover:to-white border border-slate-200/90 hover:border-amber-400/70 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(245,158,11,0.15)] flex flex-col justify-between cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
+                  <Award className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10.5px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/60 uppercase tracking-wider">
+                  Certificates
+                </span>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+                    {isLoadingSessions ? "..." : certificatesCount}
+                  </span>
+                  <span className="text-xs text-slate-500 font-bold">
+                    unlocked
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
+                  <span>Track Certifications</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
+                </p>
+              </div>
+            </Link>
+
+            {/* 4. Saved Interview Experts */}
+            <Link
+              to="/saved-experts"
+              className="group relative bg-white hover:bg-gradient-to-b hover:from-blue-50/30 hover:to-white border border-slate-200/90 hover:border-blue-400/70 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(7,85,232,0.15)] flex flex-col justify-between cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/80 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
+                  <Bookmark className="w-5 h-5 stroke-[2.2] fill-[#0755E8] text-[#0755E8]" />
+                </div>
+                <span className="text-[10.5px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60 uppercase tracking-wider">
+                  Saved
+                </span>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+                    {savedCount}
+                  </span>
+                  <span className="text-xs text-slate-500 font-bold">
+                    {savedCount === 1 ? "expert" : "experts"}
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
+                  <span>Saved Interview Experts</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                </p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Interactive Milestone & Mock Practice Banner */}
+          <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#0755E8] text-white text-[10.5px] font-bold uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3" />
+                  {completedCount > 0 ? "Track Mastery Level" : "Mock Interview Goal"}
+                </span>
+                <span className="text-xs font-bold text-slate-700">
+                  {completedCount === 0
+                    ? "Complete 3 interviews in any track to unlock your verified Certificate"
+                    : `${completedCount} Mock ${completedCount === 1 ? "Interview" : "Interviews"} Finished • ~${practiceMinutes} mins Practice`}
+                </span>
+              </div>
+
+              {/* Progress bar toward certificate */}
+              <div className="space-y-1 max-w-lg">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                  <span>
+                    {completedCount === 0
+                      ? "Milestone: 0 / 3 Mock Interviews"
+                      : `Milestone: ${completedCount % 3 === 0 && completedCount > 0 ? 3 : completedCount % 3} of 3 sessions completed`}
+                  </span>
+                  <span className="text-[#0755E8] font-bold">{milestoneProgress}%</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#0755E8] to-[#2563EB] rounded-full transition-all duration-500"
+                    style={{ width: `${milestoneProgress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
+              <Link
+                to="/"
+                className="px-4 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold transition-all shadow-xs active:scale-95 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <span>{completedCount > 0 ? "Book Next Mock Interview" : "Schedule 1st Mock Interview"}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Recent Finished Sessions Preview (If Any Finished) */}
+          {recentCompleted.length > 0 && (
+            <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Recent Finished Sessions
+                  </h3>
+                </div>
+                <Link
+                  to="/my-sessions"
+                  className="text-xs font-bold text-[#0755E8] hover:underline"
+                >
+                  View Notes &amp; Feedback
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {recentCompleted.map((session: any) => {
+                  const expertName =
+                    session.expertDetails?.name || session.expert || "Senior Interview Expert";
+                  const role =
+                    session.expertDetails?.role || session.role || "Technical Expert";
+                  const company =
+                    session.expertDetails?.company || session.company || "";
+                  const dateStr = session.startTime
+                    ? new Date(session.startTime).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Completed";
+                  const category = session.category || "Technical Interview";
+
+                  return (
+                    <div
+                      key={session._id || session.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50/70 hover:bg-slate-50 border border-slate-200/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center justify-center font-black text-sm shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div className="min-w-0 leading-tight">
+                          <p className="text-xs font-black text-slate-900 truncate">
+                            {expertName}
+                          </p>
+                          <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
+                            {role} {company ? `• ${company}` : ""}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                              {category}
+                            </span>
+                            <span className="text-[10.5px] text-slate-400 font-medium">
+                              {dateStr}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Link
+                        to="/my-sessions"
+                        className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#EAF2FF] text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] text-[11px] font-bold transition-all shrink-0 whitespace-nowrap shadow-2xs"
+                      >
+                        Review
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* 3. SECTION 2: MULTI-RESUME UPLOAD & MANAGEMENT */}
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4">
@@ -420,7 +786,7 @@ export default function UserProfile() {
                 </span>
               </div>
               <p className="text-xs font-medium text-slate-500 mt-1">
-                Upload multiple tailored resumes for different roles. Mentors will review your default resume.
+                Upload multiple tailored resumes for different roles. Interview experts will review your default resume.
               </p>
             </div>
 
@@ -621,7 +987,7 @@ export default function UserProfile() {
                           ) : (
                             <span className="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Active for Mentors</span>
+                              <span>Active for Interview Experts</span>
                             </span>
                           )}
                         </div>

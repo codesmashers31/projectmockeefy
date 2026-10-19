@@ -291,7 +291,7 @@ export default function PricingRules() {
                         <span className="text-sm font-semibold text-gray-500">Expert Levels</span>
                     </div>
                     <div className="text-2xl font-extrabold text-gray-900">{metrics.totalLevels}</div>
-                    <p className="text-[11px] text-gray-400 mt-1">Rising to FAANG Mentors</p>
+                    <p className="text-[11px] text-gray-400 mt-1">Rising to FAANG Interview Experts</p>
                 </div>
 
                 {/* Active Rules Card */}

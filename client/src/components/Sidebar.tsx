@@ -8,6 +8,8 @@ import {
   Video,
   ArrowRight,
   Sparkles,
+  Award,
+  Heart,
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -91,10 +93,10 @@ export default function Sidebar() {
       count: Array.isArray(expertsData) && expertsData.length > 0 ? `${expertsData.length}+` : "50+",
     },
     {
-      label: "Saved Mentors",
+      label: "Saved Interview Experts",
       icon: Bookmark,
       path: "/saved-experts",
-      isActive: location.pathname === "/saved-experts",
+      isActive: location.pathname === "/saved-experts" || location.pathname === "/liked-mentors",
       count: savedCount,
     },
     {
@@ -102,6 +104,12 @@ export default function Sidebar() {
       icon: Calendar,
       path: "/my-sessions",
       isActive: location.pathname === "/my-sessions",
+    },
+    {
+      label: "Certificates",
+      icon: Award,
+      path: "/certificates",
+      isActive: location.pathname === "/certificates",
     },
     {
       label: "Profile & Settings",
@@ -205,7 +213,7 @@ export default function Sidebar() {
               {nextSession.expertDetails?.profileImage ? (
                 <img
                   src={getProfileImageUrl(nextSession.expertDetails.profileImage)}
-                  alt="Mentor"
+                  alt="Interview Expert"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -214,7 +222,7 @@ export default function Sidebar() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold text-slate-900 truncate">
-                {nextSession.expertDetails?.name || "Verified Mentor"}
+                {nextSession.expertDetails?.name || "Verified Interview Expert"}
               </p>
               <p className="text-[11px] text-slate-500 truncate">
                 {nextSession.category || "Mock Interview"}
@@ -253,7 +261,7 @@ export default function Sidebar() {
             }}
             className="w-full py-1.5 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-lg text-[11.5px] font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <span>Explore Mentors</span>
+            <span>Explore Interview Experts</span>
             <ArrowRight size={12} />
           </button>
         </div>

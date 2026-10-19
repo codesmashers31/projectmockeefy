@@ -125,7 +125,7 @@ const RecommendedMentors = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-10">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Recommended mentors for you</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Recommended interview experts for you</h2>
                     <p className="text-sm text-gray-500 mt-1">Based on your potential profile and preferences</p>
                 </div>
                 <button className="text-[#004fcb] font-bold text-sm hover:underline flex items-center gap-1">
@@ -180,7 +180,7 @@ const RecommendedMentors = () => {
                         ))
                     ) : (
                         <div className="w-full py-10 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                            No mentors found in this category.
+                            No interview experts found in this category.
                         </div>
                     )}
                 </div>

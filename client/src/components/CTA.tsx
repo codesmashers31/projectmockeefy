@@ -17,7 +17,7 @@ const CTA = () => {
               Start Practicing
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 py-4 bg-transparent text-primary-foreground border-primary-foreground/30 hover:bg-primary-foreground/10">
-              Join as Mentor
+              Join as Interview Expert
             </Button>
           </div>
 
@@ -28,7 +28,7 @@ const CTA = () => {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-accent">50+</div>
-              <div className="text-sm opacity-80">Expert Mentors</div>
+              <div className="text-sm opacity-80">Interview Experts</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-accent">95%</div>

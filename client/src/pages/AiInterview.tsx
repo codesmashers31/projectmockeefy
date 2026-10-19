@@ -718,7 +718,7 @@ const AiInterview = () => {
                                                 <label className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Interviewer Tone</label>
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                                     {[
-                                                        { id: 'friendly', label: 'Friendly Mentor', icon: <Brain className="w-4 h-4" /> },
+                                                        { id: 'friendly', label: 'Friendly Expert', icon: <Brain className="w-4 h-4" /> },
                                                         { id: 'professional', label: 'Real HR', icon: <User className="w-4 h-4" /> },
                                                         { id: 'strict', label: 'Strict Lead', icon: <Zap className="w-4 h-4" /> },
                                                     ].map((tone) => (

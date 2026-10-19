@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 8;
+const INITIAL_FILTER_ITEMS_LIMIT = 5;
 
 interface MentorCategoryScrollRowProps {
   id: string;
@@ -266,6 +267,18 @@ export default function FindMentor() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // Track "View More" expansion for each filter subheading (limits items to initial 5 by default)
+  const [showAllSubheadings, setShowAllSubheadings] = useState<Record<string, boolean>>({
+    track: false,
+    experience: false,
+    price: false,
+    availability: false,
+  });
+
+  const toggleShowMore = (section: string) => {
+    setShowAllSubheadings((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
   // Fetch verified active experts from API
   const {
     data: expertsData = [],
@@ -323,7 +336,7 @@ export default function FindMentor() {
       return {
         id: expert._id || expert.userId,
         expertID: expert._id || expert.userId,
-        name: expert.personalInformation?.userName || expert.name || "Verified Mentor",
+        name: expert.personalInformation?.userName || expert.name || "Verified Interview Expert",
         role: getJobTitle(expert.professionalDetails, cat),
         company: getCurrentCompany(expert.professionalDetails, cat),
         location: expert.personalInformation?.city || "Remote",
@@ -719,7 +732,7 @@ export default function FindMentor() {
     if (otherMentors.length > 0) {
       groups.push({
         id: "other-experts",
-        title: selectedCategory !== "All" ? selectedCategory : "Specialized Industry Mentors",
+        title: selectedCategory !== "All" ? selectedCategory : "Specialized Interview Experts",
         subtitle: "Industry leaders and domain specialists across diverse tech domains.",
         icon: <Sparkles size={16} />,
         match: () => true,
@@ -747,11 +760,14 @@ export default function FindMentor() {
 
   // Dedicated Filter Sidebar Component
   const renderFilterPanel = () => (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-4.5 space-y-4 text-left">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-[#0755E8]" />
-          <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
+    <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-4.5 space-y-4 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
+      <div className="relative z-10 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-[#0755E8]" />
+            <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
           {activeFilterCount > 0 && (
             <span className="px-1.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold">
               {activeFilterCount}
@@ -768,214 +784,314 @@ export default function FindMentor() {
             </button>
           )}
           <span className="text-[11px] font-extrabold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full">
-            {allMentors.length} Mentors
+            {allMentors.length} Interview Experts
           </span>
         </div>
       </div>
 
-      {/* 1. Track Filter (from image) */}
-      <div className="space-y-2">
-        <button
-          onClick={() => toggleSection("track")}
-          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
-        >
-          <span className="flex items-center gap-1.5">
-            <span>Filter by Track</span>
-            {selectedCategory !== "All" && (
-              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
-                1
-              </span>
-            )}
-          </span>
-          {expandedSections.track ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+      {/* 1. Track Filter */}
+      {(() => {
+        const isTrackExpanded = !!showAllSubheadings.track;
+        const visibleCategories = (() => {
+          if (isTrackExpanded || categories.length <= INITIAL_FILTER_ITEMS_LIMIT) {
+            return categories;
+          }
+          const top = categories.slice(0, INITIAL_FILTER_ITEMS_LIMIT);
+          // If the user selected a category outside top 5, include it so the active choice isn't hidden
+          if (selectedCategory !== "All" && !top.includes(selectedCategory)) {
+            return [...top, selectedCategory];
+          }
+          return top;
+        })();
 
-        {expandedSections.track && (
-          <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-            {categories.map((cat) => {
-              const isSelected = selectedCategory === cat;
-              const count = cat === "All" ? allMentors.length : categoryCounts[cat] || 0;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => {
-                    const newCat = cat;
-                    setSelectedCategory(newCat);
-                    setSearchParams((prev) => {
-                      const next = new URLSearchParams(prev);
-                      if (newCat === "All") next.delete("category");
-                      else next.set("category", newCat);
-                      return next;
-                    });
-                  }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 cursor-pointer text-left ${
-                    isSelected
-                      ? "bg-[#0755E8] text-white font-bold shadow-xs"
-                      : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
-                  }`}
-                >
-                  <span className="truncate pr-1">{cat === "All" ? "All Tracks" : cat}</span>
-                  <span
-                    className={`text-[11px] px-1.5 py-0.2 rounded-full shrink-0 ${
-                      isSelected
-                        ? "bg-white/20 text-white font-bold"
-                        : "text-slate-400 bg-slate-100"
-                    }`}
-                  >
-                    {count}
+        return (
+          <div className="space-y-2">
+            <button
+              onClick={() => toggleSection("track")}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+            >
+              <span className="flex items-center gap-1.5">
+                <span>Filter by Track</span>
+                {selectedCategory !== "All" && (
+                  <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
+                    1
                   </span>
-                </button>
-              );
-            })}
+                )}
+              </span>
+              {expandedSections.track ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {expandedSections.track && (
+              <div className="space-y-1">
+                <div className={`space-y-1 ${isTrackExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                  {visibleCategories.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    const count = cat === "All" ? allMentors.length : categoryCounts[cat] || 0;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          const newCat = cat;
+                          setSelectedCategory(newCat);
+                          setSearchParams((prev) => {
+                            const next = new URLSearchParams(prev);
+                            if (newCat === "All") next.delete("category");
+                            else next.set("category", newCat);
+                            return next;
+                          });
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 cursor-pointer text-left ${
+                          isSelected
+                            ? "bg-[#0755E8] text-white font-bold shadow-xs"
+                            : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                        }`}
+                      >
+                        <span className="truncate pr-1">{cat === "All" ? "All Tracks" : cat}</span>
+                        <span
+                          className={`text-[11px] px-1.5 py-0.2 rounded-full shrink-0 ${
+                            isSelected
+                              ? "bg-white/20 text-white font-bold"
+                              : "text-slate-400 bg-slate-100"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {categories.length > INITIAL_FILTER_ITEMS_LIMIT && (
+                  <button
+                    type="button"
+                    onClick={() => toggleShowMore("track")}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-0.5 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:bg-blue-50/70 rounded-xl cursor-pointer transition-all"
+                  >
+                    <span>{isTrackExpanded ? "View Less" : "View More"}</span>
+                    {isTrackExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* 2. Experience */}
-      <div className="space-y-2 pt-3 border-t border-slate-100">
-        <button
-          onClick={() => toggleSection("experience")}
-          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
-        >
-          <span className="flex items-center gap-1.5">
-            <span>Experience</span>
-            {selectedExpRanges.length > 0 && (
-              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
-                {selectedExpRanges.length}
-              </span>
-            )}
-          </span>
-          {expandedSections.experience ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+      {(() => {
+        const expOptions = [
+          { id: "0-2", label: "0-2 Yrs", count: expCounts["0-2"] },
+          { id: "3-5", label: "3-5 Yrs", count: expCounts["3-5"] },
+          { id: "6-10", label: "6-10 Yrs", count: expCounts["6-10"] },
+          { id: "10+", label: "10+ Yrs", count: expCounts["10+"] },
+        ];
+        const isExpExpanded = !!showAllSubheadings.experience;
+        const visibleExpOptions = isExpExpanded || expOptions.length <= INITIAL_FILTER_ITEMS_LIMIT
+          ? expOptions
+          : expOptions.slice(0, INITIAL_FILTER_ITEMS_LIMIT);
 
-        {expandedSections.experience && (
-          <div className="space-y-1">
-            {[
-              { id: "0-2", label: "0-2 Yrs", count: expCounts["0-2"] },
-              { id: "3-5", label: "3-5 Yrs", count: expCounts["3-5"] },
-              { id: "6-10", label: "6-10 Yrs", count: expCounts["6-10"] },
-              { id: "10+", label: "10+ Yrs", count: expCounts["10+"] },
-            ].map((item) => {
-              const checked = selectedExpRanges.includes(item.id);
-              return (
-                <label
-                  key={item.id}
-                  onClick={() => toggleExpRange(item.id)}
-                  className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
-                >
-                  <div
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
-                      checked
-                        ? "bg-[#0755E8] border-[#0755E8] text-white"
-                        : "border-slate-300 bg-white"
-                    }`}
+        return (
+          <div className="space-y-2 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => toggleSection("experience")}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+            >
+              <span className="flex items-center gap-1.5">
+                <span>Experience</span>
+                {selectedExpRanges.length > 0 && (
+                  <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
+                    {selectedExpRanges.length}
+                  </span>
+                )}
+              </span>
+              {expandedSections.experience ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {expandedSections.experience && (
+              <div className="space-y-1">
+                <div className={`space-y-1 ${isExpExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                  {visibleExpOptions.map((item) => {
+                    const checked = selectedExpRanges.includes(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        onClick={() => toggleExpRange(item.id)}
+                        className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                      >
+                        <div
+                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                            checked
+                              ? "bg-[#0755E8] border-[#0755E8] text-white"
+                              : "border-slate-300 bg-white"
+                          }`}
+                        >
+                          {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                        <span className="flex-1 font-medium">{item.label}</span>
+                        <span className="text-slate-400 text-[11px]">({item.count})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {expOptions.length > INITIAL_FILTER_ITEMS_LIMIT && (
+                  <button
+                    type="button"
+                    onClick={() => toggleShowMore("experience")}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-0.5 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:bg-blue-50/70 rounded-xl cursor-pointer transition-all"
                   >
-                    {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                  </div>
-                  <span className="flex-1 font-medium">{item.label}</span>
-                  <span className="text-slate-400 text-[11px]">({item.count})</span>
-                </label>
-              );
-            })}
+                    <span>{isExpExpanded ? "View Less" : "View More"}</span>
+                    {isExpExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* 3. Session Price */}
-      <div className="space-y-2 pt-3 border-t border-slate-100">
-        <button
-          onClick={() => toggleSection("price")}
-          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
-        >
-          <span className="flex items-center gap-1.5">
-            <span>Session Price</span>
-            {selectedPriceRanges.length > 0 && (
-              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
-                {selectedPriceRanges.length}
-              </span>
-            )}
-          </span>
-          {expandedSections.price ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+      {(() => {
+        const priceOptions = [
+          { id: "under-1000", label: "Under ₹1,000", count: priceCounts["under-1000"] },
+          { id: "1000-2000", label: "₹1,000 - ₹2,000", count: priceCounts["1000-2000"] },
+          { id: "2000+", label: "₹2,000+", count: priceCounts["2000+"] },
+        ];
+        const isPriceExpanded = !!showAllSubheadings.price;
+        const visiblePriceOptions = isPriceExpanded || priceOptions.length <= INITIAL_FILTER_ITEMS_LIMIT
+          ? priceOptions
+          : priceOptions.slice(0, INITIAL_FILTER_ITEMS_LIMIT);
 
-        {expandedSections.price && (
-          <div className="space-y-1">
-            {[
-              { id: "under-1000", label: "Under ₹1,000", count: priceCounts["under-1000"] },
-              { id: "1000-2000", label: "₹1,000 - ₹2,000", count: priceCounts["1000-2000"] },
-              { id: "2000+", label: "₹2,000+", count: priceCounts["2000+"] },
-            ].map((item) => {
-              const checked = selectedPriceRanges.includes(item.id);
-              return (
-                <label
-                  key={item.id}
-                  onClick={() => togglePriceRange(item.id)}
-                  className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
-                >
-                  <div
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
-                      checked
-                        ? "bg-[#0755E8] border-[#0755E8] text-white"
-                        : "border-slate-300 bg-white"
-                    }`}
+        return (
+          <div className="space-y-2 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => toggleSection("price")}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+            >
+              <span className="flex items-center gap-1.5">
+                <span>Session Price</span>
+                {selectedPriceRanges.length > 0 && (
+                  <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
+                    {selectedPriceRanges.length}
+                  </span>
+                )}
+              </span>
+              {expandedSections.price ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {expandedSections.price && (
+              <div className="space-y-1">
+                <div className={`space-y-1 ${isPriceExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                  {visiblePriceOptions.map((item) => {
+                    const checked = selectedPriceRanges.includes(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        onClick={() => togglePriceRange(item.id)}
+                        className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                      >
+                        <div
+                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                            checked
+                              ? "bg-[#0755E8] border-[#0755E8] text-white"
+                              : "border-slate-300 bg-white"
+                          }`}
+                        >
+                          {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                        <span className="flex-1 font-medium">{item.label}</span>
+                        <span className="text-slate-400 text-[11px]">({item.count})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {priceOptions.length > INITIAL_FILTER_ITEMS_LIMIT && (
+                  <button
+                    type="button"
+                    onClick={() => toggleShowMore("price")}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-0.5 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:bg-blue-50/70 rounded-xl cursor-pointer transition-all"
                   >
-                    {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                  </div>
-                  <span className="flex-1 font-medium">{item.label}</span>
-                  <span className="text-slate-400 text-[11px]">({item.count})</span>
-                </label>
-              );
-            })}
+                    <span>{isPriceExpanded ? "View Less" : "View More"}</span>
+                    {isPriceExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* 4. Availability */}
-      <div className="space-y-2 pt-3 border-t border-slate-100">
-        <button
-          onClick={() => toggleSection("availability")}
-          className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
-        >
-          <span className="flex items-center gap-1.5">
-            <span>Availability</span>
-            {availabilityFilter !== "All" && (
-              <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
-                1
-              </span>
-            )}
-          </span>
-          {expandedSections.availability ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+      {(() => {
+        const availabilityOptions = [
+          { id: "All", label: "Anytime" },
+          { id: "Today", label: "Available Today" },
+          { id: "Week", label: "This Week" },
+        ];
+        const isAvailExpanded = !!showAllSubheadings.availability;
+        const visibleAvailOptions = isAvailExpanded || availabilityOptions.length <= INITIAL_FILTER_ITEMS_LIMIT
+          ? availabilityOptions
+          : availabilityOptions.slice(0, INITIAL_FILTER_ITEMS_LIMIT);
 
-        {expandedSections.availability && (
-          <div className="space-y-1">
-            {[
-              { id: "All", label: "Anytime" },
-              { id: "Today", label: "Available Today" },
-              { id: "Week", label: "This Week" },
-            ].map((opt) => (
-              <label
-                key={opt.id}
-                onClick={() => setAvailabilityFilter(opt.id)}
-                className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
-              >
-                <div
-                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
-                    availabilityFilter === opt.id
-                      ? "border-[#0755E8]"
-                      : "border-slate-300 bg-white"
-                  }`}
-                >
-                  {availabilityFilter === opt.id && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
-                  )}
+        return (
+          <div className="space-y-2 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => toggleSection("availability")}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer py-1"
+            >
+              <span className="flex items-center gap-1.5">
+                <span>Availability</span>
+                {availabilityFilter !== "All" && (
+                  <span className="text-[10px] bg-[#EAF2FF] text-[#0755E8] px-1.5 py-0.2 rounded-full font-bold">
+                    1
+                  </span>
+                )}
+              </span>
+              {expandedSections.availability ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {expandedSections.availability && (
+              <div className="space-y-1">
+                <div className={`space-y-1 ${isAvailExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                  {visibleAvailOptions.map((opt) => (
+                    <label
+                      key={opt.id}
+                      onClick={() => setAvailabilityFilter(opt.id)}
+                      className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                    >
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+                          availabilityFilter === opt.id
+                            ? "border-[#0755E8]"
+                            : "border-slate-300 bg-white"
+                        }`}
+                      >
+                        {availabilityFilter === opt.id && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
+                        )}
+                      </div>
+                      <span className="flex-1 font-medium">{opt.label}</span>
+                    </label>
+                  ))}
                 </div>
-                <span className="flex-1 font-medium">{opt.label}</span>
-              </label>
-            ))}
+
+                {availabilityOptions.length > INITIAL_FILTER_ITEMS_LIMIT && (
+                  <button
+                    type="button"
+                    onClick={() => toggleShowMore("availability")}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-0.5 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:bg-blue-50/70 rounded-xl cursor-pointer transition-all"
+                  >
+                    <span>{isAvailExpanded ? "View Less" : "View More"}</span>
+                    {isAvailExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        );
+      })()}
       </div>
     </div>
   );
@@ -984,123 +1100,125 @@ export default function FindMentor() {
     <div ref={listTopRef} className="w-full font-sans text-left animate-in fade-in duration-200">
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="relative flex-1 min-w-0 bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4">
+          {/* Decorative gradient glow */}
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
 
-          {/* ======================================================== */}
-          {/* SECTION 3: AVAILABLE MENTORS DIRECTORY & CARDS GRID      */}
-          {/* ======================================================== */}
-          <div className="space-y-4">
+          <div className="relative z-10 space-y-4">
             {/* Header Controls: Result Count & Sort Dropdown */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900 m-0">
-                  Available Mentors
-                </h2>
-                <span className="text-xs text-slate-500 font-medium">
-                  (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "expert" : "experts"} across <span className="text-slate-900 font-bold">{filteredCategoryGroups.length}</span> tracks)
-                </span>
-              </div>
+            <div className="space-y-2.5 pl-1.5 sm:pl-2.5 pr-0.5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900 m-0">
+                    Available Interview Experts
+                  </h2>
+                  <span className="text-xs text-slate-500 font-medium">
+                    (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"} across <span className="text-slate-900 font-bold">{filteredCategoryGroups.length}</span> tracks)
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Mobile Filter Button */}
-                <button
-                  onClick={() => setIsMobileFilterOpen(true)}
-                  className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
-                >
-                  <SlidersHorizontal size={13} />
-                  <span>Filters</span>
-                  {activeFilterCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Sort Control */}
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer"
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Mobile Filter Button */}
+                  <button
+                    onClick={() => setIsMobileFilterOpen(true)}
+                    className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
                   >
-                    <option value="recommended">Sort: Relevance</option>
-                    <option value="rating">Sort: Rating (High to Low)</option>
-                    <option value="experience">Sort: Experience (High to Low)</option>
-                    <option value="price-low">Sort: Price (Low to High)</option>
-                    <option value="price-high">Sort: Price (High to Low)</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                    <SlidersHorizontal size={13} />
+                    <span>Filters</span>
+                    {activeFilterCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Sort Control */}
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer"
+                    >
+                      <option value="recommended">Sort: Relevance</option>
+                      <option value="rating">Sort: Rating (High to Low)</option>
+                      <option value="experience">Sort: Experience (High to Low)</option>
+                      <option value="price-low">Sort: Price (Low to High)</option>
+                      <option value="price-high">Sort: Price (High to Low)</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
+
+              {/* Active Filter Badges */}
+              {activeFilterCount > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
+
+                  {selectedCategory !== "All" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
+                      {selectedCategory}
+                      <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+
+                  {selectedCompanies.map((c) => (
+                    <span
+                      key={c}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                    >
+                      {c}
+                      <button onClick={() => toggleCompany(c)} className="hover:text-red-500">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+
+                  {selectedExpRanges.map((exp) => (
+                    <span
+                      key={exp}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                    >
+                      Exp: {exp} yrs
+                      <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+
+                  {selectedPriceRanges.map((pr) => (
+                    <span
+                      key={pr}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
+                    >
+                      Price: {pr}
+                      <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+
+                  {availabilityFilter !== "All" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                      {availabilityFilter}
+                      <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-xs font-semibold text-rose-600 hover:underline ml-1 cursor-pointer"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
             </div>
-
-            {/* Active Filter Badges */}
-            {activeFilterCount > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
-
-                {selectedCategory !== "All" && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
-                    {selectedCategory}
-                    <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
-                      <X size={12} />
-                    </button>
-                  </span>
-                )}
-
-                {selectedCompanies.map((c) => (
-                  <span
-                    key={c}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
-                  >
-                    {c}
-                    <button onClick={() => toggleCompany(c)} className="hover:text-red-500">
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-
-                {selectedExpRanges.map((exp) => (
-                  <span
-                    key={exp}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
-                  >
-                    Exp: {exp} yrs
-                    <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500">
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-
-                {selectedPriceRanges.map((pr) => (
-                  <span
-                    key={pr}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
-                  >
-                    Price: {pr}
-                    <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500">
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-
-                {availabilityFilter !== "All" && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
-                    {availabilityFilter}
-                    <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500">
-                      <X size={12} />
-                    </button>
-                  </span>
-                )}
-
-                <button
-                  onClick={handleResetFilters}
-                  className="text-xs font-semibold text-rose-600 hover:underline ml-1 cursor-pointer"
-                >
-                  Clear all
-                </button>
-              </div>
-            )}
 
             {/* Mentors Grid / Empty / Error States */}
             {isLoading ? (
@@ -1121,9 +1239,9 @@ export default function FindMentor() {
             ) : isError ? (
               <div className="text-center py-12 bg-white rounded-2xl border border-rose-200 p-6 space-y-3">
                 <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-900">Failed to load mentors</h3>
+                <h3 className="text-sm font-bold text-slate-900">Failed to load interview experts</h3>
                 <p className="text-xs text-slate-500">
-                  {error instanceof Error ? error.message : "Error connecting to mentor API."}
+                  {error instanceof Error ? error.message : "Error connecting to interview expert API."}
                 </p>
                 <button
                   onClick={() => refetch()}
@@ -1151,15 +1269,15 @@ export default function FindMentor() {
                 <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
                   <Users size={24} />
                 </div>
-                <h3 className="text-base font-bold text-slate-900">No mentors found</h3>
+                <h3 className="text-base font-bold text-slate-900">No interview experts found</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  We couldn't find any mentors matching your search or filters. Try resetting to explore all experts.
+                  We couldn't find any interview experts matching your search or filters. Try resetting to explore all experts.
                 </p>
                 <button
                   onClick={handleResetFilters}
                   className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 >
-                  Show All Mentors
+                  Show All Interview Experts
                 </button>
               </div>
             )}
@@ -1171,14 +1289,17 @@ export default function FindMentor() {
           {renderFilterPanel()}
 
           {/* Tips Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-2 text-left">
-            <div className="flex items-center gap-1.5 text-[#0755E8]">
-              <Sparkles size={14} />
-              <span className="text-xs font-bold text-slate-900">Finding the Right Mentor</span>
+          <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-4 space-y-2 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden">
+            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
+            <div className="relative z-10 space-y-2">
+              <div className="flex items-center gap-1.5 text-[#0755E8]">
+                <Sparkles size={14} />
+                <span className="text-xs font-bold text-slate-900">Finding the Right Interview Expert</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Choose an interview expert working in your target industry or company to get the most accurate mock interview questions.
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Choose a mentor working in your target industry or company to get the most accurate mock interview questions.
-            </p>
           </div>
         </aside>
       </div>
@@ -1188,7 +1309,7 @@ export default function FindMentor() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Filter Mentors"
+          aria-label="Filter Interview Experts"
           className="xl:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={() => setIsMobileFilterOpen(false)}
         >
@@ -1197,7 +1318,7 @@ export default function FindMentor() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-              <span className="text-sm font-bold text-slate-900">Filter Mentors</span>
+              <span className="text-sm font-bold text-slate-900">Filter Interview Experts</span>
               <button
                 onClick={() => setIsMobileFilterOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
@@ -1220,7 +1341,7 @@ export default function FindMentor() {
                 onClick={() => setIsMobileFilterOpen(false)}
                 className="px-4 py-2 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white text-xs font-semibold shadow-xs"
               >
-                Apply ({filteredMentors.length} Mentors)
+                Apply ({filteredMentors.length} Interview Experts)
               </button>
             </div>
           </div>

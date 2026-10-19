@@ -3,7 +3,7 @@ import { ArrowRight, Play, Sparkles, ShieldCheck, Zap, Globe } from "lucide-reac
 
 const roles = [
   { text: "Interview Coach" },
-  { text: "Career Mentor" },
+  { text: "Interview Expert" },
   { text: "Placement Partner" },
   { text: "Tech Expert" },
   { text: "HR Specialist" }
