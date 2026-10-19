@@ -350,9 +350,14 @@ export function ResumeBuilderPage() {
   }
 
   return (
-    <div className="w-full space-y-4 font-sans text-left pb-12">
-      {/* 1. Step Progress & Navigation Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full space-y-4 relative z-10">
+        {/* 1. Step Progress & Navigation Bar */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
         {/* Progress header & bar */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -730,6 +735,7 @@ export function ResumeBuilderPage() {
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

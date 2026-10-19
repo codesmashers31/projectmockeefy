@@ -7,7 +7,8 @@ import {
   Star, Clock, Calendar, CheckCircle, Shield, Video,
   ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
   Share2, Check, ArrowRight, ArrowLeft, Timer, BadgeCheck, Code2, Compass, FileText,
-  MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2, CreditCard
+  MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2, CreditCard,
+  ShieldCheck, HelpCircle, Award, RotateCcw, Headphones
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -24,30 +25,35 @@ import {
  * Skeleton Loader matching Mockeefy clean design
  */
 const BookSessionSkeleton = () => (
-  <div className="w-full space-y-6 animate-pulse font-sans text-left">
-    <div className="h-6 w-64 bg-slate-200 rounded-lg" />
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-8 space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="h-6 bg-slate-200 w-48 rounded" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="h-24 bg-slate-100 rounded-xl" />
-            <div className="h-24 bg-slate-100 rounded-xl" />
-            <div className="h-24 bg-slate-100 rounded-xl" />
-            <div className="h-24 bg-slate-100 rounded-xl" />
+  <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+    {/* Decorative gradient glow */}
+    <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+    <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+    <div className="w-full space-y-6 animate-pulse font-sans text-left relative z-10">
+      <div className="h-6 w-64 bg-slate-200 rounded-lg" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+            <div className="h-6 bg-slate-200 w-48 rounded" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="h-24 bg-slate-100 rounded-xl" />
+              <div className="h-24 bg-slate-100 rounded-xl" />
+              <div className="h-24 bg-slate-100 rounded-xl" />
+              <div className="h-24 bg-slate-100 rounded-xl" />
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+            <div className="h-6 bg-slate-200 w-40 rounded" />
+            <div className="h-16 bg-slate-100 rounded-xl" />
+            <div className="h-32 bg-slate-100 rounded-xl" />
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="h-6 bg-slate-200 w-40 rounded" />
-          <div className="h-16 bg-slate-100 rounded-xl" />
-          <div className="h-32 bg-slate-100 rounded-xl" />
-        </div>
-      </div>
-      <div className="lg:col-span-4 space-y-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="h-20 bg-slate-100 rounded-xl" />
-          <div className="h-10 bg-slate-100 rounded-xl" />
-          <div className="h-12 bg-slate-200 rounded-xl" />
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
+            <div className="h-20 bg-slate-100 rounded-xl" />
+            <div className="h-10 bg-slate-100 rounded-xl" />
+            <div className="h-12 bg-slate-200 rounded-xl" />
+          </div>
         </div>
       </div>
     </div>
@@ -93,6 +99,25 @@ const SESSION_GOALS = [
     desc: "Ask personalized industry questions, discuss roadmap challenges, and plan next steps.",
     icon: MessageSquare,
   },
+];
+
+const BOOKING_FAQS = [
+  {
+    q: "How do I access the live video session?",
+    a: "You'll receive a direct meeting link via email and on your dashboard. When your slot arrives, simply click 'Join Meeting Room' right from your browser—no downloads or complex setup required."
+  },
+  {
+    q: "Can I reschedule my session if needed?",
+    a: "Yes! You can reschedule your slot free of charge up to 2 hours before the scheduled time directly from your 'My Sessions' dashboard."
+  },
+  {
+    q: "When will I receive my scorecard & feedback?",
+    a: "Your interview expert submits an in-depth scorecard covering technical depth, communication, and problem-solving metrics within 24 hours of session completion."
+  },
+  {
+    q: "Will I get an official Certificate of Completion?",
+    a: "Yes, every completed mock interview issues a verified Mockeefy Certificate of Interview Completion that you can add directly to LinkedIn or your resume."
+  }
 ];
 
 export default function BookSessionPage() {
@@ -141,6 +166,7 @@ export default function BookSessionPage() {
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [expertAvatarError, setExpertAvatarError] = useState(false);
   const [activeTab, setActiveTab] = useState<"about" | "reviews">("about");
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -643,7 +669,7 @@ export default function BookSessionPage() {
                 startTime,
                 endTime,
                 price: sessionFee,
-                topics: [currentGoalObj?.title || "1:1 Mentorship"],
+                topics: [currentGoalObj?.title || "1:1 Mock Interview"],
                 duration: Number(sessionDuration),
                 notes: userDiscussionNotes.trim() ? `${userDiscussionNotes.trim()} [Goal: ${currentGoalObj?.title}]` : `[Goal: ${currentGoalObj?.title}]`
               }
@@ -703,22 +729,28 @@ export default function BookSessionPage() {
   // Fallback for missing/invalid expertId
   if (!expertId || (!loading && !profile)) {
     return (
-      <div className="w-full font-sans text-left py-12">
-        <div className="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4 shadow-xs">
-            <AlertCircle className="w-7 h-7" />
+      <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+        {/* Decorative gradient glow */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+        <div className="w-full relative z-10 py-12">
+          <div className="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4 shadow-xs">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Interview Expert Not Found</h2>
+            <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
+              We couldn't locate the requested interview expert profile. Browse our verified directory to choose an expert for your session.
+            </p>
+            <Link
+              to="/find-mentor"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Browse All Interview Experts</span>
+            </Link>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Interview Expert Not Found</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
-            We couldn't locate the requested interview expert profile. Browse our verified directory to choose an expert for your session.
-          </p>
-          <Link
-            to="/find-mentor"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
-          >
-            <Briefcase className="w-4 h-4" />
-            <span>Browse All Interview Experts</span>
-          </Link>
         </div>
       </div>
     );
@@ -733,10 +765,15 @@ export default function BookSessionPage() {
   const selectedDateObj = dates[selectedDate];
 
   return (
-    <div className="w-full space-y-6 font-sans text-left pb-16 animate-in fade-in duration-200">
-      
-      {/* 1. Page Header with Clean Breadcrumbs & Back Button */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 px-5 sm:px-6 py-4 shadow-xs">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
+      {/* Decorative gradient glow */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+      <div className="w-full space-y-6 relative z-10 animate-in fade-in duration-200">
+        
+        {/* 1. Page Header with Clean Breadcrumbs & Back Button */}
+        <div className="bg-white/95 backdrop-blur-xs rounded-2xl border border-slate-200/80 px-5 sm:px-6 py-4 shadow-2xs">
         <div className="flex items-center justify-between gap-4 mb-2">
           {/* Back Button */}
           <button
@@ -832,9 +869,9 @@ export default function BookSessionPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* ======================================================== */}
-        {/* LEFT / MAIN COLUMN (lg:col-span-8): Booking Form Sections */}
+        {/* LEFT / MAIN COLUMN (lg:col-span-7): Booking Form Sections */}
         {/* ======================================================== */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-7 space-y-6">
 
           {/* Mentor Profile Overview: About Mentor & Reviews Tabs */}
           <div id="mentor-reviews-tabs" className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs scroll-mt-20">
@@ -1318,72 +1355,12 @@ export default function BookSessionPage() {
             </div>
           </div>
 
-          {/* Section D: What You'll Get & Before Your Session */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-4 leading-tight">
-              What to Expect &amp; How to Prepare
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* What You'll Get */}
-              <div className="p-4 bg-[#F0F5FF]/70 border border-[#DCE8FF] rounded-xl space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#0755E8] uppercase tracking-wider">
-                  <CheckCircle2 className="w-4 h-4 text-[#0755E8]" />
-                  <span>What You'll Get</span>
-                </div>
-                <ul className="space-y-2 text-xs text-slate-700 font-medium">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Focused one-on-one video coaching tailored to your target company.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Real-time technical or behavioral interview simulation.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Actionable scorecard identifying your strengths and core blindspots.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#0755E8] shrink-0 mt-0.5" />
-                    <span>Targeted next steps and suggested preparation materials.</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Before Your Session */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  <Info className="w-4 h-4 text-slate-600" />
-                  <span>Before Your Session</span>
-                </div>
-                <ul className="space-y-2 text-xs text-slate-600 font-medium">
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>Have your resume or portfolio links accessible for reference.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>List 2-3 specific topics or algorithmic patterns you want to drill.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>Join from a quiet environment with a working microphone and camera.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                    <span>Log in 3-5 minutes early to test your connection.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* ======================================================== */}
-        {/* RIGHT / SECONDARY COLUMN (lg:col-span-4): Sticky Summary */}
+        {/* RIGHT / SECONDARY COLUMN (lg:col-span-5): Complete Companion Cards */}
         {/* ======================================================== */}
-        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-6 lg:self-start">
+        <div className="lg:col-span-5 space-y-5">
           
           {/* Card 1: Mentor Summary Card */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
@@ -1544,8 +1521,160 @@ export default function BookSessionPage() {
               </div>
             )}
           </div>
+
+          {/* Card 3: What You'll Get */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0 border border-[#93B8FF]/60">
+                <CheckCircle2 className="w-4 h-4 text-[#0755E8]" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  What You'll Get
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">Included in every 1-on-1 interview</p>
+              </div>
+            </div>
+
+            <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Focused 1-on-1 coaching</strong> tailored to your target company &amp; role.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Live interview simulation</strong> with technical, coding, or behavioral drills.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Actionable scorecard</strong> detailing core strengths, blindspots &amp; metrics.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span><strong>Official Certificate</strong> of mock interview completion for your resume.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 4: How to Prepare */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/70">
+                <Info className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  How to Prepare
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">Quick checklist before your slot</p>
+              </div>
+            </div>
+
+            <ul className="space-y-2.5 text-xs text-slate-600 font-medium">
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>Have your resume or portfolio links accessible for reference.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>List 2-3 specific topics or algorithmic patterns you want to drill.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>Join from a quiet environment with a working microphone and camera.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
+                <span>Log in 3-5 minutes early to test your audio &amp; video feed.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 5: Mockeefy Guarantee */}
+          <div className="bg-gradient-to-br from-[#F0F5FF] via-white to-white rounded-2xl border border-blue-200/70 p-5 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#0755E8]" />
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Mockeefy Guarantee
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1 text-slate-700">
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <Award className="w-4 h-4 text-[#0755E8] shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">100% Vetted Experts</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <RotateCcw className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">Free Reschedule</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <Video className="w-4 h-4 text-[#0755E8] shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">HD Video Room</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center gap-2 shadow-2xs">
+                <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-[11px] font-bold leading-tight">256-Bit Encrypted</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 6: Frequently Asked Questions & Support */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-[#0755E8]" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Common Questions
+                </h3>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {BOOKING_FAQS.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-slate-200/80 overflow-hidden transition-colors"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                      className="w-full text-left p-3 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-2 text-xs font-bold text-slate-800 transition-colors cursor-pointer"
+                    >
+                      <span>{faq.q}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="p-3 bg-white text-xs text-slate-600 leading-relaxed border-t border-slate-100">
+                        {faq.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Support Link */}
+            <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <Headphones className="w-3.5 h-3.5 text-[#0755E8]" />
+                <span>Need support? <a href="mailto:support@mockeefy.com" className="text-[#0755E8] font-bold hover:underline">support@mockeefy.com</a></span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

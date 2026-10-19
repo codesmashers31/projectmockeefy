@@ -1,64 +1,60 @@
+import 'dotenv/config';
 import nodemailer from 'nodemailer';
 
-const transporterConfig = {
-    pool: false,
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT) || 465,
-    secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-    tls: {
-        rejectUnauthorized: false
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
+/**
+ * Dynamically build the transporter using current environment configuration.
+ */
+const getTransporter = () => {
+    const host = process.env.SMTP_HOST || "smtpout.secureserver.net";
+    const port = Number(process.env.SMTP_PORT) || 465;
+    const secure = process.env.SMTP_SECURE === "true" || port === 465;
+    const user = process.env.SMTP_USER || "";
+    const pass = process.env.SMTP_PASS || "";
+
+    return nodemailer.createTransport({
+        pool: false,
+        host,
+        port,
+        secure,
+        auth: {
+            user,
+            pass,
+        },
+        tls: {
+            rejectUnauthorized: false
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+    });
 };
 
-// Log configuration (masking password)
-console.log("Email Service Configuration:", {
-    host: transporterConfig.host,
-    port: transporterConfig.port,
-    secure: transporterConfig.secure,
-    user: transporterConfig.auth.user ? "***" : "MISSING",
-});
-
-const transporter = nodemailer.createTransport(transporterConfig);
-
-// Verify connection configuration on startup
-// Verify connection configuration on startup
-// transporter.verify(function (error, success) {
-//     if (error) {
-//         console.error("Email Service Verification Error:", error);
-//     } else {
-//         console.log("Email Service: Ready to send emails");
-//     }
-// });
-
+/**
+ * Generic email sending function
+ */
 export const sendEmail = async ({ to, subject, html }) => {
     try {
-        console.log(`Attempting to send email to: ${to}`);
+        if (!to) {
+            console.warn("[EmailService] No recipient email specified, skipping email send.");
+            return false;
+        }
 
-        // Use a verified domain if available, otherwise fallback to nice format or let Resend handle it if onboarding
-        // Note: For Resend, if you don't have a domain, you MUST send from "onboarding@resend.dev" to yourself.
-        // In production with a domain, use "noreply@yourdomain.com".
-        const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER;
+        console.log(`[EmailService] Attempting to send email to: ${to} | Subject: "${subject}"`);
 
+        const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || "info@mockeefy.com";
         const mailOptions = {
-            from: `"Mockeefy Support" <${fromAddress}>`,
+            from: `"Mockeefy" <${fromAddress}>`,
             to,
             subject,
-            html
+            html,
         };
 
-        // Asynchronous sending with pooled connections
+        const transporter = getTransporter();
         const info = await transporter.sendMail(mailOptions);
-        console.log(`Email sent successfully. MessageID: ${info.messageId}`);
+        console.log(`[EmailService] Email sent successfully to ${to}. MessageID: ${info.messageId}`);
         return true;
     } catch (error) {
-        console.error("Error sending email:", {
+        console.error(`[EmailService] Error sending email to ${to}:`, {
             message: error.message,
             code: error.code,
             command: error.command,
@@ -67,6 +63,406 @@ export const sendEmail = async ({ to, subject, html }) => {
         });
         return false;
     }
+};
+
+/**
+ * Format date & time nicely in IST / user friendly format
+ */
+export const formatSessionDateTime = (startTime, endTime) => {
+    try {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        const dateStr = start.toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+
+        const startTimeStr = start.toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+        });
+
+        const endTimeStr = end.toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+        });
+
+        return {
+            dateStr,
+            timeSlotStr: `${startTimeStr} - ${endTimeStr} (IST)`,
+        };
+    } catch (e) {
+        return {
+            dateStr: String(startTime),
+            timeSlotStr: `${String(startTime)} - ${String(endTime)}`,
+        };
+    }
+};
+
+/**
+ * Send Professional Email Directly to Interview Expert when a Candidate Books & Pays for a Session
+ */
+export const sendBookingNotificationToExpert = async ({
+    expertEmail,
+    expertName,
+    candidateName,
+    candidateEmail,
+    candidatePhone,
+    startTime,
+    endTime,
+    date,
+    timeSlot,
+    duration = 60,
+    topics,
+    category,
+    amountPaid,
+    paymentStatus = "Paid & Verified",
+    paymentId,
+    orderId,
+    notes,
+    meetingLink,
+    sessionId,
+}) => {
+    if (!expertEmail) {
+        console.warn("[EmailService] No expert email provided for booking notification.");
+        return false;
+    }
+
+    // Format Date & Time if not pre-formatted
+    let formattedDate = date;
+    let formattedTimeSlot = timeSlot;
+    if (!formattedDate || !formattedTimeSlot) {
+        const dt = formatSessionDateTime(startTime, endTime);
+        formattedDate = formattedDate || dt.dateStr;
+        formattedTimeSlot = formattedTimeSlot || dt.timeSlotStr;
+    }
+
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const meetingUrl = meetingLink || `${clientUrl}/live-meeting/${sessionId}`;
+    const dashboardUrl = `${clientUrl}/expert/dashboard`;
+    const resolvedTopics = Array.isArray(topics) ? topics.join(", ") : (topics || "Mock Interview Session");
+    const safeAmount = (amountPaid !== undefined && amountPaid !== null) ? Number(amountPaid).toLocaleString("en-IN") : "0";
+
+    const subject = `🎯 New Mock Interview Booking: ${candidateName} has booked a session with you | Mockeefy`;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Mock Interview Booking</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <!-- Main Email Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 620px; background-color: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0755E8 0%, #03399E 100%); padding: 36px 36px 32px 36px; text-align: left;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td>
+                    <!-- Pill Badge -->
+                    <div style="display: inline-block; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 4px 14px; margin-bottom: 14px;">
+                      <span style="color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">MOCKEEFY • NEW BOOKING</span>
+                    </div>
+                    <h1 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.5px; line-height: 1.25;">
+                      Mock Interview Scheduled! 🎉
+                    </h1>
+                    <p style="color: #dbeafe; font-size: 14px; margin: 0; line-height: 1.5; font-weight: 400;">
+                      A candidate has successfully booked and completed payment for a session with you.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 32px 36px 28px 36px;">
+              <!-- Greeting -->
+              <p style="font-size: 15px; color: #0f172a; margin: 0 0 10px 0; font-weight: 600;">
+                Hello ${expertName || "Interview Expert"},
+              </p>
+              <p style="font-size: 13.5px; color: #475569; line-height: 1.6; margin: 0 0 24px 0;">
+                A new 1-on-1 mock interview session has been scheduled on Mockeefy. The candidate has completed payment, and the details of their application and your assigned slot are confirmed below.
+              </p>
+
+              <!-- CARD 1: Scheduled Date & Slot Details -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 20px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; background-color: #f1f5f9;">
+                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #0755E8;">
+                      📅 Session Date &amp; Slot Timing
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td width="36%" style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Date:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0f172a; font-weight: 700;">${formattedDate}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Time Slot:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0755E8; font-weight: 800;">${formattedTimeSlot}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Duration:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0f172a; font-weight: 600;">${duration} Minutes</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Domain / Track:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0f172a; font-weight: 600;">${category || "Technical Track"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Interview Goal / Topic:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0f172a; font-weight: 600;">${resolvedTopics}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CARD 2: Candidate / Applicant Details -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 20px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; background-color: #f1f5f9;">
+                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a;">
+                      👤 Candidate / Applicant Details
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td width="36%" style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Candidate Name:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0f172a; font-weight: 700;">${candidateName || "Candidate"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Email Address:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0755E8; font-weight: 600;">
+                          <a href="mailto:${candidateEmail}" style="color: #0755E8; text-decoration: none;">${candidateEmail}</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Contact Phone:</td>
+                        <td style="padding: 6px 0; font-size: 13.5px; color: #0f172a; font-weight: 600;">${candidatePhone || "Available on dashboard"}</td>
+                      </tr>
+                      ${notes ? `
+                      <tr>
+                        <td style="padding: 8px 0 4px 0; font-size: 13px; color: #64748b; font-weight: 600; vertical-align: top;">Applicant Notes:</td>
+                        <td style="padding: 8px 0 4px 0; font-size: 13px; color: #334155; line-height: 1.5; font-style: italic; background-color: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px dashed #cbd5e1;">${notes}</td>
+                      </tr>
+                      ` : ''}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CARD 3: Payment Confirmation & Receipt -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; background-color: #f1f5f9;">
+                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #16a34a;">
+                      💳 Payment Receipt &amp; Status
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td width="36%" style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Amount Paid:</td>
+                        <td style="padding: 6px 0; font-size: 17px; color: #0f172a; font-weight: 800;">₹${safeAmount}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Payment Status:</td>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase;">
+                            ✓ ${paymentStatus}
+                          </span>
+                        </td>
+                      </tr>
+                      ${paymentId ? `
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Transaction ID:</td>
+                        <td style="padding: 6px 0; font-size: 12px; color: #475569; font-family: monospace;">${paymentId}</td>
+                      </tr>
+                      ` : ''}
+                      ${orderId ? `
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Order ID:</td>
+                        <td style="padding: 6px 0; font-size: 12px; color: #475569; font-family: monospace;">${orderId}</td>
+                      </tr>
+                      ` : ''}
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">Session Ref:</td>
+                        <td style="padding: 6px 0; font-size: 12px; color: #475569; font-family: monospace;">${sessionId || "N/A"}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Call to Action Buttons -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 26px;">
+                <tr>
+                  <td align="center">
+                    <a href="${meetingUrl}" target="_blank" style="display: inline-block; background: #0755E8; color: #ffffff; padding: 13px 28px; border-radius: 12px; font-size: 13.5px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgba(7, 85, 232, 0.25); margin: 4px;">
+                      🎥 Join Meeting Room
+                    </a>
+                    <a href="${dashboardUrl}" target="_blank" style="display: inline-block; background: #ffffff; color: #334155; padding: 13px 24px; border-radius: 12px; font-size: 13.5px; font-weight: 700; text-decoration: none; border: 1px solid #cbd5e1; margin: 4px;">
+                      📋 Open Dashboard
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Expert Preparation Tips -->
+              <div style="background-color: #eff6ff; border-left: 4px solid #0755E8; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                <p style="font-size: 12.5px; font-weight: 700; color: #1e3a8a; margin: 0 0 6px 0;">
+                  💡 Instructions for Interview Experts:
+                </p>
+                <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #334155; line-height: 1.6;">
+                  <li>Please join the video call 2 minutes before the scheduled time slot.</li>
+                  <li>Review the candidate's notes and goals above to customize your technical questions.</li>
+                  <li>After the session, provide your scorecard and constructive feedback on the dashboard.</li>
+                </ul>
+              </div>
+
+              <p style="font-size: 13px; color: #475569; margin: 0 0 4px 0;">
+                Warm regards,
+              </p>
+              <p style="font-size: 14px; color: #0f172a; font-weight: 700; margin: 0;">
+                The Mockeefy Team
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 22px 36px; text-align: center;">
+              <p style="font-size: 11.5px; color: #64748b; margin: 0 0 4px 0;">
+                This automated notification was generated after a successful payment on Mockeefy.
+              </p>
+              <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+                © ${new Date().getFullYear()} Mockeefy Technologies Pvt. Ltd. All rights reserved. • <a href="mailto:support@mockeefy.com" style="color: #0755E8; text-decoration: none;">support@mockeefy.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    return sendEmail({
+        to: expertEmail,
+        subject,
+        html,
+    });
+};
+
+/**
+ * Send Booking Confirmation to the Candidate
+ */
+export const sendBookingNotificationToCandidate = async ({
+    candidateEmail,
+    candidateName,
+    expertName,
+    date,
+    timeSlot,
+    duration = 60,
+    topics,
+    amountPaid,
+    paymentId,
+    meetingLink,
+    sessionId,
+}) => {
+    if (!candidateEmail) return false;
+
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const meetingUrl = meetingLink || `${clientUrl}/live-meeting/${sessionId}`;
+    const sessionsUrl = `${clientUrl}/my-sessions`;
+    const safeAmount = (amountPaid !== undefined && amountPaid !== null) ? Number(amountPaid).toLocaleString("en-IN") : "0";
+
+    const subject = `🎉 Your Mock Interview with ${expertName} is Confirmed! | Mockeefy`;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Booking Confirmation</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 18px; overflow: hidden; border: 1px solid #e2e8f0;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0755E8 0%, #03399E 100%); padding: 32px; text-align: left;">
+              <h1 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">Booking Confirmed! 🎉</h1>
+              <p style="color: #dbeafe; font-size: 13.5px; margin: 0;">Your 1-on-1 mock interview is scheduled.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 28px 32px;">
+              <p style="font-size: 15px; color: #0f172a; margin: 0 0 10px 0; font-weight: 600;">Hello ${candidateName || "Candidate"},</p>
+              <p style="font-size: 13.5px; color: #475569; line-height: 1.6; margin: 0 0 20px 0;">
+                Your mock interview session with <strong>${expertName}</strong> has been successfully booked and paid.
+              </p>
+              
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${date}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Time Slot:</strong> ${timeSlot}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Duration:</strong> ${duration} Minutes</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Interview Expert:</strong> ${expertName}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Amount Paid:</strong> ₹${safeAmount} (Paid)</p>
+              </div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${meetingUrl}" target="_blank" style="display: inline-block; background: #0755E8; color: #ffffff; padding: 12px 26px; border-radius: 10px; font-size: 13.5px; font-weight: 700; text-decoration: none; margin-right: 8px;">Join Meeting Room</a>
+                <a href="${sessionsUrl}" target="_blank" style="display: inline-block; background: #ffffff; color: #334155; padding: 12px 22px; border-radius: 10px; font-size: 13.5px; font-weight: 700; text-decoration: none; border: 1px solid #cbd5e1;">View Bookings</a>
+              </div>
+
+              <p style="font-size: 12.5px; color: #64748b; line-height: 1.5; margin: 0;">
+                Best regards,<br><strong>Mockeefy Team</strong>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    return sendEmail({
+        to: candidateEmail,
+        subject,
+        html,
+    });
 };
 
 export const notifyReviewReceived = async (expertName, candidateEmail, sessionTopic, reviewData) => {
@@ -94,6 +490,6 @@ export const notifyReviewReceived = async (expertName, candidateEmail, sessionTo
     return sendEmail({
         to: candidateEmail,
         subject: `New Feedback from ${expertName} - Mockeefy`,
-        html
+        html,
     });
 };

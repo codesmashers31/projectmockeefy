@@ -1,8 +1,11 @@
 import express from 'express';
 import * as sessionController from '../controllers/sessionController.js';
+import { createFreeBooking } from '../controllers/paymentController.js';
 import { protect, admin, optionalProtect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+router.post('/book-free', createFreeBooking);
 
 // Admin / Dev Seed routes (Protected + Admin only)
 router.post('/dev/seed/test-session', protect, admin, sessionController.devSeedSession);
