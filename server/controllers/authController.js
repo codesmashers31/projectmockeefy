@@ -537,12 +537,19 @@ export const sendOtp = async (req, res) => {
     console.log(`   Code:  ${otp}`);
     console.log(`========================================\n`);
 
-    const emailSent = await sendEmail({ to: email, subject, html });
+    const emailSent = await sendEmail({ to: cleanEmail, subject, html });
+
+    if (!emailSent) {
+      console.error(`[OTP Delivery Failed] Could not deliver OTP email to ${cleanEmail}. Check SMTP settings.`);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please check your email address or try again in a moment."
+      });
+    }
 
     res.json({
       success: true,
-      message: emailSent ? "OTP sent successfully" : "OTP generated. (Email delivery failed: check server console for code in dev mode)",
-      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otp } : {})
+      message: "Verification code sent successfully to your email."
     });
 
   } catch (error) {

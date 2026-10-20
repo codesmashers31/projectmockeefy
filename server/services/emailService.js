@@ -7,9 +7,11 @@ import nodemailer from 'nodemailer';
 const getTransporter = () => {
     const host = process.env.SMTP_HOST || "smtpout.secureserver.net";
     const port = Number(process.env.SMTP_PORT) || 465;
-    const secure = process.env.SMTP_SECURE === "true" || port === 465;
-    const user = process.env.SMTP_USER || "";
-    const pass = process.env.SMTP_PASS || "";
+    const secure = process.env.SMTP_SECURE !== undefined
+        ? process.env.SMTP_SECURE === "true"
+        : port === 465;
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER || "";
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || "";
 
     return nodemailer.createTransport({
         pool: false,

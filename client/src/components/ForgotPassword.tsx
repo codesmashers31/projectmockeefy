@@ -47,9 +47,7 @@ export default function ForgotPassword() {
     },
     onSuccess: (data, emailAddress) => {
       setEmail(emailAddress);
-      if (data?.devOtp) {
-        setOtp(String(data.devOtp));
-      }
+      setOtp("");
       setStep(2);
       setError("");
       startCountdown();
