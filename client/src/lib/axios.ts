@@ -4,17 +4,26 @@ import { API_BASE_URL } from '../config';
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
-// Request interceptor to attach token
+// Request interceptor to attach token and manage Content-Type for FormData
 axiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+        // If data is FormData, remove ANY preset Content-Type so Axios & browser
+        // automatically generate 'multipart/form-data; boundary=----...'
+        if (config.data instanceof FormData) {
+            if (config.headers?.delete) {
+                config.headers.delete('content-type');
+                config.headers.delete('Content-Type');
+            }
+            if (config.headers) {
+                delete (config.headers as any)['content-type'];
+                delete (config.headers as any)['Content-Type'];
+            }
         }
         return config;
     },

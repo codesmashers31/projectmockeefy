@@ -132,10 +132,14 @@ export default function Sidebar() {
   return (
     <aside
       aria-label="Sidebar Navigation"
-      className="w-full bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-3.5 shadow-xs space-y-3.5 font-sans text-left"
+      className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-3 sm:p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-3.5 font-sans text-left"
     >
-      {/* Primary Navigation */}
-      <div className="space-y-1">
+      {/* Decorative gradient glow matching other cards */}
+      <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
+
+      <div className="relative z-10 space-y-3.5">
+        {/* Primary Navigation */}
+        <div className="space-y-1">
         <div className="px-2.5 pb-1">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Navigation
@@ -302,12 +306,13 @@ export default function Sidebar() {
           </button>
         </div>
       )}
+      </div>
     </aside>
   );
 }
 
 export const SkeletonSidebar = () => (
-  <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-3.5 shadow-xs space-y-3">
+  <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-3 sm:p-3.5 shadow-xs space-y-3 overflow-hidden">
     <div className="h-60 rounded-xl bg-slate-100 shimmer-shining" />
     <div className="h-28 rounded-xl bg-slate-100 shimmer-shining" />
   </div>
