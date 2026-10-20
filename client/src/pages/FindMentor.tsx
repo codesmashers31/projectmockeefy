@@ -29,6 +29,7 @@ import {
   Cloud,
   Brain,
   Palette,
+  ArrowUpDown,
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 8;
@@ -764,30 +765,43 @@ export default function FindMentor() {
       {/* Decorative gradient glow */}
       <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
       <div className="relative z-10 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-[#0755E8]" />
-            <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
+        <div className="pb-3 border-b border-slate-100 space-y-2">
+          {/* Main Title Row: Filters title & Clear all */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <SlidersHorizontal className="w-4 h-4 text-[#0755E8]" />
+              <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
+              {activeFilterCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
+
+            {activeFilterCount > 0 ? (
+              <button
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer whitespace-nowrap transition-colors"
+              >
+                Clear all
+              </button>
+            ) : (
+              <span className="text-[11px] font-extrabold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                {allMentors.length} Interview Experts
+              </span>
+            )}
+          </div>
+
+          {/* Sub Row: Shown when filters are active so both Clear all and Interview Experts are cleanly aligned without wrapping */}
           {activeFilterCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold">
-              {activeFilterCount}
-            </span>
+            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100/70">
+              <span className="text-slate-500 font-medium">Total:</span>
+              <span className="font-extrabold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                {allMentors.length} Interview Experts
+              </span>
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {activeFilterCount > 0 && (
-            <button
-              onClick={handleResetFilters}
-              className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
-            >
-              Clear all
-            </button>
-          )}
-          <span className="text-[11px] font-extrabold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full">
-            {allMentors.length} Interview Experts
-          </span>
-        </div>
-      </div>
 
       {/* 1. Track Filter */}
       {(() => {
@@ -1100,66 +1114,69 @@ export default function FindMentor() {
     <div ref={listTopRef} className="w-full font-sans text-left animate-in fade-in duration-200">
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
-        <div className="relative flex-1 min-w-0 bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4">
-          {/* Decorative gradient glow */}
-          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+        <div className="flex-1 min-w-0 space-y-3.5">
+          {/* Header Controls: Result Count, Sort Dropdown & Active Filters (Present above the div card separately) */}
+          <div className="space-y-2.5 px-1 sm:px-1.5">
+            {/* Top Row: Title & Verified Count */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight">
+                Available Interview Experts
+              </h1>
+              <span className="text-xs sm:text-sm text-slate-500 font-medium">
+                (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"} across <span className="text-slate-900 font-bold">{filteredCategoryGroups.length}</span> tracks)
+              </span>
+            </div>
 
-          <div className="relative z-10 space-y-4">
-            {/* Header Controls: Result Count & Sort Dropdown */}
-            <div className="space-y-2.5 pl-1.5 sm:pl-2.5 pr-0.5">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900 m-0">
-                    Available Interview Experts
-                  </h2>
-                  <span className="text-xs text-slate-500 font-medium">
-                    (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"} across <span className="text-slate-900 font-bold">{filteredCategoryGroups.length}</span> tracks)
+            {/* Controls Bar: Sort on the LEFT side, Filtered by on the RIGHT side */}
+            <div className="flex items-center justify-between gap-3 flex-wrap pt-0.5">
+              {/* LEFT SIDE: Sort Control & Mobile Filter Button */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Mobile Filter Button */}
+                <button
+                  onClick={() => setIsMobileFilterOpen(true)}
+                  className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 shadow-xs cursor-pointer transition-colors"
+                >
+                  <SlidersHorizontal size={13} />
+                  <span>Filters</span>
+                  {activeFilterCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Sort Control */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 select-none">
+                    <ArrowUpDown size={12} className="text-slate-400" />
+                    <span>Sort by:</span>
                   </span>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Mobile Filter Button */}
-                  <button
-                    onClick={() => setIsMobileFilterOpen(true)}
-                    className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
-                  >
-                    <SlidersHorizontal size={13} />
-                    <span>Filters</span>
-                    {activeFilterCount > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Sort Control */}
                   <div className="relative">
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer"
+                      className="appearance-none bg-white border border-slate-200/90 text-slate-800 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-2xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#0755E8]/10 cursor-pointer transition-all"
                     >
-                      <option value="recommended">Sort: Relevance</option>
-                      <option value="rating">Sort: Rating (High to Low)</option>
-                      <option value="experience">Sort: Experience (High to Low)</option>
-                      <option value="price-low">Sort: Price (Low to High)</option>
-                      <option value="price-high">Sort: Price (High to Low)</option>
+                      <option value="recommended">Relevance</option>
+                      <option value="rating">Rating (High to Low)</option>
+                      <option value="experience">Experience (High to Low)</option>
+                      <option value="price-low">Price (Low to High)</option>
+                      <option value="price-high">Price (High to Low)</option>
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
 
-              {/* Active Filter Badges */}
+              {/* RIGHT SIDE: Active Filter Badges */}
               {activeFilterCount > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                <div className="flex items-center justify-end gap-1.5 flex-wrap ml-auto">
                   <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
 
                   {selectedCategory !== "All" && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
                       {selectedCategory}
-                      <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500">
+                      <button onClick={() => setSelectedCategory("All")} className="hover:text-red-500 cursor-pointer">
                         <X size={12} />
                       </button>
                     </span>
@@ -1171,7 +1188,7 @@ export default function FindMentor() {
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
                     >
                       {c}
-                      <button onClick={() => toggleCompany(c)} className="hover:text-red-500">
+                      <button onClick={() => toggleCompany(c)} className="hover:text-red-500 cursor-pointer">
                         <X size={12} />
                       </button>
                     </span>
@@ -1183,7 +1200,7 @@ export default function FindMentor() {
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
                     >
                       Exp: {exp} yrs
-                      <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500">
+                      <button onClick={() => toggleExpRange(exp)} className="hover:text-red-500 cursor-pointer">
                         <X size={12} />
                       </button>
                     </span>
@@ -1195,7 +1212,7 @@ export default function FindMentor() {
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700"
                     >
                       Price: {pr}
-                      <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500">
+                      <button onClick={() => togglePriceRange(pr)} className="hover:text-red-500 cursor-pointer">
                         <X size={12} />
                       </button>
                     </span>
@@ -1204,7 +1221,22 @@ export default function FindMentor() {
                   {availabilityFilter !== "All" && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
                       {availabilityFilter}
-                      <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500">
+                      <button onClick={() => setAvailabilityFilter("All")} className="hover:text-red-500 cursor-pointer">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+
+                  {sortBy !== "recommended" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">
+                      {sortBy === "rating"
+                        ? "Rating (High to Low)"
+                        : sortBy === "experience"
+                        ? "Experience (High to Low)"
+                        : sortBy === "price-low"
+                        ? "Price (Low to High)"
+                        : "Price (High to Low)"}
+                      <button onClick={() => setSortBy("recommended")} className="hover:text-red-500 cursor-pointer">
                         <X size={12} />
                       </button>
                     </span>
@@ -1219,68 +1251,77 @@ export default function FindMentor() {
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Mentors Grid / Empty / Error States */}
-            {isLoading ? (
-              <div className="space-y-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="space-y-3">
-                    <div className="h-6 w-48 bg-slate-100 rounded-lg animate-pulse" />
-                    <div className="flex gap-4 overflow-hidden">
-                      {[1, 2].map((n) => (
-                        <div key={n} className="w-[82%] sm:w-[calc(50%-8px)] shrink-0">
-                          <MentorCardSkeleton />
-                        </div>
-                      ))}
+          {/* DIV CARD: All Experts Categories & Content */}
+          <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4">
+            {/* Decorative gradient glow */}
+            <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+
+            <div className="relative z-10">
+              {/* Mentors Grid / Empty / Error States */}
+              {isLoading ? (
+                <div className="space-y-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-3">
+                      <div className="h-6 w-48 bg-slate-100 rounded-lg animate-pulse" />
+                      <div className="flex gap-4 overflow-hidden">
+                        {[1, 2].map((n) => (
+                          <div key={n} className="w-[82%] sm:w-[calc(50%-8px)] shrink-0">
+                            <MentorCardSkeleton />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : isError ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-rose-200 p-6 space-y-3">
-                <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-900">Failed to load interview experts</h3>
-                <p className="text-xs text-slate-500">
-                  {error instanceof Error ? error.message : "Error connecting to interview expert API."}
-                </p>
-                <button
-                  onClick={() => refetch()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  <RefreshCw size={13} />
-                  <span>Retry</span>
-                </button>
-              </div>
-            ) : filteredCategoryGroups.length > 0 ? (
-              <div className="space-y-7">
-                {filteredCategoryGroups.map((group) => (
-                  <MentorCategoryScrollRow
-                    key={group.id}
-                    id={group.id}
-                    title={group.title}
-                    subtitle={group.subtitle}
-                    icon={group.icon}
-                    mentors={group.mentors}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
-                  <Users size={24} />
+                  ))}
                 </div>
-                <h3 className="text-base font-bold text-slate-900">No interview experts found</h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  We couldn't find any interview experts matching your search or filters. Try resetting to explore all experts.
-                </p>
-                <button
-                  onClick={handleResetFilters}
-                  className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                >
-                  Show All Interview Experts
-                </button>
-              </div>
-            )}
+              ) : isError ? (
+                <div className="text-center py-12 bg-white rounded-2xl border border-rose-200 p-6 space-y-3">
+                  <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                  <h3 className="text-sm font-bold text-slate-900">Failed to load interview experts</h3>
+                  <p className="text-xs text-slate-500">
+                    {error instanceof Error ? error.message : "Error connecting to interview expert API."}
+                  </p>
+                  <button
+                    onClick={() => refetch()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Retry</span>
+                  </button>
+                </div>
+              ) : filteredCategoryGroups.length > 0 ? (
+                <div className="space-y-7">
+                  {filteredCategoryGroups.map((group) => (
+                    <MentorCategoryScrollRow
+                      key={group.id}
+                      id={group.id}
+                      title={group.title}
+                      subtitle={group.subtitle}
+                      icon={group.icon}
+                      mentors={group.mentors}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl p-12 border border-slate-200/80 shadow-xs text-center space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center mx-auto mb-2">
+                    <Users size={24} />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">No interview experts found</h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    We couldn't find any interview experts matching your search or filters. Try resetting to explore all experts.
+                  </p>
+                  <button
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    Show All Interview Experts
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

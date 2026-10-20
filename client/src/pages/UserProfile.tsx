@@ -15,11 +15,7 @@ import {
   Sparkles,
   User as UserIcon,
   X,
-  Calendar,
-  Award,
-  Bookmark,
   ArrowRight,
-  TrendingUp,
   Clock,
   ChevronRight,
   ShieldCheck,
@@ -30,6 +26,7 @@ import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { getProfileImageUrl, compressImage } from "../lib/imageUtils";
 import { Link } from "react-router-dom";
+import { API_BASE_URL } from "../config";
 
 interface ResumeItem {
   _id: string;
@@ -59,6 +56,7 @@ export default function UserProfile() {
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [resumeTitle, setResumeTitle] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const resumeInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,18 +67,18 @@ export default function UserProfile() {
 
   // Fetch Resumes
   const loadResumes = async () => {
-    if (!userId) return;
+    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
+    if (!effectiveUserId && !localStorage.getItem("token")) return;
     try {
       setIsLoadingResumes(true);
       const res = await axios.get("/api/user/resumes", {
-        headers: { userid: userId },
+        headers: effectiveUserId ? { userid: String(effectiveUserId) } : {},
       });
       if (res.data?.success) {
         setResumes(res.data.data || []);
       }
     } catch (err: any) {
       console.error("Failed to load resumes:", err);
-      toast.error("Could not load your resumes. Please refresh the page.");
     } finally {
       setIsLoadingResumes(false);
     }
@@ -109,66 +107,7 @@ export default function UserProfile() {
     );
   }, [candidateSessions]);
 
-  const upcomingSessions = useMemo(() => {
-    const now = new Date();
-    return candidateSessions.filter(
-      (s: any) =>
-        new Date(s.startTime) > now &&
-        !["cancelled", "completed"].includes((s.status || "").toLowerCase())
-    );
-  }, [candidateSessions]);
-
   const completedCount = completedSessions.length;
-
-  // Calculate Unlocked Certificates (Categories with 3+ completed sessions)
-  const certificatesCount = useMemo(() => {
-    const categoryMap: Record<string, number> = {};
-    completedSessions.forEach((s: any) => {
-      const cat = s.category || s.expertDetails?.category || "General";
-      categoryMap[cat] = (categoryMap[cat] || 0) + 1;
-    });
-    return Object.values(categoryMap).filter((count) => count >= 3).length;
-  }, [completedSessions]);
-
-  // Recent completed sessions for preview
-  const recentCompleted = useMemo(() => {
-    return [...completedSessions]
-      .sort(
-        (a: any, b: any) =>
-          new Date(b.startTime || b.date || 0).getTime() -
-          new Date(a.startTime || a.date || 0).getTime()
-      )
-      .slice(0, 2);
-  }, [completedSessions]);
-
-  const practiceMinutes = completedCount * 45;
-  const sessionsToNextCert = completedCount === 0 ? 3 : 3 - (completedCount % 3 === 0 ? 0 : completedCount % 3);
-  const milestoneProgress =
-    completedCount === 0
-      ? 0
-      : Math.round(((completedCount % 3 === 0 ? 3 : completedCount % 3) / 3) * 100);
-
-  // Sync Saved Mentors Count from localStorage
-  const [savedCount, setSavedCount] = useState<number>(0);
-  useEffect(() => {
-    const updateSavedCount = () => {
-      try {
-        const saved = localStorage.getItem("savedExperts");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setSavedCount(Array.isArray(parsed) ? parsed.length : 0);
-        } else {
-          setSavedCount(0);
-        }
-      } catch (e) {
-        setSavedCount(0);
-      }
-    };
-
-    updateSavedCount();
-    window.addEventListener("storage", updateSavedCount);
-    return () => window.removeEventListener("storage", updateSavedCount);
-  }, []);
 
   // Handle Profile Image Selection & Upload
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,8 +131,7 @@ export default function UserProfile() {
 
       const res = await axios.post("/api/user/profile/image", formData, {
         headers: {
-          userid: userId,
-          "Content-Type": "multipart/form-data",
+          ...(userId ? { userid: String(userId) } : {}),
         },
       });
 
@@ -273,6 +211,7 @@ export default function UserProfile() {
     }
 
     setSelectedFile(file);
+    setUploadError(null);
     if (!resumeTitle) {
       setResumeTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
@@ -281,10 +220,37 @@ export default function UserProfile() {
   // Upload Resume File
   const handleUploadResume = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !userId) {
-      toast.error("Please select a resume file to upload.");
+    setUploadError(null);
+
+    if (!selectedFile) {
+      const msg = "Please select a resume file to upload.";
+      setUploadError(msg);
+      toast.error(msg);
       return;
     }
+
+    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
+    const token = localStorage.getItem("token");
+
+    if (!effectiveUserId && !token) {
+      const msg = "Please log in to upload your resume.";
+      setUploadError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    // Send debug attempt beacon
+    fetch(`${API_BASE_URL}/api/debug-log`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "resume_upload_start",
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        hasUserId: !!effectiveUserId,
+        hasToken: !!token,
+      }),
+    }).catch(() => {});
 
     try {
       setIsUploadingResume(true);
@@ -292,25 +258,58 @@ export default function UserProfile() {
       formData.append("resume", selectedFile);
       formData.append("title", resumeTitle.trim() || selectedFile.name.replace(/\.[^/.]+$/, ""));
 
-      const res = await axios.post("/api/user/resumes/upload", formData, {
-        headers: {
-          userid: userId,
-          "Content-Type": "multipart/form-data",
-        },
+      // Use native fetch to ensure browser constructs 100% compliant multipart boundary
+      const requestHeaders: Record<string, string> = {};
+      if (token) requestHeaders["Authorization"] = `Bearer ${token}`;
+      if (effectiveUserId) requestHeaders["userid"] = String(effectiveUserId);
+
+      const response = await fetch(`${API_BASE_URL}/api/user/resumes/upload`, {
+        method: "POST",
+        headers: requestHeaders,
+        body: formData,
+        credentials: "include",
       });
 
-      if (res.data?.success) {
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success) {
         toast.success("Resume uploaded successfully!");
         setSelectedFile(null);
         setResumeTitle("");
+        setUploadError(null);
         if (resumeInputRef.current) resumeInputRef.current.value = "";
         await loadResumes();
       } else {
-        toast.error(res.data?.message || "Failed to upload resume.");
+        const msg = data?.message || `Upload failed with status ${response.status}.`;
+        setUploadError(msg);
+        toast.error(msg);
+
+        fetch(`${API_BASE_URL}/api/debug-log`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "resume_upload_rejected",
+            status: response.status,
+            message: msg,
+            data,
+          }),
+        }).catch(() => {});
       }
     } catch (err: any) {
       console.error("Resume upload failed:", err);
-      toast.error(err.response?.data?.message || "Failed to upload resume file.");
+      const msg = err.message || "Failed to upload resume file.";
+      setUploadError(msg);
+      toast.error(msg);
+
+      fetch(`${API_BASE_URL}/api/debug-log`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "resume_upload_exception",
+          error: err.message,
+          stack: err.stack,
+        }),
+      }).catch(() => {});
     } finally {
       setIsUploadingResume(false);
     }
@@ -318,10 +317,11 @@ export default function UserProfile() {
 
   // Set Default Resume
   const handleSetDefault = async (resumeId: string) => {
-    if (!userId) return;
+    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
+    if (!effectiveUserId && !localStorage.getItem("token")) return;
     try {
       const res = await axios.patch(`/api/user/resumes/${resumeId}/default`, {}, {
-        headers: { userid: userId },
+        headers: effectiveUserId ? { userid: String(effectiveUserId) } : {},
       });
       if (res.data?.success) {
         toast.success("Default resume updated for mock interviews!");
@@ -340,12 +340,13 @@ export default function UserProfile() {
 
   // Delete Resume
   const handleDeleteResume = async (resumeId: string) => {
-    if (!userId) return;
+    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
+    if (!effectiveUserId && !localStorage.getItem("token")) return;
     if (!confirm("Are you sure you want to delete this resume?")) return;
 
     try {
       const res = await axios.delete(`/api/user/resumes/${resumeId}`, {
-        headers: { userid: userId },
+        headers: effectiveUserId ? { userid: String(effectiveUserId) } : {},
       });
       if (res.data?.success) {
         toast.success("Resume deleted.");
@@ -513,266 +514,7 @@ export default function UserProfile() {
           </div>
         </section>
 
-        {/* 2. INTERACTIVE INTERVIEW STATS & CANDIDATE METRICS */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#0755E8]" />
-              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Interview Track Record &amp; Activity
-              </h2>
-            </div>
-            <Link
-              to="/my-sessions"
-              className="text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:underline inline-flex items-center gap-1 transition-colors"
-            >
-              <span>View All Sessions</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* 4 Interactive Metric Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {/* 1. Finished Interviews Card (Primary Requested Metric) */}
-            <Link
-              to="/my-sessions"
-              className="group relative bg-white hover:bg-gradient-to-b hover:from-emerald-50/30 hover:to-white border border-slate-200/90 hover:border-emerald-400/80 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(16,185,129,0.15)] flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
-                  <CheckCircle2 className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/70 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Finished
-                </span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
-                    {isLoadingSessions ? "..." : completedCount}
-                  </span>
-                  <span className="text-xs text-slate-500 font-bold">
-                    {completedCount === 1 ? "session" : "sessions"}
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
-                  <span>Finished Mock Tests</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
-                </p>
-              </div>
-            </Link>
-
-            {/* 2. Upcoming / Scheduled Sessions */}
-            <Link
-              to="/my-sessions"
-              className="group relative bg-white hover:bg-gradient-to-b hover:from-blue-50/30 hover:to-white border border-slate-200/90 hover:border-[#0755E8]/40 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(7,85,232,0.15)] flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/60 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
-                  <Calendar className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <span className="text-[10.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/50 uppercase tracking-wider">
-                  Upcoming
-                </span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
-                    {isLoadingSessions ? "..." : upcomingSessions.length}
-                  </span>
-                  <span className="text-xs text-slate-500 font-bold">
-                    {upcomingSessions.length === 1 ? "session" : "sessions"}
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
-                  <span>Scheduled Slots</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0755E8] group-hover:translate-x-1 transition-all" />
-                </p>
-              </div>
-            </Link>
-
-            {/* 3. Verified Certificates Earned */}
-            <Link
-              to="/certificates"
-              className="group relative bg-white hover:bg-gradient-to-b hover:from-amber-50/30 hover:to-white border border-slate-200/90 hover:border-amber-400/70 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(245,158,11,0.15)] flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
-                  <Award className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <span className="text-[10.5px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/60 uppercase tracking-wider">
-                  Certificates
-                </span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
-                    {isLoadingSessions ? "..." : certificatesCount}
-                  </span>
-                  <span className="text-xs text-slate-500 font-bold">
-                    unlocked
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
-                  <span>Track Certifications</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
-                </p>
-              </div>
-            </Link>
-
-            {/* 4. Saved Interview Experts */}
-            <Link
-              to="/saved-experts"
-              className="group relative bg-white hover:bg-gradient-to-b hover:from-blue-50/30 hover:to-white border border-slate-200/90 hover:border-blue-400/70 rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_-6px_rgba(7,85,232,0.15)] flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/80 flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs">
-                  <Bookmark className="w-5 h-5 stroke-[2.2] fill-[#0755E8] text-[#0755E8]" />
-                </div>
-                <span className="text-[10.5px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60 uppercase tracking-wider">
-                  Saved
-                </span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
-                    {savedCount}
-                  </span>
-                  <span className="text-xs text-slate-500 font-bold">
-                    {savedCount === 1 ? "expert" : "experts"}
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-slate-700 mt-1.5 flex items-center justify-between">
-                  <span>Saved Interview Experts</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                </p>
-              </div>
-            </Link>
-          </div>
-
-          {/* Interactive Milestone & Mock Practice Banner */}
-          <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-2 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#0755E8] text-white text-[10.5px] font-bold uppercase tracking-wider">
-                  <Sparkles className="w-3 h-3" />
-                  {completedCount > 0 ? "Track Mastery Level" : "Mock Interview Goal"}
-                </span>
-                <span className="text-xs font-bold text-slate-700">
-                  {completedCount === 0
-                    ? "Complete 3 interviews in any track to unlock your verified Certificate"
-                    : `${completedCount} Mock ${completedCount === 1 ? "Interview" : "Interviews"} Finished • ~${practiceMinutes} mins Practice`}
-                </span>
-              </div>
-
-              {/* Progress bar toward certificate */}
-              <div className="space-y-1 max-w-lg">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                  <span>
-                    {completedCount === 0
-                      ? "Milestone: 0 / 3 Mock Interviews"
-                      : `Milestone: ${completedCount % 3 === 0 && completedCount > 0 ? 3 : completedCount % 3} of 3 sessions completed`}
-                  </span>
-                  <span className="text-[#0755E8] font-bold">{milestoneProgress}%</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#0755E8] to-[#2563EB] rounded-full transition-all duration-500"
-                    style={{ width: `${milestoneProgress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
-              <Link
-                to="/"
-                className="px-4 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold transition-all shadow-xs active:scale-95 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <span>{completedCount > 0 ? "Book Next Mock Interview" : "Schedule 1st Mock Interview"}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Recent Finished Sessions Preview (If Any Finished) */}
-          {recentCompleted.length > 0 && (
-            <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Recent Finished Sessions
-                  </h3>
-                </div>
-                <Link
-                  to="/my-sessions"
-                  className="text-xs font-bold text-[#0755E8] hover:underline"
-                >
-                  View Notes &amp; Feedback
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {recentCompleted.map((session: any) => {
-                  const expertName =
-                    session.expertDetails?.name || session.expert || "Senior Interview Expert";
-                  const role =
-                    session.expertDetails?.role || session.role || "Technical Expert";
-                  const company =
-                    session.expertDetails?.company || session.company || "";
-                  const dateStr = session.startTime
-                    ? new Date(session.startTime).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : "Completed";
-                  const category = session.category || "Technical Interview";
-
-                  return (
-                    <div
-                      key={session._id || session.id}
-                      className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50/70 hover:bg-slate-50 border border-slate-200/70 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center justify-center font-black text-sm shrink-0">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <div className="min-w-0 leading-tight">
-                          <p className="text-xs font-black text-slate-900 truncate">
-                            {expertName}
-                          </p>
-                          <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
-                            {role} {company ? `• ${company}` : ""}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                              {category}
-                            </span>
-                            <span className="text-[10.5px] text-slate-400 font-medium">
-                              {dateStr}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <Link
-                        to="/my-sessions"
-                        className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#EAF2FF] text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] text-[11px] font-bold transition-all shrink-0 whitespace-nowrap shadow-2xs"
-                      >
-                        Review
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* 3. SECTION 2: MULTI-RESUME UPLOAD & MANAGEMENT */}
+        {/* 2. SECTION 2: MULTI-RESUME UPLOAD & MANAGEMENT */}
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
@@ -799,11 +541,15 @@ export default function UserProfile() {
             </Link>
           </div>
 
-          {/* Upload Dropzone Box */}
+          {/* Upload Dropzone Box & Staging Card */}
           <form
             onSubmit={handleUploadResume}
-            className={`bg-slate-50/70 border-2 border-dashed rounded-2xl p-6 sm:p-7 transition-all ${
-              isDragging ? "border-[#0755E8] bg-blue-50/40" : "border-slate-200 hover:border-slate-300"
+            className={`relative rounded-2xl transition-all overflow-hidden ${
+              isDragging
+                ? "border-2 border-[#0755E8] bg-[#F0F5FF]/70 shadow-[0_4px_24px_-4px_rgba(7,85,232,0.18)]"
+                : selectedFile
+                ? "border-2 border-[#93B8FF]/80 bg-white shadow-xs"
+                : "border-2 border-dashed border-slate-300 hover:border-[#0755E8]/70 bg-gradient-to-b from-[#f8faff] via-white to-white hover:from-[#F0F5FF]/30 shadow-xs"
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -817,38 +563,74 @@ export default function UserProfile() {
               onChange={handleResumeFileSelect}
             />
 
-            <div className="flex flex-col items-center justify-center text-center">
+            {!selectedFile ? (
+              /* State 1: Fresh Drag & Drop Zone */
               <div
                 onClick={() => resumeInputRef.current?.click()}
-                className="w-13 h-13 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center text-[#0755E8] mb-3 cursor-pointer hover:scale-105 transition-transform shadow-2xs"
+                className="p-8 sm:p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
               >
-                <Upload className="w-6 h-6" />
+                {/* Upload Icon with smooth hover float & ambient glow */}
+                <div className="relative mb-3.5">
+                  <div className="absolute inset-0 rounded-2xl bg-[#0755E8]/20 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
+                  <div className="relative w-14 h-14 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/60 flex items-center justify-center text-[#0755E8] shadow-2xs group-hover:scale-110 group-hover:bg-[#0755E8] group-hover:text-white transition-all duration-200">
+                    <Upload className="w-6 h-6 stroke-[2.2]" />
+                  </div>
+                </div>
+
+                <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-[#0755E8] transition-colors">
+                  Drag &amp; drop your resume here, or <span className="underline decoration-[#0755E8]/40 decoration-2 underline-offset-4">browse files</span>
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-1.5 max-w-md">
+                  Upload your latest tailored resume for technical, coding, or behavioral mock interviews.
+                </p>
+
+                {/* Formats Pills */}
+                <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
+                  <span className="px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80 text-[10.5px] font-black uppercase tracking-wider shadow-2xs">
+                    PDF
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[10.5px] font-black uppercase tracking-wider shadow-2xs">
+                    DOC
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[10.5px] font-black uppercase tracking-wider shadow-2xs">
+                    DOCX
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-semibold">• Max 10MB</span>
+                </div>
               </div>
-
-              <h3 className="text-sm font-extrabold text-slate-900">
-                {selectedFile ? (
-                  <span className="text-[#0755E8]">{selectedFile.name}</span>
-                ) : (
-                  <>Drag & drop your resume or <span className="text-[#0755E8] underline cursor-pointer" onClick={() => resumeInputRef.current?.click()}>browse files</span></>
-                )}
-              </h3>
-              <p className="text-xs text-slate-400 font-medium mt-1">
-                Supported formats: PDF, DOC, DOCX (Max size: 10MB)
-              </p>
-
-              {/* Selected File Details & Custom Label */}
-              {selectedFile && (
-                <div className="w-full max-w-md mt-4 bg-white border border-slate-200 rounded-xl p-3 shadow-2xs text-left animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 truncate">
-                      <FileText className="w-4 h-4 text-[#0755E8] shrink-0" />
-                      <span className="text-xs font-bold text-slate-800 truncate">
-                        {selectedFile.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium shrink-0">
-                        ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
-                      </span>
+            ) : (
+              /* State 2: Selected File Staging Card (Replaces dropzone cleanly without redundancy) */
+              <div className="p-5 sm:p-6 bg-gradient-to-b from-[#f0f5ff]/40 via-white to-white space-y-5 animate-in fade-in duration-200">
+                {/* Header Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200/90 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs">
+                      <FileText className="w-6 h-6 stroke-[2.2]" />
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black text-slate-900 truncate max-w-xs sm:max-w-md">
+                          {selectedFile.name}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10.5px] font-bold text-slate-600">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-600 font-bold inline-flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Ready to upload &amp; save to your profile</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => resumeInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                    >
+                      Change File
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -856,57 +638,113 @@ export default function UserProfile() {
                         setResumeTitle("");
                         if (resumeInputRef.current) resumeInputRef.current.value = "";
                       }}
-                      className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                      title="Discard file"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-tight block">
-                      Target Role / Label
+                {/* Target Role Input with Smart Suggestions */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Resume Label / Target Role
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Senior Frontend Engineer, Full Stack Resume"
-                      value={resumeTitle}
-                      onChange={(e) => setResumeTitle(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-[#0755E8] font-medium"
-                    />
+                    <span className="text-[11px] text-slate-400 font-medium">Helps interview experts identify your focus</span>
                   </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Senior Frontend Engineer, Full Stack Resume"
+                    value={resumeTitle}
+                    onChange={(e) => setResumeTitle(e.target.value)}
+                    className="w-full bg-white px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/20 font-bold text-slate-900 placeholder:font-normal placeholder:text-slate-400 transition-all shadow-2xs"
+                  />
 
+                  {/* Quick role suggestions */}
+                  <div className="flex items-center gap-1.5 pt-1 flex-wrap text-xs">
+                    <span className="text-[11px] text-slate-400 font-medium">Quick suggestions:</span>
+                    {["Full Stack Developer", "Frontend Engineer", "Backend SDE", "DevOps Engineer", "Data Scientist"].map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setResumeTitle(role)}
+                        className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer ${
+                          resumeTitle === role
+                            ? "bg-[#0755E8] text-white border-[#0755E8]"
+                            : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Upload Error Banner */}
+                {uploadError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-150">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setResumeTitle("");
+                      if (resumeInputRef.current) resumeInputRef.current.value = "";
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                   <button
                     type="submit"
                     disabled={isUploadingResume}
-                    className="w-full mt-3 py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-gradient-to-r from-[#0755E8] to-[#1264FF] hover:from-[#0645C7] hover:to-[#0755E8] text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
                   >
                     {isUploadingResume ? (
                       <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         <span>Uploading Resume...</span>
                       </>
                     ) : (
                       <>
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload & Save Resume</span>
+                        <Upload className="w-4 h-4" />
+                        <span>Upload &amp; Save Resume</span>
                       </>
                     )}
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </form>
 
           {/* List of Uploaded Resumes */}
-          <div className="space-y-3.5">
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Uploaded Resumes ({resumes.length})
-            </h3>
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>My Tailored Resumes</span>
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-xs font-black">
+                    {resumes.length}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Interview experts automatically review your active default resume during live mock sessions.
+                </p>
+              </div>
+            </div>
 
             {isLoadingResumes ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[1, 2].map((i) => (
-                  <div key={i} className="h-28 rounded-2xl bg-slate-50 border border-slate-200/70 animate-pulse" />
+                  <div key={i} className="h-36 rounded-2xl bg-slate-50 border border-slate-200/70 animate-pulse" />
                 ))}
               </div>
             ) : resumes.length > 0 ? (
@@ -920,24 +758,39 @@ export default function UserProfile() {
                       })
                     : "Recently";
 
+                  const isPdf = Boolean(
+                    (resume.fileName && resume.fileName.toLowerCase().endsWith(".pdf")) ||
+                    (resume.fileUrl && resume.fileUrl.toLowerCase().includes(".pdf")) ||
+                    (resume.title && resume.title.toLowerCase().endsWith(".pdf"))
+                  );
+
                   return (
                     <div
                       key={resume._id}
-                      className={`group relative bg-white rounded-2xl border transition-all p-4.5 flex flex-col justify-between shadow-2xs hover:shadow-xs text-left ${
+                      className={`group relative rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between text-left hover:-translate-y-0.5 ${
                         resume.isDefault
-                          ? "border-[#0755E8]/60 bg-blue-50/20 shadow-[0_4px_16px_-4px_rgba(7,85,232,0.08)]"
-                          : "border-slate-200 hover:border-slate-300"
+                          ? "bg-gradient-to-br from-[#F0F5FF]/90 via-white to-white border-2 border-[#0755E8] shadow-[0_4px_24px_-4px_rgba(7,85,232,0.14)]"
+                          : "bg-white hover:bg-slate-50/40 border border-slate-200/90 hover:border-slate-300 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-xs"
                       }`}
                     >
+                      {/* Top Row: File Icon + Title + Status Badge */}
                       <div>
-                        {/* Top Row: Icon + Title + Default Badge */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] flex items-center justify-center shrink-0">
-                              <FileText className="w-5 h-5" />
+                          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                            {/* File Type Pill */}
+                            <div className={`w-11 h-11 rounded-2xl flex flex-col items-center justify-center shrink-0 border shadow-2xs ${
+                              isPdf
+                                ? "bg-rose-50 border-rose-200/90 text-rose-600"
+                                : "bg-blue-50 border-blue-200/90 text-[#0755E8]"
+                            }`}>
+                              <FileText className="w-5 h-5 stroke-[2.2]" />
+                              <span className="text-[8.5px] font-black uppercase tracking-wider mt-0.5">
+                                {isPdf ? "PDF" : "DOC"}
+                              </span>
                             </div>
+
                             <div className="min-w-0 flex-1 leading-tight">
-                              <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                              <h4 className="text-sm font-black text-slate-900 truncate">
                                 {resume.title || "Untitled Resume"}
                               </h4>
                               <p className="text-[11.5px] text-slate-500 font-medium truncate mt-0.5">
@@ -946,27 +799,40 @@ export default function UserProfile() {
                             </div>
                           </div>
 
-                          {resume.isDefault && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200 text-[10px] font-black uppercase tracking-tight shrink-0">
-                              <Star className="w-3 h-3 fill-[#0755E8]" />
-                              <span>Default</span>
+                          {resume.isDefault ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/90 text-[10.5px] font-black uppercase tracking-wider shrink-0 shadow-2xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>Active</span>
                             </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSetDefault(resume._id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-[#EAF2FF] text-slate-600 hover:text-[#0755E8] border border-slate-200 text-[10.5px] font-bold transition-all shrink-0 cursor-pointer"
+                              title="Set as default for upcoming interviews"
+                            >
+                              <Star className="w-3 h-3" />
+                              <span>Make Default</span>
+                            </button>
                           )}
                         </div>
 
                         {/* File Details Chips */}
-                        <div className="flex items-center gap-2 mt-3 text-[11px] text-slate-400 font-medium">
-                          <span>Updated {dateStr}</span>
+                        <div className="flex items-center gap-2 mt-3.5 text-[11px] text-slate-400 font-medium flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-slate-500">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span>Updated {dateStr}</span>
+                          </span>
                           {resume.fileSize && (
                             <>
                               <span>•</span>
-                              <span>{resume.fileSize}</span>
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">{resume.fileSize}</span>
                             </>
                           )}
                           {resume.template && (
                             <>
                               <span>•</span>
-                              <span className="font-semibold text-slate-600">{resume.template} Template</span>
+                              <span className="text-[#0755E8] font-bold">{resume.template} Template</span>
                             </>
                           )}
                         </div>
@@ -974,49 +840,63 @@ export default function UserProfile() {
 
                       {/* Action Bar */}
                       <div className="flex items-center justify-between gap-2 pt-3.5 mt-3.5 border-t border-slate-100">
+                        {/* Status Note or Make Default Link */}
                         <div>
-                          {!resume.isDefault ? (
+                          {resume.isDefault ? (
+                            <span className="text-xs font-bold text-emerald-600 inline-flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Active for Interview Experts</span>
+                            </span>
+                          ) : (
                             <button
                               type="button"
                               onClick={() => handleSetDefault(resume._id)}
                               className="text-xs font-bold text-[#0755E8] hover:underline cursor-pointer inline-flex items-center gap-1"
                             >
-                              <Star className="w-3 h-3" />
-                              <span>Set as Default</span>
+                              <Star className="w-3.5 h-3.5" />
+                              <span>Set as Primary Resume</span>
                             </button>
-                          ) : (
-                            <span className="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Active for Interview Experts</span>
-                            </span>
                           )}
                         </div>
 
+                        {/* Preview, Download, Delete Buttons */}
                         <div className="flex items-center gap-1.5">
                           {resume.fileUrl ? (
-                            <a
-                              href={resume.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-[#0755E8] hover:bg-slate-50 transition-colors"
-                              title="Preview / Download Resume"
-                            >
-                              <Download className="w-4 h-4" />
-                            </a>
+                            <>
+                              <a
+                                href={resume.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 rounded-xl bg-[#EAF2FF] hover:bg-[#0755E8] text-[#0755E8] hover:text-white border border-[#93B8FF]/60 text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
+                                title="Preview Resume in New Tab"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Preview</span>
+                              </a>
+                              <a
+                                href={resume.fileUrl}
+                                download={resume.fileName || `${resume.title || "Resume"}.pdf`}
+                                className="p-1.5 rounded-xl text-slate-500 hover:text-[#0755E8] hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+                                title="Download Resume File"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </>
                           ) : (
                             <Link
                               to="/resume-builder"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-[#0755E8] hover:bg-slate-50 transition-colors"
+                              className="px-2.5 py-1.5 rounded-xl bg-[#EAF2FF] hover:bg-[#0755E8] text-[#0755E8] hover:text-white border border-[#93B8FF]/60 text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5"
                               title="Edit in Resume Builder"
                             >
-                              <ExternalLink className="w-4 h-4" />
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Edit in Builder</span>
                             </Link>
                           )}
 
                           <button
                             type="button"
                             onClick={() => handleDeleteResume(resume._id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                             title="Delete Resume"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1028,14 +908,21 @@ export default function UserProfile() {
                 })}
               </div>
             ) : (
-              <div className="bg-slate-50/60 rounded-2xl border border-slate-200/80 p-8 text-center flex flex-col items-center">
-                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
-                  <FileText className="w-6 h-6" />
+              <div className="bg-gradient-to-b from-[#f0f5ff]/30 via-white to-white rounded-2xl border border-dashed border-slate-200 p-8 text-center flex flex-col items-center">
+                <div className="w-13 h-13 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/60 flex items-center justify-center text-[#0755E8] mb-3 shadow-2xs">
+                  <FileText className="w-6 h-6 stroke-[2.2]" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-800">No Resumes Uploaded Yet</h4>
-                <p className="text-xs text-slate-500 max-w-sm mt-1">
-                  Upload your first resume using the dropzone above or create one with our AI Resume Builder.
+                <h4 className="text-sm font-black text-slate-900">No Resumes Uploaded Yet</h4>
+                <p className="text-xs text-slate-500 max-w-sm mt-1 leading-relaxed">
+                  Upload your target resume using the dropzone above, or build a tailored tech resume using our AI Builder.
                 </p>
+                <Link
+                  to="/resume-builder"
+                  className="mt-4 px-4 py-2 bg-white hover:bg-slate-50 text-[#0755E8] border border-[#93B8FF] rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#0755E8]" />
+                  <span>Build with AI Resume Builder</span>
+                </Link>
               </div>
             )}
           </div>

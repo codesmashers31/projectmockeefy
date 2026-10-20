@@ -10,6 +10,13 @@ import path from "path";
 import fs from "fs";
 import { getFileUrl } from "../middleware/upload.js";
 
+/**
+ * Robustly extract userId from either custom header or authenticated JWT payload
+ */
+export const resolveUserId = (req) => {
+    return req.headers?.userid || req.user?.userId || req.user?.id || req.user?._id;
+};
+
 /* ----------------- Profile Completion Calculator ------------------ */
 function calculateProfileCompletion(user) {
     let score = 0;
@@ -64,7 +71,7 @@ function getProfileWarnings(user) {
 /* ----------------- Get User Profile ------------------ */
 export const getUserProfile = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
 
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID required" });
@@ -96,7 +103,7 @@ export const getUserProfile = async (req, res) => {
 /* ----------------- Update Personal Info ------------------ */
 export const updatePersonalInfo = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const { name, phone, dateOfBirth, gender, country, state, city, bio } = req.body;
 
         if (!userId) {
@@ -142,7 +149,7 @@ export const updatePersonalInfo = async (req, res) => {
 /* ----------------- Update Education ------------------ */
 export const updateEducation = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const { education } = req.body;
 
         if (!userId) {
@@ -174,7 +181,7 @@ export const updateEducation = async (req, res) => {
 /* ----------------- Update Experience ------------------ */
 export const updateExperience = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const { experience } = req.body;
 
         if (!userId) {
@@ -206,7 +213,7 @@ export const updateExperience = async (req, res) => {
 /* ----------------- Update Certifications ------------------ */
 export const updateCertifications = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const { certifications } = req.body;
 
         if (!userId) {
@@ -238,7 +245,7 @@ export const updateCertifications = async (req, res) => {
 /* ----------------- Update Skills ------------------ */
 export const updateSkills = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const { technical, soft, languages } = req.body;
 
         if (!userId) {
@@ -275,7 +282,7 @@ export const updateSkills = async (req, res) => {
 /* ----------------- Update Preferences ------------------ */
 export const updatePreferences = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const { experienceLevel, jobType, expectedSalary, noticePeriod, willingToRelocate } = req.body;
 
         if (!userId) {
@@ -316,7 +323,7 @@ export const updatePreferences = async (req, res) => {
 
 export const saveProfileImage = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
 
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID required" });
@@ -360,7 +367,7 @@ export const saveProfileImage = async (req, res) => {
 /* ----------------- Get Resume Data (Profile + Performance) ------------------ */
 export const getResumeData = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         if (!userId) return res.status(400).json({ success: false, message: "User ID required" });
 
         const user = await User.findById(userId).select("-password").lean();
@@ -463,7 +470,7 @@ export const getResumeData = async (req, res) => {
 // Get all user resumes
 export const getUserResumes = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID required" });
         }
@@ -479,7 +486,7 @@ export const getUserResumes = async (req, res) => {
 // Create new resume
 export const createResume = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID required" });
         }
@@ -513,7 +520,7 @@ export const createResume = async (req, res) => {
 // Update resume
 export const updateResume = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const resumeId = req.params.id;
         if (!userId || !resumeId) {
             return res.status(400).json({ success: false, message: "User ID and Resume ID required" });
@@ -539,7 +546,7 @@ export const updateResume = async (req, res) => {
 // Delete resume
 export const deleteResume = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const resumeId = req.params.id;
         if (!userId || !resumeId) {
             return res.status(400).json({ success: false, message: "User ID and Resume ID required" });
@@ -560,7 +567,7 @@ export const deleteResume = async (req, res) => {
 // Set default resume
 export const setDefaultResume = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const resumeId = req.params.id;
         if (!userId || !resumeId) {
             return res.status(400).json({ success: false, message: "User ID and Resume ID required" });
@@ -589,7 +596,7 @@ export const setDefaultResume = async (req, res) => {
 // Duplicate resume (One-click)
 export const duplicateResume = async (req, res) => {
     try {
-        const userId = req.headers.userid;
+        const userId = resolveUserId(req);
         const resumeId = req.params.id;
         if (!userId || !resumeId) {
             return res.status(400).json({ success: false, message: "User ID and Resume ID required" });
@@ -639,11 +646,14 @@ export const getAISuggestions = async (req, res) => {
 /* ----------------- Upload Resume File (PDF / DOC / DOCX) ------------------ */
 export const uploadResumeFile = async (req, res) => {
     try {
-        const userId = req.headers.userid || req.user?.id;
+        console.log(`[Resume Upload] Incoming request. User:`, req.user, `Headers userId:`, req.headers?.userid);
+        const userId = resolveUserId(req);
         if (!userId) {
+            console.warn("[Resume Upload] Failed: No userId resolved");
             return res.status(400).json({ success: false, message: "User ID required" });
         }
         if (!req.file) {
+            console.warn("[Resume Upload] Failed: No req.file found on request");
             return res.status(400).json({ success: false, message: "No resume file provided" });
         }
 
@@ -652,8 +662,9 @@ export const uploadResumeFile = async (req, res) => {
             fileUrl = req.file.secure_url || req.file.url || (req.file.path && req.file.path.startsWith("http") ? req.file.path : "") || "";
         }
 
-        const title = req.body.title || req.file.originalname.replace(/\.[^/.]+$/, "") || "Uploaded Resume";
-        const fileSize = req.file.size ? `${(req.file.size / (1024 * 1024)).toFixed(2)} MB` : "1.2 MB";
+        const title = req.body.title || req.file.originalname?.replace(/\.[^/.]+$/, "") || "Uploaded Resume";
+        const bytes = req.file.size || req.file.bytes || 0;
+        const fileSize = bytes > 0 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : "0.5 MB";
         const fileName = req.file.originalname || "resume.pdf";
 
         // If user has 0 resumes, make this the default
@@ -676,14 +687,14 @@ export const uploadResumeFile = async (req, res) => {
         });
     } catch (err) {
         console.error("uploadResumeFile error:", err);
-        return res.status(500).json({ success: false, message: "Failed to upload resume file" });
+        return res.status(500).json({ success: false, message: err?.message || "Failed to upload resume file" });
     }
 };
 
 /* ----------------- Delete Profile Image ------------------ */
 export const deleteProfileImage = async (req, res) => {
     try {
-        const userId = req.headers.userid || req.user?.id;
+        const userId = resolveUserId(req);
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID required" });
         }

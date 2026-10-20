@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
@@ -98,7 +99,6 @@ const corsOptions = {
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "userid"],
 };
 
 app.use(cors(corsOptions));
@@ -174,7 +174,23 @@ app.use("/api", globalLimiter);
 // serve uploaded images (dev)
 app.use("/uploads/profileImages", express.static(path.join(process.cwd(), "uploads/profileImages")));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-// mount routers
+
+// Debug logging endpoint for client error diagnosis
+app.all("/api/debug-log", (req, res) => {
+  const logEntry = `[${new Date().toISOString()}] DEBUG LOG: ${JSON.stringify(req.body || req.query)}\n`;
+  console.log(logEntry);
+  fs.appendFileSync(path.join(process.cwd(), "debug_events.log"), logEntry, "utf8");
+  res.json({ success: true });
+});
+
+// Monitor all /api/user/resumes requests
+app.use("/api/user/resumes", (req, res, next) => {
+  const logEntry = `[${new Date().toISOString()}] RESUMES REQ: ${req.method} ${req.url} - Auth: ${!!req.headers.authorization} - UserId: ${req.headers.userid} - CT: ${req.headers['content-type']}\n`;
+  console.log(logEntry);
+  fs.appendFileSync(path.join(process.cwd(), "debug_events.log"), logEntry, "utf8");
+  next();
+});
+
 // mount routers
 app.use("/api/auth", authRoutes);
 app.use("/api/expert", expertRoutes);
@@ -200,6 +216,24 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/hr-contacts', hrContactRoutes);
 app.use('/api/certification-rules', certificationRuleRoutes);
+
+// Global error handling middleware (catches Multer and other uncaught route errors)
+app.use((err, req, res, next) => {
+  console.error("[Server Error]", err?.message || err);
+  if (err?.name === "MulterError" || err?.code?.startsWith?.("LIMIT_")) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ success: false, message: "File size exceeds the 10MB limit." });
+    }
+    return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+  }
+  if (err) {
+    return res.status(err.status || 500).json({
+      success: false,
+      message: err.message || "An unexpected server error occurred."
+    });
+  }
+  next();
+});
 
 const PORT = process.env.PORT || 5000;
 

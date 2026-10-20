@@ -154,8 +154,6 @@ export default function BookSessionPage() {
     });
   };
 
-  // Selected session goal
-  const [selectedGoal, setSelectedGoal] = useState<string>("technical");
   const [userDiscussionNotes, setUserDiscussionNotes] = useState<string>("");
 
   // Promo code & pricing states
@@ -573,7 +571,6 @@ export default function BookSessionPage() {
 
     const startTime = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`).toISOString();
     const endTime = new Date(`${kolkataDateStr}T${parseToHHMM(endRaw)}:00+05:30`).toISOString();
-    const currentGoalObj = SESSION_GOALS.find(g => g.id === selectedGoal);
 
     const payload = {
       expertId: profile.id || expertId,
@@ -583,7 +580,7 @@ export default function BookSessionPage() {
       expertCategory: profile.category || "IT",
       userCategory: profile.category || "IT",
       sessionCategory: profile.category || "IT",
-      sessionType: currentGoalObj?.title || "1:1 Mock Interview",
+      sessionType: "1:1 Live Mock Interview",
       sessionDuration: Number(sessionDuration),
       startTime,
       endTime,
@@ -592,7 +589,7 @@ export default function BookSessionPage() {
       discount: appliedFreePromo ? sessionFee : 0,
       status: "scheduled",
       isPremiumSession: !!(user?.isPremium),
-      notes: userDiscussionNotes.trim() ? `${userDiscussionNotes.trim()} [Goal: ${currentGoalObj?.title}]` : `[Goal: ${currentGoalObj?.title}]`,
+      notes: userDiscussionNotes.trim() || "1:1 Live Mock Interview",
     };
 
     try {
@@ -761,7 +758,6 @@ export default function BookSessionPage() {
   }
 
   const expertInitials = (profile.name || "EX").trim().substring(0, 2).toUpperCase();
-  const selectedGoalObj = SESSION_GOALS.find(g => g.id === selectedGoal) || SESSION_GOALS[0];
   const selectedDateObj = dates[selectedDate];
 
   return (
@@ -872,100 +868,6 @@ export default function BookSessionPage() {
         {/* LEFT / MAIN COLUMN (lg:col-span-7): Booking Form Sections */}
         {/* ======================================================== */}
         <div className="lg:col-span-7 space-y-6">
-
-          {/* Mentor Profile Overview: About Mentor & Reviews Tabs */}
-          <div id="mentor-reviews-tabs" className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs scroll-mt-20">
-            {/* Tabs Bar */}
-            <div className="flex items-center gap-1 px-5 pt-3 border-b border-slate-100">
-              <button
-                type="button"
-                onClick={() => setActiveTab("about")}
-                className={`px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
-                  activeTab === "about"
-                    ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/50 rounded-t-xl"
-                    : "text-slate-500 border-transparent hover:text-slate-900"
-                }`}
-              >
-                About Interview Expert
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("reviews")}
-                className={`px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
-                  activeTab === "reviews"
-                    ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/50 rounded-t-xl"
-                    : "text-slate-500 border-transparent hover:text-slate-900"
-                }`}
-              >
-                Reviews &amp; Ratings ({reviews.length})
-              </button>
-            </div>
-
-            {/* Tab Contents */}
-            <div className="p-5 sm:p-6">
-              {activeTab === "about" ? (
-                <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                  <div>
-                    <h3 className="font-bold text-slate-900 mb-1">About {profile.name}</h3>
-                    <p className="text-slate-600">
-                      {(profile as any).bio || `${profile.name} is a verified ${profile.category} interview expert with ${profile.experience ? (profile.experience.toLowerCase().includes("fresher") ? "early-stage industry experience" : `${profile.experience} of industry experience`) : "industry experience"} specializing in mock interviews, career guidance, and practical technical preparation.`}
-                    </p>
-                  </div>
-
-                  {profile.skills && profile.skills.length > 0 && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                        Core Competencies &amp; Technologies
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {profile.skills.map((skill, i) => (
-                          <span
-                            key={i}
-                            className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 rounded-lg text-xs font-semibold text-slate-700"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reviewsLoading ? (
-                    <div className="py-8 text-center text-xs text-slate-500">Loading reviews...</div>
-                  ) : reviews.length > 0 ? (
-                    <div className="space-y-3">
-                      {reviews.map((r) => (
-                        <div key={r.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-slate-900">{r.name}</span>
-                              <span className="text-[11px] text-slate-400">• {r.role}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
-                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                              <span>{r.rating}.0</span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-600 italic">"{r.comment}"</p>
-                          <p className="text-[10px] text-slate-400 pt-1">{r.date}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-10 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                      <MessageCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-xs sm:text-sm font-bold text-slate-800">No reviews yet</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Be the first candidate to book a session and leave a review for {profile.name}!
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Section A: Scheduling (Date & Time) - Now Step 1 */}
           <div id="time-slots-section" className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs scroll-mt-20">
@@ -1251,70 +1153,12 @@ export default function BookSessionPage() {
             )}
           </div>
 
-          {/* Section B: Session Goal Selection - Now Step 2 */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
-            <div className="mb-4">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
-                <Sparkles className="w-3 h-3 text-[#0755E8]" />
-                <span>Step 2</span>
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                What would you like help with?
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Choose the primary focus area so {profile.name.split(" ")[0]} can tailor questions and advice to your needs.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {SESSION_GOALS.map((goal) => {
-                const isSelected = selectedGoal === goal.id;
-                const IconComponent = goal.icon;
-                return (
-                  <button
-                    key={goal.id}
-                    type="button"
-                    onClick={() => setSelectedGoal(goal.id)}
-                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
-                      isSelected
-                        ? "bg-[#F0F5FF] border-[#0755E8] shadow-xs ring-2 ring-[#0755E8]/15"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2.5">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
-                          isSelected ? "bg-[#0755E8] text-white" : "bg-[#EAF2FF] text-[#0755E8]"
-                        }`}>
-                          <IconComponent className="w-4 h-4" />
-                        </div>
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          isSelected ? "border-[#0755E8] bg-[#0755E8] text-white" : "border-slate-300 bg-white"
-                        }`}>
-                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                        </div>
-                      </div>
-                      <h3 className={`text-sm font-bold leading-snug ${
-                        isSelected ? "text-[#0755E8]" : "text-slate-900"
-                      }`}>
-                        {goal.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-normal mt-1 leading-relaxed">
-                        {goal.desc}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section C: Session Preferences & Discussion Details */}
+          {/* Section B: Session Preferences & Discussion Details - Step 2 */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
             <div className="mb-4">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
                 <Video className="w-3 h-3 text-[#0755E8]" />
-                <span>Step 3</span>
+                <span>Step 2</span>
               </div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
                 Session Preferences &amp; Discussion Notes
@@ -1352,6 +1196,100 @@ export default function BookSessionPage() {
                   className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/20 transition-all resize-none"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Mentor Profile Overview: About Mentor & Reviews Tabs */}
+          <div id="mentor-reviews-tabs" className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs scroll-mt-20">
+            {/* Tabs Bar */}
+            <div className="flex items-center gap-1 px-5 pt-3 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveTab("about")}
+                className={`px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
+                  activeTab === "about"
+                    ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/50 rounded-t-xl"
+                    : "text-slate-500 border-transparent hover:text-slate-900"
+                }`}
+              >
+                About Interview Expert
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("reviews")}
+                className={`px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
+                  activeTab === "reviews"
+                    ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/50 rounded-t-xl"
+                    : "text-slate-500 border-transparent hover:text-slate-900"
+                }`}
+              >
+                Reviews &amp; Ratings ({reviews.length})
+              </button>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="p-5 sm:p-6">
+              {activeTab === "about" ? (
+                <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                  <div>
+                    <h3 className="font-bold text-slate-900 mb-1">About {profile.name}</h3>
+                    <p className="text-slate-600">
+                      {(profile as any).bio || `${profile.name} is a verified ${profile.category} interview expert with ${profile.experience ? (profile.experience.toLowerCase().includes("fresher") ? "early-stage industry experience" : `${profile.experience} of industry experience`) : "industry experience"} specializing in mock interviews, career guidance, and practical technical preparation.`}
+                    </p>
+                  </div>
+
+                  {profile.skills && profile.skills.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Core Competencies &amp; Technologies
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {profile.skills.map((skill, i) => (
+                          <span
+                            key={i}
+                            className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 rounded-lg text-xs font-semibold text-slate-700"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviewsLoading ? (
+                    <div className="py-8 text-center text-xs text-slate-500">Loading reviews...</div>
+                  ) : reviews.length > 0 ? (
+                    <div className="space-y-3">
+                      {reviews.map((r) => (
+                        <div key={r.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-slate-900">{r.name}</span>
+                              <span className="text-[11px] text-slate-400">• {r.role}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              <span>{r.rating}.0</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 italic">"{r.comment}"</p>
+                          <p className="text-[10px] text-slate-400 pt-1">{r.date}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                      <MessageCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs sm:text-sm font-bold text-slate-800">No reviews yet</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Be the first candidate to book a session and leave a review for {profile.name}!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1426,15 +1364,15 @@ export default function BookSessionPage() {
               Booking Summary
             </h3>
 
-            {/* Selected Goal Item */}
+            {/* Session Format */}
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
-                <selectedGoalObj.icon className="w-3.5 h-3.5" />
+                <Video className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session Goal</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session Format</p>
                 <p className="text-xs font-bold text-slate-900 truncate mt-0.5">
-                  {selectedGoalObj.title}
+                  1:1 Live Mock Interview
                 </p>
               </div>
             </div>
@@ -1522,83 +1460,7 @@ export default function BookSessionPage() {
             )}
           </div>
 
-          {/* Card 3: What You'll Get */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-              <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0 border border-[#93B8FF]/60">
-                <CheckCircle2 className="w-4 h-4 text-[#0755E8]" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  What You'll Get
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium">Included in every 1-on-1 interview</p>
-              </div>
-            </div>
-
-            <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
-              <li className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
-                  <Check className="w-3 h-3 stroke-[3]" />
-                </div>
-                <span><strong>Focused 1-on-1 coaching</strong> tailored to your target company &amp; role.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
-                  <Check className="w-3 h-3 stroke-[3]" />
-                </div>
-                <span><strong>Live interview simulation</strong> with technical, coding, or behavioral drills.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
-                  <Check className="w-3 h-3 stroke-[3]" />
-                </div>
-                <span><strong>Actionable scorecard</strong> detailing core strengths, blindspots &amp; metrics.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/70">
-                  <Check className="w-3 h-3 stroke-[3]" />
-                </div>
-                <span><strong>Official Certificate</strong> of mock interview completion for your resume.</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Card 4: How to Prepare */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/70">
-                <Info className="w-4 h-4 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  How to Prepare
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium">Quick checklist before your slot</p>
-              </div>
-            </div>
-
-            <ul className="space-y-2.5 text-xs text-slate-600 font-medium">
-              <li className="flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                <span>Have your resume or portfolio links accessible for reference.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                <span>List 2-3 specific topics or algorithmic patterns you want to drill.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                <span>Join from a quiet environment with a working microphone and camera.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] shrink-0 mt-1.5" />
-                <span>Log in 3-5 minutes early to test your audio &amp; video feed.</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Card 5: Mockeefy Guarantee */}
+          {/* Card 3: Mockeefy Guarantee */}
           <div className="bg-gradient-to-br from-[#F0F5FF] via-white to-white rounded-2xl border border-blue-200/70 p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#0755E8]" />
@@ -1627,7 +1489,7 @@ export default function BookSessionPage() {
             </div>
           </div>
 
-          {/* Card 6: Frequently Asked Questions & Support */}
+          {/* Card 4: Frequently Asked Questions & Support */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
               <div className="flex items-center gap-2">

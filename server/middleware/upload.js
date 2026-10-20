@@ -88,9 +88,12 @@ const localUserStorage = multer.diskStorage({
 const cloudResumeStorage = createCloudinaryStorage({
   cloudinary: cloudinary,
   params: (req, file, cb) => {
+    const originalName = file.originalname || "resume.pdf";
+    const cleanName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
     cb(null, {
       folder: "mockeefy/resumes",
       resource_type: "raw",
+      public_id: `${Date.now()}-${cleanName}`,
     });
   },
 });
