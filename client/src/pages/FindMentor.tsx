@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef, useDeferredValue } from "r
 import { useQuery } from "@tanstack/react-query";
 import axios from "../lib/axios";
 import { MentorJobCard, MentorCardSkeleton, MentorProfile } from "../components/MentorJobCard";
+import FindMentorSkeleton from "../components/FindMentorSkeleton";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import {
   calculateProfessionalExperience,
@@ -227,7 +228,11 @@ function MentorCategoryScrollRow({
   );
 }
 
-export default function FindMentor() {
+interface FindMentorProps {
+  showSkeletons?: boolean;
+}
+
+export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMentorProps = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(initialQ);
@@ -271,6 +276,7 @@ export default function FindMentor() {
   // Track "View More" expansion for each filter subheading (limits items to initial 5 by default)
   const [showAllSubheadings, setShowAllSubheadings] = useState<Record<string, boolean>>({
     track: false,
+    level: false,
     experience: false,
     price: false,
     availability: false,
@@ -354,6 +360,12 @@ export default function FindMentor() {
         totalSessions: expert.metrics?.totalSessions || 15,
         category: cat,
         bio: expert.personalInformation?.bio || "",
+        level: expert.professionalDetails?.level || expert.level || (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels[0]) || "Rising Mentor",
+        levels: (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels.length > 0)
+          ? expert.professionalDetails.levels
+          : (Array.isArray(expert.levels) && expert.levels.length > 0)
+          ? expert.levels
+          : [expert.professionalDetails?.level || expert.level || "Rising Mentor"],
       };
     });
   }, [expertsData]);
@@ -453,6 +465,7 @@ export default function FindMentor() {
     setAvailabilityFilter("All");
     setSortBy("recommended");
     setCurrentPage(1);
+    setSearchParams(new URLSearchParams());
   };
 
   // Reset pagination to page 1 whenever filters change
@@ -1110,52 +1123,59 @@ export default function FindMentor() {
     </div>
   );
 
+  const isPageLoading = (propShowSkeletons ?? isLoading) && allMentors.length === 0;
+
+  if (isPageLoading) {
+    return <FindMentorSkeleton />;
+  }
+
   return (
     <div ref={listTopRef} className="w-full font-sans text-left animate-in fade-in duration-200">
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
         <div className="flex-1 min-w-0 space-y-3.5">
-          {/* Header Controls: Result Count, Sort Dropdown & Active Filters (Present above the div card separately) */}
-          <div className="space-y-2.5 px-1 sm:px-1.5">
-            {/* Top Row: Title & Verified Count */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight">
-                Available Interview Experts
-              </h1>
-              <span className="text-xs sm:text-sm text-slate-500 font-medium">
-                (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"} across <span className="text-slate-900 font-bold">{filteredCategoryGroups.length}</span> tracks)
-              </span>
-            </div>
+          {/* Header Controls: Result Count & Sort Dropdown in the same line */}
+          <div className="space-y-2 px-1 sm:px-1.5">
+            {/* Same Line Header Row: Title, Count & Compact Sort Control */}
+            <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
+              {/* LEFT: Title & Verified Count */}
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight whitespace-nowrap">
+                  Available Interview Experts
+                </h1>
+                <span className="text-xs sm:text-sm text-slate-500 font-medium whitespace-nowrap">
+                  (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"})
+                </span>
+              </div>
 
-            {/* Controls Bar: Sort on the LEFT side, Filtered by on the RIGHT side */}
-            <div className="flex items-center justify-between gap-3 flex-wrap pt-0.5">
-              {/* LEFT SIDE: Sort Control & Mobile Filter Button */}
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Mobile Filter Button */}
+              {/* RIGHT: Compact Sort Control & Mobile Filter Button (In the same line) */}
+              <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+                {/* Mobile Filter Button (< xl screens) */}
                 <button
                   onClick={() => setIsMobileFilterOpen(true)}
-                  className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 shadow-xs cursor-pointer transition-colors"
+                  className="xl:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 shadow-2xs cursor-pointer transition-colors"
                 >
-                  <SlidersHorizontal size={13} />
+                  <SlidersHorizontal size={12} />
                   <span>Filters</span>
                   {activeFilterCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[#0755E8] text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#0755E8] text-white text-[9.5px] font-bold flex items-center justify-center">
                       {activeFilterCount}
                     </span>
                   )}
                 </button>
 
-                {/* Sort Control */}
+                {/* Compact Sort Control */}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 select-none">
-                    <ArrowUpDown size={12} className="text-slate-400" />
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 select-none whitespace-nowrap">
+                    <ArrowUpDown size={11} className="text-slate-400" />
                     <span>Sort by:</span>
                   </span>
                   <div className="relative">
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="appearance-none bg-white border border-slate-200/90 text-slate-800 text-xs font-semibold rounded-xl py-1.5 pl-3 pr-8 shadow-2xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#0755E8]/10 cursor-pointer transition-all"
+                      aria-label="Sort by relevance"
+                      className="appearance-none bg-white border border-slate-200/90 text-slate-800 text-xs font-semibold rounded-lg py-1 pl-2.5 pr-6 shadow-2xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#0755E8]/10 cursor-pointer transition-all"
                     >
                       <option value="recommended">Relevance</option>
                       <option value="rating">Rating (High to Low)</option>
@@ -1163,15 +1183,16 @@ export default function FindMentor() {
                       <option value="price-low">Price (Low to High)</option>
                       <option value="price-high">Price (High to Low)</option>
                     </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* RIGHT SIDE: Active Filter Badges */}
-              {activeFilterCount > 0 && (
-                <div className="flex items-center justify-end gap-1.5 flex-wrap ml-auto">
-                  <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
+            {/* Active Filter Badges (Shown below the title line when filters are applied) */}
+            {activeFilterCount > 0 && (
+              <div className="flex items-center justify-start gap-1.5 flex-wrap pt-0.5">
+                <span className="text-xs text-slate-400 font-medium">Filtered by:</span>
 
                   {selectedCategory !== "All" && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-xs font-bold text-[#0755E8]">
@@ -1251,7 +1272,6 @@ export default function FindMentor() {
                 </div>
               )}
             </div>
-          </div>
 
           {/* DIV CARD: All Experts Categories & Content */}
           <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4">
@@ -1362,10 +1382,10 @@ export default function FindMentor() {
               <span className="text-sm font-bold text-slate-900">Filter Interview Experts</span>
               <button
                 onClick={() => setIsMobileFilterOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                className="w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-200 active:bg-rose-300 text-rose-600 hover:text-rose-800 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                 aria-label="Close filters"
               >
-                <X size={18} />
+                <X size={15} className="stroke-[2.5]" />
               </button>
             </div>
 

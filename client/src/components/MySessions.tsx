@@ -937,7 +937,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                 </div>
               </div>
               <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
-                <button onClick={() => setReviewModalSession(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium">Cancel</button>
+                <button onClick={() => setReviewModalSession(null)} className="px-4 py-2 border border-slate-300/90 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-800 hover:text-slate-950 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer">Cancel</button>
                 <button onClick={handleSubmitReview} disabled={submittingReview} className="px-4 py-2 bg-[#0755E8] text-white rounded-lg text-sm font-bold hover:bg-[#0645C7] disabled:opacity-60">{submittingReview ? "Submitting…" : "Submit review"}</button>
               </div>
             </div>
@@ -1014,7 +1014,7 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                 )}
               </div>
               <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
-                <button onClick={() => setCertificateModalSession(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200">Close</button>
+                <button onClick={() => setCertificateModalSession(null)} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 hover:text-rose-900 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer">Close</button>
               </div>
             </div>
           </div>

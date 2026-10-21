@@ -10,6 +10,7 @@ import {
   Heart,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BookingModal } from "./BookingModal";
 
 // Types
 export interface MentorProfile {
@@ -36,6 +37,7 @@ export interface MentorProfile {
   allTags?: string[];
   bio?: string;
   level?: string;
+  levels?: string[];
 }
 
 interface MentorJobCardProps {
@@ -46,6 +48,7 @@ interface MentorJobCardProps {
 export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   const navigate = useNavigate();
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const mentorId = mentor.expertID || mentor.id || (mentor as any)._id;
 
   const [isSaved, setIsSaved] = useState(() => {
@@ -63,13 +66,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const handleBookNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/book-session?expertId=${mentorId}#time-slots-section`, {
-      state: {
-        expertId: mentorId,
-        profile: { ...mentor, id: mentorId },
-        scrollToSlots: true,
-      },
-    });
+    setIsBookingModalOpen(true);
   };
 
   const handleViewProfile = (e: React.MouseEvent) => {
@@ -83,11 +80,10 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   };
 
   const handleCardClick = () => {
-    navigate(`/book-session?expertId=${mentorId}#time-slots-section`, {
+    navigate(`/book-session?expertId=${mentorId}`, {
       state: {
         expertId: mentorId,
         profile: { ...mentor, id: mentorId },
-        scrollToSlots: true,
       },
     });
   };
@@ -280,20 +276,51 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
       {/* 5. Pricing & Availability Row (Clean spacing, no empty dead space) */}
       <div className="pt-2.5 mt-2.5 border-t border-slate-100 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[15.5px] sm:text-[16px] font-bold text-slate-900 leading-none">
+        <div className="flex items-center justify-between gap-1.5 min-w-0">
+          <div className="flex items-baseline gap-1 shrink-0 whitespace-nowrap">
+            <span className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-none">
               ₹{priceNum.toLocaleString("en-IN")}
             </span>
-            <span className="text-[11.5px] text-slate-400 font-medium">
+            <span className="text-[10px] sm:text-[10.5px] text-slate-400 font-medium">
               / session
             </span>
           </div>
 
-          <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/80 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span>{mentor.activeTime || "Available Today"}</span>
-          </span>
+          <div className="flex items-center gap-1 shrink-0 min-w-0 justify-end">
+            {(() => {
+              const displayLevels = Array.isArray(mentor.levels) && mentor.levels.length > 0
+                ? mentor.levels
+                : mentor.level
+                ? [mentor.level]
+                : [];
+              if (displayLevels.length === 0) return null;
+              const primary = mentor.level || displayLevels[0];
+              const remaining = displayLevels.length - 1;
+
+              return (
+                <div className="flex items-center gap-1 shrink-0">
+                  <span
+                    title={displayLevels.join(", ")}
+                    className="inline-flex items-center text-[9px] sm:text-[9.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-1.5 py-0.5 rounded-full border border-[#93B8FF]/40 shrink-0 max-w-[95px] sm:max-w-[110px] truncate leading-none"
+                  >
+                    {primary}
+                  </span>
+                  {remaining > 0 && (
+                    <span
+                      title={`Supported Levels:\n• ${displayLevels.join("\n• ")}`}
+                      className="inline-flex items-center text-[8.5px] sm:text-[9px] font-bold text-[#0755E8] bg-[#EAF2FF] px-1 py-0.5 rounded-full border border-[#93B8FF]/40 shrink-0 cursor-help leading-none"
+                    >
+                      +{remaining}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[9.5px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-100/80 shrink-0 whitespace-nowrap leading-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span>{mentor.activeTime || "Available Today"}</span>
+            </span>
+          </div>
         </div>
 
         {/* 6. Dedicated Bottom Action Row: Smart, refined action buttons */}
@@ -317,6 +344,15 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
         </div>
       </div>
 
+      {/* Booking Modal (Step 1 modal view on Book Session) */}
+      {isBookingModalOpen && (
+        <BookingModal
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          expertId={mentorId}
+          initialProfile={mentor}
+        />
+      )}
     </article>
   );
 });
@@ -324,31 +360,44 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 MentorJobCard.displayName = "MentorJobCard";
 
 export const MentorCardSkeleton = () => (
-  <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 flex flex-col justify-between h-full w-full space-y-3">
+  <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between h-full w-full space-y-3 overflow-hidden shadow-xs">
     <div className="space-y-3">
-      <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-xl bg-slate-100 shimmer-shining shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-3/5 bg-slate-100 rounded shimmer-shining" />
-          <div className="h-3 w-4/5 bg-slate-100 rounded shimmer-shining" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-100 shimmer-shining shrink-0" />
+          <div className="flex-1 min-w-0 space-y-1.5 pt-0.5">
+            <div className="h-4 w-3/5 bg-slate-200/80 rounded shimmer-shining" />
+            <div className="h-3 w-4/5 bg-slate-100 rounded shimmer-shining" />
+          </div>
         </div>
+        <div className="w-7 h-7 rounded-lg bg-slate-100 shimmer-shining shrink-0" />
       </div>
-      <div className="h-3 w-2/3 bg-slate-100 rounded shimmer-shining" />
-      <div className="h-8 w-full bg-slate-100 rounded shimmer-shining" />
-      <div className="flex gap-2">
-        <div className="h-5 w-16 bg-slate-100 rounded shimmer-shining" />
-        <div className="h-5 w-20 bg-slate-100 rounded shimmer-shining" />
-        <div className="h-5 w-14 bg-slate-100 rounded shimmer-shining" />
+
+      <div className="flex items-center gap-2">
+        <div className="h-3.5 w-16 bg-slate-100 rounded shimmer-shining" />
+        <div className="h-3.5 w-16 bg-slate-100 rounded shimmer-shining" />
+        <div className="h-3.5 w-14 bg-slate-100 rounded shimmer-shining" />
+      </div>
+
+      <div className="space-y-1">
+        <div className="h-3 w-full bg-slate-100 rounded shimmer-shining" />
+        <div className="h-3 w-4/5 bg-slate-100 rounded shimmer-shining" />
+      </div>
+
+      <div className="flex items-center gap-1.5 pt-0.5">
+        <div className="h-5 w-20 bg-slate-100 rounded-md shimmer-shining" />
+        <div className="h-5 w-20 bg-slate-100 rounded-md shimmer-shining" />
       </div>
     </div>
-    <div className="pt-3 border-t border-slate-100 space-y-2.5">
+
+    <div className="pt-2.5 mt-2.5 border-t border-slate-100 space-y-2">
       <div className="flex justify-between items-center">
-        <div className="h-5 w-20 bg-slate-100 rounded shimmer-shining" />
-        <div className="h-5 w-24 bg-slate-100 rounded-full shimmer-shining" />
+        <div className="h-5 w-20 bg-slate-200/70 rounded shimmer-shining" />
+        <div className="h-4.5 w-24 bg-emerald-50 rounded-full shimmer-shining" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="h-8 rounded-xl bg-slate-100 shimmer-shining" />
-        <div className="h-8 rounded-xl bg-slate-100 shimmer-shining" />
+      <div className="grid grid-cols-2 gap-2 w-full pt-0.5">
+        <div className="h-8.5 rounded-lg bg-slate-100 shimmer-shining" />
+        <div className="h-8.5 rounded-lg bg-[#0755E8]/30 shimmer-shining" />
       </div>
     </div>
   </div>

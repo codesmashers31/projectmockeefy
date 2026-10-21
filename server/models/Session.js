@@ -5,7 +5,7 @@ const sessionSchema = new mongoose.Schema({
   expertId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
-  level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'] },
+  level: { type: String, enum: ['Rising Mentor', 'Professional Mentor', 'Senior Mentor', 'Elite Mentor', 'FAANG Mentor', 'Beginner', 'Intermediate', 'Advanced'], default: 'Rising Mentor' },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
   topics: [{ type: String }],

@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
   Share2, Check, ArrowRight, ArrowLeft, Timer, BadgeCheck, Code2, Compass, FileText,
   MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2, CreditCard,
-  ShieldCheck, HelpCircle, Award, RotateCcw, Headphones
+  ShieldCheck, HelpCircle, Award, RotateCcw, Headphones, X, CheckSquare, Square
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import {
   getKolkataDateString,
   getInitialKolkataMonth
 } from "../lib/bookSessionUtils";
+import { AVAILABLE_LEVELS } from "./BookingModal";
 
 /**
  * Skeleton Loader matching Mockeefy clean design
@@ -165,6 +166,30 @@ export default function BookSessionPage() {
   const [expertAvatarError, setExpertAvatarError] = useState(false);
   const [activeTab, setActiveTab] = useState<"about" | "reviews">("about");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+
+  // Lock body scroll when profile modal is open
+  useEffect(() => {
+    if (isProfileModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isProfileModalOpen]);
+
+  // Handle ESC key to dismiss profile modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isProfileModalOpen) {
+        setIsProfileModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isProfileModalOpen]);
 
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -245,9 +270,30 @@ export default function BookSessionPage() {
     }
   }, [durationOptions, sessionDuration]);
 
-  // Expert Level & calculated pricing
-  const expertLevel = profile?.level || existingProfile?.level || "Senior";
+  // Expert Level & calculated pricing (strictly only mentor's profile levels)
+  const expertLevels = useMemo<string[]>(() => {
+    const prof = profile || existingProfile;
+    const levels = prof?.levels || (prof as any)?.professionalDetails?.levels;
+    if (Array.isArray(levels) && levels.length > 0) {
+      const valid = levels.filter((lvl: string) => AVAILABLE_LEVELS.includes(lvl));
+      if (valid.length > 0) return valid;
+    }
+    const single = prof?.level || (prof as any)?.professionalDetails?.level;
+    if (single && AVAILABLE_LEVELS.includes(single)) {
+      return [single];
+    }
+    return ["Rising Mentor"];
+  }, [profile, existingProfile]);
+
+  const [selectedLevel, setSelectedLevel] = useState<string>("Rising Mentor");
+  const [levelPrices, setLevelPrices] = useState<Record<string, number>>({});
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+
+  useEffect(() => {
+    if (expertLevels.length > 0 && !expertLevels.includes(selectedLevel)) {
+      setSelectedLevel(expertLevels[0]);
+    }
+  }, [expertLevels, selectedLevel]);
 
   const basePrice = useMemo(() => {
     if (overridePrice) return Number(overridePrice) || 0;
@@ -259,29 +305,44 @@ export default function BookSessionPage() {
   }, [profile?.price, overridePrice]);
 
   useEffect(() => {
-    const fetchPrice = async () => {
-      if (!profile?.id || ![30, 60].includes(sessionDuration)) {
-        setCalculatedPrice(basePrice);
-        return;
-      }
-      try {
-        const res = await axios.get("/api/pricing/calculate-price", {
-          params: { expertId: profile.id, duration: sessionDuration, level: expertLevel }
-        });
-        if (res.data?.finalPrice != null) {
-          setCalculatedPrice(res.data.finalPrice);
-        } else {
-          setCalculatedPrice(basePrice);
+    const expertIdToUse = profile?.id || (existingProfile as any)?._id || (existingProfile as any)?.id || expertId;
+    if (!expertIdToUse || ![30, 60].includes(sessionDuration) || expertLevels.length === 0) {
+      setCalculatedPrice(basePrice);
+      return;
+    }
+
+    let active = true;
+    const fetchAllPrices = async () => {
+      const prices: Record<string, number> = {};
+      await Promise.all(
+        expertLevels.map(async (lvl) => {
+          try {
+            const res = await axios.get("/api/pricing/calculate-price", {
+              params: { expertId: expertIdToUse, duration: sessionDuration, level: lvl }
+            });
+            if (res.data?.finalPrice != null) {
+              prices[lvl] = res.data.finalPrice;
+              return;
+            }
+          } catch (_) {}
+          prices[lvl] = sessionDuration === 30 ? 499 : 899;
+        })
+      );
+      if (active) {
+        setLevelPrices(prices);
+        if (prices[selectedLevel] != null) {
+          setCalculatedPrice(prices[selectedLevel]);
         }
-      } catch (err) {
-        setCalculatedPrice(basePrice);
       }
     };
-    fetchPrice();
-  }, [profile?.id, sessionDuration, expertLevel, basePrice]);
+    fetchAllPrices();
+    return () => {
+      active = false;
+    };
+  }, [profile?.id, (existingProfile as any)?._id, (existingProfile as any)?.id, expertId, sessionDuration, selectedLevel, basePrice, expertLevels]);
 
   // Actual session fee for the chosen duration & level
-  const sessionFee = calculatedPrice > 0 ? calculatedPrice : basePrice;
+  const sessionFee = levelPrices[selectedLevel] ?? (calculatedPrice > 0 ? calculatedPrice : basePrice);
   const promoDiscount = appliedFreePromo ? sessionFee : 0;
   const finalPayable = Math.max(0, sessionFee - promoDiscount);
   const displayPrice = finalPayable;
@@ -463,14 +524,16 @@ export default function BookSessionPage() {
           return slotDate < sEnd && slotEndDate > sStart;
         });
 
-        const timeStr = `${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(currentMin + duration)}`;
-        const available = !isBooked;
+        // Completely omit booked timing slot from available slots
+        if (isBooked) {
+          currentMin += duration;
+          continue;
+        }
 
+        const timeStr = `${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(currentMin + duration)}`;
         const existing = generatedSlots.find(s => s.time === timeStr);
-        if (existing) {
-          existing.available = existing.available || available;
-        } else {
-          generatedSlots.push({ time: timeStr, available });
+        if (!existing) {
+          generatedSlots.push({ time: timeStr, available: true });
         }
         currentMin += duration;
       }
@@ -478,6 +541,27 @@ export default function BookSessionPage() {
 
     return generatedSlots.sort((a, b) => a.time.localeCompare(b.time));
   }, [dates, selectedDate, profile?.availability, sessionDuration, bookedSessions]);
+
+  // Auto-deselect if the selected slot becomes unavailable or was booked
+  useEffect(() => {
+    if (selectedSlot && !currentSlots.some((s) => s.time === selectedSlot.time)) {
+      setSelectedSlot(null);
+    }
+  }, [currentSlots, selectedSlot]);
+
+  // Real-time listener for booked sessions across browser tabs / windows
+  useEffect(() => {
+    const handleSessionBooked = (e: any) => {
+      if (e.detail?.expertId === expertId) {
+        setBookedSessions((prev) => [
+          ...prev,
+          { startTime: e.detail.startTime, endTime: e.detail.endTime, status: "confirmed" },
+        ]);
+      }
+    };
+    window.addEventListener("session-booked", handleSessionBooked);
+    return () => window.removeEventListener("session-booked", handleSessionBooked);
+  }, [expertId]);
 
   const handleApplyPromo = () => {
     const code = discountCode.trim().toUpperCase();
@@ -572,8 +656,12 @@ export default function BookSessionPage() {
     const startTime = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`).toISOString();
     const endTime = new Date(`${kolkataDateStr}T${parseToHHMM(endRaw)}:00+05:30`).toISOString();
 
+    const candidateId = user?.id || user?.userId || (user as any)?._id;
+
     const payload = {
       expertId: profile.id || expertId,
+      candidateId,
+      userId: candidateId,
       expertName: profile.name,
       expertEmail: (profile as any).email || "",
       expertPhone: (profile as any).phone || "",
@@ -582,6 +670,7 @@ export default function BookSessionPage() {
       sessionCategory: profile.category || "IT",
       sessionType: "1:1 Live Mock Interview",
       sessionDuration: Number(sessionDuration),
+      level: selectedLevel,
       startTime,
       endTime,
       price: appliedFreePromo ? 0 : sessionFee,
@@ -592,6 +681,56 @@ export default function BookSessionPage() {
       notes: userDiscussionNotes.trim() || "1:1 Live Mock Interview",
     };
 
+    const selectedDateStr = date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const selectedTimeSlot = selectedSlot.time;
+
+    const onBookingSuccess = (successTitle: string, extraNote: string = "") => {
+      // 1. Instantly remove this timing slot from available slots locally
+      setBookedSessions((prev) => [
+        ...prev,
+        { startTime: payload.startTime, endTime: payload.endTime, status: "confirmed" },
+      ]);
+
+      // 2. Dispatch cross-component event so all screens/tabs update instantly
+      window.dispatchEvent(
+        new CustomEvent("session-booked", {
+          detail: {
+            expertId: profile?.id || expertId,
+            startTime: payload.startTime,
+            endTime: payload.endTime,
+          },
+        })
+      );
+
+      setPaymentStatus("paid");
+
+      // 3. User notification: Toast
+      toast.success(`Meeting Scheduled! Your meeting has been scheduled on ${selectedDateStr} at ${selectedTimeSlot}.`);
+
+      // 4. User notification: Modal
+      Swal.fire({
+        title: `${successTitle} 🎉`,
+        html: `
+          <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
+            <p style="margin-bottom: 8px;">Your meeting has been scheduled on <strong>${selectedDateStr}</strong> at <strong>${selectedTimeSlot}</strong>.</p>
+            <p style="margin-bottom: 8px;"><strong>Mentor:</strong> ${profile.name}</p>
+            ${extraNote ? `<p style="margin-bottom: 8px; color: #475569;">${extraNote}</p>` : ""}
+            <p style="color: #059669; font-weight: 500;">✓ This timing slot is confirmed and removed from available slots.</p>
+          </div>
+        `,
+        icon: "success",
+        confirmButtonColor: "#0755E8",
+        confirmButtonText: "View My Bookings",
+      }).then(() => {
+        navigate("/my-sessions");
+      });
+    };
+
     try {
       setIsProcessing(true);
 
@@ -599,13 +738,7 @@ export default function BookSessionPage() {
       if (appliedFreePromo) {
         const res = await axios.post("/api/sessions/book-free", payload);
         if (res.data?.success) {
-          setPaymentStatus("paid");
-          Swal.fire({
-            title: "Booking Confirmed! 🎉",
-            text: `Your free session with ${profile.name} has been scheduled for ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
-            icon: "success",
-            confirmButtonColor: "#0755E8",
-          }).then(() => navigate("/my-sessions"));
+          onBookingSuccess("Meeting Scheduled!", "Free promotional session unlocked.");
         }
         return;
       }
@@ -614,13 +747,7 @@ export default function BookSessionPage() {
       if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
         const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
         if (res.data?.success) {
-          setPaymentStatus("paid");
-          Swal.fire({
-            title: "Booked with Credit! 🎯",
-            text: `Session confirmed. You have ${res.data.remainingCredits ?? 0} free credits remaining.`,
-            icon: "success",
-            confirmButtonColor: "#0755E8",
-          }).then(() => navigate("/my-sessions"));
+          onBookingSuccess("Meeting Scheduled!", `Booked with Premium Credit (${res.data.remainingCredits ?? 0} credits remaining).`);
         }
         return;
       }
@@ -662,27 +789,19 @@ export default function BookSessionPage() {
               paymentType: "booking",
               bookingDetails: {
                 expertId: profile.id || expertId,
-                candidateId: user?.id || user?.userId || (user as any)?._id,
+                candidateId,
                 startTime,
                 endTime,
                 price: sessionFee,
-                topics: [currentGoalObj?.title || "1:1 Mock Interview"],
+                topics: [profile.category || "1:1 Mock Interview"],
                 duration: Number(sessionDuration),
-                notes: userDiscussionNotes.trim() ? `${userDiscussionNotes.trim()} [Goal: ${currentGoalObj?.title}]` : `[Goal: ${currentGoalObj?.title}]`
+                level: selectedLevel,
+                notes: userDiscussionNotes.trim() ? userDiscussionNotes.trim() : "1:1 Live Mock Interview"
               }
             });
 
             if (verifyRes.data?.success) {
-              setPaymentStatus("paid");
-              Swal.fire({
-                title: "Booking Confirmed! 🎉",
-                text: `Your mock interview with ${profile.name} is scheduled for ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
-                icon: "success",
-                confirmButtonColor: "#0755E8",
-                confirmButtonText: "View My Bookings"
-              }).then(() => {
-                navigate("/my-sessions");
-              });
+              onBookingSuccess("Meeting Scheduled!");
             } else {
               throw new Error(verifyRes.data?.message || "Payment verification failed.");
             }
@@ -716,8 +835,13 @@ export default function BookSessionPage() {
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err: any) {
-      console.error("Booking error:", err);
-      toast.error(err?.response?.data?.message || err.message || "Failed to initiate payment. Please try again.");
+      console.error("Booking error", err);
+      Swal.fire({
+        title: "Booking Failed",
+        text: err?.response?.data?.message || err.message || "An error occurred while booking. Please try again.",
+        icon: "error",
+        confirmButtonColor: "#0755E8",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -781,7 +905,7 @@ export default function BookSessionPage() {
                 navigate("/mentors");
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EAF2FF] hover:bg-[#D5E5FF] active:bg-[#C2DBFF] text-[#0755E8] border border-[#93B8FF]/80 hover:border-[#0755E8]/60 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-xs"
             title="Back to Interview Experts"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
@@ -871,6 +995,71 @@ export default function BookSessionPage() {
 
           {/* Section A: Scheduling (Date & Time) - Now Step 1 */}
           <div id="time-slots-section" className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs scroll-mt-20">
+            
+            {/* EXPERT LEVELS SELECTION (Matches User Image Style) */}
+            <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/90 mb-5 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <label className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    Expert Levels (Choose Multi-option)
+                  </label>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                    Select all levels you wish to support. Candidates can choose their preferred tier when booking you.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
+                  Tier: {selectedLevel}
+                </span>
+              </div>
+
+              <div className={`grid gap-2.5 sm:gap-3 ${expertLevels.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+                {expertLevels.map((level) => {
+                  const isChecked = selectedLevel === level;
+                  const price = levelPrices[level];
+
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setSelectedLevel(level)}
+                      className={`flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                        isChecked
+                          ? "border-[#0755E8] bg-blue-50/40 text-[#0755E8] shadow-sm font-semibold ring-2 ring-[#0755E8]/20"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="shrink-0 text-[#0755E8]">
+                          {isChecked ? (
+                            <CheckSquare className="w-5 h-5 text-[#0755E8]" />
+                          ) : (
+                            <Square className="w-5 h-5 text-slate-300" />
+                          )}
+                        </div>
+                        <span className={`text-sm font-bold truncate ${isChecked ? "text-[#0755E8]" : "text-slate-800"}`}>
+                          {level}
+                        </span>
+                      </div>
+
+                      <div className="text-right shrink-0 ml-2">
+                        {price != null ? (
+                          <span className={`text-xs font-black px-2.5 py-1 rounded-lg transition-all ${
+                            isChecked
+                              ? "bg-[#0755E8] text-white shadow-xs"
+                              : "bg-slate-100 text-slate-700"
+                          }`}>
+                            ₹{price}
+                          </span>
+                        ) : (
+                          <div className="w-10 h-5 bg-slate-200/70 rounded-md animate-pulse" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="mb-4">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] border border-[#93B8FF] text-[11px] font-bold text-[#0755E8] uppercase tracking-wider mb-1.5">
                 <Calendar className="w-3 h-3 text-[#0755E8]" />
@@ -1238,6 +1427,25 @@ export default function BookSessionPage() {
                     </p>
                   </div>
 
+                  {expertLevels.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Mentor Level &amp; Expertise Tier
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {expertLevels.map((lvl, i) => (
+                          <span
+                            key={i}
+                            className="px-2.5 py-1 bg-[#EAF2FF] border border-[#93B8FF]/40 rounded-lg text-xs font-bold text-[#0755E8] inline-flex items-center gap-1"
+                          >
+                            <Award className="w-3.5 h-3.5 text-[#0755E8]" />
+                            {lvl}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {profile.skills && profile.skills.length > 0 && (
                     <div className="pt-2 border-t border-slate-100">
                       <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
@@ -1339,6 +1547,18 @@ export default function BookSessionPage() {
                   <span className="text-slate-300">•</span>
                   <span className="text-[#0755E8] font-bold tabular-nums">₹{sessionFee} ({sessionDuration}m)</span>
                 </div>
+                {expertLevels.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {expertLevels.map((lvl, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full border border-[#93B8FF]/40 inline-flex items-center"
+                      >
+                        {lvl}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1347,10 +1567,7 @@ export default function BookSessionPage() {
               <span className="text-slate-500 font-medium">Verified Interview Expert</span>
               <button
                 type="button"
-                onClick={() => {
-                  const tabs = document.getElementById("mentor-reviews-tabs");
-                  if (tabs) tabs.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                onClick={() => setIsProfileModalOpen(true)}
                 className="text-[#0755E8] font-bold hover:underline cursor-pointer"
               >
                 View Full Profile &amp; Reviews
@@ -1537,6 +1754,253 @@ export default function BookSessionPage() {
         </div>
       </div>
     </div>
+
+    {/* ======================================================== */}
+    {/* EXPERT PROFILE & REVIEWS POPUP MODAL (WITH BLURRED BG)   */}
+    {/* ======================================================== */}
+    {isProfileModalOpen && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-expert-name"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200"
+        onClick={() => setIsProfileModalOpen(false)}
+      >
+        {/* Modal Window Container */}
+        <div
+          className="relative w-full max-w-2xl bg-white rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 font-sans text-left"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Top-Right Dismiss Button */}
+          <button
+            type="button"
+            onClick={() => setIsProfileModalOpen(false)}
+            className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-rose-100 hover:bg-rose-200 active:bg-rose-300 text-rose-600 hover:text-rose-800 border border-rose-200/80 hover:border-rose-300 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+            aria-label="Close modal"
+          >
+            <X className="w-4 h-4 stroke-[2.5]" />
+          </button>
+
+          {/* 1. TOP HEADER SECTION (Matches Image 1) */}
+          <div className="p-5 sm:p-6 bg-gradient-to-b from-[#f0f5ff]/70 via-white to-white border-b border-slate-100">
+            <div className="flex items-start gap-4">
+              {/* Rounded Avatar with Active Online Status Dot */}
+              <div className="relative w-15 h-15 sm:w-16 sm:h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-[#0755E8] text-lg sm:text-xl shadow-2xs">
+                {profile.avatar && !profile.avatar.includes("default-avatar") && !expertAvatarError ? (
+                  <img
+                    src={profile.avatar}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                    onError={() => setExpertAvatarError(true)}
+                  />
+                ) : (
+                  expertInitials
+                )}
+                <div className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+              </div>
+
+              {/* Expert Name, Role, Rating & Pricing */}
+              <div className="min-w-0 flex-1 pr-7">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 id="modal-expert-name" className="font-extrabold text-base sm:text-lg text-slate-900 leading-tight">
+                    {profile.name}
+                  </h2>
+                  {profile.isVerified && (
+                    <BadgeCheck className="w-4.5 h-4.5 text-white fill-[#0755E8] shrink-0" />
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  {profile.role}
+                </p>
+                <div className="flex items-center gap-2 mt-1.5 text-xs font-semibold text-slate-600 flex-wrap">
+                  <span className="flex items-center gap-0.5 text-amber-600 font-bold">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>{profile.rating || "4.9"}</span>
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span>{profile.experience}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-[#0755E8] font-bold tabular-nums">
+                    ₹{sessionFee} ({sessionDuration}m)
+                  </span>
+                </div>
+                {expertLevels.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {expertLevels.map((lvl, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full border border-[#93B8FF]/40 inline-flex items-center"
+                      >
+                        {lvl}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Sub-Bar: Verified Expert & Real-time Booking Status */}
+            <div className="mt-3.5 pt-3 border-t border-slate-100/90 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Verified Interview Expert</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Available for Bookings</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. TABS BAR (Matches Image 2) */}
+          <div className="flex items-center gap-2 px-5 sm:px-6 pt-3 border-b border-slate-100 bg-white">
+            <button
+              type="button"
+              onClick={() => setActiveTab("about")}
+              className={`px-4 py-2 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
+                activeTab === "about"
+                  ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/70 rounded-t-xl"
+                  : "text-slate-500 border-transparent hover:text-slate-800"
+              }`}
+            >
+              About Interview Expert
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("reviews")}
+              className={`px-4 py-2 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer ${
+                activeTab === "reviews"
+                  ? "text-[#0755E8] border-[#0755E8] bg-[#F0F5FF]/70 rounded-t-xl"
+                  : "text-slate-500 border-transparent hover:text-slate-800"
+              }`}
+            >
+              Reviews &amp; Ratings ({reviews.length})
+            </button>
+          </div>
+
+          {/* 3. MODAL SCROLLABLE CONTENT (Matches Image 2) */}
+          <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 max-h-[48vh]">
+            {activeTab === "about" ? (
+              <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <div>
+                  <h3 className="font-bold text-slate-900 mb-1.5 text-sm sm:text-base">
+                    About {profile.name}
+                  </h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    {(profile as any).bio || `${profile.name} is a verified ${profile.category} interview expert with ${profile.experience ? (profile.experience.toLowerCase().includes("fresher") ? "early-stage industry experience" : `${profile.experience} of industry experience`) : "industry experience"} specializing in mock interviews, career guidance, and practical technical preparation.`}
+                  </p>
+                </div>
+
+                {profile.skills && profile.skills.length > 0 && (
+                  <div className="pt-3 border-t border-slate-100">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                      CORE COMPETENCIES &amp; TECHNOLOGIES
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from(new Set(profile.skills)).map((skill, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-1 bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-200/60 transition-colors"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {expertLevels.length > 0 && (
+                  <div className="pt-3 border-t border-slate-100">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                      MENTOR LEVEL &amp; EXPERTISE TIER
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {expertLevels.map((lvl, i) => (
+                        <span
+                          key={i}
+                          className="px-2.5 py-1 bg-[#EAF2FF] border border-[#93B8FF]/40 rounded-xl text-xs font-bold text-[#0755E8] inline-flex items-center gap-1 shadow-2xs"
+                        >
+                          <Award className="w-3.5 h-3.5 text-[#0755E8]" />
+                          {lvl}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                    <span className="font-bold text-slate-700 block mb-0.5">Session Format</span>
+                    <span className="text-slate-500">1:1 Live Video Mock Interview with Real-Time Feedback</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                    <span className="font-bold text-slate-700 block mb-0.5">Deliverables</span>
+                    <span className="text-slate-500">Structured Scorecard &amp; Verified Completion Certificate</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reviewsLoading ? (
+                  <div className="py-8 text-center text-xs text-slate-500">Loading verified reviews...</div>
+                ) : reviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {reviews.map((r) => (
+                      <div key={r.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-slate-900">{r.name}</span>
+                            <span className="text-[11px] text-slate-400">• {r.role}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span>{r.rating}.0</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-600 italic">"{r.comment}"</p>
+                        <p className="text-[10px] text-slate-400 pt-1">{r.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-10 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                    <MessageCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs sm:text-sm font-bold text-slate-800">No reviews yet</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Be the first candidate to book a session and leave a review for {profile.name}!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 4. MODAL ACTION FOOTER */}
+          <div className="p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setIsProfileModalOpen(false)}
+              className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 hover:text-rose-900 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              Close
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileModalOpen(false);
+                const slots = document.getElementById("time-slots-section");
+                if (slots) slots.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer"
+            >
+              <span>Select Time Slot &amp; Book</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 );
 }

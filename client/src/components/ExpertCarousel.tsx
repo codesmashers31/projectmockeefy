@@ -33,7 +33,7 @@ export const ExpertCard = React.memo(function ExpertCard({ expert }: ExpertCardP
   return (
     <div 
       className="w-[320px] relative bg-gradient-to-br from-white via-white to-blue-50/30 border border-slate-200/60 rounded-[24px] p-6 flex flex-col shrink-0 snap-center hover:shadow-[0_20px_50px_rgba(0,79,203,0.1)] hover:border-blue-400/30 hover:-translate-y-2 transition-all duration-300 cursor-pointer group overflow-hidden"
-      onClick={() => navigate(`/book-session?expertId=${expert.id}#time-slots-section`, { state: { expertId: expert.id, profile: expert, scrollToSlots: true } })}
+      onClick={() => navigate(`/book-session?expertId=${expert.id}`, { state: { expertId: expert.id, profile: expert } })}
     >
       
       {/* Subtle animated gradient overlay */}

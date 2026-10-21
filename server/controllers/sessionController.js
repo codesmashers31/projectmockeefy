@@ -70,6 +70,28 @@ export const createSession = async (req, res) => {
 
         const session = await sessionService.createSession(sessionData);
 
+        const { formatSessionDateTime } = await import('../services/emailService.js');
+        const { createNotification } = await import('./notificationController.js');
+        const dt = formatSessionDateTime(start, end);
+
+        // Notify User
+        await createNotification({
+            userId: finalCandidateId,
+            type: 'booking_confirmed',
+            title: 'Meeting Scheduled Successfully! 🎉',
+            message: `Your meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+            metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+        });
+
+        // Notify Expert
+        await createNotification({
+            userId: expertId,
+            type: 'booking_confirmed',
+            title: 'New Session Booked!',
+            message: `A candidate has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+            metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
+        });
+
         // Send email notification to Interview Expert
         triggerBookingEmails({
             bookingDetails: {

@@ -75,7 +75,12 @@ export default function FeaturedExpertsLandingSection() {
         totalSessions: expert.metrics?.totalSessions || 15,
         category: cat,
         bio: expert.personalInformation?.bio || "",
-        level: expert.professionalDetails?.level || "Senior",
+        level: expert.professionalDetails?.level || expert.level || "Rising Mentor",
+        levels: (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels.length > 0)
+          ? expert.professionalDetails.levels
+          : (Array.isArray(expert.levels) && expert.levels.length > 0)
+          ? expert.levels
+          : [expert.professionalDetails?.level || expert.level || "Rising Mentor"],
         allTags: [cat, ...skills, expert.professionalDetails?.industry].filter(Boolean).map((s) => s.toString()),
       } as MentorProfile;
     });

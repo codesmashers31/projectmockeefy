@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import {
-  X, Calendar, Clock, Timer, Shield, Check, ArrowRight,
-  ChevronLeft, ChevronRight, Sparkles, AlertCircle
+  X, Calendar, Clock, Shield, Check, ArrowRight,
+  ChevronLeft, ChevronRight, BadgeCheck, CheckSquare, Square
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -18,6 +18,33 @@ import {
   Profile
 } from "../lib/bookSessionUtils";
 import { MentorProfile } from "./MentorJobCard";
+
+export const AVAILABLE_LEVELS = [
+  "Rising Mentor",
+  "Professional Mentor",
+  "Senior Mentor",
+  "Elite Mentor",
+  "FAANG Mentor",
+];
+
+const DEFAULT_CATEGORY_MATRIX: Record<string, Record<string, number>> = {
+  "IT": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3999 },
+  "HR": { "Rising Mentor": 399, "Professional Mentor": 799, "Senior Mentor": 1299, "Elite Mentor": 1999, "FAANG Mentor": 2999 },
+  "Business": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3499 },
+  "Design": { "Rising Mentor": 499, "Professional Mentor": 899, "Senior Mentor": 1399, "Elite Mentor": 2299, "FAANG Mentor": 3299 },
+  "AI": { "Rising Mentor": 999, "Professional Mentor": 1499, "Senior Mentor": 2499, "Elite Mentor": 3499, "FAANG Mentor": 4999 },
+  "Software Development": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3999 },
+  "Web Development": { "Rising Mentor": 499, "Professional Mentor": 899, "Senior Mentor": 1399, "Elite Mentor": 2299, "FAANG Mentor": 3499 },
+  "Mobile Development": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3999 },
+  "DevOps & Cloud": { "Rising Mentor": 599, "Professional Mentor": 1099, "Senior Mentor": 1699, "Elite Mentor": 2699, "FAANG Mentor": 4299 },
+  "Data Science & ML": { "Rising Mentor": 699, "Professional Mentor": 1199, "Senior Mentor": 1799, "Elite Mentor": 2899, "FAANG Mentor": 4499 },
+  "Cybersecurity": { "Rising Mentor": 599, "Professional Mentor": 1099, "Senior Mentor": 1699, "Elite Mentor": 2699, "FAANG Mentor": 4299 },
+  "Database": { "Rising Mentor": 499, "Professional Mentor": 899, "Senior Mentor": 1399, "Elite Mentor": 2299, "FAANG Mentor": 3499 },
+  "QA & Testing": { "Rising Mentor": 399, "Professional Mentor": 799, "Senior Mentor": 1299, "Elite Mentor": 1999, "FAANG Mentor": 2999 },
+  "Agile & Project Management": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3499 },
+  "System Design": { "Rising Mentor": 799, "Professional Mentor": 1299, "Senior Mentor": 1999, "Elite Mentor": 2999, "FAANG Mentor": 4999 },
+  "Full Stack Development (MERN)": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3999 }
+};
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -36,7 +63,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const { user } = useAuth();
 
   const [profile, setProfile] = useState<Profile | null>(() => {
-    if (initialProfile && "bio" in initialProfile) return initialProfile as Profile;
+    if (initialProfile) {
+      if ("availability" in initialProfile && (initialProfile as any).availability) {
+        return initialProfile as Profile;
+      }
+    }
     return null;
   });
   const [loading, setLoading] = useState(false);
@@ -46,8 +77,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Duration & Pricing
-  const [sessionDuration, setSessionDuration] = useState<number>(60);
+  // Mentor Tier Level Selection (Image 1 style)
+  const [selectedLevel, setSelectedLevel] = useState<string>("Rising Mentor");
+  const [levelPrices, setLevelPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState<boolean>(false);
+
+  // Duration & Pricing (default 30m / 60m matching UI image)
+  const [sessionDuration, setSessionDuration] = useState<number>(30);
   const [discountCode, setDiscountCode] = useState<string>("");
   const [appliedFreePromo, setAppliedFreePromo] = useState<boolean>(false);
   const [appliedPromoPercent, setAppliedPromoPercent] = useState<number>(0);
@@ -61,14 +97,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const fetchExpert = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`/api/expert/verified`);
-        const experts = res.data?.data || res.data || [];
-        const found = experts.find((e: any) => (e._id || e.userId) === expertId);
-        if (found) {
-          const mapped = mapExpertToProfile(found);
+        let expertData = null;
+        try {
+          const res = await axios.get(`/api/expert/public/profile/${expertId}`);
+          if (res.data?.success && res.data?.profile) {
+            expertData = res.data.profile;
+          }
+        } catch {
+          // Fallback to verified list if public profile not found
+        }
+
+        if (!expertData) {
+          const res = await axios.get(`/api/expert/verified`);
+          const experts = res.data?.data || res.data || [];
+          expertData = experts.find((e: any) => (e._id || e.userId) === expertId);
+        }
+
+        if (expertData) {
+          const mapped = mapExpertToProfile(expertData);
           setProfile(mapped);
           if (mapped.sessionDuration) {
-            setSessionDuration(mapped.sessionDuration);
+            setSessionDuration(mapped.sessionDuration === 60 ? 60 : 30);
           }
         }
       } catch (err) {
@@ -113,39 +162,95 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  // Available duration options
-  const durationOptions = useMemo(() => {
-    const defaultOptions = [45, 60];
-    if (!profile?.availability?.weekly) return defaultOptions;
-    const weekly = profile.availability.weekly;
-    const durations = new Set<number>();
-    Object.values(weekly).forEach((ranges: any) => {
-      if (Array.isArray(ranges)) {
-        ranges.forEach((range: { from: string; to: string }) => {
-          if (range.from && range.to) {
-            const [fh, fm] = range.from.split(":").map(Number);
-            const [th, tm] = range.to.split(":").map(Number);
-            let diff = (th * 60 + tm) - (fh * 60 + fm);
-            if (diff < 0) diff += 24 * 60;
-            if (diff > 0) durations.add(diff);
-          }
-        });
-      }
-    });
-    const arr = Array.from(durations).filter((d) => [30, 45, 60, 90].includes(d));
-    return arr.length > 0 ? arr.sort((a, b) => a - b) : defaultOptions;
-  }, [profile]);
-
-  // Price calculations
-  const rawPrice = useMemo(() => {
-    if (!profile) return 799;
-    if (typeof profile.price === "number") return profile.price;
-    if (typeof profile.price === "string") {
-      const match = profile.price.replace(/,/g, "").match(/(\d+(\.\d+)?)/);
-      if (match?.[1]) return Number(match[1]);
+  // Allowed duration options (matches user image: 30 Min & 60 Min)
+  const durationOptions = useMemo<number[]>(() => {
+    const prof = profile || initialProfile;
+    const allowed = (prof as any)?.availability?.allowedDurations;
+    if (Array.isArray(allowed) && allowed.length > 0) {
+      const filtered = allowed.filter((d: number) => d === 30 || d === 60);
+      if (filtered.length > 0) return filtered.sort((a: number, b: number) => a - b);
     }
-    return 799;
-  }, [profile]);
+    return [30, 60];
+  }, [profile, initialProfile]);
+
+  // Only the levels supported by this specific mentor (from profile.levels or profile.level)
+  const expertLevels = useMemo<string[]>(() => {
+    const prof = profile || initialProfile;
+    const levels = prof?.levels || (prof as any)?.professionalDetails?.levels;
+    if (Array.isArray(levels) && levels.length > 0) {
+      const valid = levels.filter((lvl: string) => AVAILABLE_LEVELS.includes(lvl));
+      if (valid.length > 0) return valid;
+    }
+    const single = prof?.level || (prof as any)?.professionalDetails?.level;
+    if (single && AVAILABLE_LEVELS.includes(single)) {
+      return [single];
+    }
+    return ["Rising Mentor"];
+  }, [profile, initialProfile]);
+
+  // Keep selectedLevel strictly within this mentor's supported levels
+  useEffect(() => {
+    if (expertLevels.length > 0 && !expertLevels.includes(selectedLevel)) {
+      setSelectedLevel(expertLevels[0]);
+    }
+  }, [expertLevels, selectedLevel]);
+
+  // Dynamic Level Prices loading from API (only for this mentor's levels)
+  useEffect(() => {
+    const currentExpertId = profile?.id || expertId || (initialProfile as any)?._id || (initialProfile as any)?.id;
+    if (!isOpen || !currentExpertId || expertLevels.length === 0) return;
+
+    let isMounted = true;
+    const fetchLevelPrices = async () => {
+      setLoadingPrices(true);
+      const category = profile?.category || (initialProfile as any)?.category || "IT";
+      const catDefaults = DEFAULT_CATEGORY_MATRIX[category] || DEFAULT_CATEGORY_MATRIX["IT"];
+      const newPrices: Record<string, number> = {};
+
+      await Promise.all(
+        expertLevels.map(async (lvl) => {
+          try {
+            const res = await axios.get("/api/pricing/calculate-price", {
+              params: {
+                expertId: currentExpertId,
+                duration: sessionDuration,
+                level: lvl
+              }
+            });
+            if (res.data?.success && res.data?.finalPrice != null) {
+              newPrices[lvl] = res.data.finalPrice;
+              return;
+            }
+          } catch (_) {}
+
+          const base = catDefaults[lvl] || 499;
+          newPrices[lvl] = sessionDuration === 30 ? base : Math.round(base * 1.8);
+        })
+      );
+
+      if (isMounted) {
+        setLevelPrices(newPrices);
+        setLoadingPrices(false);
+      }
+    };
+
+    fetchLevelPrices();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, expertId, profile?.id, profile?.category, sessionDuration, initialProfile, expertLevels]);
+
+  // Price calculations based on selectedLevel and duration
+  const rawPrice = useMemo(() => {
+    if (levelPrices[selectedLevel] != null) {
+      return levelPrices[selectedLevel];
+    }
+    const prof = profile || initialProfile;
+    const category = prof?.category || "IT";
+    const catDefaults = DEFAULT_CATEGORY_MATRIX[category] || DEFAULT_CATEGORY_MATRIX["IT"];
+    const base = catDefaults[selectedLevel] || 499;
+    return sessionDuration === 30 ? base : Math.round(base * 1.8);
+  }, [levelPrices, selectedLevel, profile, initialProfile, sessionDuration]);
 
   const displayPrice = useMemo(() => {
     let p = rawPrice;
@@ -158,7 +263,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const handleApplyPromo = () => {
     const code = discountCode.trim().toUpperCase();
     if (!code) return;
-    if (code === "FREE100" || code === "MOCKFREE" || code === "FREEMOCK") {
+    if (code === "FREE100" || code === "MOCKFREE" || code === "FREEMOCK" || code === "FREEMU001") {
       setAppliedFreePromo(true);
       setAppliedPromoPercent(100);
       Swal.fire({
@@ -316,16 +421,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           return slotDate < sEnd && slotEndDate > sStart;
         });
 
+        // If the slot is already booked, omit it completely so it is removed from available slots for all users
+        if (isBooked) {
+          currentMinutes += step;
+          continue;
+        }
+
         const slotStart = formatMinutesToTime(currentMinutes);
         const slotEnd = formatMinutesToTime(currentMinutes + duration);
         const timeStr = `${slotStart} - ${slotEnd}`;
-        const available = !isBooked;
 
         const existing = generatedSlots.find(s => s.time === timeStr);
-        if (existing) {
-          existing.available = existing.available || available;
-        } else {
-          generatedSlots.push({ time: timeStr, available });
+        if (!existing) {
+          generatedSlots.push({ time: timeStr, available: true });
         }
         currentMinutes += step;
       }
@@ -333,6 +441,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     return generatedSlots.sort((a, b) => a.time.localeCompare(b.time));
   }, [dates, selectedDate, profile?.availability, sessionDuration, bookedSessions]);
+
+  // Auto-deselect if the selected slot becomes unavailable or was booked
+  useEffect(() => {
+    if (selectedSlot && !currentSlots.some((s) => s.time === selectedSlot.time)) {
+      setSelectedSlot(null);
+    }
+  }, [currentSlots, selectedSlot]);
+
+  // Real-time listener for booked sessions across browser tabs / windows
+  useEffect(() => {
+    const handleSessionBooked = (e: any) => {
+      if (e.detail?.expertId === expertId) {
+        setBookedSessions((prev) => [
+          ...prev,
+          { startTime: e.detail.startTime, endTime: e.detail.endTime, status: "confirmed" },
+        ]);
+      }
+    };
+    window.addEventListener("session-booked", handleSessionBooked);
+    return () => window.removeEventListener("session-booked", handleSessionBooked);
+  }, [expertId]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -366,16 +495,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const startTime = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`).toISOString();
     const endTime = new Date(`${kolkataDateStr}T${parseToHHMM(endRaw)}:00+05:30`).toISOString();
 
+    const candidateId = user?.id || user?.userId || (user as any)?._id;
+
     return {
       expertId: profile.id || expertId,
+      candidateId,
+      userId: candidateId,
       expertName: profile.name,
-      expertEmail: profile.email || "",
-      expertPhone: profile.phone || "",
+      expertEmail: (profile as any).email || "",
+      expertPhone: (profile as any).phone || "",
       expertCategory: profile.category || "IT",
       userCategory: profile.category || "IT",
       sessionCategory: profile.category || "IT",
-      sessionType: "1:1 Mock Interview",
+      sessionType: "1:1 Live Mock Interview",
       sessionDuration: Number(sessionDuration),
+      level: selectedLevel,
       startTime,
       endTime,
       price: appliedFreePromo ? 0 : displayPrice,
@@ -383,6 +517,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       discount: appliedFreePromo ? rawPrice : rawPrice - displayPrice,
       status: "scheduled",
       isPremiumSession: !!(user?.isPremium),
+      notes: "1:1 Live Mock Interview",
     };
   };
 
@@ -408,6 +543,55 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const payload = buildPayload();
     if (!payload) return;
 
+    const selectedDateStr = dates[selectedDate]?.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const selectedTimeSlot = selectedSlot.time;
+
+    const onBookingSuccess = (successTitle: string, extraNote: string = "") => {
+      // 1. Instantly remove this timing slot from available slots locally
+      setBookedSessions((prev) => [
+        ...prev,
+        { startTime: payload.startTime, endTime: payload.endTime, status: "confirmed" },
+      ]);
+
+      // 2. Dispatch cross-component event so all screens/tabs update instantly
+      window.dispatchEvent(
+        new CustomEvent("session-booked", {
+          detail: {
+            expertId: profile?.id || expertId,
+            startTime: payload.startTime,
+            endTime: payload.endTime,
+          },
+        })
+      );
+
+      // 3. User notification: Toast
+      toast.success(`Meeting Scheduled! Your meeting has been scheduled on ${selectedDateStr} at ${selectedTimeSlot}.`);
+
+      // 4. User notification: Modal
+      Swal.fire({
+        title: `${successTitle} 🎉`,
+        html: `
+          <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
+            <p style="margin-bottom: 8px;">Your meeting has been scheduled on <strong>${selectedDateStr}</strong> at <strong>${selectedTimeSlot}</strong>.</p>
+            <p style="margin-bottom: 8px;"><strong>Mentor:</strong> ${profile?.name || "Mentor"}</p>
+            ${extraNote ? `<p style="margin-bottom: 8px; color: #475569;">${extraNote}</p>` : ""}
+            <p style="color: #059669; font-weight: 500;">✓ This timing slot is confirmed and removed from available slots.</p>
+          </div>
+        `,
+        icon: "success",
+        confirmButtonColor: "#0755E8",
+        confirmButtonText: "View My Bookings",
+      }).then(() => {
+        onClose();
+        navigate("/my-sessions");
+      });
+    };
+
     try {
       setIsProcessing(true);
 
@@ -415,39 +599,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (appliedFreePromo) {
         const res = await axios.post("/api/sessions/book-free", payload);
         if (res.data?.success) {
-          onClose();
-          Swal.fire({
-            title: "Booking Confirmed! 🎉",
-            text: "Your free session has been scheduled successfully.",
-            icon: "success",
-            confirmButtonColor: "#0755E8",
-          }).then(() => navigate("/my-sessions"));
+          onBookingSuccess("Meeting Scheduled!", "Free promotional session unlocked.");
         }
         return;
       }
 
       // 2. Premium user credit booking
-      if (user?.isPremium && (user.freeInterviewsCount ?? 0) > 0) {
+      if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
         const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
         if (res.data?.success) {
-          onClose();
-          Swal.fire({
-            title: "Booked with Credit!",
-            text: `Session confirmed. You have ${res.data.remainingCredits} credits left.`,
-            icon: "success",
-            confirmButtonColor: "#0755E8",
-          }).then(() => navigate("/my-sessions"));
+          onBookingSuccess("Meeting Scheduled!", `Booked with Premium Credit (${res.data.remainingCredits ?? 0} credits remaining).`);
         }
         return;
       }
 
-      // 3. Paid standard checkout: DIRECTLY OPEN RAZORPAY GATEWAY MODAL (NO /payment REDIRECT!)
+      // 3. Paid standard checkout via Razorpay modal
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error("Razorpay payment gateway failed to load. Please check your internet connection.");
       }
 
-      // Create order with Razorpay backend
       const orderResponse = await axios.post("/api/payment/create-order", {
         amount: displayPrice,
         currency: "INR",
@@ -484,21 +655,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 price: displayPrice,
                 topics: [profile?.category || "Technical Interview"],
                 duration: Number(sessionDuration),
+                level: selectedLevel,
                 notes: "Booked via Mockeefy Modal"
               }
             });
 
             if (verifyRes.data?.success) {
-              onClose();
-              Swal.fire({
-                title: "Session Booked Successfully! 🎉",
-                text: `Your mock interview with ${profile?.name || "the mentor"} is confirmed for ${dates[selectedDate]?.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at ${selectedSlot.time}.`,
-                icon: "success",
-                confirmButtonColor: "#0755E8",
-                confirmButtonText: "View My Bookings"
-              }).then(() => {
-                navigate("/my-sessions");
-              });
+              onBookingSuccess("Meeting Scheduled!");
             } else {
               throw new Error(verifyRes.data?.message || "Payment verification failed.");
             }
@@ -546,263 +709,402 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   if (!isOpen || typeof document === "undefined") return null;
 
+  const expertDisplayName = profile?.name || (initialProfile as any)?.name || "Interview Expert";
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="booking-modal-title"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[540px] max-h-[92vh] bg-white rounded-[26px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 text-left my-auto"
+        className="relative w-full max-w-2xl bg-white rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-left my-auto animate-in zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* MODAL HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white border-b border-slate-100">
+        {/* TOP MODAL HEADER: Expert Summary & Dismiss (X) */}
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#F0F5FF]/80 via-white to-white border-b border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-full bg-blue-100 text-[#0755E8] font-black text-sm flex items-center justify-center shrink-0 border-2 border-white shadow-xs overflow-hidden">
+            <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-[#0755E8] text-base shadow-2xs">
               {profile?.avatar ? (
-                <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
+                <img src={profile.avatar} alt={expertDisplayName} className="w-full h-full object-cover" />
               ) : (
-                (profile?.name || "EX").slice(0, 2).toUpperCase()
+                expertDisplayName.slice(0, 2).toUpperCase()
+              )}
+              <div className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="font-extrabold text-sm sm:text-base text-slate-900 leading-tight truncate">
+                  {expertDisplayName}
+                </h3>
+                {(profile?.isVerified ?? (initialProfile as any)?.isVerified) && (
+                  <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8] shrink-0" />
+                )}
+              </div>
+              <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                {profile?.role || (initialProfile as any)?.role || "Interview Expert"} • <span className="text-[#0755E8] font-bold">₹{displayPrice} ({sessionDuration}m)</span>
+              </p>
+              {expertLevels.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {expertLevels.map((lvl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedLevel(lvl)}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center transition-all cursor-pointer ${
+                        selectedLevel === lvl
+                          ? "bg-[#0755E8] text-white border-[#0755E8] shadow-xs"
+                          : "text-[#0755E8] bg-[#EAF2FF] border-[#93B8FF]/40 hover:bg-[#dbe7fd]"
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-base font-black text-slate-900 tracking-tight truncate leading-tight">
-                  Book Session with {profile?.name || "Expert"}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-500 font-bold truncate">
-                {profile?.role || "Tech Expert"} · {profile?.company || "Top Tech"}
-              </p>
-            </div>
           </div>
+
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer focus:outline-none shrink-0"
+            className="w-8 h-8 rounded-full bg-rose-100 hover:bg-rose-200 active:bg-rose-300 text-rose-600 hover:text-rose-800 border border-rose-200/80 hover:border-rose-300 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs"
             aria-label="Close booking modal"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* MODAL BODY (SCROLLABLE) */}
+        {/* MODAL BODY: EXACT STEP 1 PROCESS FROM USER IMAGE */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
           
-          {/* Duration Selector & Price Preview */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-black tracking-wider text-slate-400 uppercase">DURATION</span>
-              <div className="flex items-center gap-1.5 mt-1">
-                {durationOptions.map((dur) => (
-                  <button
-                    key={dur}
-                    type="button"
-                    onClick={() => {
-                      setSessionDuration(dur);
-                      setSelectedSlot(null);
-                    }}
-                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      sessionDuration === dur
-                        ? "bg-[#0755E8] text-white shadow-xs"
-                        : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
-                    }`}
-                  >
-                    {dur} Mins
-                  </button>
-                ))}
+          {/* 1. EXPERT LEVELS SELECTION (Matches User Image Style) */}
+          <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/90 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <label className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  Expert Levels (Choose Multi-option)
+                </label>
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                  Select all levels you wish to support. Candidates can choose their preferred tier when booking you.
+                </p>
               </div>
+              <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
+                Tier: {selectedLevel}
+              </span>
             </div>
 
-            <div className="text-right">
-              <span className="text-[10px] font-black tracking-wider text-slate-400 uppercase">TOTAL</span>
-              <div className="text-xl font-black text-[#0755E8] leading-none mt-1">
-                {appliedFreePromo ? "Free" : `₹${displayPrice.toLocaleString("en-IN")}`}
-              </div>
-            </div>
-          </div>
+            <div className={`grid gap-2.5 sm:gap-3 ${expertLevels.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+              {expertLevels.map((level) => {
+                const isChecked = selectedLevel === level;
+                const price = levelPrices[level];
 
-          {/* Promo Code Row */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Promo code (e.g. MOCK20)"
-              value={discountCode}
-              onChange={(e) => setDiscountCode(e.target.value)}
-              className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0755E8]"
-            />
-            <button
-              type="button"
-              onClick={handleApplyPromo}
-              className="px-4 py-2 bg-blue-50 text-[#0755E8] hover:bg-blue-100 font-extrabold text-xs rounded-xl transition-colors cursor-pointer"
-            >
-              Apply
-            </button>
-          </div>
-
-          {/* Calendar: Month & Date Picker */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-black tracking-wider text-slate-700 uppercase">PICK A DATE</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={prevMonth}
-                  disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
-                  className="w-6 h-6 rounded-md hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-xs font-black text-slate-800">
-                  {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                </span>
-                <button
-                  type="button"
-                  onClick={nextMonth}
-                  className="w-6 h-6 rounded-md hover:bg-slate-100 flex items-center justify-center text-slate-600"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Date buttons carousel */}
-            <div ref={carouselRef} className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {dates.map((date, idx) => {
-                const isSelected = selectedDate === idx;
-                const isToday = new Date().toDateString() === date.toDateString();
                 return (
                   <button
-                    key={idx}
+                    key={level}
                     type="button"
-                    onClick={() => {
-                      setSelectedDate(idx);
-                      setSelectedSlot(null);
-                    }}
-                    className={`min-w-[56px] text-center px-1 py-2 rounded-xl border transition-all cursor-pointer shrink-0 ${
-                      isSelected
-                        ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs"
-                        : "bg-white border-slate-200 text-slate-700 hover:border-blue-200"
+                    onClick={() => setSelectedLevel(level)}
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      isChecked
+                        ? "border-[#0755E8] bg-blue-50/40 text-[#0755E8] shadow-sm font-semibold ring-2 ring-[#0755E8]/20"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80"
                     }`}
                   >
-                    <div className="text-[9px] font-extrabold uppercase opacity-85">
-                      {isToday ? "TODAY" : date.toLocaleDateString("en-US", { weekday: "short" })}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="shrink-0 text-[#0755E8]">
+                        {isChecked ? (
+                          <CheckSquare className="w-5 h-5 text-[#0755E8]" />
+                        ) : (
+                          <Square className="w-5 h-5 text-slate-300" />
+                        )}
+                      </div>
+                      <span className={`text-sm font-bold truncate ${isChecked ? "text-[#0755E8]" : "text-slate-800"}`}>
+                        {level}
+                      </span>
                     </div>
-                    <div className="font-black text-base my-0.5 leading-none">{date.getDate()}</div>
-                    <div className="text-[8.5px] font-bold uppercase opacity-85">
-                      {date.toLocaleDateString("en-US", { month: "short" })}
+
+                    <div className="text-right shrink-0 ml-2">
+                      {price != null ? (
+                        <span className={`text-xs font-black px-2.5 py-1 rounded-lg transition-all ${
+                          isChecked
+                            ? "bg-[#0755E8] text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700"
+                        }`}>
+                          ₹{price}
+                        </span>
+                      ) : (
+                        <div className="w-10 h-5 bg-slate-200/70 rounded-md animate-pulse" />
+                      )}
                     </div>
                   </button>
                 );
               })}
             </div>
           </div>
-
-          {/* Time Slots Grid */}
+          
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-black tracking-wider text-slate-700 uppercase">AVAILABLE SLOTS</span>
-              <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                {currentSlots.length} Slots
-              </span>
-            </div>
+            <div className="flex items-start justify-between flex-wrap gap-3">
+              <div>
+                <h2 id="booking-modal-title" className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                  Select Date &amp; Available Time Slot
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  All session times are displayed in your local India Standard Time (IST / GMT+5:30).
+                </p>
+              </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto pr-1">
-              {currentSlots.length > 0 ? (
-                currentSlots.map((slot, idx) => {
-                  const isSelected = selectedSlot?.time === slot.time;
-                  const isUnavailable = !slot.available;
-                  return (
+              {/* Duration Toggle Buttons ([30 Min] [60 Min]) */}
+              {durationOptions.length > 0 && (
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+                  {durationOptions.map((dur) => (
                     <button
-                      key={idx}
+                      key={dur}
                       type="button"
-                      disabled={isUnavailable}
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-extrabold border transition-all ${
-                        isUnavailable
-                          ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-                          : isSelected
-                            ? "bg-blue-50 border-[#0755E8] text-[#0755E8] shadow-xs"
-                            : "bg-white border-slate-200 text-slate-700 hover:border-blue-300 cursor-pointer"
+                      onClick={() => {
+                        setSessionDuration(dur);
+                        setSelectedSlot(null);
+                      }}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        sessionDuration === dur
+                          ? "bg-white text-[#0755E8] shadow-xs"
+                          : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
-                      <Clock className="w-3 h-3 text-[#0755E8] shrink-0" />
-                      <span className="truncate">{slot.time}</span>
+                      {dur} Min
                     </button>
-                  );
-                })
-              ) : (
-                <div className="col-span-full py-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  <AlertCircle className="w-5 h-5 text-slate-400 mx-auto mb-1" />
-                  <p className="text-xs font-black text-slate-700">No slots available for this date</p>
-                  <p className="text-[10.5px] text-slate-400">Please choose another date</p>
+                  ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Selected Slot Summary Alert */}
-          {selectedSlot && (
-            <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                <div className="leading-tight">
-                  <span className="text-xs font-black text-emerald-950">
-                    {dates[selectedDate]?.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                  </span>
-                  <span className="text-xs font-extrabold text-emerald-700 ml-1.5">
-                    at {selectedSlot.time}
-                  </span>
-                </div>
-              </div>
+          {/* 2. SELECT DATE Header & Month Picker Controls */}
+          <div className="flex items-center justify-between py-2 border-b border-slate-100 mb-2">
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              SELECT DATE
+            </span>
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setSelectedSlot(null)}
-                className="text-[10.5px] font-bold text-emerald-700 hover:underline"
+                onClick={prevMonth}
+                disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
+                className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                title="Previous month"
               >
-                Change
+                <ChevronLeft className="w-4 h-4" />
               </button>
+              <span className="text-xs font-bold text-slate-800 min-w-[110px] text-center">
+                {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </span>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
+                title="Next month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Date Carousel (Matches User Image Cards: TODAY 21 OCT, SUN 25 OCT, etc.) */}
+          <div
+            ref={carouselRef}
+            className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-none"
+          >
+            {dates.length > 0 ? (
+              dates.map((date, index) => {
+                const isToday = new Date().toDateString() === date.toDateString();
+                const isSelected = selectedDate === index;
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(index);
+                      setSelectedSlot(null);
+                    }}
+                    className={`min-w-[66px] text-center px-2 py-2.5 rounded-2xl border transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/20"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
+                      {isToday ? "TODAY" : date.toLocaleDateString("en-US", { weekday: "short" })}
+                    </div>
+                    <div className="font-extrabold text-lg my-0.5 tabular-nums leading-none">
+                      {date.getDate()}
+                    </div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider opacity-85">
+                      {date.toLocaleDateString("en-US", { month: "short" })}
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="w-full py-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                No availability dates configured for this month.
+              </div>
+            )}
+          </div>
+
+          {/* 4. AVAILABLE SLOTS FOR Header with Badge */}
+          <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              AVAILABLE SLOTS FOR {dates[selectedDate] ? dates[selectedDate].toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toUpperCase() : ""}
+            </span>
+            <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
+              {currentSlots.filter(s => s.available).length} slots available
+            </span>
+          </div>
+
+          {/* 5. Time Slots Grid OR Empty State Box (Matches User Image Dotted Container) */}
+          {currentSlots.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+              {currentSlots.map((slot, index) => {
+                const isSelected = selectedSlot?.time === slot.time;
+                const isUnavailable = !slot.available;
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    disabled={isUnavailable}
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border outline-none ${
+                      isUnavailable
+                        ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-75"
+                        : isSelected
+                        ? "bg-[#0755E8] border-[#0755E8] text-white shadow-sm ring-2 ring-[#0755E8]/25 cursor-pointer"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-[#0755E8] hover:bg-[#F5F8FF] hover:text-[#0755E8] cursor-pointer"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : isUnavailable ? "text-slate-300" : "text-[#0755E8]"}`} />
+                      <span className={`whitespace-nowrap tabular-nums font-semibold text-xs ${
+                        isUnavailable ? "line-through text-slate-400" : isSelected ? "text-white font-bold" : "text-slate-800"
+                      }`}>
+                        {slot.time}
+                      </span>
+                    </div>
+                    {isUnavailable ? (
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded shrink-0">
+                        Booked
+                      </span>
+                    ) : isSelected ? (
+                      <Check className="w-4 h-4 text-white stroke-[3] shrink-0" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-8 text-center bg-slate-50/60 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-6">
+              <Calendar className="w-10 h-10 text-slate-400 mb-2" />
+              <p className="text-sm font-bold text-slate-800">No time slots available on this day</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                {expertDisplayName} has no remaining openings for this date. Please select another date from the carousel above.
+              </p>
+            </div>
+          )}
+
+          {/* 6. Selected Slot Summary Bar & Optional Promo */}
+          {selectedSlot && (
+            <div className="border-t border-slate-100 pt-4 mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold text-emerald-950 truncate">
+                    {dates[selectedDate]?.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at {selectedSlot.time} ({sessionDuration}m)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSlot(null)}
+                  className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer shrink-0 ml-2"
+                >
+                  Change
+                </button>
+              </div>
+
+              {/* Promo code row */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Promo code (optional)"
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0755E8]"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  className="px-3.5 py-2 bg-[#EAF2FF] text-[#0755E8] hover:bg-[#dbe7fd] font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
+
+              {appliedFreePromo && (
+                <div className="flex items-center justify-between text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                  <span>Free Promo Applied (100% off)</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppliedFreePromo(false);
+                      setAppliedPromoPercent(0);
+                      setDiscountCode("");
+                    }}
+                    className="text-red-500 hover:underline text-[11px]"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* MODAL FOOTER ACTION */}
-        <div className="p-4 sm:p-5 bg-white border-t border-slate-100 flex flex-col gap-2">
+        {/* MODAL ACTION FOOTER: Allocate Meeting & Book */}
+        <div className="p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={handleBooking}
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl border border-slate-300/90 bg-slate-200 hover:bg-slate-300 active:bg-slate-400/80 text-slate-800 hover:text-slate-950 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
             disabled={!selectedSlot || isProcessing}
-            className={`w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md ${
+            onClick={handleBooking}
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm ${
               selectedSlot && !isProcessing
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/25 hover:shadow-blue-500/35 cursor-pointer active:scale-[0.99]"
-                : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                ? "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white cursor-pointer shadow-blue-500/20"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
             }`}
           >
             {isProcessing ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : selectedSlot ? (
+            ) : (
               <>
                 <span>
-                  {appliedFreePromo
+                  {!selectedSlot
+                    ? "Select an Available Slot"
+                    : appliedFreePromo
                     ? "Confirm Free Session"
                     : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
-                      ? `Book with Credit (${user.freeInterviewsCount} left)`
-                      : `Confirm & Pay ₹${displayPrice.toLocaleString("en-IN")}`
-                  }
+                    ? `Book with Credit (${user.freeInterviewsCount} left)`
+                    : `Confirm & Allocate Meeting — ₹${displayPrice}`}
                 </span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </>
-            ) : (
-              "Select a Date & Time Slot"
             )}
           </button>
-
-          <div className="flex items-center justify-center gap-3 text-[10px] font-bold text-slate-400">
-            <span className="flex items-center gap-1">
-              <Shield className="w-3 h-3 text-emerald-500" /> Secure 256-bit Booking
-            </span>
-            <span>·</span>
-            <span>24h Free Reschedule / Cancellation</span>
-          </div>
         </div>
       </div>
     </div>,

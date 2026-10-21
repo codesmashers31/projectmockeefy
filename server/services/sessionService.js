@@ -200,7 +200,35 @@ export const createSession = async (sessionData) => {
 };
 
 export const getSessionsByExpertId = async (expertId) => {
-    return await Session.find({ expertId });
+    let expertIds = [expertId];
+    if (expertId) {
+        expertIds.push(expertId.toString());
+        try {
+            const ExpertDetails = (await import('../models/expertModel.js')).default;
+            const mongoose = (await import('mongoose')).default;
+            if (mongoose.Types.ObjectId.isValid(expertId)) {
+                const oid = new mongoose.Types.ObjectId(expertId);
+                const expert = await ExpertDetails.findOne({ $or: [{ _id: oid }, { userId: oid }] }).lean();
+                if (expert) {
+                    if (expert._id) {
+                        expertIds.push(expert._id);
+                        expertIds.push(expert._id.toString());
+                    }
+                    if (expert.userId) {
+                        expertIds.push(expert.userId);
+                        expertIds.push(expert.userId.toString());
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+    return await Session.find({
+        $or: [
+            { expertId: { $in: expertIds } },
+            { "expert.id": { $in: expertIds } }
+        ],
+        status: { $ne: 'cancelled' }
+    }).lean();
 };
 
 export const getSessionsByCandidateId = async (candidateId) => {

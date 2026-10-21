@@ -225,6 +225,23 @@ export const mapExpertToProfile = (expert: any): Profile => {
     const industry = expert.professionalDetails?.industry || category;
     const avatar = getProfileImageUrl(expert.profileImage);
 
+    const normalizeLevel = (lvl?: string): string => {
+        if (!lvl) return "Rising Mentor";
+        const lower = String(lvl).toLowerCase().trim();
+        if (lower === "beginner") return "Rising Mentor";
+        if (lower === "intermediate") return "Professional Mentor";
+        if (lower === "advanced") return "Senior Mentor";
+        return String(lvl).trim();
+    };
+
+    const rawLevels = (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels.length > 0)
+        ? expert.professionalDetails.levels
+        : (Array.isArray(expert.levels) && expert.levels.length > 0)
+        ? expert.levels
+        : (expert.professionalDetails?.level ? [expert.professionalDetails.level] : (expert.level ? [expert.level] : ["Rising Mentor"]));
+    const levels = Array.from(new Set(rawLevels.map(normalizeLevel)));
+    const level = normalizeLevel(expert.professionalDetails?.level || expert.level || levels[0] || "Rising Mentor");
+
     return {
         id: expert._id || expert.userId,
         name: expert.personalInformation?.userName || "Expert",
@@ -233,10 +250,8 @@ export const mapExpertToProfile = (expert: any): Profile => {
         avatar, location, mode, reviews, responseTime, successRate,
         isVerified: expert.status === "Active",
         availableTime, languages,
-        level: expert.professionalDetails?.level || "Rising Mentor", // Mapped level
-        levels: expert.professionalDetails?.levels && expert.professionalDetails.levels.length > 0 
-            ? expert.professionalDetails.levels 
-            : [expert.professionalDetails?.level || "Rising Mentor"],
+        level,
+        levels,
         logo: avatar, // Mapping avatar to logo for compatibility
         openings: 5, // Default openings
         availability: expert.availability // Passing raw availability
