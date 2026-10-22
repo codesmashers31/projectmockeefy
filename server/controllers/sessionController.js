@@ -84,16 +84,17 @@ export const createSession = async (req, res) => {
         });
 
         // Notify Expert
+        const expertUserId = expert.userId || expertId;
         await createNotification({
-            userId: expertId,
+            userId: expertUserId,
             type: 'booking_confirmed',
-            title: 'New Session Booked!',
+            title: 'New Session Booked & Payment Received! 🎉',
             message: `A candidate has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
         });
 
         // Send email notification to Interview Expert
-        triggerBookingEmails({
+        await triggerBookingEmails({
             bookingDetails: {
                 expertId,
                 candidateId: finalCandidateId,
@@ -102,6 +103,7 @@ export const createSession = async (req, res) => {
                 topics: topics || [],
                 duration: durationMinutes,
                 notes: req.body.notes || "",
+                level: selectedLevel,
             },
             sessionId: session.sessionId,
             meetingLink: sessionData.meetingLink,

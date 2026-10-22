@@ -119,16 +119,23 @@ const PaymentPage: React.FC = () => {
         razorpay_payment_id: response.razorpay_payment_id,
         razorpay_signature: response.razorpay_signature,
         paymentType: upgradeType === 'premium' ? 'subscription' : 'booking',
+        user: user,
         bookingDetails: upgradeType === 'premium' ? null : {
           expertId: bookingDetails?.expertId,
-          candidateId: user?.id || user?.userId,
+          expertName: bookingDetails?.expertName,
+          expertEmail: bookingDetails?.expertEmail,
+          candidateId: user?.id || user?.userId || (user as any)?._id,
+          candidateName: user?.name,
+          candidateEmail: user?.email,
+          candidatePhone: user?.personalInfo?.phone || user?.phone,
           startTime: startTimeISO,
           endTime: endTimeISO,
           price: orderSummary.total,
           topics: Array.isArray(bookingDetails?.topics) && bookingDetails.topics.length
             ? bookingDetails.topics
             : [bookingDetails?.skill || bookingDetails?.category || "General Mock Interview"],
-          duration: bookingDetails?.duration,
+          duration: bookingDetails?.duration || 30,
+          level: bookingDetails?.level,
           notes: "Booked via Payment Page"
         }
       });
@@ -237,15 +244,21 @@ const PaymentPage: React.FC = () => {
     }
     return {
       expertId: bookingDetails?.expertId,
+      expertName: bookingDetails?.expertName,
+      expertEmail: bookingDetails?.expertEmail,
       candidateId: user?.id || user?.userId || (user as any)?._id,
+      candidateName: user?.name,
+      candidateEmail: user?.email,
+      candidatePhone: user?.personalInfo?.phone || user?.phone,
       startTime: startTimeISO,
       endTime: endTimeISO,
       topics: Array.isArray(bookingDetails?.topics) && bookingDetails.topics.length
         ? bookingDetails.topics
         : [bookingDetails?.skill || bookingDetails?.category || "General Mock Interview"],
-      duration: bookingDetails?.duration,
+      duration: bookingDetails?.duration || 30,
       skill: bookingDetails?.skill,
       category: bookingDetails?.category,
+      level: bookingDetails?.level,
       notes: appliedFreePromo 
         ? `Booked with promo code: ${discountCode.trim().toUpperCase()}` 
         : "Booked with free promo code",

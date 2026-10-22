@@ -9,7 +9,7 @@ import {
   getCurrentCompany,
   getJobTitle,
 } from "../lib/expertUtils";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import {
   Search,
   Users,
@@ -233,6 +233,7 @@ interface FindMentorProps {
 }
 
 export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMentorProps = {}) {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(initialQ);
@@ -366,9 +367,57 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
           : (Array.isArray(expert.levels) && expert.levels.length > 0)
           ? expert.levels
           : [expert.professionalDetails?.level || expert.level || "Rising Mentor"],
+        availability: expert.availability,
+        rawExpert: expert,
       };
     });
   }, [expertsData]);
+
+  // Scroll to target expert card if navigated back from booking
+  useEffect(() => {
+    const state = location.state as any;
+    const targetExpertId = state?.scrollToExpertId;
+    const targetExpertName = state?.scrollToExpertName;
+
+    if (!targetExpertId && !targetExpertName) return;
+    if (isLoading) return;
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      const el = (targetExpertId ? document.getElementById(`expert-card-${targetExpertId}`) : null) ||
+        (targetExpertName ? document.querySelector(`[data-expert-name="${targetExpertName}"]`) : null);
+
+      if (el) {
+        clearInterval(interval);
+        // Smoothly bring the card into view centered vertically
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        // If card is inside a horizontal scroll container, also scroll container
+        const horizontalParent = el.closest(".overflow-x-auto") as HTMLElement | null;
+        if (horizontalParent) {
+          const cardLeft = (el as HTMLElement).offsetLeft;
+          horizontalParent.scrollTo({
+            left: Math.max(0, cardLeft - 20),
+            behavior: "smooth",
+          });
+        }
+
+        // Clean up navigation state so it doesn't linger
+        window.history.replaceState({}, document.title);
+      } else if (attempts >= 15) {
+        clearInterval(interval);
+        window.history.replaceState({}, document.title);
+        // Fallback: scroll to all experts container if specific card not found
+        const container = document.getElementById("all-experts-categories");
+        if (container) {
+          container.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [location.state, isLoading]);
 
   // Unique Categories and Companies
   const categories = useMemo(() => {
@@ -1274,7 +1323,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </div>
 
           {/* DIV CARD: All Experts Categories & Content */}
-          <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4">
+          <div id="all-experts-categories" className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4 scroll-mt-24">
             {/* Decorative gradient glow */}
             <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />

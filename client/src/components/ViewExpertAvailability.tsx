@@ -64,9 +64,17 @@ const ViewExpertAvailability = () => {
       const data = res.data.data;
       const weekly = data.weekly || {};
 
+      const timeToMinutes = (timeStr: string) => {
+        if (!timeStr) return 0;
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+      };
+
       Object.keys(weekly).forEach(day => {
         if (Array.isArray(weekly[day])) {
-          weekly[day] = weekly[day].map((slot: any) => ({ from: slot.from, to: slot.to }));
+          weekly[day] = weekly[day]
+            .map((slot: any) => ({ from: slot.from, to: slot.to }))
+            .sort((a: any, b: any) => timeToMinutes(a.from) - timeToMinutes(b.from));
         }
       });
 

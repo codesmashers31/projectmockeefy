@@ -82,6 +82,8 @@ export default function FeaturedExpertsLandingSection() {
           ? expert.levels
           : [expert.professionalDetails?.level || expert.level || "Rising Mentor"],
         allTags: [cat, ...skills, expert.professionalDetails?.industry].filter(Boolean).map((s) => s.toString()),
+        availability: expert.availability,
+        rawExpert: expert,
       } as MentorProfile;
     });
   }, [expertsData]);
