@@ -67,6 +67,12 @@ const RecommendedMentors = () => {
             skills: e.skillsAndExpertise?.domains || [],
             experience: exp,
             totalSessions: e.metrics?.totalSessions || 0,
+            availability: e.availability,
+            rawExpert: e,
+            level: e.professionalDetails?.level || e.level || "Rising Mentor",
+            levels: (Array.isArray(e.professionalDetails?.levels) && e.professionalDetails.levels.length > 0)
+              ? e.professionalDetails.levels
+              : [e.professionalDetails?.level || e.level || "Rising Mentor"],
         };
     }).slice(0, 10); // Limit to top 10
 

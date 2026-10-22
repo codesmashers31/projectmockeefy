@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
@@ -136,8 +136,8 @@ export default function BookSessionPage() {
   useEffect(() => {
     if (queryExpertId) {
       sessionStorage.setItem("current_booking_expert_id", queryExpertId);
-      // Strip query parameter from address bar
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Strip query parameter from address bar while preserving router history state
+      window.history.replaceState(window.history.state, document.title, window.location.pathname);
     } else if (expertId) {
       sessionStorage.setItem("current_booking_expert_id", expertId);
     }
@@ -205,21 +205,38 @@ export default function BookSessionPage() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // Fetch expert profile
+  // Fetch expert profile with instant verified fallback
   const { data: profile, isLoading: isQueryLoading, error: queryError } = useQuery<Profile | null>({
     queryKey: ["expertProfile", expertId],
     queryFn: async () => {
       if (!expertId) return null;
-      const response = await axios.get(`/api/expert/public/profile/${expertId}`);
-      if (response.data?.success && response.data?.profile) {
-        return mapExpertToProfile(response.data.profile);
+      try {
+        const response = await axios.get(`/api/expert/public/profile/${expertId}`);
+        if (response.data?.success && response.data?.profile) {
+          return mapExpertToProfile(response.data.profile);
+        }
+      } catch (err) {
+        console.warn("Public profile endpoint error, trying verified list fallback", err);
       }
+
+      // Fallback to verified experts list
+      try {
+        const res = await axios.get(`/api/expert/verified`);
+        const experts = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        const matched = experts.find((e: any) => (e._id || e.userId) === expertId);
+        if (matched) {
+          return mapExpertToProfile(matched);
+        }
+      } catch (fallbackErr) {
+        console.error("Verified fallback failed", fallbackErr);
+      }
+
       throw new Error("Expert profile not found");
     },
-    initialData: existingProfile || undefined,
+    initialData: existingProfile && (existingProfile as any).availability ? existingProfile : undefined,
     enabled: !!expertId,
     staleTime: 2 * 60 * 1000,
-    refetchOnMount: "always",
+    retry: 1,
   });
 
   const loading = isQueryLoading && !profile;
@@ -349,9 +366,78 @@ export default function BookSessionPage() {
 
   // Calendar dates in Asia/Kolkata timezone
   const [currentMonth, setCurrentMonth] = useState<Date>(getInitialKolkataMonth);
-  const [selectedDate, setSelectedDate] = useState<number>(0);
+  const [selectedDateStr, setSelectedDateStr] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
+
+  const [canScrollCarouselLeft, setCanScrollCarouselLeft] = useState(false);
+  const [canScrollCarouselRight, setCanScrollCarouselRight] = useState(false);
+
+  const checkCarouselScroll = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setCanScrollCarouselLeft(el.scrollLeft > 4);
+    setCanScrollCarouselRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  const scrollCarousel = (direction: "left" | "right") => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const scrollAmount = 210;
+    el.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth"
+    });
+    setTimeout(checkCarouselScroll, 320);
+  };
+
+  // Drag-to-flick mouse handlers
+  const isDraggingCarousel = useRef(false);
+  const startDragX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const hasDragged = useRef(false);
+
+  const handleCarouselMouseDown = (e: React.MouseEvent) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    isDraggingCarousel.current = true;
+    hasDragged.current = false;
+    startDragX.current = e.pageX - el.offsetLeft;
+    scrollLeftStart.current = el.scrollLeft;
+    el.style.scrollBehavior = "auto";
+  };
+
+  const handleCarouselMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingCarousel.current) return;
+    const el = carouselRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = x - startDragX.current;
+    if (Math.abs(walk) > 4) {
+      hasDragged.current = true;
+    }
+    el.scrollLeft = scrollLeftStart.current - walk;
+    checkCarouselScroll();
+  };
+
+  const handleCarouselMouseUpOrLeave = () => {
+    if (!isDraggingCarousel.current) return;
+    isDraggingCarousel.current = false;
+    const el = carouselRef.current;
+    if (el) {
+      el.style.scrollBehavior = "smooth";
+      checkCarouselScroll();
+    }
+  };
+
+  const handleCarouselWheel = (e: React.WheelEvent) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    if (e.deltaY !== 0) {
+      el.scrollLeft += e.deltaY;
+      checkCarouselScroll();
+    }
+  };
 
   // Fetch booked sessions & reviews
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -399,6 +485,8 @@ export default function BookSessionPage() {
 
   // Compute valid dates for currentMonth
   const dates = useMemo(() => {
+    if (!profile?.availability) return [];
+
     const parts = getKolkataTimeParts(currentMonth);
     const year = parts.year;
     const month = parts.month;
@@ -406,8 +494,8 @@ export default function BookSessionPage() {
     const allDates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
 
     const today = getKolkataToday();
-    const weekly = profile?.availability?.weekly || {};
-    const breakDates = profile?.availability?.breakDates || [];
+    const weekly = profile.availability.weekly || {};
+    const breakDates = profile.availability.breakDates || [];
 
     const activeDays = Object.keys(weekly).filter(day => {
       const slots = weekly[day];
@@ -432,11 +520,31 @@ export default function BookSessionPage() {
       }
       return true;
     });
-  }, [currentMonth, profile?.availability?.weekly, profile?.availability?.breakDates]);
+  }, [currentMonth, profile?.availability]);
+
+  // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
+  const activeDate = useMemo(() => {
+    if (!dates || dates.length === 0) return null;
+    if (selectedDateStr) {
+      const found = dates.find(d => getKolkataDateString(d) === selectedDateStr);
+      if (found) return found;
+    }
+    return dates[0];
+  }, [dates, selectedDateStr]);
+
+  // Synchronize selectedDateStr with available dates
+  useEffect(() => {
+    if (dates.length > 0) {
+      const exists = dates.some(d => getKolkataDateString(d) === selectedDateStr);
+      if (!exists) {
+        setSelectedDateStr(getKolkataDateString(dates[0]));
+      }
+    }
+  }, [dates, selectedDateStr]);
 
   const nextMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    setSelectedDate(0);
+    setSelectedDateStr("");
     setSelectedSlot(null);
   };
 
@@ -448,15 +556,15 @@ export default function BookSessionPage() {
     } else {
       setCurrentMonth(prev);
     }
-    setSelectedDate(0);
+    setSelectedDateStr("");
     setSelectedSlot(null);
   };
 
   // Generate slots for selected date
   const currentSlots = useMemo(() => {
-    if (!profile?.availability || !dates[selectedDate]) return [];
+    if (!profile?.availability || !activeDate) return [];
 
-    const date = dates[selectedDate];
+    const date = activeDate;
     const kolkataDateStr = getKolkataDateString(date);
 
     const weekly = profile.availability.weekly || {};
@@ -490,14 +598,23 @@ export default function BookSessionPage() {
       return `${Math.floor(adjusted / 60).toString().padStart(2, "0")}:${(adjusted % 60).toString().padStart(2, "0")}`;
     };
 
-    const generatedSlots: { time: string; available: boolean }[] = [];
+    const generatedSlots: { time: string; startMinutes: number; available: boolean }[] = [];
     const duration = sessionDuration;
+    const step = duration;
 
-    weeklyRanges.forEach((range: { from: string; to: string }) => {
+    // Sort ranges by start time
+    const sortedRanges = [...weeklyRanges].sort((a: any, b: any) => parseTimeToMinutes(a.from) - parseTimeToMinutes(b.from));
+
+    sortedRanges.forEach((range: { from: string; to: string }) => {
       if (!range.from || !range.to) return;
       let currentMin = parseTimeToMinutes(range.from);
       let endMin = parseTimeToMinutes(range.to);
       if (endMin < currentMin) endMin += 24 * 60;
+
+      // Snap start time to solid 30-minute block boundaries
+      if (currentMin % 30 !== 0) {
+        currentMin = Math.ceil(currentMin / 30) * 30;
+      }
 
       while (currentMin + duration <= endMin) {
         const nowKolkata = getKolkataTimeParts();
@@ -506,7 +623,16 @@ export default function BookSessionPage() {
 
         // Do not display past times today
         if (isToday && currentMin < nowMinutes) {
-          currentMin += duration;
+          currentMin += step;
+          continue;
+        }
+
+        // Prevent overlapping with any slot already generated
+        const overlapsWithExisting = generatedSlots.some(s => 
+          currentMin < s.startMinutes + duration && (currentMin + duration) > s.startMinutes
+        );
+        if (overlapsWithExisting) {
+          currentMin += step;
           continue;
         }
 
@@ -526,21 +652,21 @@ export default function BookSessionPage() {
 
         // Completely omit booked timing slot from available slots
         if (isBooked) {
-          currentMin += duration;
+          currentMin += step;
           continue;
         }
 
         const timeStr = `${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(currentMin + duration)}`;
         const existing = generatedSlots.find(s => s.time === timeStr);
         if (!existing) {
-          generatedSlots.push({ time: timeStr, available: true });
+          generatedSlots.push({ time: timeStr, startMinutes: currentMin, available: true });
         }
-        currentMin += duration;
+        currentMin += step;
       }
     });
 
-    return generatedSlots.sort((a, b) => a.time.localeCompare(b.time));
-  }, [dates, selectedDate, profile?.availability, sessionDuration, bookedSessions]);
+    return generatedSlots.sort((a, b) => a.startMinutes - b.startMinutes);
+  }, [activeDate, profile?.availability, sessionDuration, bookedSessions]);
 
   // Auto-deselect if the selected slot becomes unavailable or was booked
   useEffect(() => {
@@ -636,7 +762,7 @@ export default function BookSessionPage() {
       return;
     }
 
-    const date = dates[selectedDate];
+    const date = activeDate;
     if (!date || !profile) return;
 
     const kolkataDateStr = getKolkataDateString(date);
@@ -662,8 +788,11 @@ export default function BookSessionPage() {
       expertId: profile.id || expertId,
       candidateId,
       userId: candidateId,
+      candidateName: user?.name,
+      candidateEmail: user?.email,
+      candidatePhone: user?.personalInfo?.phone || user?.phone,
       expertName: profile.name,
-      expertEmail: (profile as any).email || "",
+      expertEmail: (profile as any).userDetails?.email || (profile as any).email || "",
       expertPhone: (profile as any).phone || "",
       expertCategory: profile.category || "IT",
       userCategory: profile.category || "IT",
@@ -787,9 +916,15 @@ export default function BookSessionPage() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               paymentType: "booking",
+              user: user,
               bookingDetails: {
                 expertId: profile.id || expertId,
+                expertName: profile.name,
+                expertEmail: (profile as any).userDetails?.email || (profile as any).email || "",
                 candidateId,
+                candidateName: user?.name,
+                candidateEmail: user?.email,
+                candidatePhone: user?.personalInfo?.phone || user?.phone,
                 startTime,
                 endTime,
                 price: sessionFee,
@@ -882,7 +1017,7 @@ export default function BookSessionPage() {
   }
 
   const expertInitials = (profile.name || "EX").trim().substring(0, 2).toUpperCase();
-  const selectedDateObj = dates[selectedDate];
+  const selectedDateObj = activeDate;
 
   return (
     <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-16 font-sans text-left">
@@ -899,11 +1034,14 @@ export default function BookSessionPage() {
           <button
             type="button"
             onClick={() => {
-              if (window.history.length > 1) {
-                navigate(-1);
-              } else {
-                navigate("/mentors");
-              }
+              const targetId = expertId || profile?.id;
+              navigate("/", {
+                state: {
+                  scrollToExpertId: targetId,
+                  scrollToExpertName: profile?.name,
+                  preventScrollTop: true,
+                },
+              });
             }}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EAF2FF] hover:bg-[#D5E5FF] active:bg-[#C2DBFF] text-[#0755E8] border border-[#93B8FF]/80 hover:border-[#0755E8]/60 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-xs"
             title="Back to Interview Experts"
@@ -914,7 +1052,15 @@ export default function BookSessionPage() {
 
           {/* Breadcrumb Navigation */}
           <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
-            <Link to="/mentors" className="text-slate-600 hover:text-[#0755E8] transition-colors">
+            <Link
+              to="/"
+              state={{
+                scrollToExpertId: expertId || profile?.id,
+                scrollToExpertName: profile?.name,
+                preventScrollTop: true,
+              }}
+              className="text-slate-600 hover:text-[#0755E8] transition-colors"
+            >
               Find Interview Experts
             </Link>
             <span className="text-slate-300">/</span>
@@ -1101,11 +1247,36 @@ export default function BookSessionPage() {
               </div>
             </div>
 
-            {/* Month Header & Picker Controls */}
+            {/* Month Header & Picker Controls with Date Carousel Flick Buttons */}
             <div className="flex items-center justify-between py-2 border-b border-slate-100 mb-3">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Select Date
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Select Date
+                </span>
+                {/* Carousel date scroll arrows (flick left/right through dates) */}
+                <div className="flex items-center gap-1 ml-1">
+                  <button
+                    type="button"
+                    onClick={() => scrollCarousel("left")}
+                    disabled={!canScrollCarouselLeft}
+                    className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-opacity"
+                    title="Scroll dates left"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollCarousel("right")}
+                    disabled={!canScrollCarouselRight}
+                    className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-opacity"
+                    title="Scroll dates right"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Month Picker Navigation */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -1130,53 +1301,76 @@ export default function BookSessionPage() {
               </div>
             </div>
 
-            {/* Date Carousel */}
-            <div
-              ref={carouselRef}
-              className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none"
-            >
-              {dates.length > 0 ? (
-                dates.map((date, index) => {
-                  const isToday = new Date().toDateString() === date.toDateString();
-                  const isSelected = selectedDate === index;
-                  return (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        setSelectedDate(index);
-                        setSelectedSlot(null);
-                        setPaymentStatus("not_paid");
-                      }}
-                      className={`min-w-[66px] text-center px-2 py-2.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
-                        isSelected
-                          ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/20"
-                          : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-                        {isToday ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" })}
-                      </div>
-                      <div className="font-extrabold text-lg my-0.5 tabular-nums leading-none">
-                        {date.getDate()}
-                      </div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider opacity-85">
-                        {date.toLocaleDateString("en-US", { month: "short" })}
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="w-full py-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  No availability dates configured for this month.
-                </div>
-              )}
-            </div>
+            {/* Date Carousel with drag-to-flick, mousewheel, and smooth centering */}
+            {loading || !profile?.availability ? (
+              <div className="flex gap-2 overflow-hidden pb-2 mb-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div
+                    key={i}
+                    className="min-w-[66px] h-[72px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse shrink-0"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div
+                ref={carouselRef}
+                onMouseDown={handleCarouselMouseDown}
+                onMouseMove={handleCarouselMouseMove}
+                onMouseUp={handleCarouselMouseUpOrLeave}
+                onMouseLeave={handleCarouselMouseUpOrLeave}
+                onWheel={handleCarouselWheel}
+                className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none select-none cursor-grab active:cursor-grabbing scroll-smooth"
+              >
+                {dates.length > 0 ? (
+                  dates.map((date) => {
+                    const dateStr = getKolkataDateString(date);
+                    const isToday = new Date().toDateString() === date.toDateString();
+                    const isSelected = activeDate && dateStr === getKolkataDateString(activeDate);
+                    return (
+                      <button
+                        key={dateStr}
+                        type="button"
+                        onClick={(e) => {
+                          if (hasDragged.current) return;
+                          setSelectedDateStr(dateStr);
+                          setSelectedSlot(null);
+                          setPaymentStatus("not_paid");
+                          (e.currentTarget as HTMLElement).scrollIntoView({
+                            behavior: "smooth",
+                            inline: "center",
+                            block: "nearest",
+                          });
+                        }}
+                        className={`min-w-[66px] text-center px-2 py-2.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+                          isSelected
+                            ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/20"
+                            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
+                          {isToday ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" })}
+                        </div>
+                        <div className="font-extrabold text-lg my-0.5 tabular-nums leading-none">
+                          {date.getDate()}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider opacity-85">
+                          {date.toLocaleDateString("en-US", { month: "short" })}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="w-full py-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    No availability dates configured for this month.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Available Time Slots Header */}
             <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Available Slots for {selectedDateObj ? selectedDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
+                Available Slots for {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
               </span>
               <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
                 {currentSlots.filter(s => s.available).length} slots available
@@ -1184,26 +1378,35 @@ export default function BookSessionPage() {
             </div>
 
             {/* Time Slot Grid (Natural flow, non-truncated time ranges) */}
-            {currentSlots.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {currentSlots.map((slot, index) => {
+            {loading || !profile?.availability ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : currentSlots.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                {currentSlots.map((slot) => {
                   const isSelected = selectedSlot?.time === slot.time;
                   const isUnavailable = !slot.available;
 
                   return (
                     <button
-                      key={index}
+                      key={slot.time}
                       type="button"
                       disabled={isUnavailable}
                       onClick={() => {
-                        setSelectedSlot(slot);
+                        setSelectedSlot(isSelected ? null : slot);
                         setPaymentStatus("not_paid");
                       }}
-                      className={`relative flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-[#0755E8] ${
+                      className={`relative flex items-center justify-between px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-[#0755E8] ${
                         isUnavailable
                           ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-75"
                           : isSelected
-                          ? "bg-[#0755E8] border-[#0755E8] text-white shadow-sm ring-2 ring-[#0755E8]/25 cursor-pointer"
+                          ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/25 cursor-pointer"
                           : "bg-white border-slate-200 text-slate-700 hover:border-[#0755E8] hover:bg-[#F5F8FF] hover:text-[#0755E8] cursor-pointer"
                       }`}
                       title={isUnavailable ? `${slot.time} (Already Booked)` : slot.time}
@@ -1221,7 +1424,7 @@ export default function BookSessionPage() {
                           Booked
                         </span>
                       ) : isSelected ? (
-                        <Check className="w-4 h-4 text-white stroke-[3] shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-white stroke-[3] shrink-0" />
                       ) : null}
                     </button>
                   );

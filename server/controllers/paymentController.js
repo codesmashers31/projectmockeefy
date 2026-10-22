@@ -69,18 +69,26 @@ export const triggerBookingEmails = async ({
     candidateUserFallback = null
 }) => {
     try {
-        if (!bookingDetails) return;
+        if (!bookingDetails) {
+            console.warn("[BookingPayment] triggerBookingEmails called without bookingDetails.");
+            return;
+        }
 
         const startTime = new Date(bookingDetails.startTime);
         const endTime = new Date(bookingDetails.endTime);
 
         // 1. Fetch Candidate User
         let candidateUser = null;
-        if (bookingDetails.candidateId && mongoose.Types.ObjectId.isValid(bookingDetails.candidateId)) {
-            candidateUser = await User.findById(bookingDetails.candidateId).lean();
+        const candidateLookup = bookingDetails.candidateId || bookingDetails.userId;
+
+        if (candidateLookup && mongoose.Types.ObjectId.isValid(candidateLookup)) {
+            candidateUser = await User.findById(candidateLookup).lean();
+        }
+        if (!candidateUser && bookingDetails.candidateEmail) {
+            candidateUser = await User.findOne({ email: bookingDetails.candidateEmail.toLowerCase() }).lean();
         }
         if (!candidateUser && candidateUserFallback) {
-            candidateUser = candidateUserFallback;
+            candidateUser = typeof candidateUserFallback === 'object' ? candidateUserFallback : await User.findById(candidateUserFallback).lean().catch(() => null);
         }
 
         // 2. Fetch Expert & Expert User
@@ -93,21 +101,44 @@ export const triggerBookingEmails = async ({
             if (!expertDoc) {
                 expertDoc = await ExpertDetails.findOne({ userId: expertLookup }).populate('userId').lean();
             }
+        } else if (typeof expertLookup === 'string' && expertLookup.includes('@')) {
+            expertUser = await User.findOne({ email: expertLookup.toLowerCase() }).lean();
+            if (expertUser) {
+                expertDoc = await ExpertDetails.findOne({ userId: expertUser._id }).populate('userId').lean();
+            }
         }
 
         if (expertDoc?.userId) {
             expertUser = typeof expertDoc.userId === 'object' ? expertDoc.userId : await User.findById(expertDoc.userId).lean();
-        } else if (expertLookup && mongoose.Types.ObjectId.isValid(expertLookup)) {
+        } else if (expertLookup && mongoose.Types.ObjectId.isValid(expertLookup) && !expertUser) {
             expertUser = await User.findById(expertLookup).lean();
+            if (expertUser && !expertDoc) {
+                expertDoc = await ExpertDetails.findOne({ userId: expertUser._id }).lean();
+            }
         }
 
-        const expertEmail = expertUser?.email;
-        const expertName = expertDoc?.personalInformation?.userName || expertUser?.name || "Interview Expert";
-        const candidateName = candidateUser?.name || "Candidate";
-        const candidateEmail = candidateUser?.email || "Not specified";
-        const candidatePhone = candidateUser?.personalInfo?.phone || candidateUser?.phone || candidateUser?.mobile || "Not provided";
+        // Candidate extracted fields
+        const candidateName = candidateUser?.name || bookingDetails.candidateName || candidateUserFallback?.name || "Candidate";
+        const candidateEmail = candidateUser?.email || bookingDetails.candidateEmail || candidateUserFallback?.email || "Not specified";
+        const candidatePhone = candidateUser?.personalInfo?.phone || candidateUser?.phone || candidateUser?.mobile || bookingDetails.candidatePhone || candidateUserFallback?.personalInfo?.phone || candidateUserFallback?.phone || "Not provided";
+        const candidateCity = candidateUser?.personalInfo?.city || candidateUser?.city || "";
+        const candidateCountry = candidateUser?.personalInfo?.country || candidateUser?.country || "";
+        const candidateLocation = [candidateCity, candidateCountry].filter(Boolean).join(", ");
 
-        console.log(`[BookingPayment] Dispatching booking confirmation email to interview expert: ${expertEmail} (${expertName}) for session: ${sessionId}`);
+        // Expert extracted fields
+        const expertEmail = expertUser?.email || expertDoc?.email || expertDoc?.personalInformation?.email || bookingDetails.expertEmail;
+        const expertName = expertUser?.name || expertDoc?.personalInformation?.userName || expertDoc?.userDetails?.name || bookingDetails.expertName || "Interview Expert";
+
+        // Meeting link resolution
+        const resolvedMeetingLink = meetingLink || expertDoc?.availability?.defaultMeetingLink || (sessionId ? `${process.env.CLIENT_URL || "http://localhost:5173"}/live-meeting/${sessionId}` : null);
+
+        const duration = Number(bookingDetails.duration) || 30;
+        const amountPaid = price !== undefined ? price : bookingDetails.price;
+        const level = bookingDetails.level || expertDoc?.professionalDetails?.level || "Rising Mentor";
+        const category = expertDoc?.personalInformation?.category || bookingDetails.category || "Technical Interview";
+        const topics = bookingDetails.topics || [category];
+
+        console.log(`[BookingPayment] 🚀 Sending meeting allocation email to Expert: ${expertEmail} (${expertName}) for Candidate: ${candidateName} (${candidateEmail})`);
 
         if (expertEmail) {
             await sendBookingNotificationToExpert({
@@ -116,21 +147,23 @@ export const triggerBookingEmails = async ({
                 candidateName,
                 candidateEmail,
                 candidatePhone,
+                candidateLocation,
                 startTime,
                 endTime,
-                duration: bookingDetails.duration || 60,
-                topics: bookingDetails.topics,
-                category: expertDoc?.personalInformation?.category || "Technical Interview",
-                amountPaid: price !== undefined ? price : bookingDetails.price,
+                duration,
+                topics,
+                level,
+                category,
+                amountPaid,
                 paymentStatus,
                 paymentId: paymentId || "N/A",
                 orderId: orderId || "N/A",
                 notes: bookingDetails.notes || "",
-                meetingLink,
+                meetingLink: resolvedMeetingLink,
                 sessionId,
             });
         } else {
-            console.warn(`[BookingPayment] Warning: No email address found for interview expert: ${bookingDetails.expertId}`);
+            console.warn(`[BookingPayment] ⚠️ Warning: No email address found for interview expert lookup: ${bookingDetails.expertId}`);
         }
 
         // Send confirmation copy to candidate as well
@@ -142,11 +175,11 @@ export const triggerBookingEmails = async ({
                 expertName,
                 date: dt.dateStr,
                 timeSlot: dt.timeSlotStr,
-                duration: bookingDetails.duration || 60,
-                topics: bookingDetails.topics,
-                amountPaid: price !== undefined ? price : bookingDetails.price,
+                duration,
+                topics,
+                amountPaid,
                 paymentId: paymentId || "N/A",
-                meetingLink,
+                meetingLink: resolvedMeetingLink,
                 sessionId,
             }).catch((err) => console.error("[BookingPayment] Candidate notification email error:", err.message));
         }
@@ -212,9 +245,13 @@ export const verifyPayment = async (req, res) => {
                     notes: bookingDetails.notes || ""
                 };
 
+                let expertUserId = bookingDetails.expertId;
                 try {
                     const expert = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
                     sessionData.meetingLink = expert?.availability?.defaultMeetingLink || null;
+                    if (expert?.userId) {
+                        expertUserId = expert.userId;
+                    }
                 } catch (_) {}
 
                 const session = await sessionService.createSession(sessionData);
@@ -223,10 +260,10 @@ export const verifyPayment = async (req, res) => {
 
                 // Notify Expert
                 await createNotification({
-                    userId: bookingDetails.expertId,
+                    userId: expertUserId,
                     type: 'booking_confirmed',
-                    title: 'New Session Booked!',
-                    message: `A candidate has booked a ${bookingDetails.duration || 60} min session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                    title: 'New Session Booked & Payment Received! 🎉',
+                    message: `A candidate (${bookingDetails.candidateName || user?.name || "Candidate"}) has booked a ${bookingDetails.duration || 30} min session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
                     metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
                 });
 
@@ -240,7 +277,7 @@ export const verifyPayment = async (req, res) => {
                 });
 
                 // Directly send professional email notification to the specified Interview Expert with all booking and payment details
-                triggerBookingEmails({
+                await triggerBookingEmails({
                     bookingDetails,
                     sessionId: session.sessionId,
                     meetingLink: sessionData.meetingLink,
@@ -321,9 +358,13 @@ export const usePremiumCredit = async (req, res) => {
             notes: "Premium Free Credit Used",
         };
 
+        let expertUserId = bookingDetails.expertId;
         try {
             const expert = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
             sessionData.meetingLink = expert?.availability?.defaultMeetingLink || null;
+            if (expert?.userId) {
+                expertUserId = expert.userId;
+            }
         } catch (_) {}
 
         const createdSession = await sessionService.createSession(sessionData, { session });
@@ -333,10 +374,10 @@ export const usePremiumCredit = async (req, res) => {
         const dt = formatSessionDateTime(sessionData.startTime, sessionData.endTime);
 
         await createNotification({
-            userId: bookingDetails.expertId,
+            userId: expertUserId,
             type: 'booking_confirmed',
             title: 'New Session Booked!',
-            message: `A candidate has booked a session with you using Premium Credit on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+            message: `A candidate (${bookingDetails.candidateName || user?.name || "Candidate"}) has booked a session with you using Premium Credit on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: createdSession.sessionId, link: '/expert/dashboard' }
         });
 
@@ -350,7 +391,7 @@ export const usePremiumCredit = async (req, res) => {
         });
 
         // Directly send email notification to Interview Expert
-        triggerBookingEmails({
+        await triggerBookingEmails({
             bookingDetails,
             sessionId: createdSession.sessionId,
             meetingLink: sessionData.meetingLink,
@@ -437,9 +478,13 @@ export const createFreeBooking = async (req, res) => {
             notes: bookingDetails.notes || 'Booked with free promo code',
         };
 
+        let expertUserId = bookingDetails.expertId;
         try {
             const expert = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
             sessionData.meetingLink = expert?.availability?.defaultMeetingLink || null;
+            if (expert?.userId) {
+                expertUserId = expert.userId;
+            }
         } catch (_) {}
 
         const session = await sessionService.createSession(sessionData);
@@ -448,10 +493,10 @@ export const createFreeBooking = async (req, res) => {
 
         // Notify Expert
         await createNotification({
-            userId: bookingDetails.expertId,
+            userId: expertUserId,
             type: 'booking_confirmed',
             title: 'New Session Booked!',
-            message: `A candidate has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+            message: `A candidate (${bookingDetails.candidateName || 'Candidate'}) has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
         });
 
@@ -465,7 +510,7 @@ export const createFreeBooking = async (req, res) => {
         });
 
         // Directly send email notification to Interview Expert
-        triggerBookingEmails({
+        await triggerBookingEmails({
             bookingDetails,
             sessionId: session.sessionId,
             meetingLink: sessionData.meetingLink,
@@ -473,6 +518,7 @@ export const createFreeBooking = async (req, res) => {
             orderId: "PROMO-APPLIED",
             paymentStatus: "100% Free Promo",
             price: 0,
+            candidateUserFallback: req.user
         });
 
         return res.status(200).json({

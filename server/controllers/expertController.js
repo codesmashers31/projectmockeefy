@@ -520,6 +520,8 @@ export const getPublicExpertById = async (req, res) => {
     const levels = Array.from(new Set(rawLevels.map(normalizeLevel)));
     const level = normalizeLevel(expert.professionalDetails?.level || levels[0] || "Rising Mentor");
 
+    let price = expert.minPrice || expert.price || 499;
+
     try {
       const catName = expert.personalInformation?.category || "IT";
       const catDoc = await Category.findOne({ name: catName });
@@ -540,6 +542,8 @@ export const getPublicExpertById = async (req, res) => {
       userId: expert.userId,
       profileImage: user.profileImage || expert.profileImage || "",
       price: price, // Dynamic Price
+      minPrice: expert.minPrice || price,
+      maxPrice: expert.maxPrice || price,
       personalInformation: {
         userName: user.name || "Expert",
         mobile: user.personalInfo?.phone || expert.personalInformation?.mobile || "",
@@ -1033,12 +1037,12 @@ export const updateAvailability = async (req, res) => {
 
     if (!expert.availability) expert.availability = { sessionDuration: 30, maxPerDay: 1, weekly: {}, breakDates: [] };
 
-    // Validate weekly slots overlap
+    // Validate weekly slots overlap and solid 30-minute intervals
     if (newAvailability.weekly) {
       const timeToMinutes = (timeStr) => {
         if (!timeStr) return 0;
         const [h, m] = timeStr.split(':').map(Number);
-        return h * 60 + m;
+        return (h || 0) * 60 + (m || 0);
       };
 
       for (const day of Object.keys(newAvailability.weekly)) {
@@ -1057,6 +1061,13 @@ export const updateAvailability = async (req, res) => {
             });
           }
 
+          if (start % 30 !== 0) {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid slot on ${day}: Slot start time (${slot.from}) must be on a solid 30-minute interval (e.g. :00 or :30).`
+            });
+          }
+
           if (i > 0) {
             const prevSlot = sortedSlots[i - 1];
             const prevEnd = timeToMinutes(prevSlot.to);
@@ -1068,6 +1079,7 @@ export const updateAvailability = async (req, res) => {
             }
           }
         }
+        newAvailability.weekly[day] = sortedSlots;
       }
     }
 

@@ -391,33 +391,44 @@ interface ProfileState {
 
 // --- Time Helpers ---
 
+const timeToMinutes = (timeStr: string) => {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
 // Convert "14:30" -> { hour: "02", minute: "30", period: "PM" }
 const parseTime24 = (time24: string) => {
   if (!time24) return { hour: "09", minute: "00", period: "AM" };
   const [h, m] = time24.split(':').map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  let hour = h % 12;
+  const period = (h || 0) >= 12 ? "PM" : "AM";
+  let hour = (h || 0) % 12;
   if (hour === 0) hour = 12;
+  const snappedMinute = (m >= 15 && m < 45) ? "30" : "00";
   return {
     hour: hour.toString().padStart(2, '0'),
-    minute: m.toString().padStart(2, '0'),
+    minute: snappedMinute,
     period
   };
 };
 
 // Convert { hour, minute, period } -> "14:30"
 const formatTime24 = (hour: string, minute: string, period: string) => {
-  let h = parseInt(hour);
+  let h = parseInt(hour, 10);
   if (period === "PM" && h !== 12) h += 12;
   if (period === "AM" && h === 12) h = 0;
-  return `${h.toString().padStart(2, '0')}:${minute}`;
+  const m = minute === "30" ? "30" : "00";
+  return `${h.toString().padStart(2, '0')}:${m}`;
 };
 
 // Display "14:30" as "02:30 PM"
 const displayTime = (time24: string) => {
   if (!time24) return "";
-  const { hour, minute, period } = parseTime24(time24);
-  return `${hour}:${minute} ${period}`;
+  const [h, m] = time24.split(':').map(Number);
+  const period = (h || 0) >= 12 ? "PM" : "AM";
+  let hour = (h || 0) % 12;
+  if (hour === 0) hour = 12;
+  return `${hour.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')} ${period}`;
 };
 
 const TimeSelect = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
@@ -438,7 +449,7 @@ const TimeSelect = ({ value, onChange }: { value: string, onChange: (val: string
     return { value: val, label: val };
   });
 
-  const minuteOptions = ["00", "15", "30", "45"].map((m) => ({
+  const minuteOptions = ["00", "30"].map((m) => ({
     value: m,
     label: m,
   }));
@@ -501,10 +512,16 @@ const EditExpertAvailability = () => {
       const data = res.data.data;
       const weekly = data.weekly || {};
 
-      // Ensure structure
+      // Ensure structure and snap to 30-min intervals
+      const duration = data.sessionDuration || 30;
       Object.keys(weekly).forEach(day => {
         if (Array.isArray(weekly[day])) {
-          weekly[day] = weekly[day].map((slot: any) => ({ from: slot.from, to: slot.to }));
+          weekly[day] = weekly[day].map((slot: any) => {
+            const parsed = parseTime24(slot.from);
+            const snappedFrom = formatTime24(parsed.hour, parsed.minute, parsed.period);
+            const snappedTo = calculateEndTime(snappedFrom, duration);
+            return { from: snappedFrom, to: snappedTo };
+          }).sort((a: any, b: any) => timeToMinutes(a.from) - timeToMinutes(b.from));
         }
       });
 
@@ -530,7 +547,7 @@ const EditExpertAvailability = () => {
   function calculateEndTime(startTime: string, duration: number) {
     if (!startTime) return "";
     const [hours, minutes] = startTime.split(':').map(Number);
-    const totalStartMinutes = hours * 60 + minutes;
+    const totalStartMinutes = (hours || 0) * 60 + (minutes || 0);
     const totalEndMinutes = totalStartMinutes + duration;
     const endHours = Math.floor(totalEndMinutes / 60) % 24;
     const endMinutes = totalEndMinutes % 60;
@@ -548,7 +565,7 @@ const EditExpertAvailability = () => {
 
     setProfile((p) => {
       const weekly = { ...p.availability.weekly };
-      const daySlots = weekly[day] || [];
+      const daySlots = [...(weekly[day] || [])].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
       let defaultStart = "09:00";
       if (daySlots.length > 0) {
         const lastSlot = daySlots[daySlots.length - 1];
@@ -567,7 +584,8 @@ const EditExpertAvailability = () => {
       const weekly = { ...p.availability.weekly };
       const slots = [...(weekly[day] || [])];
       const endTime = calculateEndTime(newStartTime, p.availability.sessionDuration);
-      slots[idx] = { ...slots[idx], from: newStartTime, to: endTime }; // Auto-update end time
+      slots[idx] = { ...slots[idx], from: newStartTime, to: endTime };
+      slots.sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
       weekly[day] = slots;
       return { ...p, availability: { ...p.availability, weekly } };
     });
@@ -691,26 +709,10 @@ const EditExpertAvailability = () => {
         return;
       }
 
-      // Validate slots overlap
-      const dayLabelsMap: Record<string, string> = {
-        monday: "Monday",
-        tuesday: "Tuesday",
-        wednesday: "Wednesday",
-        thursday: "Thursday",
-        friday: "Friday",
-        saturday: "Saturday",
-        sunday: "Sunday"
-      };
-
-      const timeToMinutes = (timeStr: string) => {
-        if (!timeStr) return 0;
-        const [h, m] = timeStr.split(':').map(Number);
-        return h * 60 + m;
-      };
-
+      // Validate slots overlap and solid 30-minute intervals
       for (const day of Object.keys(profile.availability.weekly)) {
         const daySlots = profile.availability.weekly[day] || [];
-        const label = dayLabelsMap[day] || day;
+        const label = dayLabel[day] || day;
         
         // First sort slots by start time to make validation/checking super clean
         const sortedSlots = [...daySlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
@@ -722,6 +724,11 @@ const EditExpertAvailability = () => {
 
           if (start >= end) {
             toast.error(`Invalid slot on ${label}: ${displayTime(slot.from)} - ${displayTime(slot.to)} cannot end before it starts.`);
+            return;
+          }
+
+          if (start % 30 !== 0) {
+            toast.error(`Invalid slot on ${label}: Start time must be on a solid 30-minute interval (e.g. 03:00 or 03:30).`);
             return;
           }
 
@@ -737,6 +744,13 @@ const EditExpertAvailability = () => {
       }
 
       const payload = JSON.parse(JSON.stringify(profile.availability));
+      if (payload.weekly) {
+        Object.keys(payload.weekly).forEach(day => {
+          if (Array.isArray(payload.weekly[day])) {
+            payload.weekly[day].sort((a: Slot, b: Slot) => timeToMinutes(a.from) - timeToMinutes(b.from));
+          }
+        });
+      }
       const link = (payload.defaultMeetingLink || '').toString().trim();
       if (payload.defaultMeetingLink !== undefined) payload.defaultMeetingLink = link || null;
       if (link && !/^https?:\/\/meet\.google\.com\//i.test(link)) {
@@ -852,7 +866,26 @@ const EditExpertAvailability = () => {
                       { value: "30", label: "30 Minutes" },
                       { value: "60", label: "60 Minutes" },
                     ]}
-                    onChange={(val) => setProfile(p => ({ ...p, availability: { ...p.availability, sessionDuration: Number(val) } }))}
+                    onChange={(val) => {
+                      const newDur = Number(val);
+                      setProfile(p => {
+                        const newWeekly = { ...p.availability.weekly };
+                        Object.keys(newWeekly).forEach(d => {
+                          newWeekly[d] = (newWeekly[d] || []).map(s => ({
+                            from: s.from,
+                            to: calculateEndTime(s.from, newDur)
+                          }));
+                        });
+                        return {
+                          ...p,
+                          availability: {
+                            ...p.availability,
+                            sessionDuration: newDur,
+                            weekly: newWeekly
+                          }
+                        };
+                      });
+                    }}
                   />
                   <p className="text-xs text-gray-400 mt-1">Used when generating time slots below.</p>
                 </div>

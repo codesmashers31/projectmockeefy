@@ -38,6 +38,8 @@ export interface MentorProfile {
   bio?: string;
   level?: string;
   levels?: string[];
+  availability?: any;
+  rawExpert?: any;
 }
 
 interface MentorJobCardProps {
@@ -140,9 +142,12 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   return (
     <article
+      id={`expert-card-${mentorId}`}
+      data-expert-id={mentorId}
+      data-expert-name={mentor.name}
       onClick={handleCardClick}
       aria-label={`Interview expert profile for ${mentor.name}`}
-      className="group relative bg-white rounded-2xl border border-slate-200/80 hover:border-[#0755E8]/40 hover:shadow-[0_4px_18px_-4px_rgba(7,85,232,0.1)] transition-all duration-200 p-4 sm:p-4.5 flex flex-col justify-between h-full w-full cursor-pointer text-left box-border"
+      className="group relative bg-white rounded-2xl border border-slate-200/80 hover:border-[#0755E8]/40 hover:shadow-[0_4px_18px_-4px_rgba(7,85,232,0.1)] transition-all duration-200 p-4 sm:p-4.5 flex flex-col justify-between h-full w-full cursor-pointer text-left box-border scroll-mt-28"
     >
       <div className="space-y-2.5 flex-1 flex flex-col">
         {/* 1. Header: Avatar + Scannable Name & Title + Bookmark */}

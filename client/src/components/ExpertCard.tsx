@@ -44,6 +44,8 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
         } catch { /* ignore */ }
     };
 
+    const mentorId = mentor?.expertID || mentor?.id || (mentor as any)?._id;
+
     const goToBooking = (e?: React.MouseEvent) => {
         e?.stopPropagation();
         setIsBookingModalOpen(true);
@@ -51,8 +53,8 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
 
     const goToViewProfile = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        navigate(`/book-session?expertId=${mentor.expertID}`, {
-            state: { expertId: mentor.expertID, profile: { ...mentor } },
+        navigate(`/book-session?expertId=${mentorId}`, {
+            state: { expertId: mentorId, profile: { ...mentor, id: mentorId } },
         });
     };
 
@@ -314,7 +316,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                 <BookingModal
                     isOpen={isBookingModalOpen}
                     onClose={() => setIsBookingModalOpen(false)}
-                    expertId={mentor.expertID}
+                    expertId={mentorId}
                     initialProfile={mentor}
                 />
             )}

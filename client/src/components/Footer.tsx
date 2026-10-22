@@ -197,7 +197,7 @@ const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
   <footer className="w-full border-t border-slate-200/80 bg-white">
     <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${minimal ? 'py-4' : 'pt-8 pb-16 lg:pt-10 lg:pb-10'}`}>
       {!minimal && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[1.1fr_0.75fr_0.9fr_0.9fr_1.65fr] gap-8 lg:gap-5 xl:gap-8 items-start mb-10">
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="h-8.5 w-8.5 rounded-xl bg-slate-100 shimmer-shining border border-slate-200/50" />
@@ -220,7 +220,7 @@ const SkeletonFooter = ({ minimal }: { minimal: boolean }) => (
             </div>
           ))}
 
-          <div className="h-36 rounded-2xl bg-slate-100 shimmer-shining" />
+          <div className="h-36 rounded-2xl bg-slate-100 shimmer-shining md:col-span-2 lg:col-auto" />
         </div>
       )}
 
@@ -373,7 +373,7 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
 
         {/* Main Footer Links & Connect Section */}
         {!minimal && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 lg:gap-6 xl:gap-8 items-start mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[1.1fr_0.75fr_0.9fr_0.9fr_1.65fr] gap-8 lg:gap-5 xl:gap-8 items-start mb-10">
             {/* Column 1: Logo & Connect With Us */}
             <div className="space-y-5">
               <Link to="/" className="inline-flex items-center gap-2.5 group">
@@ -495,22 +495,26 @@ const Footer = ({ minimal = false, showSkeletons = false, showAppBanner = true }
             </div>
 
             {/* Column 5: Right "Book a Mock Session" Action Card */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-              <h4 className="text-sm font-extrabold text-slate-900">Book a Mock Session</h4>
-              <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed font-medium">
-                Practice 1-on-1 with verified tech leaders and get real-time feedback.
-              </p>
-              <Link
-                to="/mentors"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
-              >
-                <span>Find Interview Experts</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-              <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-semibold">
-                <span>500+ Active Interview Experts</span>
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Now
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4.5 sm:p-5 shadow-xs flex flex-col justify-between md:col-span-2 lg:col-auto">
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">Book a Mock Session</h4>
+                <p className="text-xs text-slate-500 mt-1.5 mb-4 leading-relaxed font-medium">
+                  Practice 1-on-1 with verified tech leaders and get real-time feedback.
+                </p>
+                <Link
+                  to="/mentors"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-[0.98] whitespace-nowrap"
+                >
+                  <span>Find Interview Experts</span>
+                  <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                </Link>
+              </div>
+
+              <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-[10.5px] sm:text-[11px] text-slate-500 font-semibold">
+                <span className="whitespace-nowrap">500+ Active Interview Experts</span>
+                <span className="text-emerald-600 font-bold flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span>Live Now</span>
                 </span>
               </div>
             </div>

@@ -337,6 +337,14 @@ export default function CoachSessionCard() {
         totalSessions: expert.metrics?.totalSessions || 10,
         category: cat,
         bio: expert.personalInformation?.bio || "",
+        level: expert.professionalDetails?.level || expert.level || (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels[0]) || "Rising Mentor",
+        levels: (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels.length > 0)
+          ? expert.professionalDetails.levels
+          : (Array.isArray(expert.levels) && expert.levels.length > 0)
+          ? expert.levels
+          : [expert.professionalDetails?.level || expert.level || "Rising Mentor"],
+        availability: expert.availability,
+        rawExpert: expert,
       };
     });
 
