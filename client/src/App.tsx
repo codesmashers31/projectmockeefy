@@ -30,6 +30,7 @@ import EditAvailabilityPage from "./pages/expert/EditAvailability";
 import SkillsPage from "./pages/expert/Skills";
 import SettingsPage from "./pages/expert/Settings";
 import WithdrawalPage from "./pages/expert/WithdrawalPage";
+import AgreementPage from "./pages/expert/Agreement";
 import LiveMeeting from "./pages/LiveMeeting";
 import TipsPage from "./pages/TipsPage";
 import CertificatesPage from "./pages/CertificatesPage";
@@ -64,6 +65,7 @@ import JobManagement from "./pages/admin/JobManagement";
 import SkillManagement from "./pages/admin/SkillManagement";
 import BookingSearch from "./pages/admin/BookingSearch"; // Demo route
 import PayoutManagement from "./pages/admin/PayoutManagement";
+import AdminAgreements from "./pages/admin/AdminAgreements";
 import { usePageTitle } from "./hooks/usePageTitle";
 import MockeefyLogo from "./components/MockeefyLogo";
 
@@ -211,6 +213,7 @@ function AppRoutes() {
             <Route path="availability/edit" element={<ErrorBoundary><EditAvailabilityPage /></ErrorBoundary>} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="withdraw" element={<WithdrawalPage />} />
+            <Route path="agreement" element={<AgreementPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>
@@ -223,6 +226,7 @@ function AppRoutes() {
             <Route path="experts/pending" element={<PendingExpertsTable />} />
             <Route path="experts/verified" element={<VerifiedExpertsTable />} />
             <Route path="experts/rejected" element={<RejectedExpertsTable />} />
+            <Route path="agreements" element={<AdminAgreements />} />
             <Route path="users" element={<UsersTable />} />
 
             <Route path="jobs" element={<JobManagement />} />

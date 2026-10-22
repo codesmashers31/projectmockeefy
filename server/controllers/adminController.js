@@ -110,3 +110,44 @@ export const getDashboardStats = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
+// @desc    Get all expert agreements for admin review
+// @route   GET /api/admin/agreements
+// @access  Private/Admin
+export const getAdminExpertAgreements = async (req, res) => {
+    try {
+        const { filter } = req.query;
+        // By default show all experts with agreement.isSigned = true, or if filter === "all", show all
+        const query = filter === "all" ? {} : { "agreement.isSigned": true };
+
+        const experts = await ExpertDetails.find(query)
+            .populate("userId", "name email profileImage status")
+            .sort({ "agreement.signedAt": -1, createdAt: -1 });
+
+        const agreements = experts.map(exp => ({
+            _id: exp._id,
+            userId: exp.userId?._id,
+            name: exp.userId?.name || exp.personalInformation?.name || exp.name || "Expert",
+            email: exp.userId?.email || exp.email || "No email",
+            profileImage: exp.userId?.profileImage || "",
+            company: exp.agreement?.companyName || exp.professionalDetails?.company || "Not specified",
+            title: exp.agreement?.jobTitle || exp.professionalDetails?.title || "Expert",
+            signedAt: exp.agreement?.signedAt || null,
+            signedBy: exp.agreement?.signedBy || exp.userId?.name || "",
+            isSigned: Boolean(exp.agreement?.isSigned),
+            agreedTerms: exp.agreement?.agreedTerms || false,
+            agreementPdf: exp.agreement?.agreementPdf || null,
+            signatureFile: exp.agreement?.signatureFile || null,
+            expertStatus: exp.status || "Pending"
+        }));
+
+        res.status(200).json({
+            success: true,
+            count: agreements.length,
+            agreements
+        });
+    } catch (error) {
+        console.error("Error fetching expert agreements for admin:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};

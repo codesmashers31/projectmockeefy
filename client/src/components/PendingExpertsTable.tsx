@@ -38,8 +38,8 @@ interface SkillsAndExpertise {
 }
 
 interface Verification {
-    aadhar?: { url: string; name: string };
-    companyId?: { url: string; name: string };
+    aadhar?: { url?: string; name?: string; isVerified?: boolean; number?: string; nameOnAadhaar?: string; verifiedAt?: string };
+    companyId?: { url?: string; name?: string };
     linkedin?: string;
 }
 
@@ -51,6 +51,15 @@ interface Expert {
     professionalDetails: ProfessionalDetails;
     skillsAndExpertise: SkillsAndExpertise;
     verification: Verification;
+    agreement?: {
+        isSigned?: boolean;
+        signedAt?: string;
+        companyName?: string;
+        jobTitle?: string;
+        agreementPdf?: { url: string; name: string };
+        signatureFile?: { url: string; name: string };
+        agreedTerms?: boolean;
+    };
     userDetails?: {
         email: string;
         _id: string;
@@ -523,7 +532,12 @@ const PendingExpertsTable: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {selectedExpert.verification?.aadhar?.url ? (
+                                    {selectedExpert.verification?.aadhar?.isVerified ? (
+                                        <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-semibold border border-emerald-200">
+                                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                            <span>Aadhaar Verified {selectedExpert.verification.aadhar.number ? `(${selectedExpert.verification.aadhar.number})` : ''}</span>
+                                        </div>
+                                    ) : selectedExpert.verification?.aadhar?.url ? (
                                         <a
                                             href={getProfileImageUrl(selectedExpert.verification.aadhar.url)}
                                             target="_blank"
@@ -534,7 +548,7 @@ const PendingExpertsTable: React.FC = () => {
                                         </a>
                                     ) : (
                                         <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
-                                            Govt ID Missing
+                                            Aadhaar Not Verified
                                         </div>
                                     )}
 
@@ -550,6 +564,22 @@ const PendingExpertsTable: React.FC = () => {
                                     ) : (
                                         <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
                                             Company Doc Missing
+                                        </div>
+                                    )}
+
+                                    {selectedExpert.agreement?.isSigned ? (
+                                        <a
+                                            href={getProfileImageUrl(selectedExpert.agreement.agreementPdf?.url || selectedExpert.agreement.signatureFile?.url || '')}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center justify-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition-colors border border-emerald-200 col-span-1 md:col-span-2"
+                                        >
+                                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                            View Signed Agreement (Company Non-Conflict & Working Proof)
+                                        </a>
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100 col-span-1 md:col-span-2">
+                                            Agreement Not Signed
                                         </div>
                                     )}
                                 </div>

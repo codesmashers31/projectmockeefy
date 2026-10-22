@@ -30,7 +30,11 @@ import {
   getExpertStats,
   searchExperts,
   updateMySkills,
-  updateExpertByAdmin
+  updateExpertByAdmin,
+  sendAadhaarOtpController,
+  verifyAadhaarOtpController,
+  getExpertAgreement,
+  saveExpertAgreement
 } from "../controllers/expertController.js";
 
 import { authenticateToken } from "../controllers/authController.js";
@@ -84,6 +88,9 @@ router.delete("/availability/delslot", deleteWeeklySlot);
 router.post("/resubmit", resubmitProfile);
 
 // Verification
+router.post("/verification/aadhar/send-otp", sendAadhaarOtpController);
+router.post("/verification/aadhar/verify-otp", verifyAadhaarOtpController);
+
 router.put(
   "/verification",
   uploadVerification.fields([
@@ -91,6 +98,17 @@ router.put(
     { name: "aadharFile", maxCount: 1 },
   ]),
   uploadVerificationDocs
+);
+
+// Agreement
+router.get("/agreement", getExpertAgreement);
+router.post(
+  "/agreement",
+  uploadVerification.fields([
+    { name: "signatureFile", maxCount: 1 },
+    { name: "agreementPdf", maxCount: 1 }
+  ]),
+  saveExpertAgreement
 );
 
 export default router;

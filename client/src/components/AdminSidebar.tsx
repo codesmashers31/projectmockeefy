@@ -14,7 +14,8 @@ import {
     PieChart,
     Hexagon,
     UserPlus,
-    Ban
+    Ban,
+    FileText
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import MockeefyLogo from "./MockeefyLogo";
@@ -42,6 +43,7 @@ export default function AdminSidebar() {
         { id: "pending-experts", label: "Pending Experts", to: "/admin/experts/pending", icon: <UserPlus size={20} /> },
         { id: "verified-experts", label: "Verified Experts", to: "/admin/experts/verified", icon: <FileCheck size={20} /> },
         { id: "rejected-experts", label: "Rejected Experts", to: "/admin/experts/rejected", icon: <Ban size={20} /> },
+        { id: "expert-agreements", label: "Expert Agreements", to: "/admin/agreements", icon: <FileText size={20} /> },
 
         { id: "job-board", label: "Job Board", to: "/admin/jobs", icon: <Briefcase size={20} /> }, // Added
 

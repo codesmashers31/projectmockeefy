@@ -38,6 +38,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/admin/experts/pending': 'Pending Experts - Admin - Mockeefy',
   '/admin/experts/verified': 'Verified Experts - Admin - Mockeefy',
   '/admin/experts/rejected': 'Rejected Experts - Admin - Mockeefy',
+  '/admin/agreements': 'Expert Agreements - Admin - Mockeefy',
   '/admin/users': 'Users - Admin - Mockeefy',
   '/admin/jobs': 'Job Management - Admin - Mockeefy',
   '/admin/categories': 'Categories - Admin - Mockeefy',

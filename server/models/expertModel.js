@@ -139,10 +139,32 @@ const expertSchema = new mongoose.Schema(
         name: { type: String, trim: true }
       },
       aadhar: {
+        number: { type: String, trim: true }, // Masked e.g. "•••• •••• 1234"
+        isVerified: { type: Boolean, default: false },
+        verifiedAt: { type: Date },
+        referenceId: { type: String, trim: true },
+        nameOnAadhaar: { type: String, trim: true },
         url: { type: String, trim: true },
         name: { type: String, trim: true }
       },
       linkedin: { type: String, trim: true }
+    },
+
+    agreement: {
+      isSigned: { type: Boolean, default: false },
+      signedAt: { type: Date },
+      signedBy: { type: String, trim: true },
+      companyName: { type: String, trim: true },
+      jobTitle: { type: String, trim: true },
+      signatureFile: {
+        url: { type: String, trim: true },
+        name: { type: String, trim: true }
+      },
+      agreementPdf: {
+        url: { type: String, trim: true },
+        name: { type: String, trim: true }
+      },
+      agreedTerms: { type: Boolean, default: false }
     },
 
     /* ----------------- Pricing REMOVED (Centralized Engine) ------------------ */

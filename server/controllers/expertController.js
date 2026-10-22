@@ -10,6 +10,7 @@ import Review from "../models/reviewModel.js";
 import PricingRule from "../models/PricingRule.js"; // Added
 import Category from "../models/Category.js"; // Added
 import User from "../models/User.js"; // Added User model
+import { sendAadhaarOtp, verifyAadhaarOtp } from "../services/sandboxAadhaarService.js";
 
 /* -------------------- Helpers -------------------- */
 const resolveUserIdFromReq = (req) => {
@@ -103,7 +104,8 @@ const getMissingSections = (expert, user) => {
 
   // Verification (Source: Expert)
   const v = expert.verification || {};
-  const verificationFilled = v.companyId?.url && v.aadhar?.url && v.linkedin;
+  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url);
+  const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
   if (!verificationFilled) missing.push("Verification Documents");
 
   return missing;
@@ -152,7 +154,8 @@ const computeCompletion = (expert, user) => {
   // Verification (10%) - From Expert
   const v = expert.verification || {};
   // Be slightly more flexible: handle cases where verification exists as an empty-ish object
-  const verificationFilled = (v.companyId?.url || v.aadhar?.url) && v.linkedin;
+  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url);
+  const verificationFilled = (v.companyId?.url || hasAadhaar) && v.linkedin;
   if (verificationFilled) score += 10;
 
   return Math.min(score, 100);
@@ -1263,6 +1266,7 @@ export const getPendingExperts = async (req, res) => {
           breakDates: expert.availability?.breakDates || []
         },
         verification: expert.verification || {},
+        agreement: expert.agreement || {},
         userDetails: {
           email: expert.userDetails?.email || "",
           _id: expert.userDetails?._id
@@ -1906,5 +1910,139 @@ export const updateMySkills = async (req, res) => {
   } catch (error) {
     console.error("Update my skills error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* -------------------- Aadhaar OTP Verification -------------------- */
+export const sendAadhaarOtpController = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
+
+    const { aadhaarNumber } = req.body;
+    if (!aadhaarNumber) {
+      return res.status(400).json({ success: false, message: "Aadhaar number is required." });
+    }
+
+    const result = await sendAadhaarOtp(aadhaarNumber);
+    return res.json(result);
+  } catch (err) {
+    console.error("sendAadhaarOtpController error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Failed to send Aadhaar OTP" });
+  }
+};
+
+export const verifyAadhaarOtpController = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    const expert = await ExpertDetails.findOne({ userId: queryUserId });
+    if (!expert) return res.status(404).json({ success: false, message: "Expert profile not found" });
+
+    const { referenceId, otp, aadhaarNumber } = req.body;
+    if (!referenceId || !otp) {
+      return res.status(400).json({ success: false, message: "Reference ID and OTP are required." });
+    }
+
+    const result = await verifyAadhaarOtp({ referenceId, otp, aadhaarNumber });
+
+    if (!expert.verification) expert.verification = {};
+    expert.verification.aadhar = {
+      number: result.maskedAadhaar,
+      isVerified: true,
+      verifiedAt: new Date(),
+      referenceId,
+      nameOnAadhaar: result.name || "",
+      url: expert.verification.aadhar?.url || "",
+      name: expert.verification.aadhar?.name || ""
+    };
+
+    await expert.save({ validateBeforeSave: false });
+
+    return res.json({
+      success: true,
+      message: result.message || "Aadhaar verified successfully",
+      aadhar: expert.verification.aadhar
+    });
+  } catch (err) {
+    console.error("verifyAadhaarOtpController error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Failed to verify Aadhaar OTP" });
+  }
+};
+
+/* -------------------- Expert Agreement -------------------- */
+export const getExpertAgreement = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    const expert = await ExpertDetails.findOne({ userId: queryUserId });
+    const user = await User.findById(queryUserId);
+
+    if (!expert) return res.status(404).json({ success: false, message: "Expert not found" });
+
+    return res.json({
+      success: true,
+      agreement: expert.agreement || {},
+      expertDetails: {
+        name: user?.name || expert.name || "",
+        email: user?.email || expert.email || "",
+        company: expert.professionalDetails?.company || "",
+        title: expert.professionalDetails?.title || ""
+      }
+    });
+  } catch (err) {
+    console.error("getExpertAgreement error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const saveExpertAgreement = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    const expert = await ExpertDetails.findOne({ userId: queryUserId });
+    if (!expert) return res.status(404).json({ success: false, message: "Expert not found" });
+
+    if (!expert.agreement) expert.agreement = {};
+
+    expert.agreement.isSigned = true;
+    expert.agreement.signedAt = new Date();
+    expert.agreement.agreedTerms = req.body.agreedTerms === "true" || req.body.agreedTerms === true;
+    if (req.body.signedBy) expert.agreement.signedBy = req.body.signedBy;
+    if (req.body.companyName) expert.agreement.companyName = req.body.companyName;
+    if (req.body.jobTitle) expert.agreement.jobTitle = req.body.jobTitle;
+
+    // Handle files if uploaded (via Multer/Cloudinary)
+    if (req.files) {
+      if (req.files.signatureFile && req.files.signatureFile[0]) {
+        expert.agreement.signatureFile = {
+          url: getFileUrl(req, req.files.signatureFile[0]),
+          name: req.files.signatureFile[0].originalname
+        };
+      }
+      if (req.files.agreementPdf && req.files.agreementPdf[0]) {
+        expert.agreement.agreementPdf = {
+          url: getFileUrl(req, req.files.agreementPdf[0]),
+          name: req.files.agreementPdf[0].originalname
+        };
+      }
+    }
+
+    await expert.save({ validateBeforeSave: false });
+
+    return res.json({
+      success: true,
+      message: "Expert agreement successfully signed and recorded",
+      agreement: expert.agreement
+    });
+  } catch (err) {
+    console.error("saveExpertAgreement error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to save agreement" });
   }
 };
