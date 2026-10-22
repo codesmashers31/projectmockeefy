@@ -302,10 +302,11 @@ const PaymentPage: React.FC = () => {
           <header className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-black transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#EAF2FF] hover:bg-[#D5E5FF] active:bg-[#C2DBFF] text-[#0755E8] border border-[#93B8FF]/80 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+            title="Go Back"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            <span className="font-medium">Back</span>
+            <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+            <span>Back</span>
           </button>
           <div className="flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-green-600" />
@@ -565,7 +566,7 @@ const PaymentPage: React.FC = () => {
               )}
               <button
                 onClick={() => navigate(upgradeType === 'premium' ? "/dashboard" : "/")}
-                className="w-full bg-[#004fcb] text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 md:bg-gray-50 md:text-gray-600 md:shadow-none"
+                className="w-full bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 hover:text-rose-900 border border-rose-200/90 py-3.5 rounded-2xl font-bold transition-all shadow-2xs cursor-pointer"
               >
                 {upgradeType === 'premium' ? "Go to Dashboard" : "Close"}
               </button>

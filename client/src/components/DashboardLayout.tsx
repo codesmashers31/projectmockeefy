@@ -1,23 +1,51 @@
 import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
-import Sidebar from "./Sidebar";
+import Sidebar, { SkeletonSidebar } from "./Sidebar";
 import Footer from "./Footer";
 import { ArrowUp, Menu, X, Users, Calendar, Bookmark } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import axios from "../lib/axios";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   hideSidebars?: boolean;
+  showSkeletons?: boolean;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   hideSidebars = false,
+  showSkeletons: propShowSkeletons,
 }) => {
   const showLeftSidebar = !hideSidebars;
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const isHomeOrDiscovery =
+    location.pathname === "/" ||
+    location.pathname === "/mentors" ||
+    location.pathname === "/find-mentor";
+
+  // Subscribe to the exact same allMentorsList query as FindMentor and App prefetch.
+  // TanStack Query deduplicates this so only one network call happens, and both components
+  // transition from skeleton -> content at the exact same render tick.
+  const { isLoading: isExpertsLoading } = useQuery({
+    queryKey: ["allMentorsList"],
+    queryFn: async () => {
+      const response = await axios.get("/api/expert/verified");
+      return Array.isArray(response.data) ? response.data : response.data.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: isHomeOrDiscovery,
+  });
+
+  // Skeletons are ONLY shown while the center interviewers are being fetched from the backend.
+  // The moment the interviewers are fetched, showSkeletons is false and all content presents without delay!
+  const showSkeletons =
+    propShowSkeletons ?? (isHomeOrDiscovery && isExpertsLoading);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -28,7 +56,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <div className="min-h-screen bg-[#F5F8FF] flex flex-col font-sans text-slate-900 antialiased selection:bg-[#EAF2FF] selection:text-[#0755E8]">
       {/* Top Navigation - Sticky */}
       <header className="sticky top-0 z-40 bg-white">
-        <Navigation />
+        <Navigation showSkeletons={showSkeletons} />
       </header>
 
       {/* Main Layout Container */}
@@ -37,13 +65,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {/* Left Sidebar - Desktop (Sticky Command Center) */}
           {showLeftSidebar && (
             <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[250px] shrink-0 sticky top-[80px] self-start">
-              <Sidebar />
+              {showSkeletons ? <SkeletonSidebar /> : <Sidebar />}
             </aside>
           )}
 
           {/* Central Main Content Area */}
           <section className="flex-1 min-w-0 w-full animate-in fade-in duration-300">
-            {children}
+            {React.isValidElement(children)
+              ? React.cloneElement(children as React.ReactElement<any>, { showSkeletons })
+              : children}
           </section>
         </div>
       </main>
@@ -129,7 +159,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
       )}
 
-      <Footer />
+      <Footer showSkeletons={showSkeletons} />
       <BackToTopButton />
     </div>
   );

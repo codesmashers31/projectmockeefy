@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MentorProfile } from "./MentorJobCard";
+import { BookingModal } from "./BookingModal";
 
 const ACCENT = "#0755E8";
 
@@ -14,6 +15,7 @@ interface ExpertCardProps {
  */
 const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
     const navigate = useNavigate();
+    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
     const [isSaved, setIsSaved] = useState(() => {
         try {
@@ -44,8 +46,13 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
 
     const goToBooking = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        navigate(`/book-session?expertId=${mentor.expertID}#time-slots-section`, {
-            state: { expertId: mentor.expertID, profile: { ...mentor }, scrollToSlots: true },
+        setIsBookingModalOpen(true);
+    };
+
+    const goToViewProfile = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        navigate(`/book-session?expertId=${mentor.expertID}`, {
+            state: { expertId: mentor.expertID, profile: { ...mentor } },
         });
     };
 
@@ -76,7 +83,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
 
     return (
         <div
-            onClick={() => goToBooking()}
+            onClick={() => goToViewProfile()}
             className="h-full box-border flex flex-col rounded-[22px] border border-[#EDF1FB] bg-gradient-to-b from-[#F1F5FE] via-white to-white p-[18px] shadow-[0_10px_24px_-18px_rgba(20,26,51,.18)] cursor-pointer text-left"
         >
             {/* Availability + save */}
@@ -142,11 +149,36 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                                 <span className="font-extrabold text-[13px] text-[#141A33]">{mentor.company}</span>
                             </>
                         )}
-                        {mentor.level && (
-                            <span className="bg-[#EEF2FF] text-[10.5px] font-extrabold px-2 py-[3px] rounded-[7px] whitespace-nowrap" style={{ color: ACCENT }}>
-                                {mentor.level}
-                            </span>
-                        )}
+                        {(() => {
+                            const levels = Array.isArray(mentor.levels) && mentor.levels.length > 0
+                                ? mentor.levels
+                                : mentor.level
+                                ? [mentor.level]
+                                : [];
+                            if (levels.length === 0) return null;
+                            const primary = mentor.level || levels[0];
+                            const remaining = levels.length - 1;
+                            return (
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <span
+                                        title={levels.join(", ")}
+                                        className="bg-[#EEF2FF] text-[9.5px] font-extrabold px-1.5 py-[2px] rounded-[6px] whitespace-nowrap leading-none"
+                                        style={{ color: ACCENT }}
+                                    >
+                                        {primary}
+                                    </span>
+                                    {remaining > 0 && (
+                                        <span
+                                            title={`Supported Levels:\n• ${levels.join("\n• ")}`}
+                                            className="bg-[#EEF2FF] text-[8.5px] font-extrabold px-1 py-[2px] rounded-[6px] whitespace-nowrap cursor-help leading-none"
+                                            style={{ color: ACCENT }}
+                                        >
+                                            +{remaining}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                     <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                         {topRated && (
@@ -258,7 +290,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
                     </button>
                     <button
-                        onClick={goToBooking}
+                        onClick={goToViewProfile}
                         className="flex items-center justify-center bg-white border-[1.5px] border-[#D9E4FF] py-[9px] rounded-[11px] font-extrabold text-[13px] cursor-pointer hover:bg-[#F7F9FE] transition-colors focus:outline-none"
                         style={{ color: ACCENT }}
                     >
@@ -276,6 +308,16 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
                 <span className="text-[#D5DAE8]">•</span>
                 <span className="text-[11.5px] font-bold text-[#8B93B2]">Mentored professionals at top companies</span>
             </div>
+
+            {/* Booking Modal (Step 1 modal view on Book Session) */}
+            {isBookingModalOpen && (
+                <BookingModal
+                    isOpen={isBookingModalOpen}
+                    onClose={() => setIsBookingModalOpen(false)}
+                    expertId={mentor.expertID}
+                    initialProfile={mentor}
+                />
+            )}
         </div>
     );
 };

@@ -208,6 +208,7 @@ export const verifyPayment = async (req, res) => {
                     price: bookingDetails.price,
                     status: 'confirmed',
                     duration: bookingDetails.duration || 60,
+                    level: bookingDetails.level || "Rising Mentor",
                     notes: bookingDetails.notes || ""
                 };
 
@@ -218,12 +219,14 @@ export const verifyPayment = async (req, res) => {
 
                 const session = await sessionService.createSession(sessionData);
 
+                const dt = formatSessionDateTime(startTime, endTime);
+
                 // Notify Expert
                 await createNotification({
                     userId: bookingDetails.expertId,
                     type: 'booking_confirmed',
                     title: 'New Session Booked!',
-                    message: `A candidate has booked a ${bookingDetails.duration || 60} min session with you.`,
+                    message: `A candidate has booked a ${bookingDetails.duration || 60} min session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
                     metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
                 });
 
@@ -231,8 +234,8 @@ export const verifyPayment = async (req, res) => {
                 await createNotification({
                     userId: bookingDetails.candidateId,
                     type: 'booking_confirmed',
-                    title: 'Booking Confirmed!',
-                    message: `Your session has been successfully scheduled.`,
+                    title: 'Meeting Scheduled Successfully! 🎉',
+                    message: `Your meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
                     metadata: { sessionId: session.sessionId, link: '/my-sessions' }
                 });
 
@@ -314,6 +317,7 @@ export const usePremiumCredit = async (req, res) => {
             price: 0,
             status: 'confirmed',
             duration: bookingDetails.duration || 60,
+            level: bookingDetails.level || "Rising Mentor",
             notes: "Premium Free Credit Used",
         };
 
@@ -326,11 +330,13 @@ export const usePremiumCredit = async (req, res) => {
         
         await session.commitTransaction();
 
+        const dt = formatSessionDateTime(sessionData.startTime, sessionData.endTime);
+
         await createNotification({
             userId: bookingDetails.expertId,
             type: 'booking_confirmed',
             title: 'New Session Booked!',
-            message: `A candidate has booked a session with you using Premium Credit.`,
+            message: `A candidate has booked a session with you using Premium Credit on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: createdSession.sessionId, link: '/expert/dashboard' }
         });
 
@@ -338,8 +344,8 @@ export const usePremiumCredit = async (req, res) => {
         await createNotification({
             userId: bookingDetails.candidateId,
             type: 'booking_confirmed',
-            title: 'Booking Confirmed!',
-            message: `Your premium free session is confirmed!`,
+            title: 'Meeting Scheduled Successfully! 🎉',
+            message: `Your premium mock interview meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: createdSession.sessionId, link: '/my-sessions' }
         });
 
@@ -381,7 +387,12 @@ export const usePremiumCredit = async (req, res) => {
  */
 export const createFreeBooking = async (req, res) => {
     try {
-        const { bookingDetails } = req.body;
+        const rawBooking = req.body.bookingDetails || req.body;
+        const candidateId = rawBooking.candidateId || req.user?.userId || req.user?.id || req.body.userId;
+        const bookingDetails = {
+            ...rawBooking,
+            candidateId
+        };
 
         if (!bookingDetails?.expertId || !bookingDetails?.candidateId || !bookingDetails?.startTime || !bookingDetails?.endTime) {
             return res.status(400).json({
@@ -422,6 +433,7 @@ export const createFreeBooking = async (req, res) => {
             price: 0,
             status: 'confirmed',
             duration: bookingDetails.duration || 60,
+            level: bookingDetails.level || "Rising Mentor",
             notes: bookingDetails.notes || 'Booked with free promo code',
         };
 
@@ -432,12 +444,14 @@ export const createFreeBooking = async (req, res) => {
 
         const session = await sessionService.createSession(sessionData);
 
+        const dt = formatSessionDateTime(startTime, endTime);
+
         // Notify Expert
         await createNotification({
             userId: bookingDetails.expertId,
             type: 'booking_confirmed',
             title: 'New Session Booked!',
-            message: `A candidate has booked a session with you.`,
+            message: `A candidate has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
         });
 
@@ -445,8 +459,8 @@ export const createFreeBooking = async (req, res) => {
         await createNotification({
             userId: bookingDetails.candidateId,
             type: 'booking_confirmed',
-            title: 'Booking Confirmed!',
-            message: `Your free session is confirmed!`,
+            title: 'Meeting Scheduled Successfully! 🎉',
+            message: `Your free mock interview meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
             metadata: { sessionId: session.sessionId, link: '/my-sessions' }
         });
 

@@ -312,8 +312,66 @@ export default function Sidebar() {
 }
 
 export const SkeletonSidebar = () => (
-  <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-3 sm:p-3.5 shadow-xs space-y-3 overflow-hidden">
-    <div className="h-60 rounded-xl bg-slate-100 shimmer-shining" />
-    <div className="h-28 rounded-xl bg-slate-100 shimmer-shining" />
-  </div>
+  <aside
+    aria-label="Sidebar Navigation Loading"
+    className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-3 sm:p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-3.5 font-sans text-left"
+  >
+    {/* Decorative gradient glow matching other cards */}
+    <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
+
+    <div className="relative z-10 space-y-3.5">
+      {/* Primary Navigation Skeleton */}
+      <div className="space-y-1">
+        <div className="px-2.5 pb-1">
+          <div className="h-3 w-20 rounded bg-slate-200/70 shimmer-shining" />
+        </div>
+
+        <div className="space-y-1">
+          {[
+            { w: "w-28", badge: "w-7" },
+            { w: "w-36", badge: "w-5" },
+            { w: "w-24", badge: "" },
+            { w: "w-20", badge: "" },
+            { w: "w-32", badge: "" },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50/40 border border-slate-100/60"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-4 h-4 rounded-md bg-slate-200/70 shimmer-shining shrink-0" />
+                <div className={`h-3.5 ${item.w} rounded bg-slate-200/60 shimmer-shining`} />
+              </div>
+              {item.badge && (
+                <div className={`h-4 ${item.badge} rounded-full bg-[#EAF2FF] shimmer-shining shrink-0`} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Practice Promo Card Skeleton */}
+      <div className="bg-[#F5F8FF] rounded-xl p-3 border border-[#E2E8F0] shadow-xs space-y-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3.5 h-3.5 rounded bg-blue-200 shimmer-shining" />
+          <div className="h-3.5 w-36 rounded bg-blue-200/80 shimmer-shining" />
+        </div>
+        <div className="h-3 w-full rounded bg-slate-200/60 shimmer-shining" />
+        <div className="h-3 w-4/5 rounded bg-slate-200/60 shimmer-shining" />
+        <div className="h-7 w-full rounded-lg bg-[#0755E8]/20 shimmer-shining mt-1" />
+      </div>
+
+      {/* Authenticated User Compact Placeholder */}
+      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-full bg-slate-100 shimmer-shining shrink-0" />
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="h-3.5 w-24 rounded bg-slate-200/70 shimmer-shining" />
+            <div className="h-2.5 w-32 rounded bg-slate-100 shimmer-shining" />
+          </div>
+        </div>
+        <div className="w-6 h-6 rounded-lg bg-slate-100 shimmer-shining shrink-0" />
+      </div>
+    </div>
+  </aside>
 );

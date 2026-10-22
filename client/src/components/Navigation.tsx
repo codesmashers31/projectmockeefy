@@ -38,7 +38,11 @@ interface Notification {
   };
 }
 
-export default function Navigation() {
+interface NavigationProps {
+  showSkeletons?: boolean;
+}
+
+export default function Navigation({ showSkeletons = false }: NavigationProps = {}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -215,96 +219,121 @@ export default function Navigation() {
           {/* LEFT: Mockeefy Logo aligned with the 250px Side Nav       */}
           {/* ========================================================= */}
           <div className="flex items-center justify-start lg:justify-center lg:w-[250px] shrink-0 h-full">
-            <Link
-              to="/"
-              className="flex items-center gap-2.5 group active:scale-95 transition-transform"
-              onClick={closeAllDropdowns}
-            >
-              <MockeefyLogo className="h-8.5 w-8.5 sm:h-9 sm:w-9" variant="brand" />
-              <span className="text-[19px] sm:text-[20px] font-sans font-extrabold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
-                Mockeefy
-              </span>
-            </Link>
+            {showSkeletons ? (
+              <div className="flex items-center gap-2.5">
+                <div className="h-8.5 w-8.5 sm:h-9 sm:w-9 rounded-xl bg-slate-100 border border-slate-200/50 shimmer-shining shrink-0" />
+                <div className="h-5 sm:h-6 w-24 rounded-lg bg-slate-100 border border-slate-200/50 shimmer-shining" />
+              </div>
+            ) : (
+              <Link
+                to="/"
+                className="flex items-center gap-2.5 group active:scale-95 transition-transform"
+                onClick={closeAllDropdowns}
+              >
+                <MockeefyLogo className="h-8.5 w-8.5 sm:h-9 sm:w-9" variant="brand" />
+                <span className="text-[19px] sm:text-[20px] font-sans font-extrabold tracking-tight text-[#0755E8] group-hover:text-[#0645C7] transition-colors">
+                  Mockeefy
+                </span>
+              </Link>
+            )}
           </div>
 
           {/* ========================================================================= */}
           {/* CENTER EXPERTS ZONE: Nav Links start where the center experts section starts */}
           {/* ========================================================================= */}
-          <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
-            {navItems.map((item) => {
-              const active = isLinkActive(item.href);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`relative h-full flex items-center text-[14px] lg:text-[14.5px] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:text-[#0755E8] ${
-                    active
+          {showSkeletons ? (
+            <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
+              <div className="h-4 w-28 rounded-md bg-slate-100 shimmer-shining" />
+              <div className="h-4 w-28 rounded-md bg-slate-100 shimmer-shining" />
+              <div className="h-4 w-24 rounded-md bg-slate-100 shimmer-shining" />
+              <div className="h-4 w-16 rounded-md bg-slate-100 shimmer-shining" />
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
+              {navItems.map((item) => {
+                const active = isLinkActive(item.href);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`relative h-full flex items-center text-[14px] lg:text-[14.5px] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:text-[#0755E8] ${
+                      active
+                        ? "text-[#0755E8] font-bold"
+                        : "text-slate-600 hover:text-[#0755E8] font-medium"
+                    }`}
+                    onClick={closeAllDropdowns}
+                  >
+                    <span>{item.name}</span>
+                    {active && (
+                      <span className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[#0755E8] rounded-t-full" />
+                    )}
+                  </Link>
+                );
+              })}
+
+              {/* "More" Dropdown Menu */}
+              <div className="relative h-full flex items-center" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  aria-haspopup="true"
+                  aria-expanded={isMoreOpen}
+                  aria-label="More navigation options"
+                  onClick={() => {
+                    setIsMoreOpen((prev) => !prev);
+                    setIsProfileMenuOpen(false);
+                    setIsNotificationOpen(false);
+                  }}
+                  className={`flex items-center gap-1 text-[14px] lg:text-[14.5px] transition-colors cursor-pointer focus-visible:outline-none ${
+                    isMoreOpen
                       ? "text-[#0755E8] font-bold"
                       : "text-slate-600 hover:text-[#0755E8] font-medium"
                   }`}
-                  onClick={closeAllDropdowns}
                 >
-                  <span>{item.name}</span>
-                  {active && (
-                    <span className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[#0755E8] rounded-t-full" />
-                  )}
-                </Link>
-              );
-            })}
+                  <span>More</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${
+                      isMoreOpen ? "rotate-180 text-[#0755E8]" : "text-slate-400"
+                    }`}
+                  />
+                </button>
 
-            {/* "More" Dropdown Menu */}
-            <div className="relative h-full flex items-center" ref={moreMenuRef}>
-              <button
-                type="button"
-                aria-haspopup="true"
-                aria-expanded={isMoreOpen}
-                aria-label="More navigation options"
-                onClick={() => {
-                  setIsMoreOpen((prev) => !prev);
-                  setIsProfileMenuOpen(false);
-                  setIsNotificationOpen(false);
-                }}
-                className={`flex items-center gap-1 text-[14px] lg:text-[14.5px] transition-colors cursor-pointer focus-visible:outline-none ${
-                  isMoreOpen
-                    ? "text-[#0755E8] font-bold"
-                    : "text-slate-600 hover:text-[#0755E8] font-medium"
-                }`}
-              >
-                <span>More</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-200 ${
-                    isMoreOpen ? "rotate-180 text-[#0755E8]" : "text-slate-400"
-                  }`}
-                />
-              </button>
-
-              {isMoreOpen && (
-                <div className="absolute left-0 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-1 space-y-0.5">
-                    {moreItems.map((item) => (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        className="flex items-center px-3.5 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] text-[13.5px] font-medium transition-colors"
-                        onClick={closeAllDropdowns}
-                      >
-                        <span className="mr-3 text-slate-400 group-hover:text-[#0755E8]">
-                          {item.icon}
-                        </span>
-                        <span>{item.name}</span>
-                      </Link>
-                    ))}
+                {isMoreOpen && (
+                  <div className="absolute left-0 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-1 space-y-0.5">
+                      {moreItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className="flex items-center px-3.5 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] text-[13.5px] font-medium transition-colors"
+                          onClick={closeAllDropdowns}
+                        >
+                          <span className="mr-3 text-slate-400 group-hover:text-[#0755E8]">
+                            {item.icon}
+                          </span>
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ========================================================= */}
           {/* RIGHT GROUP: Small Search Bar + Notifications + Profile   */}
           {/* ========================================================= */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {showSkeletons ? (
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              <div className="hidden md:flex items-center">
+                <div className="h-8 w-36 sm:w-40 md:w-44 lg:w-48 rounded-full bg-slate-100 shimmer-shining" />
+              </div>
+              <div className="w-8.5 h-8.5 rounded-full bg-slate-100 shimmer-shining shrink-0" />
+              <div className="w-8.5 h-8.5 rounded-full bg-slate-100 shimmer-shining shrink-0" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Small Compact Search Bar */}
             <div className="hidden md:flex items-center">
               <form onSubmit={handleSearchSubmit} className="relative w-36 sm:w-40 md:w-44 lg:w-48">
@@ -523,7 +552,8 @@ export default function Navigation() {
               </button>
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
         {/* ========================================================= */}
         {/* MOBILE DRAWER (For screen < md)                            */}

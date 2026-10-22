@@ -20,7 +20,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundCancellation from "./pages/RefundCancellation";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy";
-// import DashboardLayout from "./components/DashboardLayout"; // New Layout
+import DashboardLayout from "./components/DashboardLayout";
+import FindMentorSkeleton from "./components/FindMentorSkeleton";
 import DashboardIndex from "./pages/expert/Index";
 import ProfilePage from "./pages/expert/Profile";
 import SessionsPage from "./pages/expert/Sessions";
@@ -67,7 +68,26 @@ import { usePageTitle } from "./hooks/usePageTitle";
 import MockeefyLogo from "./components/MockeefyLogo";
 
 
+import axios from "./lib/axios";
+
 const queryClient = new QueryClient();
+
+// Immediately trigger prefetching of the interviewers query on root and discovery pages
+if (
+  typeof window !== "undefined" &&
+  (window.location.pathname === "/" ||
+    window.location.pathname === "/mentors" ||
+    window.location.pathname === "/find-mentor")
+) {
+  queryClient.prefetchQuery({
+    queryKey: ["allMentorsList"],
+    queryFn: async () => {
+      const response = await axios.get("/api/expert/verified");
+      return Array.isArray(response.data) ? response.data : response.data.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 function MentorsRedirect() {
   const location = useLocation();
@@ -81,9 +101,15 @@ function AppRoutes() {
   // Apply dynamic page title and favicon
   usePageTitle();
 
-  // GLOBAL AUTH LOADER: Prevents any route rendering until auth check completes.
-  // This solves the flicker issue completely.
-  if (isLoading) {
+  // Root & discovery routes (/ or /mentors or /find-mentor) are public discovery views.
+  // We do NOT block them during background auth checking. They mount immediately so
+  // the interviewers are fetched in parallel without delay and present as soon as ready!
+  const isRootOrDiscovery =
+    window.location.pathname === "/" ||
+    window.location.pathname === "/mentors" ||
+    window.location.pathname === "/find-mentor";
+
+  if (isLoading && !isRootOrDiscovery) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50/50">
         <style>{`

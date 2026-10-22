@@ -505,10 +505,23 @@ export const getPublicExpertById = async (req, res) => {
     await ExpertDetails.populate(expert, { path: 'expertSkills.skillId', select: 'name' });
 
     // --- Dynamic Price Calculation ---
-    let price = 0; // Default fallback
+    const normalizeLevel = (lvl) => {
+      if (!lvl) return "Rising Mentor";
+      const lower = String(lvl).toLowerCase().trim();
+      if (lower === "beginner") return "Rising Mentor";
+      if (lower === "intermediate") return "Professional Mentor";
+      if (lower === "advanced") return "Senior Mentor";
+      return String(lvl).trim();
+    };
+
+    const rawLevels = (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels.length > 0)
+      ? expert.professionalDetails.levels
+      : (expert.professionalDetails?.level ? [expert.professionalDetails.level] : ["Rising Mentor"]);
+    const levels = Array.from(new Set(rawLevels.map(normalizeLevel)));
+    const level = normalizeLevel(expert.professionalDetails?.level || levels[0] || "Rising Mentor");
+
     try {
       const catName = expert.personalInformation?.category || "IT";
-      const level = expert.professionalDetails?.level || "Intermediate";
       const catDoc = await Category.findOne({ name: catName });
       if (catDoc) {
         const pricingRule = await PricingRule.findOne({
@@ -543,8 +556,8 @@ export const getPublicExpertById = async (req, res) => {
         company: expert.professionalDetails?.company || "",
         totalExperience: expert.professionalDetails?.totalExperience || 0,
         industry: expert.professionalDetails?.industry || "",
-        level: expert.professionalDetails?.level || "Intermediate",
-        levels: expert.professionalDetails?.levels || [],
+        level: level,
+        levels: levels,
         previous: expert.professionalDetails?.previous || []
       },
       skillsAndExpertise: {
@@ -1346,10 +1359,23 @@ export const getRejectedExperts = async (req, res) => {
     return res.status(500).json({ success: false, message: "Internal error" });
   }
 };
+// In-memory cache for verified experts with short TTL (15 seconds) for blazing-fast refresh
+const verifiedExpertsCache = new Map();
+const VERIFIED_CACHE_TTL_MS = 15000;
+
+export const clearVerifiedExpertsCache = () => {
+  verifiedExpertsCache.clear();
+};
+
 /* -------------------- getVerifiedExperts (Active experts only) -------------------- */
 export const getVerifiedExperts = async (req, res) => {
   try {
     const { category } = req.query;
+    const catQuery = (category || "all").toLowerCase().trim();
+    const cached = verifiedExpertsCache.get(catQuery);
+    if (cached && (Date.now() - cached.timestamp < VERIFIED_CACHE_TTL_MS)) {
+      return res.json(cached.payload);
+    }
 
     const pipeline = [
       { $match: { status: "Active" } }
@@ -1410,34 +1436,63 @@ export const getVerifiedExperts = async (req, res) => {
 
     const experts = await ExpertDetails.aggregate(pipeline);
 
-    // Format matches frontend expectation + joined data
-    const formatted = await Promise.all(experts.map(async expert => {
-      // 1. Manually populate expertSkills.skillId because we are using aggregation
-      await ExpertDetails.populate(expert, { path: 'expertSkills.skillId', select: 'name' });
+    // 1. Bulk populate expertSkills.skillId for all experts in a single query (replaces N individual queries)
+    if (experts && experts.length > 0) {
+      await ExpertDetails.populate(experts, { path: 'expertSkills.skillId', select: 'name' });
+    }
 
-      // Pricing: same as booking — PricingRule (category + level + 30 min) or category base amount
+    // 2. Fetch all categories and pricing rules once in parallel (replaces 2*N individual queries)
+    const [categories, pricingRules] = await Promise.all([
+      Category.find({}).lean(),
+      PricingRule.find({ duration: 30, skillId: null }).lean(),
+    ]);
+
+    const catMap = new Map();
+    categories.forEach((c) => {
+      if (c.name) catMap.set(c.name.toLowerCase().trim(), c);
+      if (c._id) catMap.set(c._id.toString(), c);
+    });
+
+    const rulesByCat = new Map();
+    pricingRules.forEach((r) => {
+      const cId = r.categoryId ? r.categoryId.toString() : "";
+      if (!rulesByCat.has(cId)) rulesByCat.set(cId, []);
+      rulesByCat.get(cId).push(r);
+    });
+
+    // Format matches frontend expectation + joined data (synchronous in-memory mapping)
+    const formatted = experts.map((expert) => {
       let price = 0;
       let minPrice = 0;
       let maxPrice = 0;
       let minOriginalPrice = 0;
       let maxOriginalPrice = 0;
 
+      const normalizeLevel = (lvl) => {
+        if (!lvl) return "Rising Mentor";
+        const lower = String(lvl).toLowerCase().trim();
+        if (lower === "beginner") return "Rising Mentor";
+        if (lower === "intermediate") return "Professional Mentor";
+        if (lower === "advanced") return "Senior Mentor";
+        return String(lvl).trim();
+      };
+
+      const rawLevels = (Array.isArray(expert.professionalDetails?.levels) && expert.professionalDetails.levels.length > 0)
+        ? expert.professionalDetails.levels
+        : (expert.professionalDetails?.level ? [expert.professionalDetails.level] : ["Rising Mentor"]);
+      const levels = Array.from(new Set(rawLevels.map(normalizeLevel)));
+      const level = normalizeLevel(expert.professionalDetails?.level || levels[0] || "Rising Mentor");
+
       try {
         const catName = expert.personalInformation?.category || "IT";
-        const level = expert.professionalDetails?.level || "Intermediate";
-        const levels = expert.professionalDetails?.levels && expert.professionalDetails.levels.length > 0
-          ? expert.professionalDetails.levels
-          : [level];
-
-        const catDoc = await Category.findOne({ name: catName });
+        const catDoc = catMap.get(catName.toLowerCase().trim());
         if (catDoc) {
+          const catRules = rulesByCat.get(catDoc._id.toString()) || [];
+
           // 1. Base level pricing
-          const rule = await PricingRule.findOne({
-            categoryId: catDoc._id,
-            level: String(level).trim(),
-            duration: 30,
-            skillId: null
-          });
+          const rule = catRules.find(
+            (r) => String(r.level).trim().toLowerCase() === String(level).trim().toLowerCase()
+          );
           if (rule) {
             price = rule.price;
           } else if (catDoc.amount != null && catDoc.amount >= 0) {
@@ -1445,16 +1500,13 @@ export const getVerifiedExperts = async (req, res) => {
           }
 
           // 2. Fetch pricing rules for all active levels
-          const rules = await PricingRule.find({
-            categoryId: catDoc._id,
-            level: { $in: levels.map(l => String(l).trim()) },
-            duration: 30,
-            skillId: null
-          });
+          const matchedRules = catRules.filter((r) =>
+            levels.some((l) => String(l).trim().toLowerCase() === String(r.level).trim().toLowerCase())
+          );
 
           // Extract offer prices and original prices
-          const offerPrices = rules.map(r => r.price);
-          const originalPrices = rules.map(r => r.originalPrice).filter(Boolean);
+          const offerPrices = matchedRules.map((r) => r.price);
+          const originalPrices = matchedRules.map((r) => r.originalPrice).filter(Boolean);
 
           if (offerPrices.length > 0) {
             minPrice = Math.min(...offerPrices);
@@ -1473,7 +1525,9 @@ export const getVerifiedExperts = async (req, res) => {
             maxOriginalPrice = Math.round(maxPrice / 0.77);
           }
         }
-      } catch (e) { console.error("Price fetch error", e); }
+      } catch (e) {
+        console.error("Price fetch error", e);
+      }
 
       return {
         _id: expert._id,
@@ -1504,23 +1558,21 @@ export const getVerifiedExperts = async (req, res) => {
           company: expert.professionalDetails?.company || "",
           totalExperience: expert.professionalDetails?.totalExperience || 0,
           industry: expert.professionalDetails?.industry || "",
-          level: expert.professionalDetails?.level || "Intermediate",
-          levels: expert.professionalDetails?.levels || [],
+          level: level,
+          levels: levels,
           previous: expert.professionalDetails?.previous || []
         },
         skillsAndExpertise: {
           mode: expert.skillsAndExpertise?.mode || "Online",
           domains: expert.skillsAndExpertise?.domains || [],
-          // Map expertSkills to tools for legacy frontend compatibility if tools are empty
           tools: (expert.skillsAndExpertise?.tools && expert.skillsAndExpertise.tools.length > 0)
             ? expert.skillsAndExpertise.tools
             : (expert.expertSkills ? expert.expertSkills.map(s => s.skillId?.name).filter(Boolean) : []),
           languages: expert.skillsAndExpertise?.languages || []
         },
-        // Enhanced Skills Data
         expertSkills: expert.expertSkills ? expert.expertSkills.map(s => ({
           _id: s._id,
-          skillId: s.skillId?._id || s.skillId, // Handle both populated and unpopulated cases safely
+          skillId: s.skillId?._id || s.skillId,
           skillName: s.skillId?.name || "Unknown Skill",
           level: s.level,
           isEnabled: s.isEnabled
@@ -1538,9 +1590,12 @@ export const getVerifiedExperts = async (req, res) => {
           _id: expert.userDetails?._id
         }
       };
-    }));
+    });
 
-    return res.json({ success: true, count: formatted.length, data: formatted });
+    const payload = { success: true, count: formatted.length, data: formatted };
+    verifiedExpertsCache.set(catQuery, { payload, timestamp: Date.now() });
+
+    return res.json(payload);
 
   } catch (err) {
     console.error("getVerifiedExperts error:", err);
@@ -1623,6 +1678,7 @@ export const approveExpert = async (req, res) => {
       return res.status(404).json({ success: false, message: "Expert not found" });
     }
 
+    clearVerifiedExpertsCache();
     return res.json({ success: true, message: "Expert approved successfully", data: expert });
   } catch (err) {
     console.error("approveExpert error:", err);
@@ -1653,6 +1709,7 @@ export const rejectExpert = async (req, res) => {
       return res.status(404).json({ success: false, message: "Expert not found" });
     }
 
+    clearVerifiedExpertsCache();
     return res.json({ success: true, message: "Expert rejected successfully", data: expert });
   } catch (err) {
     console.error("rejectExpert error:", err);
@@ -1710,6 +1767,7 @@ export const updateExpertByAdmin = async (req, res) => {
       return res.status(404).json({ success: false, message: "Expert not found" });
     }
 
+    clearVerifiedExpertsCache();
     return res.json({ success: true, message: "Expert updated successfully", data: expert });
   } catch (err) {
     console.error("updateExpertByAdmin error:", err);
