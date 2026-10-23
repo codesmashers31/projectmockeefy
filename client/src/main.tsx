@@ -7,12 +7,20 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
+const app = (
+  <AuthProvider>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </BrowserRouter>
+  </AuthProvider>
+);
+
 createRoot(document.getElementById("root")!).render(
-  <GoogleOAuthProvider clientId={clientId}>
-    <AuthProvider>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <App />
-      </BrowserRouter>
-    </AuthProvider>
-  </GoogleOAuthProvider>
+  clientId ? (
+    <GoogleOAuthProvider clientId={clientId}>
+      {app}
+    </GoogleOAuthProvider>
+  ) : (
+    app
+  )
 );
