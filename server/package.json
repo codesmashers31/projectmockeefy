@@ -9,7 +9,8 @@
     "dev": "nodemon server.js",
     "clear:users": "node clear-users.js",
     "seed:categories-skills": "node seedCategoriesAndSkills.js",
-    "seed:dummy": "node dummySeed.js"
+    "seed:dummy": "node dummySeed.js",
+    "test:email": "node scripts/testEmail.js"
   },
   "keywords": [],
   "author": "",

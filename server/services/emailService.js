@@ -1,23 +1,32 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure .env is always loaded from server/.env regardless of current working directory
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const cleanVal = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, '') : '');
 
 /**
  * Dynamically build the transporter using current environment configuration.
  */
-const getTransporter = () => {
-    const host = process.env.SMTP_HOST || "smtpout.secureserver.net";
-    const port = Number(process.env.SMTP_PORT) || 465;
+export const getTransporter = () => {
+    const host = cleanVal(process.env.SMTP_HOST) || "smtpout.secureserver.net";
+    const port = Number(cleanVal(process.env.SMTP_PORT)) || 465;
     const secure = process.env.SMTP_SECURE !== undefined
-        ? process.env.SMTP_SECURE === "true"
+        ? cleanVal(process.env.SMTP_SECURE) === "true"
         : port === 465;
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER || "";
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || "";
+    const user = cleanVal(process.env.SMTP_USER || process.env.EMAIL_USER);
+    const pass = cleanVal(process.env.SMTP_PASS || process.env.EMAIL_PASS);
+    const service = cleanVal(process.env.EMAIL_SERVICE);
 
-    return nodemailer.createTransport({
+    const transportOptions = {
         pool: false,
-        host,
-        port,
-        secure,
         auth: {
             user,
             pass,
@@ -25,25 +34,75 @@ const getTransporter = () => {
         tls: {
             rejectUnauthorized: false
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-    });
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
+    };
+
+    if (service) {
+        transportOptions.service = service;
+    } else {
+        transportOptions.host = host;
+        transportOptions.port = port;
+        transportOptions.secure = secure;
+    }
+
+    return nodemailer.createTransport(transportOptions);
+};
+
+/**
+ * Test & verify SMTP connection status
+ */
+export const verifyEmailConnection = async () => {
+    try {
+        const user = cleanVal(process.env.SMTP_USER || process.env.EMAIL_USER);
+        const pass = cleanVal(process.env.SMTP_PASS || process.env.EMAIL_PASS);
+        const host = cleanVal(process.env.SMTP_HOST) || "smtpout.secureserver.net";
+        const port = Number(cleanVal(process.env.SMTP_PORT)) || 465;
+
+        if (!user || !pass) {
+            console.warn(`[EmailService] ⚠️ SMTP credentials missing! SMTP_USER or SMTP_PASS is empty in server/.env`);
+            return { success: false, error: "Missing credentials in server/.env" };
+        }
+
+        const transporter = getTransporter();
+        await transporter.verify();
+        console.log(`[EmailService] ✅ SMTP Transporter verified successfully (${host}:${port} as ${user}). Ready to send emails.`);
+        return { success: true };
+    } catch (error) {
+        console.error(`[EmailService] ⚠️ SMTP Verification Failed:`, {
+            message: error.message,
+            code: error.code,
+            responseCode: error.responseCode,
+        });
+        if (error.code === 'EAUTH' || error.responseCode === 535) {
+            console.warn(`[EmailService] ⚠️ Authentication Failed (535): Please update SMTP_USER and SMTP_PASS in server/.env.`);
+        }
+        return { success: false, error: error.message, code: error.code };
+    }
 };
 
 /**
  * Generic email sending function
  */
-export const sendEmail = async ({ to, subject, html }) => {
+export const sendEmail = async ({ to, subject, html }, retryCount = 1) => {
     try {
         if (!to) {
             console.warn("[EmailService] No recipient email specified, skipping email send.");
             return false;
         }
 
+        const user = cleanVal(process.env.SMTP_USER || process.env.EMAIL_USER);
+        const pass = cleanVal(process.env.SMTP_PASS || process.env.EMAIL_PASS);
+
+        if (!user || !pass) {
+            console.warn(`[EmailService] ⚠️ Cannot send email to ${to}: SMTP credentials missing in server/.env.`);
+            return false;
+        }
+
         console.log(`[EmailService] Attempting to send email to: ${to} | Subject: "${subject}"`);
 
-        const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || "info@mockeefy.com";
+        const fromAddress = cleanVal(process.env.EMAIL_FROM) || user || "info@mockeefy.com";
         const mailOptions = {
             from: `"Mockeefy" <${fromAddress}>`,
             to,
@@ -63,6 +122,14 @@ export const sendEmail = async ({ to, subject, html }) => {
             response: error.response,
             responseCode: error.responseCode,
         });
+
+        // Retry once on transient network or timeout error
+        if (retryCount > 0 && (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.code === 'ESOCKET' || (error.message && error.message.includes('Timeout')))) {
+            console.log(`[EmailService] 🔄 Retrying email to ${to} in 1.5s... (${retryCount} retry left)`);
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            return sendEmail({ to, subject, html }, retryCount - 1);
+        }
+
         if (error.code === 'EAUTH' || error.responseCode === 535) {
             console.warn(`[EmailService] ⚠️ SMTP Authentication Failed (${error.message}). Please check SMTP_USER and SMTP_PASS (or App Password) in server/.env.`);
         }

@@ -15,6 +15,7 @@ import { seedTestSession } from "./services/sessionService.js";
 import { initScheduler } from "./services/schedulerService.js";
 import { initSocket } from "./services/socketService.js";
 import { initReconciliationJob } from "./jobs/reconciliationJob.js";
+import { verifyEmailConnection } from "./services/emailService.js";
 import attachSignaling from "./websocket/signaling.js";
 import passport from "passport";
 import session from "express-session";
@@ -54,6 +55,7 @@ await connectDB();
 await seedTestSession();
 initScheduler();
 initReconciliationJob();
+verifyEmailConnection().catch((err) => console.warn("[EmailService] Verification warning:", err.message));
 
 const app = express();
 const httpServer = createServer(app);
