@@ -148,7 +148,7 @@ const expertSchema = new mongoose.Schema(
         nameMatchScore: { type: Number, default: 0 },
         nameMatchStatus: {
           type: String,
-          enum: ["MATCH", "REVIEW_NEEDED", "MISMATCH", "UNVERIFIED"],
+          enum: ["MATCH", "REVIEW_NEEDED", "MISMATCH", "UNVERIFIED", ""],
           default: "UNVERIFIED"
         },
         url: { type: String, trim: true },

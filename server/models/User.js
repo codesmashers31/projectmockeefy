@@ -75,7 +75,7 @@ const userSchema = new mongoose.Schema({
   personalInfo: {
     phone: { type: String, trim: true },
     dateOfBirth: { type: Date },
-    gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+    gender: { type: String, enum: ['Male', 'Female', 'Other', '', null] },
     country: { type: String, trim: true },
     state: { type: String, trim: true },
     city: { type: String, trim: true },

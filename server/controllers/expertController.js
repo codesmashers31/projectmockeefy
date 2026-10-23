@@ -838,7 +838,7 @@ export const updatePersonalInfo = async (req, res) => {
       }
       if (!expert.personalInformation) expert.personalInformation = {};
       expert.personalInformation.category = catDoc.name;
-      await expert.save();
+      await expert.save({ validateBeforeSave: false });
     }
 
     // Construct response object (Mocking the structure frontend expects)
