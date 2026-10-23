@@ -53,9 +53,7 @@ const ExpertCard: React.FC<ExpertCardProps> = ({ mentor }) => {
 
     const goToViewProfile = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        navigate(`/book-session?expertId=${mentorId}`, {
-            state: { expertId: mentorId, profile: { ...mentor, id: mentorId } },
-        });
+        navigate(`/expert-profile/${mentorId}`);
     };
 
     // ---- Derived display values ----

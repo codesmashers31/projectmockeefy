@@ -106,7 +106,10 @@ export default function SavedExpertsSection() {
                         <div key={item._id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all flex flex-col h-full group">
                             {/* Header */}
                             <div className="flex justify-between items-start mb-4">
-                                <div className="flex gap-3">
+                                <div
+                                    className="flex gap-3 cursor-pointer"
+                                    onClick={() => navigate(`/expert-profile/${expert._id}`)}
+                                >
                                     <div className="relative shrink-0">
                                         <img
                                             src={avatarUrl}
@@ -158,10 +161,16 @@ export default function SavedExpertsSection() {
                             </div>
 
                             {/* Actions */}
-                            <div className="mt-auto pt-2">
+                            <div className="mt-auto pt-2 flex gap-2">
+                                <button
+                                    onClick={() => navigate(`/expert-profile/${expert._id}`)}
+                                    className="flex-1 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-[11px] font-bold rounded-lg transition-all text-center cursor-pointer"
+                                >
+                                    View Profile
+                                </button>
                                 <button
                                     onClick={() => navigate(`/book-session?expertId=${expert._id}#time-slots-section`, { state: { expertId: expert._id, scrollToSlots: true } })}
-                                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-600 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm active:scale-95"
+                                    className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm active:scale-95 text-center cursor-pointer"
                                 >
                                     Book Session
                                 </button>

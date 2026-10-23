@@ -21,6 +21,8 @@ import {
   getInitialKolkataMonth
 } from "../lib/bookSessionUtils";
 import { AVAILABLE_LEVELS } from "./BookingModal";
+import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
+import { showBookingSuccessAlert } from "../lib/bookingSuccessAlert";
 
 /**
  * Skeleton Loader matching Mockeefy clean design
@@ -305,6 +307,7 @@ export default function BookSessionPage() {
   const [selectedLevel, setSelectedLevel] = useState<string>("Rising Mentor");
   const [levelPrices, setLevelPrices] = useState<Record<string, number>>({});
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+  const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
 
   useEffect(() => {
     if (expertLevels.length > 0 && !expertLevels.includes(selectedLevel)) {
@@ -446,17 +449,41 @@ export default function BookSessionPage() {
   useEffect(() => {
     if (!expertId) return;
 
+    let isMounted = true;
     const fetchSessions = async () => {
       try {
-        const res = await axios.get(`/api/sessions/expert/${expertId}`);
-        if (Array.isArray(res.data)) {
-          setBookedSessions(res.data);
+        const candidateUserId = user?.id || user?._id || (user as any)?.userId;
+        const [expertRes, candidateRes] = await Promise.allSettled([
+          axios.get(`/api/sessions/expert/${expertId}`),
+          candidateUserId
+            ? axios.get(`/api/sessions/candidate/${candidateUserId}`)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        if (!isMounted) return;
+
+        const allBooked: any[] = [];
+        if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
+          allBooked.push(...expertRes.value.data);
         }
+        if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
+          allBooked.push(...candidateRes.value.data);
+        }
+
+        setBookedSessions(allBooked);
       } catch (err) {
         console.error("Failed to load booked sessions", err);
       }
     };
     fetchSessions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [expertId, user?.id, user?._id, (user as any)?.userId]);
+
+  useEffect(() => {
+    if (!expertId) return;
 
     const fetchReviews = async () => {
       try {
@@ -641,13 +668,19 @@ export default function BookSessionPage() {
         const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
         const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
 
-        const isBooked = bookedSessions.some(session => {
-          if (session.status === 'cancelled') return false;
+        const isBooked = bookedSessions.some((session) => {
+          const status = (session.status || "").toLowerCase();
+          if (status === "cancelled") return false;
+
           const sStart = new Date(session.startTime);
           const sEnd = new Date(session.endTime);
           if (isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
-          if (getKolkataDateString(sStart) !== kolkataDateStr) return false;
-          return slotDate < sEnd && slotEndDate > sStart;
+
+          const startMatches = getKolkataDateString(sStart) === kolkataDateStr;
+          const endMatches = getKolkataDateString(sEnd) === kolkataDateStr;
+          if (!startMatches && !endMatches) return false;
+
+          return slotDate.getTime() < sEnd.getTime() && slotEndDate.getTime() > sStart.getTime();
         });
 
         // Completely omit booked timing slot from available slots
@@ -841,22 +874,21 @@ export default function BookSessionPage() {
       // 3. User notification: Toast
       toast.success(`Meeting Scheduled! Your meeting has been scheduled on ${selectedDateStr} at ${selectedTimeSlot}.`);
 
-      // 4. User notification: Modal
-      Swal.fire({
-        title: `${successTitle} 🎉`,
-        html: `
-          <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
-            <p style="margin-bottom: 8px;">Your meeting has been scheduled on <strong>${selectedDateStr}</strong> at <strong>${selectedTimeSlot}</strong>.</p>
-            <p style="margin-bottom: 8px;"><strong>Mentor:</strong> ${profile.name}</p>
-            ${extraNote ? `<p style="margin-bottom: 8px; color: #475569;">${extraNote}</p>` : ""}
-            <p style="color: #059669; font-weight: 500;">✓ This timing slot is confirmed and removed from available slots.</p>
-          </div>
-        `,
-        icon: "success",
-        confirmButtonColor: "#0755E8",
-        confirmButtonText: "View My Bookings",
-      }).then(() => {
-        navigate("/my-sessions");
+      // 4. Mark confirmed and navigate to /my-sessions
+      setBookingFlowState("confirmed");
+      navigate("/my-sessions", { replace: true });
+
+      // 5. User notification: Professional Confirmation Modal (No icons/emojis, structured layout)
+      showBookingSuccessAlert({
+        title: "Meeting Scheduled",
+        mentorName: profile.name,
+        dateStr: selectedDateStr,
+        timeSlot: selectedTimeSlot,
+        duration: sessionDuration,
+        extraNote,
+        onConfirm: () => {
+          navigate("/my-sessions");
+        },
       });
     };
 
@@ -865,18 +897,26 @@ export default function BookSessionPage() {
 
       // 1. Free promo booking
       if (appliedFreePromo) {
+        setBookingFlowState("confirming");
         const res = await axios.post("/api/sessions/book-free", payload);
         if (res.data?.success) {
           onBookingSuccess("Meeting Scheduled!", "Free promotional session unlocked.");
+        } else {
+          setBookingFlowState("selecting");
+          throw new Error(res.data?.message || "Free booking failed.");
         }
         return;
       }
 
       // 2. Premium user credit booking
       if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
+        setBookingFlowState("confirming");
         const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
         if (res.data?.success) {
           onBookingSuccess("Meeting Scheduled!", `Booked with Premium Credit (${res.data.remainingCredits ?? 0} credits remaining).`);
+        } else {
+          setBookingFlowState("selecting");
+          throw new Error(res.data?.message || "Premium credit booking failed.");
         }
         return;
       }
@@ -900,6 +940,10 @@ export default function BookSessionPage() {
 
       const { order } = orderResponse.data;
       const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SqNEn1MzouLlsg";
+      let paymentCompleted = false;
+
+      // Switch to payment_processing state before opening Razorpay checkout window
+      setBookingFlowState("payment_processing");
 
       const options = {
         key: razorpayKey,
@@ -910,6 +954,9 @@ export default function BookSessionPage() {
         order_id: order.id,
         handler: async function (response: any) {
           try {
+            paymentCompleted = true;
+            // IMMEDIATELY enter confirming state so previous booking screen never flashes
+            setBookingFlowState("confirming");
             setIsProcessing(true);
             const verifyRes = await axios.post("/api/payment/verify-payment", {
               razorpay_order_id: response.razorpay_order_id,
@@ -942,10 +989,13 @@ export default function BookSessionPage() {
             }
           } catch (verifyErr: any) {
             console.error("Payment Verification Error:", verifyErr);
+            setBookingFlowState("error");
             Swal.fire({
               title: "Payment Verification Failed",
               text: verifyErr?.response?.data?.message || verifyErr.message || "Could not verify payment.",
               icon: "error"
+            }).then(() => {
+              setBookingFlowState("selecting");
             });
           } finally {
             setIsProcessing(false);
@@ -962,7 +1012,10 @@ export default function BookSessionPage() {
         modal: {
           ondismiss: function () {
             setIsProcessing(false);
-            toast.info("Payment was cancelled. Your slot is still selected.");
+            if (!paymentCompleted) {
+              setBookingFlowState("selecting");
+              toast.info("Payment was cancelled. Your slot is still selected.");
+            }
           }
         }
       };
@@ -971,6 +1024,7 @@ export default function BookSessionPage() {
       rzp.open();
     } catch (err: any) {
       console.error("Booking error", err);
+      setBookingFlowState("selecting");
       Swal.fire({
         title: "Booking Failed",
         text: err?.response?.data?.message || err.message || "An error occurred while booking. Please try again.",
@@ -981,6 +1035,19 @@ export default function BookSessionPage() {
       setIsProcessing(false);
     }
   };
+
+  if (bookingFlowState === "confirmed") {
+    return null;
+  }
+
+  if (bookingFlowState === "confirming" || bookingFlowState === "payment_processing") {
+    return (
+      <ConfirmationLoadingModal
+        expertName={profile?.name || "Mentor"}
+        isConfirming={bookingFlowState === "confirming"}
+      />
+    );
+  }
 
   // Fallback for missing/invalid expertId
   if (!expertId || (!loading && !profile)) {

@@ -19,6 +19,8 @@ import {
 } from "../lib/bookSessionUtils";
 import { MentorProfile } from "./MentorJobCard";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
+import { showBookingSuccessAlert } from "../lib/bookingSuccessAlert";
 
 export const AVAILABLE_LEVELS = [
   "Rising Mentor",
@@ -225,6 +227,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
+
+  // Reset booking flow state to selecting whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setBookingFlowState("selecting");
+    }
+  }, [isOpen]);
 
   // Mentor Tier Level Selection (Image 1 style)
   const [selectedLevel, setSelectedLevel] = useState<string>("Rising Mentor");
@@ -314,9 +324,61 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   };
 
+  // Resolve target expert ID from all possible props and mappings
+  const targetExpertId = useMemo(() => {
+    return (
+      expertId ||
+      profile?.id ||
+      (profile as any)?._id ||
+      (initialProfile as any)?.id ||
+      (initialProfile as any)?._id ||
+      (initialProfile as any)?.expertID ||
+      (initialProfile as any)?.rawExpert?._id ||
+      (initialProfile as any)?.rawExpert?.userId
+    );
+  }, [expertId, profile?.id, (profile as any)?._id, initialProfile]);
+
+  // Dedicated effect: ALWAYS fetch booked sessions when modal opens or expert/user changes
+  useEffect(() => {
+    if (!isOpen || !targetExpertId) return;
+
+    let isMounted = true;
+    const fetchSessions = async () => {
+      try {
+        const candidateUserId = user?.id || user?._id || (user as any)?.userId;
+        const [expertRes, candidateRes] = await Promise.allSettled([
+          axios.get(`/api/sessions/expert/${targetExpertId}`),
+          candidateUserId
+            ? axios.get(`/api/sessions/candidate/${candidateUserId}`)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        if (!isMounted) return;
+
+        const allBooked: any[] = [];
+        if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
+          allBooked.push(...expertRes.value.data);
+        }
+        if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
+          allBooked.push(...candidateRes.value.data);
+        }
+
+        setBookedSessions(allBooked);
+      } catch (err) {
+        console.error("Failed to load booked sessions", err);
+      }
+    };
+
+    fetchSessions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, targetExpertId, user?.id, user?._id, (user as any)?.userId]);
+
   // Fetch expert details if not provided or incomplete
   useEffect(() => {
-    if (!isOpen || !expertId) return;
+    if (!isOpen) return;
 
     if ((initialProfile as any)?.rawExpert && !profile) {
       setProfile(mapExpertToProfile((initialProfile as any).rawExpert));
@@ -328,7 +390,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       (initialProfile as any)?.rawExpert?.availability
     );
 
-    // If availability is already present, synchronize session duration and skip loading/fetching
+    // If availability is already present, synchronize session duration and skip expert metadata fetching
     if (hasAvailability) {
       const dur =
         profile?.sessionDuration ||
@@ -346,9 +408,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       try {
         setLoading(true);
         let expertData = (initialProfile as any)?.rawExpert || null;
-        if (!expertData) {
+        if (!expertData && targetExpertId) {
           try {
-            const res = await axios.get(`/api/expert/public/profile/${expertId}`);
+            const res = await axios.get(`/api/expert/public/profile/${targetExpertId}`);
             if (res.data?.success && res.data?.profile) {
               expertData = res.data.profile;
             }
@@ -359,7 +421,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           if (!expertData) {
             const res = await axios.get(`/api/expert/verified`);
             const experts = res.data?.data || res.data || [];
-            expertData = experts.find((e: any) => (e._id || e.userId) === expertId);
+            expertData = experts.find(
+              (e: any) =>
+                (e._id || e.userId || e.id || e.expertID) === targetExpertId
+            );
           }
         }
 
@@ -378,19 +443,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     };
 
     fetchExpert();
-
-    const fetchSessions = async () => {
-      try {
-        const res = await axios.get(`/api/sessions/expert/${expertId}`);
-        if (Array.isArray(res.data)) {
-          setBookedSessions(res.data);
-        }
-      } catch (err) {
-        console.error("Failed to load booked sessions", err);
-      }
-    };
-    fetchSessions();
-  }, [isOpen, expertId]);
+  }, [isOpen, targetExpertId]);
 
   // Handle escape key & lock body scroll
   useEffect(() => {
@@ -728,13 +781,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
         const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
 
-        const isBooked = bookedSessions.some(session => {
-          if (session.status === "cancelled") return false;
+        const isBooked = bookedSessions.some((session) => {
+          const status = (session.status || "").toLowerCase();
+          if (status === "cancelled") return false;
+
           const sStart = new Date(session.startTime);
           const sEnd = new Date(session.endTime);
           if (isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
-          if (getKolkataDateString(sStart) !== kolkataDateStr) return false;
-          return slotDate < sEnd && slotEndDate > sStart;
+
+          const startMatches = getKolkataDateString(sStart) === kolkataDateStr;
+          const endMatches = getKolkataDateString(sEnd) === kolkataDateStr;
+          if (!startMatches && !endMatches) return false;
+
+          return slotDate.getTime() < sEnd.getTime() && slotEndDate.getTime() > sStart.getTime();
         });
 
         // If the slot is already booked, omit it completely so it is removed from available slots for all users
@@ -768,16 +827,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Real-time listener for booked sessions across browser tabs / windows
   useEffect(() => {
     const handleSessionBooked = (e: any) => {
-      if (e.detail?.expertId === expertId) {
+      if (e.detail?.startTime && e.detail?.endTime) {
         setBookedSessions((prev) => [
           ...prev,
           { startTime: e.detail.startTime, endTime: e.detail.endTime, status: "confirmed" },
         ]);
       }
+      if (targetExpertId) {
+        axios.get(`/api/sessions/expert/${targetExpertId}`).then((res) => {
+          if (Array.isArray(res.data)) {
+            setBookedSessions(res.data);
+          }
+        }).catch(() => {});
+      }
     };
     window.addEventListener("session-booked", handleSessionBooked);
     return () => window.removeEventListener("session-booked", handleSessionBooked);
-  }, [expertId]);
+  }, [targetExpertId]);
 
   const expertDisplayName = profile?.name || (initialProfile as any)?.name || "Interview Expert";
   const expertRole = profile?.role || (initialProfile as any)?.role || "Interview Expert";
@@ -900,23 +966,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       // 3. User notification: Toast
       toast.success(`Meeting Scheduled! Your meeting has been scheduled on ${formattedBookingDate} at ${selectedTimeSlot}.`);
 
-      // 4. User notification: Modal
-      Swal.fire({
-        title: `${successTitle} 🎉`,
-        html: `
-          <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
-            <p style="margin-bottom: 8px;">Your meeting has been scheduled on <strong>${formattedBookingDate}</strong> at <strong>${selectedTimeSlot}</strong>.</p>
-            <p style="margin-bottom: 8px;"><strong>Mentor:</strong> ${profile?.name || "Mentor"}</p>
-            ${extraNote ? `<p style="margin-bottom: 8px; color: #475569;">${extraNote}</p>` : ""}
-            <p style="color: #059669; font-weight: 500;">✓ This timing slot is confirmed and removed from available slots.</p>
-          </div>
-        `,
-        icon: "success",
-        confirmButtonColor: "#0755E8",
-        confirmButtonText: "View My Bookings",
-      }).then(() => {
-        onClose();
-        navigate("/my-sessions");
+      // 4. Mark confirmed, close modal, and navigate to /my-sessions
+      setBookingFlowState("confirmed");
+      onClose();
+      navigate("/my-sessions");
+
+      // 5. User notification: Professional Confirmation Modal (No icons/emojis, structured layout)
+      showBookingSuccessAlert({
+        title: "Meeting Scheduled",
+        mentorName: profile?.name || "Mentor",
+        dateStr: formattedBookingDate,
+        timeSlot: selectedTimeSlot,
+        duration: sessionDuration,
+        extraNote,
+        onConfirm: () => {
+          navigate("/my-sessions");
+        },
       });
     };
 
@@ -925,18 +990,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       // 1. Free promo booking
       if (appliedFreePromo) {
+        setBookingFlowState("confirming");
         const res = await axios.post("/api/sessions/book-free", payload);
         if (res.data?.success) {
           onBookingSuccess("Meeting Scheduled!", "Free promotional session unlocked.");
+        } else {
+          setBookingFlowState("selecting");
+          throw new Error(res.data?.message || "Free booking failed.");
         }
         return;
       }
 
       // 2. Premium user credit booking
       if (user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)) {
+        setBookingFlowState("confirming");
         const res = await axios.post("/api/payment/use-premium-credit", { bookingDetails: payload });
         if (res.data?.success) {
           onBookingSuccess("Meeting Scheduled!", `Booked with Premium Credit (${res.data.remainingCredits ?? 0} credits remaining).`);
+        } else {
+          setBookingFlowState("selecting");
+          throw new Error(res.data?.message || "Premium credit booking failed.");
         }
         return;
       }
@@ -959,6 +1032,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       const { order } = orderResponse.data;
       const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SqNEn1MzouLlsg";
+      let paymentCompleted = false;
+
+      // Switch to payment_processing state before opening Razorpay checkout window
+      setBookingFlowState("payment_processing");
 
       const options = {
         key: razorpayKey,
@@ -969,6 +1046,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         order_id: order.id,
         handler: async function (response: any) {
           try {
+            paymentCompleted = true;
+            // IMMEDIATELY enter confirming state so previous booking modal never flashes
+            setBookingFlowState("confirming");
             setIsProcessing(true);
             const verifyRes = await axios.post("/api/payment/verify-payment", {
               razorpay_order_id: response.razorpay_order_id,
@@ -1001,10 +1081,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             }
           } catch (verifyErr: any) {
             console.error("Payment Verification Error:", verifyErr);
+            setBookingFlowState("error");
             Swal.fire({
               title: "Payment Verification Failed",
               text: verifyErr?.response?.data?.message || verifyErr.message || "Could not verify payment.",
               icon: "error"
+            }).then(() => {
+              setBookingFlowState("selecting");
             });
           } finally {
             setIsProcessing(false);
@@ -1021,7 +1104,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         modal: {
           ondismiss: function () {
             setIsProcessing(false);
-            toast.info("Payment was cancelled. Your slot is still selected.");
+            if (!paymentCompleted) {
+              setBookingFlowState("selecting");
+              toast.info("Payment was cancelled. Your slot is still selected.");
+            }
           }
         }
       };
@@ -1030,6 +1116,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       rzp.open();
     } catch (err: any) {
       console.error("Booking error", err);
+      setBookingFlowState("selecting");
       Swal.fire({
         title: "Booking Failed",
         text: err?.response?.data?.message || err.message || "An error occurred while booking. Please try again.",
@@ -1041,7 +1128,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   };
 
-  if (!isOpen || typeof document === "undefined") return null;
+  if (!isOpen || bookingFlowState === "confirmed" || typeof document === "undefined") return null;
+
+  if (bookingFlowState === "confirming" || bookingFlowState === "payment_processing") {
+    return (
+      <ConfirmationLoadingModal
+        expertName={expertDisplayName}
+        isConfirming={bookingFlowState === "confirming"}
+      />
+    );
+  }
 
   if (isContentLoading) {
     return createPortal(
