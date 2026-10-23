@@ -6,7 +6,6 @@ import {
   CalendarDays, 
   Award, 
   Grid2X2, 
-  FileText, 
   Settings, 
   LogOut, 
   X,
@@ -45,8 +44,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
     { id: "availability", icon: CalendarDays, label: 'Availability', to: '/dashboard/availability' },
     { id: "skills", icon: Award, label: 'Skills & Experience', to: '/dashboard/skills' },
     { id: "sessions", icon: Grid2X2, label: 'Sessions', to: '/dashboard/sessions' },
-    { id: "withdraw", icon: Wallet, label: 'Payouts', to: '/dashboard/withdraw' },
-    { id: "agreement", icon: FileText, label: 'Agreement', to: '/dashboard/agreement' }
+    { id: "withdraw", icon: Wallet, label: 'Payouts', to: '/dashboard/withdraw' }
   ];
 
   const SidebarContent = () => (

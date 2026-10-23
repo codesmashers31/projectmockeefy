@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from '../../lib/axios';
 import { toast } from 'sonner';
 import { 
@@ -14,7 +15,8 @@ import {
     RotateCcw,
     Lock,
     Edit3,
-    CheckCircle2
+    CheckCircle2,
+    Info
 } from 'lucide-react';
 import { compressImage } from '../../lib/imageUtils';
 
@@ -44,8 +46,13 @@ export default function VerificationManager() {
     const [companyFile, setCompanyFile] = useState<File | null>(null);
     const companyInputRef = useRef<HTMLInputElement>(null);
 
+    const [, setSearchParams] = useSearchParams();
+    const goToPersonalTab = () => setSearchParams({ tab: 'personal' });
+
     // Aadhaar Verification states
     const [aadhaarInput, setAadhaarInput] = useState('');
+    const [accountName, setAccountName] = useState('');
+    const [verificationError, setVerificationError] = useState('');
     const [otpInput, setOtpInput] = useState('');
     const [otpReferenceId, setOtpReferenceId] = useState('');
     const [isOtpSent, setIsOtpSent] = useState(false);
@@ -54,6 +61,9 @@ export default function VerificationManager() {
     const [otpCountdown, setOtpCountdown] = useState(0);
     const [maskedMobileNotice, setMaskedMobileNotice] = useState('');
     const [isReverifyingAadhaar, setIsReverifyingAadhaar] = useState(false);
+
+    const cleanAccountName = (accountName || '').replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, '').trim();
+    const isSingleName = cleanAccountName ? cleanAccountName.split(/\s+/).filter(Boolean).length < 2 : false;
 
     useEffect(() => {
         fetchVerificationStatus();
@@ -80,6 +90,10 @@ export default function VerificationManager() {
                 const v = res.data.profile.verification || {};
                 setVerification(v);
                 setLinkedinUrl(v.linkedin || '');
+                if (res.data.profile.name) {
+                    const cleaned = (res.data.profile.name || '').replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, '').trim();
+                    setAccountName(cleaned);
+                }
             }
         } catch (error) {
             console.error(error);
@@ -107,11 +121,40 @@ export default function VerificationManager() {
         setAadhaarInput(formatted);
     };
 
+    // Reset verification and open re-verification form
+    const handleStartReverify = async () => {
+        try {
+            await axios.post('/api/expert/verification/aadhar/reset');
+            setVerification((prev) => ({
+                ...prev,
+                aadhar: { isVerified: false }
+            }));
+        } catch (e) {
+            console.error("Reset Aadhaar error:", e);
+        }
+        setIsReverifyingAadhaar(true);
+        setIsOtpSent(false);
+        setAadhaarInput('');
+        setOtpInput('');
+        setVerificationError('');
+    };
+
     // Send OTP to Aadhaar registered mobile
     const handleSendAadhaarOtp = async () => {
+        setVerificationError('');
         const cleanAadhaar = aadhaarInput.replace(/\s/g, '');
         if (cleanAadhaar.length !== 12) {
-            toast.error("Please enter a valid 12-digit Aadhaar card number.");
+            const msg = "Please enter a valid 12-digit Aadhaar card number.";
+            setVerificationError(msg);
+            toast.error(msg);
+            return;
+        }
+
+        // Rule: Check name matching
+        if (isSingleName) {
+            const msg = "Name in Aadhaar is not same as profile name. Please update your name in Personal Details.";
+            setVerificationError(msg);
+            toast.error(msg);
             return;
         }
 
@@ -125,19 +168,21 @@ export default function VerificationManager() {
                 setOtpReferenceId(res.data.referenceId);
                 setIsOtpSent(true);
                 setOtpCountdown(60);
+                setVerificationError('');
                 const notice = res.data.message || `OTP sent to mobile registered with Aadhaar ending in ${cleanAadhaar.slice(-4)}.`;
                 setMaskedMobileNotice(notice);
                 toast.success(notice);
 
                 // If running in development/mock mode, display helpful dev OTP notice
                 if (res.data.devOtp) {
-                    toast.info(`[Dev OTP] Your test code is: ${res.data.devOtp}`, { duration: 12000 });
+                    toast.info(`[Dev OTP] Your test code is: ${res.data.devOtp}`, { duration: 15000 });
                 }
             }
         } catch (error: any) {
             console.error("Send Aadhaar OTP error:", error);
-            const msg = error.response?.data?.message || "Failed to send OTP to registered mobile. Please check the Aadhaar number.";
-            toast.error(msg);
+            const msg = error.response?.data?.message || "Failed to send OTP to registered mobile. Please check your Aadhaar details.";
+            setVerificationError(msg);
+            toast.error(msg, { duration: 8000 });
         } finally {
             setSendingOtp(false);
         }
@@ -145,6 +190,7 @@ export default function VerificationManager() {
 
     // Verify OTP submitted by user
     const handleVerifyAadhaarOtp = async () => {
+        setVerificationError('');
         const cleanOtp = otpInput.trim();
         if (cleanOtp.length !== 6) {
             toast.error("Please enter the complete 6-digit OTP received on your mobile.");
@@ -162,7 +208,7 @@ export default function VerificationManager() {
             });
 
             if (res.data.success) {
-                toast.success("Aadhaar verified successfully!");
+                toast.success("Aadhaar verified successfully! Identity authenticated.");
                 setVerification((prev) => ({
                     ...prev,
                     aadhar: res.data.aadhar
@@ -172,11 +218,16 @@ export default function VerificationManager() {
                 setOtpInput('');
                 setAadhaarInput('');
                 setIsReverifyingAadhaar(false);
+                setVerificationError('');
+                if (res.data.aadhar?.nameOnAadhaar) {
+                    setAccountName(res.data.aadhar.nameOnAadhaar);
+                }
             }
         } catch (error: any) {
             console.error("Verify Aadhaar OTP error:", error);
             const msg = error.response?.data?.message || "Invalid or expired OTP. Please try again.";
-            toast.error(msg);
+            setVerificationError(msg);
+            toast.error(msg, { duration: 8000 });
         } finally {
             setVerifyingOtp(false);
         }
@@ -385,12 +436,7 @@ export default function VerificationManager() {
                                     </span>
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setIsReverifyingAadhaar(true);
-                                            setIsOtpSent(false);
-                                            setAadhaarInput('');
-                                            setOtpInput('');
-                                        }}
+                                        onClick={handleStartReverify}
                                         className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium hover:underline cursor-pointer"
                                     >
                                         <Edit3 className="w-3.5 h-3.5" /> Re-verify
@@ -401,34 +447,65 @@ export default function VerificationManager() {
                             /* CASE 2: Aadhaar Not Verified OR Re-verifying */
                             <div className="border border-gray-200 bg-white rounded-xl p-6 min-h-[220px] flex flex-col justify-between shadow-xs">
                                 {!isOtpSent ? (
-                                    /* Step 1: Enter 12-digit Aadhaar Card Number */
+                                    /* Step 1: Enter Full Name and 12-digit Aadhaar Card Number */
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#004fcb] flex items-center justify-center font-bold text-xs">
                                                 1
                                             </div>
                                             <div>
-                                                <h4 className="text-sm font-bold text-gray-900">Enter Aadhaar Card Number</h4>
-                                                <p className="text-xs text-gray-500">We will send an OTP to your Aadhaar-registered mobile number</p>
+                                                <h4 className="text-sm font-bold text-gray-900">Aadhaar Identity Details</h4>
+                                                <p className="text-xs text-gray-500">OTP will be sent after identity & uniqueness checks pass</p>
                                             </div>
                                         </div>
 
+                                        {/* Aadhaar Card Number Input */}
                                         <div className="space-y-1.5 pt-1">
+                                            <label className="block text-xs font-bold text-gray-700">
+                                                Aadhaar Card Number <span className="text-red-500">*</span>
+                                            </label>
                                             <div className="relative">
                                                 <input
                                                     type="text"
                                                     value={aadhaarInput}
-                                                    onChange={handleAadhaarInputChange}
+                                                    onChange={(e) => {
+                                                        handleAadhaarInputChange(e);
+                                                        if (verificationError) setVerificationError('');
+                                                    }}
                                                     placeholder="XXXX XXXX XXXX"
                                                     maxLength={14}
                                                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-base font-mono tracking-widest text-gray-900 focus:ring-2 focus:ring-[#004fcb] focus:border-[#004fcb] outline-none transition-all placeholder:text-gray-300"
                                                 />
                                                 <ShieldCheck className="w-5 h-5 text-gray-400 absolute right-3 top-3 pointer-events-none" />
                                             </div>
-                                            <p className="text-[11px] text-gray-500 flex items-center gap-1">
-                                                <Lock className="w-3 h-3 text-gray-400 inline" /> Mockeefy verifies securely via authorized Sandbox KYC API. No documents are stored.
+                                            <p className="text-[11px] text-gray-500">
+                                                12-digit unique number. One Aadhaar card can only be used by one person across Mockeefy.
                                             </p>
                                         </div>
+
+                                        {/* Prominent Verification Error Alert */}
+                                        {verificationError && (
+                                            <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-xs text-red-800 space-y-2.5">
+                                                <div className="flex items-start gap-2.5">
+                                                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                                    <div className="space-y-1 flex-1">
+                                                        <p className="font-bold text-red-900 text-xs">Verification Check Failed</p>
+                                                        <p className="leading-relaxed text-[11.5px] text-red-800">{verificationError}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={goToPersonalTab}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                                                    >
+                                                        <Edit3 className="w-3.5 h-3.5" />
+                                                        Update Name in Personal Details
+                                                        <ArrowRight className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="pt-2 flex items-center justify-between">
                                             {isReverifyingAadhaar ? (
@@ -524,6 +601,30 @@ export default function VerificationManager() {
                                                 <span className="text-gray-400 text-[11px]">Valid for 10 mins</span>
                                             </div>
                                         </div>
+
+                                        {/* Prominent Verification Error Alert */}
+                                        {verificationError && (
+                                            <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-xs text-red-800 space-y-2.5">
+                                                <div className="flex items-start gap-2.5">
+                                                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                                    <div className="space-y-1 flex-1">
+                                                        <p className="font-bold text-red-900 text-xs">Verification Failed</p>
+                                                        <p className="leading-relaxed text-[11.5px] text-red-800">{verificationError}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={goToPersonalTab}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                                                    >
+                                                        <Edit3 className="w-3.5 h-3.5" />
+                                                        Update Name in Personal Details
+                                                        <ArrowRight className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="pt-2 flex items-center justify-end gap-2">
                                             <button

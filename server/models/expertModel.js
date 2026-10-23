@@ -140,10 +140,17 @@ const expertSchema = new mongoose.Schema(
       },
       aadhar: {
         number: { type: String, trim: true }, // Masked e.g. "•••• •••• 1234"
+        hash: { type: String, trim: true, index: true }, // SHA-256 hash to prevent duplicate usage across accounts
         isVerified: { type: Boolean, default: false },
         verifiedAt: { type: Date },
         referenceId: { type: String, trim: true },
         nameOnAadhaar: { type: String, trim: true },
+        nameMatchScore: { type: Number, default: 0 },
+        nameMatchStatus: {
+          type: String,
+          enum: ["MATCH", "REVIEW_NEEDED", "MISMATCH", "UNVERIFIED"],
+          default: "UNVERIFIED"
+        },
         url: { type: String, trim: true },
         name: { type: String, trim: true }
       },
@@ -199,6 +206,15 @@ const expertSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected", "Active"],
       default: "pending"
+    },
+
+    verificationRequested: {
+      type: Boolean,
+      default: false
+    },
+
+    verificationRequestedAt: {
+      type: Date
     },
 
     rejectionReason: {

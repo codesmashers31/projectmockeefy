@@ -2,6 +2,7 @@
 import User from "../models/User.js";
 import Session from "../models/Session.js";
 import ExpertDetails from "../models/expertModel.js";
+import { isExpertProfileComplete } from "./expertController.js";
 
 // @desc    Get dashboard statistics
 // @route   GET /api/admin/stats
@@ -23,7 +24,10 @@ export const getDashboardStats = async (req, res) => {
             User.countDocuments({ userType: "expert" }),
             User.countDocuments({ userType: "candidate" }),
             Session.countDocuments({}),
-            ExpertDetails.countDocuments({ status: "pending" }),
+            (async () => {
+                const pendings = await ExpertDetails.find({ status: "pending" }).populate("userId");
+                return pendings.filter(exp => exp.userId && isExpertProfileComplete(exp, exp.userId) && (exp.verificationRequested === true || exp.verificationRequested === undefined)).length;
+            })(),
             Session.countDocuments({ status: "live" }), // or 'confirmed' depending on definition
 
             // 2. Revenue Aggregation (Total & Monthly)

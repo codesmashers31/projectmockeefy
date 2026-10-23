@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from '../lib/axios';
-import { ChevronLeft, ChevronRight, Search, X, RefreshCw, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, X, RefreshCw, Eye, CheckCircle, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { getProfileImageUrl } from "../lib/imageUtils";
 
@@ -38,7 +38,16 @@ interface SkillsAndExpertise {
 }
 
 interface Verification {
-    aadhar?: { url?: string; name?: string; isVerified?: boolean; number?: string; nameOnAadhaar?: string; verifiedAt?: string };
+    aadhar?: {
+        url?: string;
+        name?: string;
+        isVerified?: boolean;
+        number?: string;
+        nameOnAadhaar?: string;
+        nameMatchScore?: number;
+        nameMatchStatus?: "MATCH" | "REVIEW_NEEDED" | "MISMATCH" | "UNVERIFIED";
+        verifiedAt?: string;
+    };
     companyId?: { url?: string; name?: string };
     linkedin?: string;
 }
@@ -46,6 +55,7 @@ interface Verification {
 interface Expert {
     _id: string;
     price?: number;
+    completion?: number;
     personalInformation: PersonalInformation;
     education: Education[];
     professionalDetails: ProfessionalDetails;
@@ -254,7 +264,7 @@ const PendingExpertsTable: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Pending Experts</h2>
-                    <p className="text-sm text-gray-500 mt-1">Review and approve verification verification requests.</p>
+                    <p className="text-sm text-gray-500 mt-1">Review and verify eligible experts (min 80% completion, mandatory verification documents & signed agreement).</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-72">
@@ -302,7 +312,27 @@ const PendingExpertsTable: React.FC = () => {
                                                 {(exp.personalInformation?.userName || "EX").substring(0, 2)}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-900">{exp.personalInformation.userName}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium text-gray-900">{exp.personalInformation.userName}</p>
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        <CheckCircle className="w-2.5 h-2.5 text-emerald-600" /> {exp.completion ?? 100}% Complete
+                                                    </span>
+                                                    {exp.verification?.aadhar?.isVerified && (
+                                                        <span
+                                                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                                                                exp.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED" || (exp.verification.aadhar.nameMatchScore && exp.verification.aadhar.nameMatchScore < 80)
+                                                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                            }`}
+                                                            title={`Name on Aadhaar: ${exp.verification.aadhar.nameOnAadhaar || exp.personalInformation.userName}`}
+                                                        >
+                                                            <ShieldCheck className="w-2.5 h-2.5" />
+                                                            {exp.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED"
+                                                                ? "Name Review"
+                                                                : "Aadhaar Match"}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-gray-500 mt-0.5">{exp.professionalDetails.title}</p>
                                             </div>
                                         </div>
@@ -533,9 +563,35 @@ const PendingExpertsTable: React.FC = () => {
                                     )}
 
                                     {selectedExpert.verification?.aadhar?.isVerified ? (
-                                        <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-semibold border border-emerald-200">
-                                            <CheckCircle className="w-4 h-4 text-emerald-600" />
-                                            <span>Aadhaar Verified {selectedExpert.verification.aadhar.number ? `(${selectedExpert.verification.aadhar.number})` : ''}</span>
+                                        <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg space-y-1.5 text-left">
+                                            <div className="flex items-center justify-between">
+                                                <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-950">
+                                                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                                    Aadhaar e-KYC
+                                                </span>
+                                                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                                                    {selectedExpert.verification.aadhar.number || "Verified"}
+                                                </span>
+                                            </div>
+                                            <div className="text-xs">
+                                                <span className="text-[11px] font-medium text-gray-500 block">Name on Aadhaar:</span>
+                                                <span className="font-bold text-gray-900">
+                                                    {selectedExpert.verification.aadhar.nameOnAadhaar || selectedExpert.personalInformation.userName}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-200/60 text-[11px]">
+                                                {selectedExpert.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED" || (selectedExpert.verification.aadhar.nameMatchScore && selectedExpert.verification.aadhar.nameMatchScore < 80) ? (
+                                                    <span className="text-amber-700 font-bold flex items-center gap-1">
+                                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                                                        Name Review Needed ({selectedExpert.verification.aadhar.nameMatchScore || 70}%)
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                                        Verified Name Match
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     ) : selectedExpert.verification?.aadhar?.url ? (
                                         <a

@@ -3,55 +3,30 @@ import { useNavigate } from "react-router-dom";
 import axios from '../lib/axios';
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
-import { Camera, AlertCircle, CheckCircle, XCircle, User, BookOpen, Briefcase, Award, Calendar, ShieldCheck, LayoutDashboard } from "lucide-react";
+import {
+  Camera,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  User,
+  BookOpen,
+  Briefcase,
+  Award,
+  Calendar,
+  ShieldCheck,
+  Send,
+  Lock,
+  FileText,
+  Check,
+  ExternalLink,
+  ChevronRight,
+  Clock,
+  Sparkles,
+  Globe,
+  Building2,
+  GraduationCap
+} from "lucide-react";
 import { compressImage } from "../lib/imageUtils";
-
-// Progress Ring Component
-const ProgressRing = memo(({
-  percent = 0,
-  children
-}: {
-  percent?: number;
-  children: React.ReactNode
-}) => {
-  const size = 110; // Slightly larger for better visibility
-  const stroke = 6;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percent / 100) * circumference;
-
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#e5e7eb"
-          strokeWidth={stroke}
-          fill="transparent"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#3b82f6"
-          strokeWidth={stroke}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          fill="transparent"
-          className="transition-all duration-500"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {children}
-      </div>
-    </div>
-  );
-});
-
-ProgressRing.displayName = "ProgressRing";
 
 interface ExpertProfileHeaderProps {
   onNavigate?: (tab: string) => void;
@@ -67,12 +42,20 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     name: "",
     title: "",
     company: "",
+    totalExperience: "" as string | number,
+    industry: "",
+    level: "",
+    category: "",
+    city: "",
+    country: "",
     photoUrl: "",
     status: "pending",
-    rejectionReason: ""
+    rejectionReason: "",
+    verificationRequested: false
   });
   const [completion, setCompletion] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
   const [missingSections, setMissingSections] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -92,9 +75,16 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           name: p.name || user.name || "",
           title: p.title || "",
           company: p.company || "",
+          totalExperience: p.totalExperience ?? "",
+          industry: p.industry || "",
+          level: p.level || "",
+          category: p.category || "",
+          city: p.city || "",
+          country: p.country || "",
           photoUrl: p.photoUrl || "",
           status: p.status || "pending",
-          rejectionReason: p.rejectionReason || ""
+          rejectionReason: p.rejectionReason || "",
+          verificationRequested: Boolean(p.verificationRequested || res.data.verificationRequested)
         });
         setCompletion(res.data.completion || 0);
         setMissingSections(res.data.missingSections || []);
@@ -135,11 +125,8 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           ...prev,
           photoUrl: res.data.profile?.photoUrl || prev.photoUrl
         }));
-        // Refresh to get updated completion status
         fetchProfile();
-        // Sync global auth state so TopNav updates
         refreshGlobalUser();
-        // Notify parent (ProfilePage) to refresh its state
         onRefresh?.();
       }
     } catch (err: any) {
@@ -150,300 +137,687 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     }
   };
 
-  const handleResubmit = async () => {
+  const isVerificationDocDone = !missingSections.includes("Verification Documents");
+  const isAgreementDone = !missingSections.includes("Service Agreement");
+  const isEligibleForVerification = completion >= 80 && isVerificationDocDone && isAgreementDone;
+
+  const handleRequestVerification = async () => {
+    if (completion < 80) {
+      toast.error(`Please reach at least 80% profile completion before requesting verification (currently ${completion}%).`);
+      return;
+    }
+    if (!isVerificationDocDone) {
+      toast.error("Verification Documents must be fully completed before requesting verification.");
+      return;
+    }
+    if (!isAgreementDone) {
+      toast.error("Service Agreement must be signed before requesting verification.");
+      return;
+    }
+
     try {
-      setLoading(true);
-      const res = await axios.post("/api/expert/resubmit");
+      setRequesting(true);
+      const res = await axios.post("/api/expert/request-verification");
       if (res.data.success) {
-        toast.success("Profile resubmitted");
+        toast.success(res.data.message || "Profile submitted to admin for verification successfully!");
+        setProfile(prev => ({
+          ...prev,
+          status: "pending",
+          verificationRequested: true
+        }));
         fetchProfile();
         refreshGlobalUser();
         onRefresh?.();
       }
-    } catch (err) {
-      toast.error("Failed to resubmit");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to submit verification request");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleResubmit = async () => {
+    if (completion < 80) {
+      toast.error(`Please reach at least 80% profile completion before resubmitting (currently ${completion}%).`);
+      return;
+    }
+    if (!isVerificationDocDone) {
+      toast.error("Verification Documents must be fully completed before resubmitting.");
+      return;
+    }
+    if (!isAgreementDone) {
+      toast.error("Service Agreement must be signed before resubmitting.");
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await axios.post("/api/expert/resubmit");
+      if (res.data.success) {
+        toast.success("Profile resubmitted for verification");
+        fetchProfile();
+        refreshGlobalUser();
+        onRefresh?.();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to resubmit");
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusConfig = (status: string) => {
-    const configs = {
-      Active: {
-        label: "Verified",
-        icon: CheckCircle,
-        color: "text-green-600 bg-green-50 border-green-200",
-        badgeColor: "bg-green-500"
-      },
-      approved: {
+  const getStatusConfig = (status: string, isRequested: boolean, isEligible: boolean) => {
+    if (status === "Active") {
+      return {
+        label: "Verified Expert",
+        icon: ShieldCheck,
+        color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+      };
+    }
+    if (status === "approved") {
+      return {
         label: "Approved",
-        icon: CheckCircle,
-        color: "text-blue-600 bg-blue-50 border-blue-200",
-        badgeColor: "bg-blue-500"
-      },
-      rejected: {
-        label: "Rejected",
+        icon: CheckCircle2,
+        color: "text-blue-700 bg-blue-50 border-blue-200",
+      };
+    }
+    if (status === "rejected") {
+      return {
+        label: "Action Needed",
         icon: XCircle,
-        color: "text-red-600 bg-red-50 border-red-200",
-        badgeColor: "bg-red-500"
-      },
-      default: {
-        label: "Pending Verification",
-        icon: AlertCircle,
-        color: "text-amber-600 bg-amber-50 border-amber-200",
-        badgeColor: "bg-amber-500"
-      }
+        color: "text-rose-700 bg-rose-50 border-rose-200",
+      };
+    }
+    if (isRequested) {
+      return {
+        label: "Under Review",
+        icon: Clock,
+        color: "text-amber-700 bg-amber-50 border-amber-200",
+      };
+    }
+    if (isEligible) {
+      return {
+        label: "Ready for Verification",
+        icon: Sparkles,
+        color: "text-blue-700 bg-blue-50 border-blue-200",
+      };
+    }
+    return {
+      label: "In Setup",
+      icon: AlertCircle,
+      color: "text-slate-700 bg-slate-100 border-slate-200",
     };
-
-    return configs[status as keyof typeof configs] || configs.default;
   };
 
-  const statusConfig = getStatusConfig(profile.status);
+  const statusConfig = getStatusConfig(profile.status, profile.verificationRequested, isEligibleForVerification);
   const StatusIcon = statusConfig.icon;
 
-  const sectionTabMap: Record<string, string> = {
-    "Personal Information": "personal",
-    "Education": "education",
-    "Professional Details": "profession",
-    "Verification Documents": "verification"
-  };
-
-  const getSectionIcon = (sectionName: string) => {
-    const icons: Record<string, any> = {
-      "Personal Information": User,
-      "Education": BookOpen,
-      "Professional Details": Briefcase,
-      "Skills & Expertise": Award,
-      "Availability": Calendar,
-      "Profile Photo": Camera,
-      "Verification Documents": ShieldCheck
-    };
-    return icons[sectionName] || AlertCircle;
-  };
-
-  const handleSectionClick = (sectionName: string) => {
-    const tab = sectionTabMap[sectionName];
-    if (tab) {
-      onNavigate?.(tab);
-    } else if (sectionName === "Availability") {
-      navigate("/dashboard/availability");
-    } else if (sectionName === "Skills & Expertise") {
-      navigate("/dashboard/skills");
-    } else if (sectionName === "Profile Photo") {
-      photoInputRef.current?.click();
+  // Setup roadmap definitions for unverified/rejected states
+  const roadmapSections = [
+    {
+      id: "personal",
+      name: "Personal Info",
+      backendKey: "Personal Information",
+      desc: "Contact details, phone & location",
+      icon: User,
+      mandatory: false,
+      onClick: () => onNavigate?.("personal")
+    },
+    {
+      id: "tier",
+      name: "Category & Level",
+      backendKey: "",
+      desc: "Domain category, seniority & rates",
+      icon: Award,
+      mandatory: false,
+      onClick: () => onNavigate?.("tier")
+    },
+    {
+      id: "education",
+      name: "Education & Degrees",
+      backendKey: "Education",
+      desc: "Academic degrees & institutions",
+      icon: GraduationCap,
+      mandatory: false,
+      onClick: () => onNavigate?.("education")
+    },
+    {
+      id: "profession",
+      name: "Experience",
+      backendKey: "Professional Details",
+      desc: "Current role, companies & history",
+      icon: Briefcase,
+      mandatory: false,
+      onClick: () => onNavigate?.("profession")
+    },
+    {
+      id: "verification",
+      name: "Verification Docs",
+      backendKey: "Verification Documents",
+      desc: "Govt ID (Aadhaar), Company ID & LinkedIn",
+      icon: ShieldCheck,
+      mandatory: true,
+      onClick: () => onNavigate?.("verification")
+    },
+    {
+      id: "agreement",
+      name: "Service Agreement",
+      backendKey: "Service Agreement",
+      desc: "Signed coach terms & signature",
+      icon: FileText,
+      mandatory: true,
+      onClick: () => onNavigate?.("agreement")
+    },
+    {
+      id: "photo",
+      name: "Profile Photo",
+      backendKey: "Profile Photo",
+      desc: "Clear professional headshot",
+      icon: Camera,
+      mandatory: false,
+      onClick: () => photoInputRef.current?.click()
+    },
+    {
+      id: "availability",
+      name: "Availability Slots",
+      backendKey: "Availability",
+      desc: "Weekly schedule for interview slots",
+      icon: Calendar,
+      mandatory: false,
+      onClick: () => navigate("/dashboard/availability")
     }
-  };
+  ];
 
   if (loading && !profile.name) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm text-gray-500 font-medium">Loading profile overview...</p>
+      <div className="p-12 flex flex-col items-center justify-center min-h-[360px] bg-white rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs text-slate-500 font-semibold">Loading profile details...</p>
       </div>
     );
   }
 
   return (
     <div className="w-full space-y-6">
-      {/* Premium Header Card */}
-      <div className="bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/20 border border-slate-200/60 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm">
-        {/* Left: Avatar with Progress Ring */}
-        <div className="relative shrink-0">
-          <ProgressRing percent={completion}>
-            {(profile.photoUrl && !profile.photoUrl.includes("default-avatar.png") && !profile.photoUrl.includes("ui-avatars.com")) ? (
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md">
+      {/* 1. Executive Hero Header Banner */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-6">
+        {/* Left: Avatar & Identity Details */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 min-w-0 flex-1 text-center sm:text-left">
+          {/* Avatar with Camera Overlay Button */}
+          <div className="relative shrink-0 group">
+            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden border-2 border-white shadow-md ring-1 ring-slate-200 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+              {(profile.photoUrl && !profile.photoUrl.includes("default-avatar.png") && !profile.photoUrl.includes("ui-avatars.com")) ? (
                 <img
                   src={profile.photoUrl}
-                  alt="Profile"
+                  alt={profile.name}
                   className="w-full h-full object-cover"
                 />
-              </div>
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-blue-100 border-4 border-white flex items-center justify-center shadow-md">
-                <span className="text-3xl font-black text-blue-700 uppercase">
+              ) : (
+                <span className="text-2xl sm:text-3xl font-black text-blue-700 uppercase tracking-wider">
                   {(profile.name || user?.name || 'ME').trim().substring(0, 2).toUpperCase()}
                 </span>
-              </div>
-            )}
-          </ProgressRing>
-
-          {/* Upload Button */}
-          <button
-            onClick={() => photoInputRef.current?.click()}
-            disabled={uploading}
-            className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-md border hover:bg-gray-50 transition-colors disabled:opacity-75 z-10 cursor-pointer"
-          >
-            {uploading ? (
-              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Camera className="w-4 h-4 text-gray-600" />
-            )}
-          </button>
-
-          <input
-            ref={photoInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])}
-          />
-        </div>
-
-        {/* Right/Main: Profile Details */}
-        <div className="flex-1 min-w-0 text-center md:text-left space-y-2.5">
-          {profile.status === "Active" && (
-            <div className="flex justify-center md:justify-start">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/80 shadow-sm animate-fade-in shrink-0" title="Verified Expert">
-                <svg className="w-4 h-4 fill-current text-blue-500 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7l-3.61.81.34 3.68L1 12l2.44 2.79-.34 3.69 3.61.82 1.89 3.2L12 21.04l3.4 1.46 1.89-3.2 3.61-.82-.34-3.68L23 12zm-13 5l-4-4 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                </svg>
-                VERIFIED EXPERT
-              </span>
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
-              {profile.name || user?.name || "Your Name"}
-            </h2>
-
-            {(profile.title || profile.company) && (
-              <p className="text-sm font-semibold text-slate-600 truncate max-w-xl">
-                {profile.title}{profile.title && profile.company && " at "}{profile.company}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-center md:justify-start gap-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${statusConfig.color}`}>
-              <StatusIcon className="w-3.5 h-3.5" />
-              {statusConfig.label}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress & Setup Wizard Section */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        {/* Progress Bar Display */}
-        <div className="md:col-span-4 bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4">
-          <div className="flex justify-between items-center text-xs text-slate-500 font-bold uppercase tracking-wider">
-            <span>Profile Completion</span>
-            <span className="text-blue-600 font-extrabold text-sm">
-              {loading ? "..." : `${completion}%`}
-            </span>
-          </div>
-          <div className="h-3 bg-slate-100 rounded-full overflow-hidden w-full relative">
-            {loading ? (
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-indigo-100 animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
-            ) : (
-              <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-700 ease-out shadow-sm"
-                style={{ width: `${completion}%` }}
-              />
-            )}
-          </div>
-          <p className="text-xs text-slate-500 leading-relaxed font-medium">
-            Completing your profile will increase your search visibility and unlock advanced mentor booking tools.
-          </p>
-        </div>
-
-        {/* Dynamic Action Setup Wizard */}
-        <div className="md:col-span-8">
-          {completion < 100 ? (
-            <div className="bg-amber-50/30 rounded-2xl border border-amber-100 p-5 md:p-6 space-y-4">
-              {profile.status === "rejected" ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2.5 text-red-700">
-                    <XCircle className="w-5 h-5 shrink-0" />
-                    <h4 className="font-bold text-base">Updates Required</h4>
-                  </div>
-                  <p className="text-sm text-red-700 bg-red-50 p-4 rounded-xl border border-red-100 leading-relaxed font-semibold">
-                    {profile.rejectionReason || "Please update your profile information as requested."}
-                  </p>
-                  <button
-                    onClick={handleResubmit}
-                    disabled={loading}
-                    className="w-full py-3 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm cursor-pointer"
-                  >
-                    {loading ? "Submitting..." : "Resubmit Profile"}
-                  </button>
-                </div>
-              ) : (
-                missingSections.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2.5 text-amber-800">
-                      <AlertCircle className="w-5 h-5 shrink-0 animate-pulse text-amber-600" />
-                      <h4 className="font-bold text-base">Complete Your Profile Setup</h4>
-                    </div>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[
-                        "Personal Information",
-                        "Education",
-                        "Professional Details",
-                        "Skills & Expertise",
-                        "Availability",
-                        "Profile Photo",
-                        "Verification Documents"
-                      ].map((section, idx) => {
-                        const isMissing = missingSections.includes(section);
-                        const SectionIcon = getSectionIcon(section);
-                        return (
-                          <li key={idx} className="col-span-1">
-                            <button
-                              type="button"
-                              onClick={() => handleSectionClick(section)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group ${
-                                isMissing
-                                  ? "bg-white hover:bg-amber-50/60 border-amber-200/60 hover:border-amber-300 text-amber-900 cursor-pointer"
-                                  : "bg-green-50/30 hover:bg-green-50/50 border-green-200/40 hover:border-green-300 text-green-800 cursor-pointer"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className={`p-1.5 rounded-lg shrink-0 ${
-                                  isMissing 
-                                    ? "bg-amber-50 text-amber-600" 
-                                    : "bg-green-50 text-green-600"
-                                }`}>
-                                  <SectionIcon className="w-4 h-4" />
-                                </div>
-                                <span className="text-sm font-semibold truncate">
-                                  {section}
-                                </span>
-                              </div>
-                              <div className="shrink-0 flex items-center gap-2">
-                                {isMissing ? (
-                                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
-                                    Go ➜
-                                  </span>
-                                ) : (
-                                  <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                                )}
-                              </div>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )
               )}
             </div>
+
+            {/* Quick Upload Button */}
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute -bottom-1.5 -right-1.5 bg-white p-1.5 rounded-xl shadow-md border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer group-hover:scale-105"
+              title="Change profile photo"
+            >
+              {uploading ? (
+                <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-3.5 h-3.5 text-slate-600" />
+              )}
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])}
+            />
+          </div>
+
+          {/* Identity info */}
+          <div className="space-y-1.5 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight truncate">
+                {profile.name || user?.name || "Expert"}
+              </h1>
+              {profile.status === "Active" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200/80 shadow-2xs">
+                  <svg className="w-3.5 h-3.5 fill-current text-blue-600 shrink-0" viewBox="0 0 24 24">
+                    <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7l-3.61.81.34 3.68L1 12l2.44 2.79-.34 3.69 3.61.82 1.89 3.2L12 21.04l3.4 1.46 1.89-3.2 3.61-.82-.34-3.68L23 12zm-13 5l-4-4 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                  VERIFIED
+                </span>
+              )}
+            </div>
+
+            <p className="text-sm font-medium text-slate-600 truncate max-w-xl">
+              {profile.title ? (
+                <>
+                  <span className="font-semibold text-slate-800">{profile.title}</span>
+                  {profile.company && <span className="text-slate-500"> at {profile.company}</span>}
+                </>
+              ) : (
+                <span className="text-slate-400 italic">No headline set (complete in Personal Info)</span>
+              )}
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold border shadow-2xs ${statusConfig.color}`}>
+                <StatusIcon className="w-3.5 h-3.5" />
+                {statusConfig.label}
+              </span>
+
+              {(profile.city || profile.country) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200/60">
+                  <Globe className="w-3 h-3 text-slate-400" />
+                  {[profile.city, profile.country].filter(Boolean).join(", ")}
+                </span>
+              )}
+
+              {profile.category && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200/60">
+                  {profile.category}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Consolidated Verification Status & Action Anchor */}
+        <div className="w-full lg:w-92 shrink-0">
+          {profile.status === "Active" ? (
+            /* Active Expert Certificate Card */
+            <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-slate-50 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-emerald-950">Verified Expert</h3>
+                    <p className="text-[11px] text-emerald-700 font-medium">Credentials Approved</p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Active
+                </span>
+              </div>
+              <p className="text-xs text-emerald-900/80 leading-relaxed font-normal">
+                Your profile is verified and discoverable. Candidates can search and book interview sessions with you.
+              </p>
+              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs text-emerald-800">
+                <span className="font-semibold flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" /> Live on Mockeefy
+                </span>
+                <button
+                  onClick={() => navigate("/dashboard/availability")}
+                  className="font-bold text-emerald-700 hover:text-emerald-900 transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                >
+                  Manage Slots ➜
+                </button>
+              </div>
+            </div>
+          ) : profile.verificationRequested && profile.status === "pending" ? (
+            /* Application Under Review Card */
+            <div className="bg-gradient-to-br from-amber-50/90 via-amber-50/30 to-slate-50 border border-amber-200 rounded-2xl p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-xs">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-950">Review In Progress</h3>
+                    <p className="text-[11px] text-amber-700 font-medium">Pending Admin Review</p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                  In Queue
+                </span>
+              </div>
+              <p className="text-xs text-amber-900/80 leading-relaxed font-normal">
+                Your profile is in the admin review queue. Submitted documents and agreement are being validated.
+              </p>
+              <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-xs text-amber-800 font-semibold">
+                <span>Verification Queue</span>
+                <span className="text-[11px] text-amber-600 font-medium">Est. 24–48 hours</span>
+              </div>
+            </div>
+          ) : isEligibleForVerification ? (
+            /* Ready for Verification CTA Card */
+            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 border border-blue-200 rounded-2xl p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-blue-950">Ready for Verification</h3>
+                    <p className="text-[11px] text-blue-700 font-medium">{completion}% Completed • Requirements Met</p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                  Eligible
+                </span>
+              </div>
+              <p className="text-xs text-blue-900/80 leading-relaxed font-normal">
+                You have fulfilled all requirements (Score &ge; 80%, Verification Documents, and Service Agreement).
+              </p>
+              <button
+                onClick={handleRequestVerification}
+                disabled={requesting}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-75"
+              >
+                {requesting ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ShieldCheck className="w-4 h-4" />
+                )}
+                {requesting ? "Submitting..." : "Verify Profile Now"}
+              </button>
+            </div>
           ) : (
-            <div className="bg-green-50/40 border border-green-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              <div className="p-3.5 bg-green-100 rounded-full shrink-0 text-green-600">
-                <CheckCircle className="w-8 h-8" />
+            /* Incomplete Setup Status & Requirements Card */
+            <div className="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-slate-700 text-white rounded-lg shadow-xs">
+                    <Lock className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">Verification Criteria</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Need 80% + Mandatory Sections</p>
+                  </div>
+                </div>
+                <span className="text-xs font-extrabold text-blue-600">{completion}%</span>
               </div>
-              <div>
-                <h4 className="font-bold text-green-800 text-lg mb-0.5">All Set!</h4>
-                <p className="text-sm text-green-600/90 leading-relaxed font-semibold">
-                  Your profile is 100% complete and pending verification by our admin team.
-                </p>
+
+              {/* Requirements Checklist */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                  <span className="text-slate-600">Completion Score</span>
+                  <span className={`font-bold flex items-center gap-1 ${completion >= 80 ? "text-emerald-600" : "text-slate-500"}`}>
+                    {completion >= 80 ? <Check className="w-3.5 h-3.5" /> : `${completion}% / 80%`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                  <span className="text-slate-600">Verification Docs (Mandatory)</span>
+                  <span className={`font-bold flex items-center gap-1 ${isVerificationDocDone ? "text-emerald-600" : "text-rose-600"}`}>
+                    {isVerificationDocDone ? <Check className="w-3.5 h-3.5" /> : "Required"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-slate-600">Service Agreement (Mandatory)</span>
+                  <span className={`font-bold flex items-center gap-1 ${isAgreementDone ? "text-emerald-600" : "text-rose-600"}`}>
+                    {isAgreementDone ? <Check className="w-3.5 h-3.5" /> : "Required"}
+                  </span>
+                </div>
               </div>
+
+              <button
+                disabled
+                className="w-full py-2 px-3 bg-slate-200/80 text-slate-400 text-xs font-semibold rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5"
+                title="Reach 80% score, upload verification documents, and sign service agreement"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Complete Requirements to Verify
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* 2. Main Body Content */}
+      {profile.status === "Active" ? (
+        /* Executive Overview for Active Experts */
+        <div className="space-y-6">
+          {/* Row 1: Key Executive Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Card 1: Public Standing */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public Standing</span>
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <Globe className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-slate-900">Active & Discoverable</p>
+                <p className="text-xs text-slate-500 mt-0.5">Your profile appears in candidate searches.</p>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center text-xs font-semibold text-emerald-700 gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Verified Expert Badge Active
+              </div>
+            </div>
+
+            {/* Card 2: Coaching Tier */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Coaching Tier</span>
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <Award className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-slate-900 truncate">
+                  {profile.level || "Intermediate Mentor"}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  {profile.category || "General Coaching"}
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => onNavigate?.("tier")}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  Manage Tier & Category ➜
+                </button>
+              </div>
+            </div>
+
+            {/* Card 3: Experience */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Experience</span>
+                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                  <Briefcase className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-slate-900">
+                  {profile.totalExperience ? `${profile.totalExperience} Years Exp.` : "Professional"}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  {profile.company ? `At ${profile.company}` : (profile.industry || "Industry Expert")}
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => onNavigate?.("profession")}
+                  className="text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  Update Experience ➜
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Profile Modules Grid */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Profile Sections</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Quickly jump to any section to manage your details and documents.</p>
+              </div>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
+                All Sections Active
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+              {[
+                { id: "personal", title: "Personal Information", icon: User, desc: "Contact details, phone & location" },
+                { id: "tier", title: "Category & Level", icon: Award, desc: "Seniority level, domain & rates" },
+                { id: "education", title: "Education & Degrees", icon: GraduationCap, desc: "Colleges, degrees & graduation year" },
+                { id: "profession", title: "Experience", icon: Briefcase, desc: "Current job, past companies & history" },
+                { id: "verification", title: "Verification Documents", icon: ShieldCheck, desc: "Government ID, Company ID & LinkedIn" },
+                { id: "agreement", title: "Service Agreement", icon: FileText, desc: "Signed digital agreement & terms" },
+              ].map((sec) => (
+                <div
+                  key={sec.id}
+                  onClick={() => onNavigate?.(sec.id)}
+                  className="group p-4 rounded-xl border border-slate-200/80 hover:border-blue-300 hover:shadow-xs transition-all bg-white cursor-pointer flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-slate-50 group-hover:bg-blue-50 text-slate-600 group-hover:text-blue-600 transition-colors">
+                        <sec.icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          {sec.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-1">{sec.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 text-[11px]">
+                      <Check className="w-3 h-3 text-emerald-600" /> Active
+                    </span>
+                    <span className="font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 text-xs">
+                      Edit ➜
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Setup Roadmap for Incomplete / Pending / Rejected Experts */
+        <div className="space-y-6">
+          {/* Admin Rejection Alert Banner (Only if rejected) */}
+          {profile.status === "rejected" && (
+            <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-2.5 text-rose-800">
+                <XCircle className="w-5 h-5 shrink-0" />
+                <h3 className="font-bold text-base">Updates Required by Admin</h3>
+              </div>
+              <p className="text-sm text-rose-900 bg-white/90 p-4 rounded-xl border border-rose-100 leading-relaxed font-medium">
+                {profile.rejectionReason || "Please update your profile details as requested by the admin team."}
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <span className="text-xs text-rose-700 font-medium">
+                  Review the sections below, update the required fields, and resubmit for verification.
+                </span>
+                <button
+                  onClick={handleResubmit}
+                  disabled={loading || !isEligibleForVerification}
+                  className={`w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 ${
+                    isEligibleForVerification
+                      ? "bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                      : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Resubmit for Verification
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Section Roadmap Grid */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 md:p-7 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">Profile Setup Roadmap</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Complete sections to reach at least 80% completion score and unlock verification.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full w-fit">
+                {Math.max(0, 8 - missingSections.length)} of 8 Sections Completed
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {roadmapSections.map((sec) => {
+                const isMissing = sec.backendKey ? missingSections.includes(sec.backendKey) : false;
+                const IconComponent = sec.icon;
+
+                return (
+                  <div
+                    key={sec.id}
+                    onClick={sec.onClick}
+                    className={`group p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                      isMissing
+                        ? sec.mandatory
+                          ? "bg-rose-50/30 border-rose-200 hover:border-rose-300 hover:bg-rose-50/50"
+                          : "bg-white border-slate-200/90 hover:border-slate-300 hover:bg-slate-50/50"
+                        : "bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-xs"
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className={`p-2 rounded-lg ${
+                          isMissing
+                            ? sec.mandatory ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"
+                            : "bg-emerald-50 text-emerald-600"
+                        }`}>
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                        {sec.mandatory && (
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            isMissing
+                              ? "bg-rose-100 text-rose-700 border border-rose-200"
+                              : "bg-slate-100 text-slate-600"
+                          }`}>
+                            Mandatory
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          {sec.name}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{sec.desc}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                      {isMissing ? (
+                        <span className={`text-[11px] font-bold ${sec.mandatory ? "text-rose-600" : "text-amber-600"}`}>
+                          Action Required
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" /> Completed
+                        </span>
+                      )}
+
+                      <span className={`font-bold text-xs flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform ${
+                        isMissing ? "text-slate-700" : "text-blue-600"
+                      }`}>
+                        {isMissing ? "Complete ➜" : "Edit ➜"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

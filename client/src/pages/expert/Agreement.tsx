@@ -39,7 +39,7 @@ interface AgreementData {
   agreedTerms?: boolean;
 }
 
-export default function AgreementPage() {
+export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = {}) {
   const [loading, setLoading] = useState(true);
   const [agreement, setAgreement] = useState<AgreementData>({});
   const [expertDetails, setExpertDetails] = useState({
@@ -273,6 +273,7 @@ export default function AgreementPage() {
         toast.success('Agreement successfully recorded and verified!');
         setAgreement(res.data.agreement);
         setIsRevising(false);
+        onUpdate?.();
       }
     } catch (error: any) {
       console.error('Failed to sign agreement:', error);

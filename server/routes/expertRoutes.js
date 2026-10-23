@@ -27,12 +27,14 @@ import {
   approveExpert,
   rejectExpert,
   resubmitProfile,
+  requestVerification,
   getExpertStats,
   searchExperts,
   updateMySkills,
   updateExpertByAdmin,
   sendAadhaarOtpController,
   verifyAadhaarOtpController,
+  resetAadhaarVerification,
   getExpertAgreement,
   saveExpertAgreement
 } from "../controllers/expertController.js";
@@ -86,10 +88,12 @@ router.put("/availability", updateAvailability);
 router.delete("/availability/delbreak", deleteBreakDate);
 router.delete("/availability/delslot", deleteWeeklySlot);
 router.post("/resubmit", resubmitProfile);
+router.post("/request-verification", requestVerification);
 
 // Verification
 router.post("/verification/aadhar/send-otp", sendAadhaarOtpController);
 router.post("/verification/aadhar/verify-otp", verifyAadhaarOtpController);
+router.post("/verification/aadhar/reset", resetAadhaarVerification);
 
 router.put(
   "/verification",

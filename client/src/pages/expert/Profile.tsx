@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import ExpertProfileHeader from "../../components/ExpertProfileHeader";
 import PersonalInfo from "../../components/PersonalInfo";
 import ExpertEducation from "../../components/ExpertEducation";
 import ExpertProfession from "../../components/ExpertProfession";
 import VerificationManager from "../../components/expert/VerificationManager";
 import CategoryAndLevelSection from "../../components/CategoryAndLevelSection";
+import AgreementPage from "./Agreement";
 import axios from '../../lib/axios';
 import { useAuth } from "../../context/AuthContext";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -16,7 +18,8 @@ import {
   LayoutDashboard,
   CheckCircle2,
   AlertCircle,
-  Award
+  Award,
+  FileText
 } from "lucide-react";
 
 // Define the tabs with icons and identifiers
@@ -27,16 +30,33 @@ const TABS = [
   { id: "education", label: "Education", icon: BookOpen },
   { id: "profession", label: "Experience", icon: Briefcase },
   { id: "verification", label: "Verification", icon: ShieldCheck },
+  { id: "agreement", label: "Agreement", icon: FileText },
 ];
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [active, setActive] = useState<string>("overview");
+  const tabQuery = searchParams.get("tab");
+  const [active, setActive] = useState<string>(tabQuery || "overview");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== active) {
+      setActive(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabSelect = (tabId: string) => {
+    setActive(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
   // showSidebar state removed as it is no longer needed for the new mobile layout
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
+  const [completion, setCompletion] = useState<number>(0);
   const [missingSections, setMissingSections] = useState<string[]>([]);
   const hasLoadedRef = useRef(false);
 
@@ -47,7 +67,8 @@ export default function ProfilePage() {
       personal: "Personal Information",
       education: "Education",
       profession: "Professional Details",
-      verification: "Verification Documents"
+      verification: "Verification Documents",
+      agreement: "Service Agreement"
     };
 
     const backendName = sectionMap[tabId];
@@ -76,6 +97,7 @@ export default function ProfilePage() {
         const newStatus = p.status || "pending";
         setStatus(newStatus);
         setProfileData(p);
+        setCompletion(res.data.completion || 0);
         setMissingSections(res.data.missingSections || []);
         localStorage.setItem('profile_status', newStatus);
         hasLoadedRef.current = true;
@@ -106,7 +128,7 @@ export default function ProfilePage() {
 
     switch (active) {
       case "overview":
-        return <ExpertProfileHeader onNavigate={(tab) => { setActive(tab); }} onRefresh={fetchProfileData} />;
+        return <ExpertProfileHeader onNavigate={(tab) => { handleTabSelect(tab); }} onRefresh={fetchProfileData} />;
       case "personal":
         return <PersonalInfo {...commonProps} isMissing={isSectionMissing('personal')} />;
       case "tier":
@@ -117,8 +139,10 @@ export default function ProfilePage() {
         return <ExpertProfession {...commonProps} isMissing={isSectionMissing('professional') || isSectionMissing('profession')} />;
       case "verification":
         return <VerificationManager />;
+      case "agreement":
+        return <AgreementPage onUpdate={handleUpdate} />;
       default:
-        return <ExpertProfileHeader onNavigate={(tab) => { setActive(tab); }} onRefresh={fetchProfileData} />;
+        return <ExpertProfileHeader onNavigate={(tab) => { handleTabSelect(tab); }} onRefresh={fetchProfileData} />;
     }
   };
 
@@ -162,7 +186,7 @@ export default function ProfilePage() {
             </div> */}
 
             {/* Navigation Links */}
-            <div className="p-4 space-y-1">
+            <div className="p-3 space-y-1">
               {TABS.map((tab) => {
                 const isIncomplete = isTabIncomplete(tab.id);
 
@@ -172,55 +196,79 @@ export default function ProfilePage() {
                     onClick={() => {
                       setActive(tab.id);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${active === tab.id
-                      ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                      active === tab.id
+                        ? "bg-slate-900 text-white shadow-xs"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
                   >
-                    <tab.icon className={`w-5 h-5 ${active === tab.id ? "text-blue-600" : "text-gray-400"}`} />
-                    {tab.label}
+                    <tab.icon className={`w-4 h-4 shrink-0 ${active === tab.id ? "text-white" : "text-slate-400"}`} />
+                    <span className="truncate">{tab.label}</span>
 
-                    <div className="ml-auto">
+                    <div className="ml-auto shrink-0">
                       {isIncomplete ? (
-                        <AlertCircle className="w-4 h-4 text-amber-500" />
+                        <AlertCircle className={`w-3.5 h-3.5 ${active === tab.id ? "text-amber-300" : "text-amber-500"}`} />
                       ) : (
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        <CheckCircle2 className={`w-3.5 h-3.5 ${active === tab.id ? "text-emerald-300" : "text-emerald-500"}`} />
                       )}
                     </div>
                   </button>
-                )
+                );
               })}
             </div>
 
-            {/* Profile Completion Widget - Bottom of Sidebar */}
-            {status !== 'Active' && (
-              <div className="p-4 mt-auto border-t border-gray-100 bg-gray-50/50">
-                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-gray-600">
-                  <span>Profile Completion</span>
-                  <span>{Math.max(0, Math.round((7 - missingSections.length) / 7 * 100))}%</span>
+            {/* Profile Status Widget - Bottom of Sidebar */}
+            {status === "Active" ? (
+              <div className="p-4 mt-auto border-t border-slate-100 bg-emerald-50/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-emerald-950 truncate">Verified Expert</p>
+                    <p className="text-[11px] text-emerald-700 font-medium">Profile is live & active</p>
+                  </div>
                 </div>
-                <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden mb-3">
+              </div>
+            ) : (
+              <div className="p-4 mt-auto border-t border-slate-100 bg-slate-50/60 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span>Setup Progress</span>
+                  <span className="text-blue-600 font-extrabold">{completion}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-200/80 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.max(0, Math.round((7 - missingSections.length) / 7 * 100))}%` }}
+                    className="h-full bg-blue-600 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${completion}%` }}
                   />
                 </div>
-                {missingSections.length > 0 ? (
-                  <p className="text-xs text-gray-500">
-                    Complete <span className="font-medium text-gray-800">{missingSections[0]}</span> next to get verified.
-                  </p>
-                ) : (
-                  <p className="text-xs text-green-600 font-medium flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Ready for verification!
-                  </p>
-                )}
+                <div className="flex items-center justify-between text-[11px] font-medium pt-0.5">
+                  {profileData?.verificationRequested ? (
+                    <span className="text-amber-700 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      In Review
+                    </span>
+                  ) : completion >= 80 && !missingSections.includes("Verification Documents") && !missingSections.includes("Service Agreement") ? (
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Ready to verify
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">
+                      Target: 80% to verify
+                    </span>
+                  )}
+                  <span className="text-slate-400 font-normal">
+                    {missingSections.length === 0 ? "Complete" : `${missingSections.length} remaining`}
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
           {/* RIGHT CONTENT AREA - Flexible */}
-          <div className="flex-1 overflow-y-auto bg-gray-50/30 flex flex-col">
-            <div className="p-4 md:p-8 max-w-5xl mx-auto w-full">
+          <div className="flex-1 overflow-y-auto bg-slate-50/50 flex flex-col">
+            <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto w-full">
 
               {/* Mobile Tab Navigation */}
               <div className="lg:hidden mb-6 overflow-x-auto no-scrollbar pb-2">
@@ -230,28 +278,33 @@ export default function ProfilePage() {
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => setActive(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${active === tab.id
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-white text-gray-600 border-gray-200'
-                          }`}
+                        onClick={() => handleTabSelect(tab.id)}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                          active === tab.id
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200'
+                        }`}
                       >
-                        <tab.icon className="w-4 h-4" />
+                        <tab.icon className="w-3.5 h-3.5" />
                         {tab.label}
                         {isIncomplete ? (
-                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                         ) : (
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         )}
                       </button>
-                    )
+                    );
                   })}
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 min-h-[500px]">
-                {renderContent()}
-              </div>
+              {active === "overview" ? (
+                renderContent()
+              ) : (
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 md:p-8 min-h-[500px]">
+                  {renderContent()}
+                </div>
+              )}
             </div>
           </div>
         </div>

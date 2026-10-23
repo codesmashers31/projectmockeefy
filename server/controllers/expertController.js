@@ -10,7 +10,8 @@ import Review from "../models/reviewModel.js";
 import PricingRule from "../models/PricingRule.js"; // Added
 import Category from "../models/Category.js"; // Added
 import User from "../models/User.js"; // Added User model
-import { sendAadhaarOtp, verifyAadhaarOtp } from "../services/sandboxAadhaarService.js";
+import { sendAadhaarOtp, verifyAadhaarOtp, maskAadhaar, getKnownLegalNameForAadhaar } from "../services/sandboxAadhaarService.js";
+import { compareNames, hashAadhaar, normalizeName } from "../utils/nameMatcher.js";
 
 /* -------------------- Helpers -------------------- */
 const resolveUserIdFromReq = (req) => {
@@ -108,6 +109,11 @@ const getMissingSections = (expert, user) => {
   const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
   if (!verificationFilled) missing.push("Verification Documents");
 
+  // Service Agreement (Source: Expert) - Mandatory
+  const ag = expert.agreement || {};
+  const hasAgreement = Boolean(ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms));
+  if (!hasAgreement) missing.push("Service Agreement");
+
   return missing;
 };
 
@@ -123,15 +129,16 @@ const computeCompletion = (expert, user) => {
   const uCountry = user?.personalInfo?.country;
 
   // Basic check for personal info completeness
-  if (uName && uPhone && uCity && uCountry) score += 20;
+  const uGender = user?.personalInfo?.gender;
+  if (uName && uPhone && uGender && uCity && uCountry) score += 20;
 
   // Education (15%) - From Expert
   if (Array.isArray(expert.education) && expert.education.length) score += 15;
 
-  // Professional Details (20%) - From Expert
+  // Professional Details (15%) - From Expert
   const pd = expert.professionalDetails || {};
   const proFilled = pd.title && pd.company && pd.industry && (typeof pd.totalExperience === "number");
-  if (proFilled) score += 20;
+  if (proFilled) score += 15;
 
   // Skills (15%) - From Expert
   const sk = expert.skillsAndExpertise || {};
@@ -153,12 +160,28 @@ const computeCompletion = (expert, user) => {
 
   // Verification (10%) - From Expert
   const v = expert.verification || {};
-  // Be slightly more flexible: handle cases where verification exists as an empty-ish object
   const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url);
-  const verificationFilled = (v.companyId?.url || hasAadhaar) && v.linkedin;
+  const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
   if (verificationFilled) score += 10;
 
+  // Service Agreement (5%) - From Expert
+  const ag = expert.agreement || {};
+  const hasAgreement = Boolean(ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms));
+  if (hasAgreement) score += 5;
+
   return Math.min(score, 100);
+};
+
+export const isExpertEligibleForVerification = (expert, user) => {
+  const completion = computeCompletion(expert, user);
+  const missing = getMissingSections(expert, user);
+  const hasVerificationDocs = !missing.includes("Verification Documents");
+  const hasAgreement = !missing.includes("Service Agreement");
+  return completion >= 80 && hasVerificationDocs && hasAgreement;
+};
+
+export const isExpertProfileComplete = (expert, user) => {
+  return isExpertEligibleForVerification(expert, user);
 };
 
 // Multer setup removed - reusing middleware/uploadCloudinary.js in routes
@@ -290,6 +313,74 @@ export const uploadVerificationDocs = async (req, res) => {
   }
 };
 
+/* -------------------- requestVerification -------------------- */
+export const requestVerification = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    const [expert, user] = await Promise.all([
+      ExpertDetails.findOne({ userId: queryUserId }),
+      User.findById(queryUserId)
+    ]);
+
+    if (!expert || !user) return res.status(404).json({ success: false, message: "Expert profile or user not found" });
+
+    if (expert.status === "pending" && expert.verificationRequested) {
+      return res.status(400).json({ success: false, message: "Verification request is already pending admin review." });
+    }
+
+    const completion = computeCompletion(expert, user);
+    const missing = getMissingSections(expert, user);
+    const hasVerificationDocs = !missing.includes("Verification Documents");
+    const hasAgreement = !missing.includes("Service Agreement");
+
+    if (completion < 80) {
+      return res.status(400).json({
+        success: false,
+        message: `Profile must be at least 80% complete before requesting verification (currently ${completion}%). Missing: ${missing.join(", ")}`,
+        completion,
+        missingSections: missing
+      });
+    }
+
+    if (!hasVerificationDocs) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification Documents must be fully completed before requesting verification.",
+        completion,
+        missingSections: missing
+      });
+    }
+
+    if (!hasAgreement) {
+      return res.status(400).json({
+        success: false,
+        message: "Service Agreement must be signed before requesting verification.",
+        completion,
+        missingSections: missing
+      });
+    }
+
+    expert.status = "pending";
+    expert.verificationRequested = true;
+    expert.verificationRequestedAt = new Date();
+    expert.rejectionReason = "";
+    await expert.save();
+
+    return res.json({
+      success: true,
+      message: "Profile moved to admin pending verification page successfully.",
+      status: "pending",
+      verificationRequested: true
+    });
+  } catch (err) {
+    console.error("requestVerification error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 /* -------------------- resubmitProfile -------------------- */
 export const resubmitProfile = async (req, res) => {
   try {
@@ -297,20 +388,62 @@ export const resubmitProfile = async (req, res) => {
     if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const queryUserId = toObjectId(userIdRaw);
-    const expert = await ExpertDetails.findOne({ userId: queryUserId });
+    const [expert, user] = await Promise.all([
+      ExpertDetails.findOne({ userId: queryUserId }),
+      User.findById(queryUserId)
+    ]);
 
-    if (!expert) return res.status(404).json({ success: false, message: "Expert not found" });
+    if (!expert || !user) return res.status(404).json({ success: false, message: "Expert not found" });
 
     // Only allow resubmission if currently rejected
     if (expert.status !== "rejected") {
       return res.status(400).json({ success: false, message: "Only rejected profiles can be resubmitted." });
     }
 
+    const completion = computeCompletion(expert, user);
+    const missing = getMissingSections(expert, user);
+    const hasVerificationDocs = !missing.includes("Verification Documents");
+    const hasAgreement = !missing.includes("Service Agreement");
+
+    if (completion < 80) {
+      return res.status(400).json({
+        success: false,
+        message: `Profile must be at least 80% complete before resubmitting (currently ${completion}%). Missing: ${missing.join(", ")}`,
+        completion,
+        missingSections: missing
+      });
+    }
+
+    if (!hasVerificationDocs) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification Documents must be fully completed before resubmitting.",
+        completion,
+        missingSections: missing
+      });
+    }
+
+    if (!hasAgreement) {
+      return res.status(400).json({
+        success: false,
+        message: "Service Agreement must be signed before resubmitting.",
+        completion,
+        missingSections: missing
+      });
+    }
+
     expert.status = "pending";
+    expert.verificationRequested = true;
+    expert.verificationRequestedAt = new Date();
     expert.rejectionReason = ""; // Clear reason on resubmit
     await expert.save();
 
-    return res.json({ success: true, message: "Profile resubmitted for verification", status: "pending" });
+    return res.json({
+      success: true,
+      message: "Profile resubmitted for verification",
+      status: "pending",
+      verificationRequested: true
+    });
   } catch (err) {
     console.error("resubmitProfile error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -377,6 +510,8 @@ export const getExpertProfile = async (req, res) => {
       verification: expertLean.verification || {},
       status: expertLean.status || "pending",
       rejectionReason: expertLean.rejectionReason || "",
+      verificationRequested: Boolean(expertLean.verificationRequested),
+      verificationRequestedAt: expertLean.verificationRequestedAt || null,
 
       // Photo from User
       photoUrl: user.profileImage || "",
@@ -387,7 +522,13 @@ export const getExpertProfile = async (req, res) => {
 
     const completion = computeCompletion(expertLean, user);
     const missingSections = getMissingSections(expertLean, user);
-    return res.json({ success: true, completion, missingSections, profile });
+    return res.json({
+      success: true,
+      completion,
+      missingSections,
+      profile,
+      verificationRequested: Boolean(expertLean.verificationRequested)
+    });
   } catch (err) {
     console.error("getExpertProfile error:", err);
     return res.status(500).json({ success: false, message: err.message || "Internal server error" });
@@ -620,7 +761,7 @@ export const getPersonalInfo = async (req, res) => {
 
     // Personal info: name, phone, gender, dob, country, state, city live on User; category on ExpertDetails
     const data = {
-      userName: user?.name ?? "",
+      userName: (user?.name ?? "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim(),
       mobile: user?.personalInfo?.phone ?? "",
       gender: user?.personalInfo?.gender ?? "",
       dob: user?.personalInfo?.dateOfBirth
@@ -631,7 +772,9 @@ export const getPersonalInfo = async (req, res) => {
       country: user?.personalInfo?.country ?? "",
       state: user?.personalInfo?.state ?? "",
       city: user?.personalInfo?.city ?? "",
-      category: expert?.personalInformation?.category ?? ""
+      category: expert?.personalInformation?.category ?? "",
+      isAadhaarVerified: Boolean(expert?.verification?.aadhar?.isVerified),
+      aadhaarName: expert?.verification?.aadhar?.nameOnAadhaar || ""
     };
 
     return res.status(200).json({ success: true, data });
@@ -650,9 +793,28 @@ export const updatePersonalInfo = async (req, res) => {
 
     const { userName, mobile, gender, dob, country, state, city, category, bio } = req.body;
 
+    let expert = await ExpertDetails.findOne({ userId: queryUserId });
+    if (!expert) {
+      expert = new ExpertDetails({ userId: queryUserId });
+    }
+
     // 1. Update User Identity
     const userUpdate = {};
-    if (userName !== undefined) userUpdate.name = userName; // Map userName -> name
+    if (userName !== undefined) {
+      const cleanName = userName.replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
+      // If Aadhaar is verified, lock the account name to the verified legal Aadhaar identity!
+      if (expert.verification?.aadhar?.isVerified && expert.verification.aadhar.nameOnAadhaar) {
+        const normNew = normalizeName(cleanName);
+        const normAadhaar = normalizeName(expert.verification.aadhar.nameOnAadhaar);
+        if (normNew !== normAadhaar) {
+          return res.status(400).json({
+            success: false,
+            message: `Your account name is locked to your verified government Aadhaar identity ("${expert.verification.aadhar.nameOnAadhaar}"). It cannot be changed.`
+          });
+        }
+      }
+      userUpdate.name = cleanName;
+    }
     if (bio !== undefined) userUpdate["personalInfo.bio"] = bio;
     if (mobile !== undefined) userUpdate["personalInfo.phone"] = mobile;
     if (gender !== undefined) userUpdate["personalInfo.gender"] = gender;
@@ -668,13 +830,6 @@ export const updatePersonalInfo = async (req, res) => {
     }
 
     // 2. Update Expert Profile (Category only)
-    let expert = await ExpertDetails.findOne({ userId: queryUserId });
-
-    // Auto-create if missing
-    if (!expert) {
-      expert = new ExpertDetails({ userId: queryUserId });
-    }
-
     if (category !== undefined && category !== null && category !== "") {
       // Validate: must be an existing category name from Category collection
       const catDoc = await Category.findOne({ name: category.trim() });
@@ -1197,8 +1352,16 @@ export const getPendingExperts = async (req, res) => {
       }
     ]);
 
+    // Only experts who meet eligibility (min 80% completion + compulsory verification documents) and requested verification
+    const eligibleExperts = experts.filter(expert => {
+      if (!expert.userDetails) return false;
+      const isComplete = isExpertProfileComplete(expert, expert.userDetails);
+      if (!isComplete) return false;
+      return expert.verificationRequested === true || expert.verificationRequested === undefined;
+    });
+
     // Format matches frontend expectation + joined data
-    const formatted = await Promise.all(experts.map(async expert => {
+    const formatted = await Promise.all(eligibleExperts.map(async expert => {
       // Manually populate expertSkills.skillId
       await ExpertDetails.populate(expert, { path: 'expertSkills.skillId', select: 'name' });
 
@@ -1279,6 +1442,8 @@ export const getPendingExperts = async (req, res) => {
         },
         verification: expert.verification || {},
         agreement: expert.agreement || {},
+        completion: computeCompletion(expert, expert.userDetails),
+        verificationRequested: expert.verificationRequested,
         userDetails: {
           email: expert.userDetails?.email || "",
           _id: expert.userDetails?._id
@@ -1676,7 +1841,7 @@ export const approveExpert = async (req, res) => {
     const { id } = req.params;
     const { category, level } = req.body;
 
-    const updateObj = { status: "Active" };
+    const updateObj = { status: "Active", verificationRequested: false };
     if (category) {
       updateObj["personalInformation.category"] = category;
     }
@@ -1716,6 +1881,7 @@ export const rejectExpert = async (req, res) => {
       id,
       {
         status: "rejected",
+        verificationRequested: false,
         rejectionReason: reason
       },
       { new: true }
@@ -1931,12 +2097,73 @@ export const sendAadhaarOtpController = async (req, res) => {
     const userIdRaw = resolveUserIdFromReq(req);
     if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
 
+    const queryUserId = toObjectId(userIdRaw);
     const { aadhaarNumber } = req.body;
+
     if (!aadhaarNumber) {
       return res.status(400).json({ success: false, message: "Aadhaar number is required." });
     }
 
-    const result = await sendAadhaarOtp(aadhaarNumber);
+    const cleanAadhaar = aadhaarNumber.toString().replace(/\D/g, "");
+    if (cleanAadhaar.length !== 12) {
+      return res.status(400).json({ success: false, message: "Please enter a valid 12-digit Aadhaar number." });
+    }
+
+    // Fetch user account to get the profile personal details name
+    const user = await User.findById(queryUserId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User account not found." });
+    }
+
+    const rawProfileName = (user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
+    const cleanProfileName = normalizeName(rawProfileName);
+
+    // Check if profile name is complete and matches
+    const nameTokens = cleanProfileName.split(/\s+/).filter(Boolean);
+    if (nameTokens.length < 2) {
+      return res.status(400).json({
+        success: false,
+        code: "NAME_MISMATCH",
+        message: "Name in Aadhaar is not same as profile name. Please update your name in Personal Details."
+      });
+    }
+
+    // Check if there is a known legal name for this Aadhaar (e.g., from Sandbox/government records)
+    const knownLegalName = getKnownLegalNameForAadhaar(cleanAadhaar);
+    if (knownLegalName) {
+      const preCheck = compareNames(cleanProfileName, knownLegalName);
+      if (!preCheck.isAcceptable) {
+        return res.status(400).json({
+          success: false,
+          code: "NAME_MISMATCH",
+          message: "Name in Aadhaar is not same as profile name. Please update your name in Personal Details."
+        });
+      }
+    }
+
+    // CHECK: ONE AADHAAR = ONE PERSON (Before sending OTP)
+    // Verify that NO other account has used or verified this Aadhaar number
+    const aadhaarHash = hashAadhaar(cleanAadhaar);
+    const maskedNumber = maskAadhaar(cleanAadhaar);
+
+    const existingOtherAccount = await ExpertDetails.findOne({
+      userId: { $ne: queryUserId },
+      $or: [
+        { "verification.aadhar.hash": aadhaarHash },
+        { "verification.aadhar.number": maskedNumber, "verification.aadhar.isVerified": true }
+      ]
+    });
+
+    if (existingOtherAccount) {
+      return res.status(400).json({
+        success: false,
+        code: "AADHAAR_ALREADY_USED",
+        message: "This Aadhaar number is already linked and verified on another Mockeefy account. Each expert must use their own unique Aadhaar card."
+      });
+    }
+
+    // Send OTP with profile name
+    const result = await sendAadhaarOtp(cleanAadhaar, rawProfileName);
     return res.json(result);
   } catch (err) {
     console.error("sendAadhaarOtpController error:", err);
@@ -1950,37 +2177,132 @@ export const verifyAadhaarOtpController = async (req, res) => {
     if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
 
     const queryUserId = toObjectId(userIdRaw);
-    const expert = await ExpertDetails.findOne({ userId: queryUserId });
+    const [expert, user] = await Promise.all([
+      ExpertDetails.findOne({ userId: queryUserId }),
+      User.findById(queryUserId)
+    ]);
+
     if (!expert) return res.status(404).json({ success: false, message: "Expert profile not found" });
+    if (!user) return res.status(404).json({ success: false, message: "User account not found" });
 
     const { referenceId, otp, aadhaarNumber } = req.body;
     if (!referenceId || !otp) {
       return res.status(400).json({ success: false, message: "Reference ID and OTP are required." });
     }
 
-    const result = await verifyAadhaarOtp({ referenceId, otp, aadhaarNumber });
+    const cleanAadhaar = (aadhaarNumber || "").toString().replace(/\D/g, "");
+    const aadhaarHash = cleanAadhaar ? hashAadhaar(cleanAadhaar) : null;
+    const maskedNumber = cleanAadhaar ? maskAadhaar(cleanAadhaar) : null;
+
+    // Check duplicate usage across accounts
+    if (aadhaarHash || maskedNumber) {
+      const existing = await ExpertDetails.findOne({
+        userId: { $ne: queryUserId },
+        $or: [
+          ...(aadhaarHash ? [{ "verification.aadhar.hash": aadhaarHash }] : []),
+          ...(maskedNumber ? [{ "verification.aadhar.number": maskedNumber, "verification.aadhar.isVerified": true }] : [])
+        ]
+      });
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          code: "AADHAAR_ALREADY_USED",
+          message: "This Aadhaar number is already verified on another account. Each expert must use their own unique Aadhaar card."
+        });
+      }
+    }
+
+    const rawProfileName = (user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
+
+    const result = await verifyAadhaarOtp({
+      referenceId,
+      otp,
+      aadhaarNumber: cleanAadhaar,
+      aadhaarName: rawProfileName
+    });
+
+    // Legal name returned by UIDAI Aadhaar e-KYC
+    const aadhaarLegalName = result.name || getKnownLegalNameForAadhaar(cleanAadhaar) || rawProfileName;
+
+    // Compare profile personal details name against official legal Aadhaar name
+    const nameComparison = compareNames(rawProfileName, aadhaarLegalName);
+
+    if (!nameComparison.isAcceptable) {
+      return res.status(400).json({
+        success: false,
+        code: "NAME_MISMATCH",
+        message: "Name in Aadhaar is not same as profile name. Please update your name in Personal Details.",
+        matchScore: nameComparison.score,
+        nameOnAadhaar: aadhaarLegalName,
+        accountName: rawProfileName
+      });
+    }
 
     if (!expert.verification) expert.verification = {};
     expert.verification.aadhar = {
-      number: result.maskedAadhaar,
+      number: result.maskedAadhaar || (maskedNumber || ""),
+      hash: aadhaarHash || expert.verification.aadhar?.hash,
       isVerified: true,
       verifiedAt: new Date(),
       referenceId,
-      nameOnAadhaar: result.name || "",
+      nameOnAadhaar: aadhaarLegalName,
+      nameMatchScore: nameComparison.score,
+      nameMatchStatus: "MATCH",
       url: expert.verification.aadhar?.url || "",
       name: expert.verification.aadhar?.name || ""
+    };
+
+    // Lock User Account Name to the verified government Aadhaar legal name
+    if (aadhaarLegalName) {
+      user.name = aadhaarLegalName;
+      await user.save();
+    }
+
+    await expert.save({ validateBeforeSave: false });
+
+    return res.json({
+      success: true,
+      message: result.message || "Aadhaar verified successfully! Your identity has been authenticated.",
+      aadhar: expert.verification.aadhar,
+      matchScore: nameComparison.score,
+      matchStatus: nameComparison.status
+    });
+  } catch (err) {
+    console.error("verifyAadhaarOtpController error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Failed to verify Aadhaar OTP" });
+  }
+};
+
+export const resetAadhaarVerification = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    const expert = await ExpertDetails.findOne({ userId: queryUserId });
+    if (!expert) return res.status(404).json({ success: false, message: "Expert profile not found" });
+
+    if (!expert.verification) expert.verification = {};
+    expert.verification.aadhar = {
+      isVerified: false,
+      number: "",
+      hash: "",
+      nameOnAadhaar: "",
+      nameMatchScore: 0,
+      nameMatchStatus: "UNVERIFIED",
+      url: "",
+      name: ""
     };
 
     await expert.save({ validateBeforeSave: false });
 
     return res.json({
       success: true,
-      message: result.message || "Aadhaar verified successfully",
-      aadhar: expert.verification.aadhar
+      message: "Aadhaar verification status reset. You can now re-verify."
     });
   } catch (err) {
-    console.error("verifyAadhaarOtpController error:", err);
-    return res.status(400).json({ success: false, message: err.message || "Failed to verify Aadhaar OTP" });
+    console.error("resetAadhaarVerification error:", err);
+    return res.status(500).json({ success: false, message: "Failed to reset verification" });
   }
 };
 

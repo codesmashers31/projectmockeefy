@@ -316,20 +316,24 @@ const PersonalInfo = ({ onUpdate, profileData, isMissing }: PersonalInfoProps) =
 
             if (personalRes.data.success && personalRes.data.data) {
                 const data = personalRes.data.data;
+                const cleanUserName = (data.userName || user?.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
                 setProfile({
                     personal: {
-                        name: data.userName || user?.name || "",
+                        name: cleanUserName,
                         phone: data.mobile || "",
                         gender: data.gender || "",
                         dob: data.dob ? data.dob.split("T")[0] : "",
                         country: data.country || "",
                         state: data.state || "",
                         city: data.city || "",
-                        category: data.category || ""
+                        category: data.category || "",
+                        isAadhaarVerified: Boolean(data.isAadhaarVerified),
+                        aadhaarName: data.aadhaarName || ""
                     }
                 });
             } else if (user?.name) {
-                setProfile(prev => ({ ...prev, personal: { ...prev.personal, name: user.name || "" } }));
+                const cleanUserName = (user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
+                setProfile(prev => ({ ...prev, personal: { ...prev.personal, name: cleanUserName, isAadhaarVerified: false, aadhaarName: "" } }));
             }
         } catch (err: any) {
             console.error("Failed to fetch data:", err);
@@ -401,14 +405,26 @@ const PersonalInfo = ({ onUpdate, profileData, isMissing }: PersonalInfoProps) =
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                    <FormInput
-                        label="Full Name"
-                        placeholder="e.g. Mugunth Kumar"
-                        value={profile.personal?.name || ""}
-                        onChange={(v: string) => setPersonalField("name", v)}
-                        error={errors.name}
-                        disabled={!isEditing}
-                    />
+                    <div>
+                        <FormInput
+                            label="Full Name"
+                            placeholder="e.g. Godson Arockia Raj"
+                            value={profile.personal?.name || ""}
+                            onChange={(v: string) => setPersonalField("name", v)}
+                            error={errors.name}
+                            disabled={!isEditing || Boolean((profile as any).personal?.isAadhaarVerified || profileData?.verification?.aadhar?.isVerified)}
+                        />
+                        {Boolean((profile as any).personal?.isAadhaarVerified || profileData?.verification?.aadhar?.isVerified) ? (
+                            <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 mt-1">
+                                <Lock className="w-3 h-3 text-emerald-600 inline shrink-0" />
+                                Locked to verified government Aadhaar identity ({(profile as any).personal?.aadhaarName || profileData?.verification?.aadhar?.nameOnAadhaar || profile.personal?.name})
+                            </p>
+                        ) : (
+                            <p className="text-[11px] text-slate-500 mt-1">
+                                <span className="font-semibold text-slate-700">Full Name is mandatory:</span> Enter your complete legal first and last name as printed on your Aadhaar card (e.g. Godson Arockia Raj).
+                            </p>
+                        )}
+                    </div>
 
                     <FormInput
                         label="Phone Number"
