@@ -73,21 +73,11 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/book-session?expertId=${mentorId}`, {
-      state: {
-        expertId: mentorId,
-        profile: { ...mentor, id: mentorId },
-      },
-    });
+    navigate(`/expert-profile/${mentorId}`);
   };
 
   const handleCardClick = () => {
-    navigate(`/book-session?expertId=${mentorId}`, {
-      state: {
-        expertId: mentorId,
-        profile: { ...mentor, id: mentorId },
-      },
-    });
+    navigate(`/expert-profile/${mentorId}`);
   };
 
   const toggleSave = (e: React.MouseEvent) => {

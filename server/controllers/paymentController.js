@@ -276,8 +276,8 @@ export const verifyPayment = async (req, res) => {
                     metadata: { sessionId: session.sessionId, link: '/my-sessions' }
                 });
 
-                // Directly send professional email notification to the specified Interview Expert with all booking and payment details
-                await triggerBookingEmails({
+                // Directly send professional email notification asynchronously so client gets immediate verification response
+                triggerBookingEmails({
                     bookingDetails,
                     sessionId: session.sessionId,
                     meetingLink: sessionData.meetingLink,
@@ -286,6 +286,8 @@ export const verifyPayment = async (req, res) => {
                     paymentStatus: "Paid & Verified",
                     price: bookingDetails.price,
                     candidateUserFallback: user
+                }).catch((emailErr) => {
+                    console.error("[BookingPayment] Error in asynchronous triggerBookingEmails:", emailErr);
                 });
 
                 return res.status(200).json({

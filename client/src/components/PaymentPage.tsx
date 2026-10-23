@@ -6,6 +6,8 @@ import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
 import Navigation from "./Navigation";
 import Footer from "./Footer";
+import { ConfirmationLoadingModal } from "./ConfirmationLoadingModal";
+import { showBookingSuccessAlert } from "../lib/bookingSuccessAlert";
 
 declare global {
   interface Window {
@@ -28,6 +30,7 @@ const PaymentPage: React.FC = () => {
   const [transactionId, setTransactionId] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isConfirmingMeeting, setIsConfirmingMeeting] = useState(false);
 
   // Parse price from string (e.g. "₹500") if needed
   const parsePrice = (price: string | number) => {
@@ -93,6 +96,7 @@ const PaymentPage: React.FC = () => {
   const handlePaymentSuccess = async (response: any) => {
     try {
       setIsProcessing(true);
+      setIsConfirmingMeeting(true);
       // 1. Verify Payment & Create Session on Backend
       let startTimeISO = new Date().toISOString();
       let endTimeISO = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -140,16 +144,76 @@ const PaymentPage: React.FC = () => {
         }
       });
 
+      const showScheduledSuccessAlert = () => {
+        if (upgradeType === 'premium') {
+          Swal.fire({
+            title: "Welcome to Premium! 🎉",
+            html: `
+              <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
+                <p style="margin-bottom: 8px;">Your Mockeefy Premium Membership is now active.</p>
+                <p style="color: #059669; font-weight: 500;">✓ You have 3 credits to book sessions for free!</p>
+              </div>
+            `,
+            icon: "success",
+            confirmButtonColor: "#0755E8",
+            confirmButtonText: "View My Bookings",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            customClass: {
+              container: "swal-top-container",
+            },
+          }).then((result) => {
+            if (result.isConfirmed) {
+              navigate("/my-sessions");
+            } else {
+              navigate("/my-sessions");
+            }
+          });
+        } else {
+          const formattedDate = bookingDetails?.date
+            ? new Date(bookingDetails.date).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })
+            : "Upcoming Date";
+          const timeSlot = bookingDetails?.slot?.time || "Confirmed Slot";
+          const mentorName = bookingDetails?.expertName || "Mentor";
+
+          // Dispatch cross-component event so sidebar and other widgets update immediately
+          window.dispatchEvent(
+            new CustomEvent("session-booked", {
+              detail: { bookingDetails }
+            })
+          );
+
+          navigate("/my-sessions", { replace: true });
+
+          showBookingSuccessAlert({
+            title: "Meeting Scheduled",
+            mentorName,
+            dateStr: formattedDate,
+            timeSlot,
+            duration: bookingDetails?.duration,
+            onConfirm: () => {
+              navigate("/my-sessions");
+            },
+          });
+        }
+      };
+
       if (verifyResponse.data.success) {
-        await fetchProfile(); // Refresh user state (isPremium, credits)
+        if (fetchProfile) await fetchProfile(); // Refresh user state (isPremium, credits)
         setPaymentStatus("success");
         setTransactionId(response.razorpay_payment_id);
-        setShowSuccessModal(true);
+        showScheduledSuccessAlert();
       } else {
         throw new Error("Payment verification failed.");
       }
     } catch (err: any) {
       console.error("Verification Error:", err);
+      setIsConfirmingMeeting(false);
       setPaymentStatus("error");
       setErrors({ submit: err.message || "Failed to process payment." });
       Swal.fire({
@@ -176,11 +240,7 @@ const PaymentPage: React.FC = () => {
 
       const { order } = orderResponse.data;
 
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-
-      if (!razorpayKey) {
-        throw new Error("Razorpay Key is missing from Vite Environment!");
-      }
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SqNEn1MzouLlsg";
 
       const options = {
         key: razorpayKey,
@@ -196,7 +256,7 @@ const PaymentPage: React.FC = () => {
           contact: user?.phone || "",
         },
         theme: {
-          color: "#004fcb",
+          color: "#0755E8",
         },
       };
 
@@ -277,7 +337,29 @@ const PaymentPage: React.FC = () => {
           if (fetchProfile) await fetchProfile();
           setPaymentStatus("success");
           setTransactionId("FREE-PREMIUM-" + Date.now());
-          setShowSuccessModal(true);
+          Swal.fire({
+            title: "Welcome to Premium! 🎉",
+            html: `
+              <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
+                <p style="margin-bottom: 8px;">Your Mockeefy Premium Membership is now active.</p>
+                <p style="color: #059669; font-weight: 500;">✓ You have 3 credits to book sessions for free!</p>
+              </div>
+            `,
+            icon: "success",
+            confirmButtonColor: "#0755E8",
+            confirmButtonText: "View My Bookings",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            customClass: {
+              container: "swal-top-container",
+            },
+          }).then((result) => {
+            if (result.isConfirmed) {
+              navigate("/my-sessions");
+            } else {
+              navigate("/my-sessions");
+            }
+          });
         } else {
           throw new Error(res.data?.message || "Free subscription failed");
         }
@@ -289,7 +371,36 @@ const PaymentPage: React.FC = () => {
         if (res.data?.success) {
           setPaymentStatus("success");
           setTransactionId(res.data.sessionId || "FREE");
-          setShowSuccessModal(true);
+          const formattedDate = bookingDetails?.date
+            ? new Date(bookingDetails.date).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })
+            : "Upcoming Date";
+          const timeSlot = bookingDetails?.slot?.time || "Confirmed Slot";
+          const mentorName = bookingDetails?.expertName || "Mentor";
+
+          // Dispatch cross-component event so sidebar and other widgets update immediately
+          window.dispatchEvent(
+            new CustomEvent("session-booked", {
+              detail: { bookingDetails: payload }
+            })
+          );
+
+          navigate("/my-sessions", { replace: true });
+
+          showBookingSuccessAlert({
+            title: "Meeting Scheduled",
+            mentorName,
+            dateStr: formattedDate,
+            timeSlot,
+            duration: bookingDetails?.duration,
+            onConfirm: () => {
+              navigate("/my-sessions");
+            },
+          });
         } else {
           throw new Error(res.data?.message || "Free booking failed");
         }
@@ -303,6 +414,15 @@ const PaymentPage: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  if (isConfirmingMeeting) {
+    return (
+      <ConfirmationLoadingModal
+        expertName={bookingDetails?.expertName || "Mentor"}
+        isConfirming={true}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">

@@ -1,6 +1,7 @@
 import express from "express";
 // Verify OTP
 import { sendOtp, verifyOtp, registerUser, loginUser, authenticateToken, getProfile, refresh, logoutUser, verifyGoogleToken, resetPassword, googleCallback } from "../controllers/authController.js";
+import { verifyEmailConnection } from "../services/emailService.js";
 import passport from "passport";
 import rateLimit from "express-rate-limit";
 
@@ -29,5 +30,10 @@ router.get(
     googleCallback
 );
 
+
+router.get('/email-status', async (req, res) => {
+    const status = await verifyEmailConnection();
+    res.json(status);
+});
 
 export default router;

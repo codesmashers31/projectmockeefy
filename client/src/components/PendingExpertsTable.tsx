@@ -137,13 +137,13 @@ const PendingExpertsTable: React.FC = () => {
         const primaryCats = ["IT", "HR", "Business", "Design", "AI"];
         const matchedCat = primaryCats.includes(appliedCat) ? appliedCat : "IT";
         setApproveCategory(matchedCat);
-        
+
         // Pre-populate with the expert's chosen level
-        const appliedLevel = selectedExpert?.professionalDetails?.level || 
-          (selectedExpert?.professionalDetails?.levels && selectedExpert.professionalDetails.levels[0]) || 
-          "Rising Mentor";
+        const appliedLevel = selectedExpert?.professionalDetails?.level ||
+            (selectedExpert?.professionalDetails?.levels && selectedExpert.professionalDetails.levels[0]) ||
+            "Rising Mentor";
         setApproveLevel(appliedLevel);
-        
+
         setIsApproveModalOpen(true);
     };
 
@@ -319,11 +319,10 @@ const PendingExpertsTable: React.FC = () => {
                                                     </span>
                                                     {exp.verification?.aadhar?.isVerified && (
                                                         <span
-                                                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                                                                exp.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED" || (exp.verification.aadhar.nameMatchScore && exp.verification.aadhar.nameMatchScore < 80)
+                                                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${exp.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED" || (exp.verification.aadhar.nameMatchScore && exp.verification.aadhar.nameMatchScore < 80)
                                                                     ? "bg-amber-50 text-amber-700 border-amber-200"
                                                                     : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                            }`}
+                                                                }`}
                                                             title={`Name on Aadhaar: ${exp.verification.aadhar.nameOnAadhaar || exp.personalInformation.userName}`}
                                                         >
                                                             <ShieldCheck className="w-2.5 h-2.5" />
@@ -485,8 +484,8 @@ const PendingExpertsTable: React.FC = () => {
                                         <div className="flex justify-between py-2 border-b border-gray-50">
                                             <span className="text-sm text-gray-500">Requested Level(s)</span>
                                             <span className="text-sm font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
-                                                {selectedExpert.professionalDetails?.levels && selectedExpert.professionalDetails.levels.length > 0 
-                                                    ? selectedExpert.professionalDetails.levels.join(", ") 
+                                                {selectedExpert.professionalDetails?.levels && selectedExpert.professionalDetails.levels.length > 0
+                                                    ? selectedExpert.professionalDetails.levels.join(", ")
                                                     : (selectedExpert.professionalDetails?.level || "N/A")}
                                             </span>
                                         </div>
@@ -724,7 +723,7 @@ const PendingExpertsTable: React.FC = () => {
                             <p className="text-xs text-gray-500 mt-2 leading-relaxed">
                                 Are you sure you want to approve <strong>{selectedExpert?.personalInformation?.userName}</strong> as an active mentor? The expert will be approved with the following requested details:
                             </p>
-                            
+
                             {selectedExpert && (
                                 <div className="mt-4 p-4 bg-purple-50/70 border border-purple-100 rounded-xl text-sm space-y-2 text-purple-950 font-medium">
                                     <div>
