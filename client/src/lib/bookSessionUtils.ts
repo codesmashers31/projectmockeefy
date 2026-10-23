@@ -22,6 +22,7 @@ export interface Profile {
     rating: number;
     reviews: number;
     price: string;
+    minPrice?: number;
     responseTime: string;
     successRate: number;
     isVerified: boolean;
@@ -217,7 +218,25 @@ export const mapExpertToProfile = (expert: any): Profile => {
     else if (state) location = state;
     else if (country) location = country;
 
-    const price = expert.pricing?.hourlyRate ? `₹${expert.pricing.hourlyRate}/hr` : calculatePrice(experience, category);
+    const rawMin = expert.minPrice != null
+        ? Number(expert.minPrice)
+        : typeof expert.price === "number"
+        ? expert.price
+        : null;
+
+    const parsedPriceStr = expert.price && expert.price !== "₹—"
+        ? (String(expert.price).startsWith('₹') ? String(expert.price) : `₹${expert.price}`)
+        : null;
+
+    const price = rawMin != null
+        ? `₹${rawMin}`
+        : parsedPriceStr
+        ? parsedPriceStr
+        : expert.pricing?.hourlyRate 
+        ? `₹${expert.pricing.hourlyRate}/hr` 
+        : calculatePrice(experience, category);
+
+    const minPrice = rawMin ?? (parsedPriceStr ? parseInt(parsedPriceStr.replace(/[^\d]/g, ""), 10) : undefined);
     const rating = expert.metrics?.avgRating || 0;
     const reviews = expert.metrics?.totalReviews || 0;
     const successRate = expert.metrics?.totalSessions > 0 ? Math.round((expert.metrics.completedSessions / expert.metrics.totalSessions) * 100) : 0;
@@ -246,7 +265,7 @@ export const mapExpertToProfile = (expert: any): Profile => {
         id: expert._id || expert.userId,
         name: expert.personalInformation?.userName || "Expert",
         role, industry, experience, skills: skills.length > 0 ? skills : ["Interview Coaching"],
-        rating, price, category: category as Category, company,
+        rating, price, minPrice: (minPrice && minPrice > 0) ? minPrice : undefined, category: category as Category, company,
         avatar, location, mode, reviews, responseTime, successRate,
         isVerified: expert.status === "Active",
         availableTime, languages,

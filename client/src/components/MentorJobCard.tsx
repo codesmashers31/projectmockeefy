@@ -6,6 +6,7 @@ import {
   Briefcase,
   Star,
   CheckCircle2,
+  BadgeCheck,
   ArrowRight,
   Heart,
 } from "lucide-react";
@@ -168,14 +169,12 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
                 >
                   {mentor.name}
                 </h3>
-                {mentor.isVerified && (
-                  <span
-                    title="Verified Interview Expert"
-                    className="inline-flex items-center text-[#0755E8] shrink-0"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 fill-[#EAF2FF]" />
-                  </span>
-                )}
+                <span
+                  title="Verified Interview Expert"
+                  className="inline-flex items-center shrink-0"
+                >
+                  <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
+                </span>
               </div>
 
               {/* Sensible wrapping for job title & company: standardized 2-line height */}
