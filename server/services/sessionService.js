@@ -200,34 +200,70 @@ export const createSession = async (sessionData) => {
 };
 
 export const getSessionsByExpertId = async (expertId) => {
-    let expertIds = [expertId];
-    if (expertId) {
-        expertIds.push(expertId.toString());
-        try {
-            const ExpertDetails = (await import('../models/expertModel.js')).default;
-            const mongoose = (await import('mongoose')).default;
-            if (mongoose.Types.ObjectId.isValid(expertId)) {
-                const oid = new mongoose.Types.ObjectId(expertId);
-                const expert = await ExpertDetails.findOne({ $or: [{ _id: oid }, { userId: oid }] }).lean();
-                if (expert) {
-                    if (expert._id) {
-                        expertIds.push(expert._id);
-                        expertIds.push(expert._id.toString());
-                    }
-                    if (expert.userId) {
-                        expertIds.push(expert.userId);
-                        expertIds.push(expert.userId.toString());
-                    }
+    if (!expertId) return [];
+    let expertIds = [expertId, expertId.toString()];
+    try {
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
+        const User = (await import('../models/User.js')).default;
+        const mongoose = (await import('mongoose')).default;
+
+        let expert = null;
+        if (mongoose.Types.ObjectId.isValid(expertId)) {
+            const oid = new mongoose.Types.ObjectId(expertId);
+            expert = await ExpertDetails.findOne({ $or: [{ _id: oid }, { userId: oid }] }).lean();
+        } else {
+            expert = await ExpertDetails.findOne({
+                $or: [
+                    { expertID: expertId },
+                    { "personalInformation.expertID": expertId },
+                    { "personalInformation.userName": expertId }
+                ]
+            }).lean();
+            if (!expert) {
+                const user = await User.findOne({
+                    $or: [
+                        { email: String(expertId).toLowerCase() },
+                        { name: expertId }
+                    ]
+                }).lean();
+                if (user) {
+                    expert = await ExpertDetails.findOne({ userId: user._id }).lean();
+                    expertIds.push(user._id, user._id.toString());
                 }
             }
-        } catch (_) {}
+        }
+
+        if (expert) {
+            if (expert._id) {
+                expertIds.push(expert._id, expert._id.toString());
+            }
+            if (expert.userId) {
+                expertIds.push(expert.userId, expert.userId.toString());
+            }
+        }
+    } catch (err) {
+        console.error("Error resolving expert in getSessionsByExpertId:", err);
     }
+
+    const mongoose = (await import('mongoose')).default;
+    const queryIds = [];
+    for (const id of expertIds) {
+        if (id) {
+            queryIds.push(id);
+            if (mongoose.Types.ObjectId.isValid(id) && typeof id === 'string') {
+                try {
+                    queryIds.push(new mongoose.Types.ObjectId(id));
+                } catch (_) {}
+            }
+        }
+    }
+
     return await Session.find({
         $or: [
-            { expertId: { $in: expertIds } },
-            { "expert.id": { $in: expertIds } }
+            { expertId: { $in: queryIds } },
+            { "expert.id": { $in: queryIds } }
         ],
-        status: { $ne: 'cancelled' }
+        status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED'] }
     }).lean();
 };
 

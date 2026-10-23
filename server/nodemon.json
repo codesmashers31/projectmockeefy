@@ -1,0 +1,14 @@
+{
+  "watch": [
+    "server.js",
+    "controllers",
+    "models",
+    "routes",
+    "services",
+    "config",
+    "jobs",
+    "websocket",
+    ".env"
+  ],
+  "ext": "js,mjs,json,env"
+}

@@ -44,6 +44,7 @@ import UserShell from "./components/UserShell";
 import { ResumeProvider } from "./context/ResumeContext";
 import { ResumeBuilderPage } from "./pages/ResumeBuilder";
 import FindMentor from "./pages/FindMentor";
+import ExpertProfilePage from "./pages/ExpertProfilePage";
 
 import PendingExpertsTable from "./components/PendingExpertsTable";
 import RejectedExpertsTable from "./components/RejectedExpertsTable";
@@ -173,6 +174,10 @@ function AppRoutes() {
         <Route path="/return-policy" element={<ReturnPolicy />} />
         <Route path="/shipping-policy" element={<ShippingPolicy />} />
         <Route path="/plans" element={<SubscriptionPlans />} />
+
+        {/* PUBLIC & SHARED AVAILABLE EXPERT PROFILE ROUTES */}
+        <Route path="/expert-profile/:expertId" element={<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>} />
+        <Route path="/expert/:expertId" element={<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>} />
 
 
         {/* SHARED PROTECTED ROUTES (Allowed for Expert and Candidate) */}

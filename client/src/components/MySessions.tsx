@@ -680,13 +680,46 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
               </div>
             </div>
 
-            {/* Status Filter Tabs */}
+            {/* Status Filter Tabs with Themed Background Colors */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
               {[
-                { id: 'all', label: 'All', count: sessions.length },
-                { id: 'upcoming', label: 'Upcoming', count: upcomingCount },
-                { id: 'completed', label: 'Completed', count: completedCount },
-                { id: 'cancelled', label: 'Cancelled', count: cancelledCount },
+                {
+                  id: 'all',
+                  label: 'All',
+                  count: sessions.length,
+                  activeClass: 'bg-slate-900 text-white shadow-xs ring-2 ring-slate-900/20',
+                  inactiveClass: 'bg-slate-100 text-slate-700 hover:bg-slate-200/80 border border-slate-300/80',
+                  activeBadgeClass: 'bg-white/25 text-white',
+                  inactiveBadgeClass: 'bg-white text-slate-800 shadow-2xs',
+                },
+                {
+                  id: 'upcoming',
+                  label: 'Upcoming',
+                  count: upcomingCount,
+                  hasDot: true,
+                  activeClass: 'bg-[#00875A] text-white shadow-xs ring-2 ring-emerald-500/25',
+                  inactiveClass: 'bg-[#E8FAF4] text-[#065F46] hover:bg-[#D5F5EA] border border-[#7FE3C3]/70',
+                  activeBadgeClass: 'bg-white/25 text-white',
+                  inactiveBadgeClass: 'bg-[#059669]/15 text-[#065F46]',
+                },
+                {
+                  id: 'completed',
+                  label: 'Completed',
+                  count: completedCount,
+                  activeClass: 'bg-[#0755E8] text-white shadow-xs ring-2 ring-blue-500/25',
+                  inactiveClass: 'bg-[#EAF2FF] text-[#0755E8] hover:bg-[#D9E8FF] border border-[#93B8FF]/70',
+                  activeBadgeClass: 'bg-white/25 text-white',
+                  inactiveBadgeClass: 'bg-[#0755E8]/15 text-[#0755E8]',
+                },
+                {
+                  id: 'cancelled',
+                  label: 'Cancelled',
+                  count: cancelledCount,
+                  activeClass: 'bg-[#E11D48] text-white shadow-xs ring-2 ring-rose-500/25',
+                  inactiveClass: 'bg-[#FFF1F2] text-[#BE123C] hover:bg-[#FFE4E6] border border-[#FDA4AF]/70',
+                  activeBadgeClass: 'bg-white/25 text-white',
+                  inactiveBadgeClass: 'bg-[#BE123C]/15 text-[#BE123C]',
+                },
               ].map((tab) => {
                 const isActive = statusFilter === tab.id;
                 return (
@@ -694,16 +727,21 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     key={tab.id}
                     type="button"
                     onClick={() => setStatusFilter(tab.id as any)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-[#0755E8] text-white shadow-xs'
-                        : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      isActive ? tab.activeClass : tab.inactiveClass
                     }`}
                   >
+                    {tab.hasDot && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          isActive ? 'bg-white animate-pulse' : 'bg-[#059669] animate-pulse'
+                        }`}
+                      />
+                    )}
                     <span>{tab.label}</span>
                     <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-black tabular-nums transition-colors ${
+                        isActive ? tab.activeBadgeClass : tab.inactiveBadgeClass
                       }`}
                     >
                       {tab.count}

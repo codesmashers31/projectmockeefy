@@ -164,6 +164,21 @@
         }
     }
 
+    @keyframes sessionCardFade {
+        0% {
+            opacity: 0.3;
+            transform: translateY(2px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-session-fade {
+        animation: sessionCardFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
     @keyframes shimmer-shine {
         0% {
             background-position: -200% 0;
@@ -390,3 +405,44 @@
         scrollbar-width: none;
     }
 }
+
+/* SweetAlert2 Highest Priority Z-Index & Elevation */
+.swal2-container,
+.swal-top-container {
+    z-index: 10000000 !important;
+}
+
+.swal2-popup {
+    border-radius: 1.5rem !important;
+    font-family: var(--font-sans) !important;
+}
+
+.swal2-confirm {
+    border-radius: 0.75rem !important;
+    font-weight: 700 !important;
+}
+
+.swal-professional-popup {
+    border-radius: 1.5rem !important;
+    padding: 1.75rem 1.5rem 1.5rem !important;
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.22) !important;
+    max-width: 32rem !important;
+    width: 92% !important;
+    background: #ffffff !important;
+}
+
+.swal-professional-btn {
+    background-color: #0755E8 !important;
+    border-radius: 0.75rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 700 !important;
+    padding: 0.75rem 2rem !important;
+    transition: all 0.15s ease !important;
+    box-shadow: 0 2px 8px -1px rgba(7, 85, 232, 0.35) !important;
+}
+
+.swal-professional-btn:hover {
+    background-color: #0645C7 !important;
+}
+
