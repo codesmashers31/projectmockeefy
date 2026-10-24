@@ -12,7 +12,6 @@ import {
   Loader2,
   AlertCircle,
   FileCheck,
-  Sparkles,
   User as UserIcon,
   X,
   ArrowRight,
@@ -516,29 +515,16 @@ export default function UserProfile() {
 
         {/* 2. SECTION 2: MULTI-RESUME UPLOAD & MANAGEMENT */}
         <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <FileCheck className="w-5 h-5 text-[#0755E8]" />
-                <h2 className="text-xl font-black text-slate-900 tracking-tight leading-none">
-                  Resumes
-                </h2>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-xs font-black">
-                  {resumes.length}
-                </span>
-              </div>
-              <p className="text-xs font-medium text-slate-500 mt-1">
-                Upload multiple tailored resumes for different roles. Interview experts will review your default resume.
-              </p>
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <div className="flex items-center gap-2.5">
+              <FileCheck className="w-5 h-5 text-[#0755E8]" />
+              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-none">
+                Resumes
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-xs font-black">
+                {resumes.length}
+              </span>
             </div>
-
-            <Link
-              to="/resume-builder"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-[#0755E8] rounded-xl text-xs font-bold transition-all shadow-2xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#0755E8]" />
-              <span>Build with AI</span>
-            </Link>
           </div>
 
           {/* Upload Dropzone Box & Staging Card */}
@@ -914,15 +900,8 @@ export default function UserProfile() {
                 </div>
                 <h4 className="text-sm font-black text-slate-900">No Resumes Uploaded Yet</h4>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 leading-relaxed">
-                  Upload your target resume using the dropzone above, or build a tailored tech resume using our AI Builder.
+                  Upload your target resume using the dropzone above.
                 </p>
-                <Link
-                  to="/resume-builder"
-                  className="mt-4 px-4 py-2 bg-white hover:bg-slate-50 text-[#0755E8] border border-[#93B8FF] rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-2xs"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#0755E8]" />
-                  <span>Build with AI Resume Builder</span>
-                </Link>
               </div>
             )}
           </div>

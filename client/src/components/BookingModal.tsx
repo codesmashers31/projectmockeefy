@@ -5,7 +5,8 @@ import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import {
   X, Calendar, Clock, Shield, Check, ArrowRight,
-  ChevronLeft, ChevronRight, BadgeCheck, CheckSquare, Square
+  ChevronLeft, ChevronRight, BadgeCheck, CheckSquare, Square,
+  ChevronDown, ChevronUp
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -29,6 +30,14 @@ export const AVAILABLE_LEVELS = [
   "Elite Mentor",
   "FAANG Mentor",
 ];
+
+export const LEVEL_DESCRIPTIONS: Record<string, string> = {
+  "Rising Mentor": "Foundational practice & core interview concepts",
+  "Professional Mentor": "Real-world technical problem solving & live coding",
+  "Senior Mentor": "System design, deep architectural rigor & leadership",
+  "Elite Mentor": "Specialized high-impact domains & executive interview prep",
+  "FAANG Mentor": "FAANG & top tech bar-raiser mock interview standard"
+};
 
 const DEFAULT_CATEGORY_MATRIX: Record<string, Record<string, number>> = {
   "IT": { "Rising Mentor": 499, "Professional Mentor": 999, "Senior Mentor": 1499, "Elite Mentor": 2499, "FAANG Mentor": 3999 },
@@ -233,12 +242,45 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setBookingFlowState("selecting");
+      setSelectedLevel("");
+      setIsLevelDropdownOpen(false);
     }
   }, [isOpen]);
 
-  // Mentor Tier Level Selection (Image 1 style)
-  const [selectedLevel, setSelectedLevel] = useState<string>("Rising Mentor");
-  const [levelPrices, setLevelPrices] = useState<Record<string, number>>({});
+  // Mentor Tier Level Selection (starts as "" so selecting field shows "Select one option")
+  const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsLevelDropdownOpen(false);
+      }
+    };
+    if (isLevelDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isLevelDropdownOpen]);
+
+  const [levelPrices, setLevelPrices] = useState<Record<string, number>>(() => {
+    const prof = initialProfile as any;
+    const rawExpert = prof?.rawExpert;
+    const minVal = prof?.minPrice ?? rawExpert?.minPrice ?? prof?.price ?? rawExpert?.price;
+    const parsed = typeof minVal === "number" ? minVal : parseInt(String(minVal || "").replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      const primary = prof?.level || (Array.isArray(prof?.levels) ? prof.levels[0] : "Rising Mentor");
+      return {
+        [primary]: parsed,
+        [`${primary}_30`]: parsed,
+        [`${primary}_60`]: Math.round(parsed * 1.8),
+      };
+    }
+    return {};
+  });
   const [loadingPrices, setLoadingPrices] = useState<boolean>(false);
 
   // Duration & Pricing (default 30m / 60m matching UI image)
@@ -491,9 +533,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return ["Rising Mentor"];
   }, [profile, initialProfile]);
 
-  // Keep selectedLevel strictly within this mentor's supported levels
+  // Keep selectedLevel strictly within this mentor's supported levels if one is chosen
   useEffect(() => {
-    if (expertLevels.length > 0 && !expertLevels.includes(selectedLevel)) {
+    if (expertLevels.length > 0 && selectedLevel !== "" && !expertLevels.includes(selectedLevel)) {
       setSelectedLevel(expertLevels[0]);
     }
   }, [expertLevels, selectedLevel]);
@@ -546,29 +588,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     };
   }, [isOpen, expertId, profile?.id, profile?.category, sessionDuration, initialProfile, expertLevels]);
 
+  const getPriceForLevel = useCallback((lvl: string, dur: number = sessionDuration) => {
+    const key = `${lvl}_${dur}`;
+    if (levelPrices[key] != null) return levelPrices[key];
+    if (levelPrices[lvl] != null) {
+      return dur === 30 ? levelPrices[lvl] : Math.round(levelPrices[lvl] * 1.8);
+    }
+    const cat = profile?.category || (initialProfile as any)?.category || "IT";
+    const defaults = DEFAULT_CATEGORY_MATRIX[cat] || DEFAULT_CATEGORY_MATRIX["IT"];
+    const base = defaults[lvl] || 499;
+    return dur === 30 ? base : Math.round(base * 1.8);
+  }, [levelPrices, sessionDuration, profile?.category, initialProfile]);
+
   // Price calculations based on selectedLevel and duration
   const rawPrice = useMemo(() => {
-    const key = `${selectedLevel}_${sessionDuration}`;
-    if (levelPrices[key] != null) {
-      return levelPrices[key];
+    if (!selectedLevel) {
+      return getPriceForLevel(expertLevels[0] || "Rising Mentor", sessionDuration);
     }
-    if (levelPrices[selectedLevel] != null) {
-      return levelPrices[selectedLevel];
-    }
-    const prof = profile || initialProfile;
-    const minVal = (prof as any)?.minPrice ?? (prof as any)?.price;
-    const parsedMin = typeof minVal === "number" ? minVal : (parseInt(String(minVal || "").replace(/[^\d]/g, ""), 10) || null);
-
-    // If expert has a defined starting price (e.g. Sudhan ₹2) and current selection is their first tier
-    if (selectedLevel === expertLevels[0] && parsedMin != null && parsedMin > 0) {
-      return sessionDuration === 30 ? parsedMin : Math.round(parsedMin * 1.8);
-    }
-
-    const category = prof?.category || "IT";
-    const catDefaults = DEFAULT_CATEGORY_MATRIX[category] || DEFAULT_CATEGORY_MATRIX["IT"];
-    const base = catDefaults[selectedLevel] || (parsedMin ?? 499);
-    return sessionDuration === 30 ? base : Math.round(base * 1.8);
-  }, [levelPrices, selectedLevel, sessionDuration, profile, initialProfile, expertLevels]);
+    return getPriceForLevel(selectedLevel, sessionDuration);
+  }, [selectedLevel, sessionDuration, expertLevels, getPriceForLevel]);
 
   const displayPrice = useMemo(() => {
     let p = rawPrice;
@@ -847,6 +885,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const expertDisplayName = profile?.name || (initialProfile as any)?.name || "Interview Expert";
   const expertRole = profile?.role || (initialProfile as any)?.role || "Interview Expert";
+  const expertCompany =
+    profile?.company ||
+    (initialProfile as any)?.company ||
+    (initialProfile as any)?.rawExpert?.professionalDetails?.company ||
+    (profile as any)?.professionalDetails?.company ||
+    "";
   const expertAvatar = useMemo(() => {
     if (profile?.avatar) return profile.avatar;
     if ((initialProfile as any)?.avatar) return (initialProfile as any).avatar;
@@ -917,6 +961,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleBooking = async () => {
     if (!selectedSlot) return;
+
+    if (!selectedLevel) {
+      toast.error("Please select an expert level before proceeding.");
+      setIsLevelDropdownOpen(true);
+      return;
+    }
 
     if (!user) {
       Swal.fire({
@@ -1190,33 +1240,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
 
             <div className="min-w-0">
-              <h3 className="font-extrabold text-base sm:text-lg text-slate-900 leading-tight truncate">
-                {expertDisplayName}
-              </h3>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 leading-tight truncate">
+                  {expertDisplayName}
+                </h3>
+                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
+                  <BadgeCheck className="w-4.5 h-4.5 text-white fill-[#0755E8]" />
+                </span>
+              </div>
               <p className="text-xs sm:text-[13px] text-slate-500 font-medium truncate mt-0.5">
-                {expertRole} • <span className="text-[#0755E8] font-bold">₹{displayPrice} ({sessionDuration}m)</span>
+                <span>{expertRole}</span>
+                {expertCompany && (
+                  <span className="text-slate-700 font-semibold"> at {expertCompany}</span>
+                )}
+                <span className="mx-1">•</span>
+                <span className="text-[#0755E8] font-bold">
+                  {selectedLevel ? (
+                    loadingPrices && levelPrices[selectedLevel] == null && levelPrices[`${selectedLevel}_${sessionDuration}`] == null ? (
+                      <span className="inline-block w-8 h-3.5 bg-blue-100/70 rounded animate-pulse align-middle" />
+                    ) : (
+                      `₹${displayPrice} (${sessionDuration}m)`
+                    )
+                  ) : (
+                    `From ₹${getPriceForLevel(expertLevels[0] || "Rising Mentor", sessionDuration)} (${sessionDuration}m)`
+                  )}
+                </span>
               </p>
-              {expertLevels.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2">
-                  {expertLevels.map((lvl) => {
-                    const isSelected = selectedLevel === lvl;
-                    return (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => setSelectedLevel(lvl)}
-                        className={`text-xs font-semibold px-3 sm:px-3.5 py-1 rounded-full border transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-[#0755E8] text-white border-[#0755E8] shadow-xs"
-                            : "text-[#0755E8] bg-[#EBF3FF] border-[#BFD7FE] hover:bg-blue-100/70"
-                        }`}
-                      >
-                        {lvl}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
 
@@ -1267,6 +1316,127 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               )}
             </div>
           </div>
+
+          {/* EXPERT LEVEL DROPDOWN SELECTOR (Selecting field initially shows 'Select one option') */}
+          {expertLevels.length > 0 && (
+            <div className="pt-0.5 pb-1 relative" ref={dropdownRef}>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  Click the level of expert you want:
+                </label>
+                {selectedLevel && (
+                  <button
+                    type="button"
+                    onClick={() => setIsLevelDropdownOpen((prev) => !prev)}
+                    className="text-[11px] font-semibold text-[#0755E8] hover:underline cursor-pointer"
+                  >
+                    Change selection
+                  </button>
+                )}
+              </div>
+
+              {/* Selecting Field Input Button */}
+              <button
+                type="button"
+                onClick={() => setIsLevelDropdownOpen((prev) => !prev)}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  isLevelDropdownOpen
+                    ? "border-[#0755E8] ring-2 ring-[#0755E8]/15 bg-white shadow-xs"
+                    : selectedLevel
+                    ? "border-blue-200 bg-[#F8FAFF] hover:border-[#0755E8]"
+                    : "border-slate-200 bg-white hover:border-slate-300"
+                }`}
+                aria-haspopup="listbox"
+                aria-expanded={isLevelDropdownOpen}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedLevel ? "bg-[#0755E8]" : "bg-slate-300"}`} />
+                  {selectedLevel ? (
+                    <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                      {selectedLevel}
+                    </span>
+                  ) : (
+                    <span className="text-xs sm:text-sm text-slate-400 font-medium">
+                      Select one option
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedLevel && (
+                    <span className="text-xs font-bold text-[#0755E8] bg-blue-100/70 px-2.5 py-0.5 rounded-full border border-blue-200">
+                      ₹{getPriceForLevel(selectedLevel, sessionDuration)} ({sessionDuration}m)
+                    </span>
+                  )}
+                  {isLevelDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-slate-500 stroke-[2.5]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-500 stroke-[2.5]" />
+                  )}
+                </div>
+              </button>
+
+              {/* Dropdown Menu displaying processes/levels and modifying them */}
+              {isLevelDropdownOpen && (
+                <div
+                  role="listbox"
+                  className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                >
+                  <div className="p-1.5 space-y-1 max-h-60 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    {expertLevels.map((lvl) => {
+                      const isSelected = selectedLevel === lvl;
+                      const lvlPrice = getPriceForLevel(lvl, sessionDuration);
+                      const desc = LEVEL_DESCRIPTIONS[lvl] || "Targeted mock interview prep";
+                      return (
+                        <button
+                          key={lvl}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => {
+                            setSelectedLevel(lvl);
+                            setIsLevelDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-50 text-[#0755E8] font-bold border border-blue-200"
+                              : "hover:bg-slate-50 text-slate-700 border border-transparent"
+                          }`}
+                        >
+                          <div className="min-w-0 pr-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs sm:text-sm font-bold text-slate-900">
+                                {lvl}
+                              </span>
+                              {isSelected && (
+                                <span className="text-[10px] bg-[#0755E8] text-white font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                              {desc}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs font-bold text-[#0755E8] tabular-nums">
+                              ₹{lvlPrice}
+                            </span>
+                            {isSelected ? (
+                              <Check className="w-4 h-4 text-[#0755E8] stroke-[3]" />
+                            ) : (
+                              <div className="w-4 h-4" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 2. SELECT DATE Header & Navigation Controls */}
           <div className="flex items-center justify-between py-2 border-b border-slate-100 mb-1">
@@ -1516,10 +1686,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           <button
             type="button"
-            disabled={!selectedSlot || isProcessing}
+            disabled={!selectedSlot || !selectedLevel || isProcessing}
             onClick={handleBooking}
             className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
-              selectedSlot && !isProcessing
+              selectedSlot && selectedLevel && !isProcessing
                 ? "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white cursor-pointer shadow-sm shadow-[#0755E8]/20"
                 : "bg-[#E2E8F0] text-slate-400 cursor-not-allowed shadow-none"
             }`}
@@ -1531,6 +1701,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span>
                   {!selectedSlot
                     ? "Select an Available Slot"
+                    : !selectedLevel
+                    ? "Select one option to continue"
                     : appliedFreePromo
                     ? "Confirm Free Session"
                     : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)

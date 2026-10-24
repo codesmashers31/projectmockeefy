@@ -304,8 +304,22 @@ export default function BookSessionPage() {
     return ["Rising Mentor"];
   }, [profile, existingProfile]);
 
-  const [selectedLevel, setSelectedLevel] = useState<string>("Rising Mentor");
-  const [levelPrices, setLevelPrices] = useState<Record<string, number>>({});
+  const [selectedLevel, setSelectedLevel] = useState<string>(() => {
+    const prof = (existingProfile as any);
+    if (prof?.level && AVAILABLE_LEVELS.includes(prof.level)) return prof.level;
+    if (Array.isArray(prof?.levels) && prof.levels.length > 0) return prof.levels[0];
+    return "Rising Mentor";
+  });
+  const [levelPrices, setLevelPrices] = useState<Record<string, number>>(() => {
+    const prof = (existingProfile as any);
+    const rawVal = prof?.minPrice ?? prof?.rawExpert?.minPrice ?? prof?.price ?? overridePrice;
+    const parsed = typeof rawVal === "number" ? rawVal : parseInt(String(rawVal || "").replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      const primary = prof?.level || (Array.isArray(prof?.levels) ? prof.levels[0] : "Rising Mentor");
+      return { [primary]: parsed };
+    }
+    return {};
+  });
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
   const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
 
@@ -317,12 +331,14 @@ export default function BookSessionPage() {
 
   const basePrice = useMemo(() => {
     if (overridePrice) return Number(overridePrice) || 0;
-    if (profile?.price) {
-      const parsed = parseInt(String(profile.price).replace(/[^\d]/g, ""), 10);
-      return Number.isFinite(parsed) ? parsed : 499;
+    const prof = (existingProfile as any) || (profile as any);
+    const rawVal = prof?.minPrice ?? prof?.rawExpert?.minPrice ?? prof?.price;
+    if (rawVal != null) {
+      const parsed = parseInt(String(rawVal).replace(/[^\d]/g, ""), 10);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
     }
     return 499;
-  }, [profile?.price, overridePrice]);
+  }, [profile, existingProfile, overridePrice]);
 
   useEffect(() => {
     const expertIdToUse = profile?.id || (existingProfile as any)?._id || (existingProfile as any)?.id || expertId;
@@ -1214,10 +1230,10 @@ export default function BookSessionPage() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <label className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                    Expert Levels (Choose Multi-option)
+                    Select Expert Level
                   </label>
                   <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                    Select all levels you wish to support. Candidates can choose their preferred tier when booking you.
+                    Click the level of expert you want to conduct your mock interview session.
                   </p>
                 </div>
                 <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
@@ -1800,12 +1816,13 @@ export default function BookSessionPage() {
                   <h3 className="font-bold text-sm text-slate-900 leading-tight truncate">
                     {profile.name}
                   </h3>
-                  {profile.isVerified && (
-                    <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8] shrink-0" />
-                  )}
+                  <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8] shrink-0" />
                 </div>
                 <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                  {profile.role}
+                  <span>{profile.role}</span>
+                  {profile.company && (
+                    <span className="text-slate-700 font-semibold"> at {profile.company}</span>
+                  )}
                 </p>
                 <div className="flex items-center gap-2 mt-1 text-[11px] font-semibold text-slate-600 flex-wrap">
                   <span className="flex items-center gap-0.5 text-amber-600">
@@ -2075,12 +2092,13 @@ export default function BookSessionPage() {
                   <h2 id="modal-expert-name" className="font-extrabold text-base sm:text-lg text-slate-900 leading-tight">
                     {profile.name}
                   </h2>
-                  {profile.isVerified && (
-                    <BadgeCheck className="w-4.5 h-4.5 text-white fill-[#0755E8] shrink-0" />
-                  )}
+                  <BadgeCheck className="w-4.5 h-4.5 text-white fill-[#0755E8] shrink-0" />
                 </div>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-                  {profile.role}
+                  <span>{profile.role}</span>
+                  {profile.company && (
+                    <span className="text-slate-700 font-semibold"> at {profile.company}</span>
+                  )}
                 </p>
                 <div className="flex items-center gap-2 mt-1.5 text-xs font-semibold text-slate-600 flex-wrap">
                   <span className="flex items-center gap-0.5 text-amber-600 font-bold">
@@ -2095,15 +2113,29 @@ export default function BookSessionPage() {
                   </span>
                 </div>
                 {expertLevels.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {expertLevels.map((lvl, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[10px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full border border-[#93B8FF]/40 inline-flex items-center"
-                      >
-                        {lvl}
-                      </span>
-                    ))}
+                  <div className="mt-2">
+                    <p className="text-[10px] font-semibold text-slate-500 mb-1">
+                      Click the level of expert you want:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {expertLevels.map((lvl) => {
+                        const isSelected = selectedLevel === lvl;
+                        return (
+                          <button
+                            key={lvl}
+                            type="button"
+                            onClick={() => setSelectedLevel(lvl)}
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-[#0755E8] text-white border-[#0755E8] shadow-xs"
+                                : "text-[#0755E8] bg-[#EAF2FF] border-[#93B8FF]/40 hover:bg-blue-100"
+                            }`}
+                          >
+                            {lvl}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

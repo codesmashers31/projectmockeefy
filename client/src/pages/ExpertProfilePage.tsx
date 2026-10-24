@@ -6,6 +6,7 @@ import {
   Award,
   CheckCircle2,
   ShieldCheck,
+  BadgeCheck,
   Briefcase,
   GraduationCap,
   Calendar,
@@ -361,6 +362,9 @@ export default function ExpertProfilePage() {
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   {profile.name}
                 </h1>
+                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
+                  <BadgeCheck className="w-5 h-5 text-white fill-[#0755E8]" />
+                </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   Verified Mentor
