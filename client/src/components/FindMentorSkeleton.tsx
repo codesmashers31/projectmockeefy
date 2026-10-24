@@ -8,23 +8,23 @@ export function FindMentorSkeleton() {
         <div className="flex-1 min-w-0 space-y-3.5">
           {/* Header Controls Skeleton: Same line title & sort placeholder */}
           <div className="space-y-2 px-1 sm:px-1.5">
-            <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
               {/* Left: Title & Count Placeholder */}
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="h-6 w-48 sm:w-52 rounded-lg bg-slate-200/80 shimmer-shining" />
                 <div className="h-5 w-32 sm:w-36 rounded-full bg-[#EAF2FF] shimmer-shining" />
               </div>
 
-              {/* Right: Compact Sort Placeholder */}
-              <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
-                <div className="h-7 w-16 rounded-lg bg-slate-100 shimmer-shining xl:hidden" />
-                <div className="h-7 w-28 rounded-lg bg-slate-100 shimmer-shining" />
+              {/* Controls Row Skeleton */}
+              <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                <div className="h-7 w-20 rounded-xl bg-slate-100 shimmer-shining xl:hidden" />
+                <div className="h-7 w-32 rounded-xl bg-slate-100 shimmer-shining shrink-0 ml-auto sm:ml-0" />
               </div>
             </div>
           </div>
 
           {/* DIV CARD: All Tracks Category Skeletons */}
-          <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-7">
+          <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[24px] sm:rounded-[28px] p-3.5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-7">
             {/* Decorative gradient glow matching live card */}
             <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
@@ -36,9 +36,9 @@ export function FindMentorSkeleton() {
                 { title: "w-48", subtitle: "w-64" },
               ].map((track, idx) => (
                 <div key={idx} className="space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7.5 h-7.5 rounded-lg bg-[#EAF2FF] shimmer-shining shrink-0" />
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] shimmer-shining shrink-0" />
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2">
                           <div className={`h-4.5 ${track.title} rounded bg-slate-200/80 shimmer-shining`} />
@@ -47,9 +47,9 @@ export function FindMentorSkeleton() {
                         <div className={`h-3 ${track.subtitle} rounded bg-slate-100 shimmer-shining`} />
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                      <div className="w-7 h-7 rounded-full bg-slate-100 shimmer-shining" />
-                      <div className="w-7 h-7 rounded-full bg-slate-100 shimmer-shining" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-7.5 h-7.5 rounded-full bg-slate-100 shimmer-shining" />
+                      <div className="w-7.5 h-7.5 rounded-full bg-slate-100 shimmer-shining" />
                     </div>
                   </div>
 
@@ -57,7 +57,7 @@ export function FindMentorSkeleton() {
                     {[1, 2].map((cardIdx) => (
                       <div
                         key={cardIdx}
-                        className="w-[82%] sm:w-[calc(50%-8px)] shrink-0 flex flex-col h-auto"
+                        className="w-full sm:w-[calc(50%-8px)] shrink-0 flex flex-col h-auto"
                       >
                         <MentorCardSkeleton />
                       </div>

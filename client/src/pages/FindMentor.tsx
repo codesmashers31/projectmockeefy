@@ -156,17 +156,17 @@ function MentorCategoryScrollRow({
 
   return (
     <div id={`track-${id}`} className="space-y-2.5 scroll-mt-24 group/section">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7.5 h-7.5 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
             {icon}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-[16px] sm:text-[17px] font-bold text-slate-900 tracking-tight leading-snug m-0">
+              <h3 className="text-[15px] sm:text-[17px] font-bold text-slate-900 tracking-tight leading-snug m-0 truncate">
                 {title}
               </h3>
-              <span className="text-[10.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.2 rounded-full">
+              <span className="text-[10px] sm:text-[10.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full shrink-0">
                 {mentors.length}
               </span>
               <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-[10.5px] font-bold text-slate-600 select-none shadow-2xs">
@@ -174,20 +174,20 @@ function MentorCategoryScrollRow({
                 <span>Drag to scroll</span>
               </span>
             </div>
-            <p className="text-[12px] sm:text-[12.5px] text-slate-500 mt-0.5 leading-normal truncate">
+            <p className="text-[11.5px] sm:text-[12.5px] text-slate-500 mt-0.5 leading-normal truncate">
               {subtitle}
             </p>
           </div>
         </div>
 
         {/* Top Header Arrow Controls */}
-        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={() => handleScroll("left")}
             disabled={!canScrollLeft}
             aria-label={`Previous ${title}`}
-            className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
+            className="w-7.5 h-7.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
           >
             <ChevronLeft size={15} />
           </button>
@@ -196,7 +196,7 @@ function MentorCategoryScrollRow({
             onClick={() => handleScroll("right")}
             disabled={!canScrollRight}
             aria-label={`Next ${title}`}
-            className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
+            className="w-7.5 h-7.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
           >
             <ChevronRight size={15} />
           </button>
@@ -211,13 +211,13 @@ function MentorCategoryScrollRow({
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onClickCapture={handleClickCapture}
-          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing"
+          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (
             <div
               key={mentor.id}
-              className="w-[82%] sm:w-[calc(50%-8px)] shrink-0 flex flex-col h-auto"
+              className="w-full sm:w-[calc(50%-8px)] shrink-0 flex flex-col h-auto snap-start"
             >
               <MentorJobCard mentor={mentor} />
             </div>
@@ -1186,7 +1186,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
           {/* Header Controls: Result Count & Sort Dropdown in the same line */}
           <div className="space-y-2 px-1 sm:px-1.5">
             {/* Same Line Header Row: Title, Count & Compact Sort Control */}
-            <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
               {/* LEFT: Title & Verified Count */}
               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <h1 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight whitespace-nowrap">
@@ -1197,24 +1197,25 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                 </span>
               </div>
 
-              {/* RIGHT: Compact Sort Control & Mobile Filter Button (In the same line) */}
-              <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
-                {/* Mobile Filter Button (< xl screens) */}
+              {/* Controls Row: On mobile, full width with Filters on Left and Relevance on Right */}
+              <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                {/* Mobile Filter Button (< xl screens) - Assigned at Left */}
                 <button
+                  type="button"
                   onClick={() => setIsMobileFilterOpen(true)}
-                  className="xl:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 shadow-2xs cursor-pointer transition-colors"
+                  className="xl:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200/90 text-slate-700 text-xs font-semibold hover:bg-slate-50 active:bg-slate-100 shadow-2xs cursor-pointer transition-all"
                 >
-                  <SlidersHorizontal size={12} />
+                  <SlidersHorizontal size={13} className="text-slate-500" />
                   <span>Filters</span>
                   {activeFilterCount > 0 && (
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#0755E8] text-white text-[9.5px] font-bold flex items-center justify-center">
+                    <span className="min-w-4 h-4 px-1 rounded-full bg-[#0755E8] text-white text-[9.5px] font-bold flex items-center justify-center">
                       {activeFilterCount}
                     </span>
                   )}
                 </button>
 
-                {/* Compact Sort Control */}
-                <div className="flex items-center gap-1.5">
+                {/* Compact Sort Control: Assigned at Right */}
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
                   <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 select-none whitespace-nowrap">
                     <ArrowUpDown size={11} className="text-slate-400" />
                     <span>Sort by:</span>
@@ -1224,7 +1225,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                       aria-label="Sort by relevance"
-                      className="appearance-none bg-white border border-slate-200/90 text-slate-800 text-xs font-semibold rounded-lg py-1 pl-2.5 pr-6 shadow-2xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#0755E8]/10 cursor-pointer transition-all"
+                      className="appearance-none bg-white border border-slate-200/90 text-slate-800 text-xs font-semibold rounded-xl py-1.5 pl-2.5 pr-7 shadow-2xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#0755E8]/10 cursor-pointer transition-all"
                     >
                       <option value="recommended">Relevance</option>
                       <option value="rating">Rating (High to Low)</option>
@@ -1232,7 +1233,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       <option value="price-low">Price (Low to High)</option>
                       <option value="price-high">Price (High to Low)</option>
                     </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -1323,7 +1324,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </div>
 
           {/* DIV CARD: All Experts Categories & Content */}
-          <div id="all-experts-categories" className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4 scroll-mt-24">
+          <div id="all-experts-categories" className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[24px] sm:rounded-[28px] p-3.5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4 scroll-mt-24">
             {/* Decorative gradient glow */}
             <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
@@ -1337,7 +1338,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       <div className="h-6 w-48 bg-slate-100 rounded-lg animate-pulse" />
                       <div className="flex gap-4 overflow-hidden">
                         {[1, 2].map((n) => (
-                          <div key={n} className="w-[82%] sm:w-[calc(50%-8px)] shrink-0">
+                          <div key={n} className="w-full sm:w-[calc(50%-8px)] shrink-0">
                             <MentorCardSkeleton />
                           </div>
                         ))}
