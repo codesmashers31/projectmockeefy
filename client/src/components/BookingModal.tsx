@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   X, Calendar, Clock, Shield, Check, ArrowRight,
   ChevronLeft, ChevronRight, BadgeCheck, CheckSquare, Square,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Award, Sparkles
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -1317,124 +1317,159 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           </div>
 
-          {/* EXPERT LEVEL DROPDOWN SELECTOR (Selecting field initially shows 'Select one option') */}
+          {/* EXPERT LEVEL INTERACTIVE SELECTION CARD */}
           {expertLevels.length > 0 && (
-            <div className="pt-0.5 pb-1 relative" ref={dropdownRef}>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-slate-700">
-                  Click the level of expert you want:
-                </label>
-                {selectedLevel && (
-                  <button
-                    type="button"
-                    onClick={() => setIsLevelDropdownOpen((prev) => !prev)}
-                    className="text-[11px] font-semibold text-[#0755E8] hover:underline cursor-pointer"
-                  >
-                    Change selection
-                  </button>
-                )}
+            <div
+              className="relative rounded-2xl bg-gradient-to-br from-[#EEF4FF] via-[#F8FAFF] to-[#EAF2FF] border border-blue-200/90 p-3.5 sm:p-4 shadow-[0_2px_14px_-4px_rgba(7,85,232,0.08)] space-y-2.5"
+              ref={dropdownRef}
+            >
+              {/* Decorative ambient background glows (isolated with overflow-hidden so dropdown won't be clipped) */}
+              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                <div className="absolute -right-8 -top-8 w-28 h-28 bg-blue-400/15 rounded-full blur-2xl" />
+                <div className="absolute -left-8 -bottom-8 w-28 h-28 bg-indigo-400/10 rounded-full blur-2xl" />
               </div>
 
-              {/* Selecting Field Input Button */}
-              <button
-                type="button"
-                onClick={() => setIsLevelDropdownOpen((prev) => !prev)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  isLevelDropdownOpen
-                    ? "border-[#0755E8] ring-2 ring-[#0755E8]/15 bg-white shadow-xs"
-                    : selectedLevel
-                    ? "border-blue-200 bg-[#F8FAFF] hover:border-[#0755E8]"
-                    : "border-slate-200 bg-white hover:border-slate-300"
-                }`}
-                aria-haspopup="listbox"
-                aria-expanded={isLevelDropdownOpen}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedLevel ? "bg-[#0755E8]" : "bg-slate-300"}`} />
-                  {selectedLevel ? (
-                    <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
-                      {selectedLevel}
-                    </span>
-                  ) : (
-                    <span className="text-xs sm:text-sm text-slate-400 font-medium">
-                      Select one option
-                    </span>
-                  )}
+              {/* Header: Title + Subtitle */}
+              <div className="relative z-10 flex items-start gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#0755E8] text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5">
+                  <Award className="w-4 h-4" />
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {selectedLevel && (
-                    <span className="text-xs font-bold text-[#0755E8] bg-blue-100/70 px-2.5 py-0.5 rounded-full border border-blue-200">
-                      ₹{getPriceForLevel(selectedLevel, sessionDuration)} ({sessionDuration}m)
-                    </span>
-                  )}
-                  {isLevelDropdownOpen ? (
-                    <ChevronUp className="w-4 h-4 text-slate-500 stroke-[2.5]" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-500 stroke-[2.5]" />
-                  )}
+                <div className="min-w-0 flex-1">
+                  <label className="text-xs sm:text-[13px] font-bold text-slate-900 block leading-snug">
+                    Click the level of expert you want:
+                  </label>
+                  <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
+                    Select the interview rigor & tier matching your target role
+                  </p>
                 </div>
-              </button>
+              </div>
 
-              {/* Dropdown Menu displaying processes/levels and modifying them */}
-              {isLevelDropdownOpen && (
-                <div
-                  role="listbox"
-                  className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+              {/* Main Interactive Dropdown Selector */}
+              <div className="relative z-10">
+                <button
+                  type="button"
+                  onClick={() => setIsLevelDropdownOpen((prev) => !prev)}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                    isLevelDropdownOpen
+                      ? "border-[#0755E8] ring-3 ring-[#0755E8]/15 bg-white shadow-xs"
+                      : selectedLevel
+                      ? "border-blue-200 bg-white hover:border-[#0755E8] shadow-2xs"
+                      : "border-blue-200 bg-white hover:border-[#0755E8] shadow-2xs group"
+                  }`}
+                  aria-haspopup="listbox"
+                  aria-expanded={isLevelDropdownOpen}
                 >
-                  <div className="p-1.5 space-y-1 max-h-60 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    {expertLevels.map((lvl) => {
-                      const isSelected = selectedLevel === lvl;
-                      const lvlPrice = getPriceForLevel(lvl, sessionDuration);
-                      const desc = LEVEL_DESCRIPTIONS[lvl] || "Targeted mock interview prep";
-                      return (
-                        <button
-                          key={lvl}
-                          type="button"
-                          role="option"
-                          aria-selected={isSelected}
-                          onClick={() => {
-                            setSelectedLevel(lvl);
-                            setIsLevelDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-blue-50 text-[#0755E8] font-bold border border-blue-200"
-                              : "hover:bg-slate-50 text-slate-700 border border-transparent"
-                          }`}
-                        >
-                          <div className="min-w-0 pr-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs sm:text-sm font-bold text-slate-900">
-                                {lvl}
-                              </span>
-                              {isSelected && (
-                                <span className="text-[10px] bg-[#0755E8] text-white font-bold px-1.5 py-0.5 rounded-full leading-none">
-                                  Selected
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedLevel ? "bg-[#0755E8] ring-4 ring-[#EAF2FF]" : "bg-[#0755E8]"}`} />
+                    {selectedLevel ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                          {selectedLevel}
+                        </span>
+                        <span className="text-[9.5px] font-bold text-[#0755E8] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 shrink-0">
+                          Active Tier
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-bold text-xs sm:text-sm text-slate-700 group-hover:text-[#0755E8] transition-colors">
+                        Select one option
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedLevel ? (
+                      <>
+                        <span className="text-xs font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-1 rounded-xl border border-[#93B8FF]/40 tabular-nums">
+                          ₹{getPriceForLevel(selectedLevel, sessionDuration)} ({sessionDuration}m)
+                        </span>
+                        <span className="text-xs font-semibold text-slate-500 group-hover:text-[#0755E8] flex items-center gap-1">
+                          <span>Change</span>
+                          {isLevelDropdownOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </span>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EAF2FF] text-[#0755E8] text-xs font-bold group-hover:bg-[#0755E8] group-hover:text-white transition-colors border border-[#93B8FF]/40 shadow-2xs">
+                        <span>Choose</span>
+                        {isLevelDropdownOpen ? (
+                          <ChevronUp size={13} className="stroke-[2.5]" />
+                        ) : (
+                          <ChevronDown size={13} className="stroke-[2.5]" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                {/* Dropdown Menu displaying processes/levels and modifying them */}
+                {isLevelDropdownOpen && (
+                  <div
+                    role="listbox"
+                    className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_36px_-6px_rgba(0,0,0,0.18)] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                  >
+                    <div className="px-4 py-2.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Select Expert Tier
+                      </span>
+                      <span className="text-[11px] font-bold text-[#0755E8]">
+                        {sessionDuration} min session
+                      </span>
+                    </div>
+
+                    <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                      {expertLevels.map((lvl) => {
+                        const isSelected = selectedLevel === lvl;
+                        const lvlPrice = getPriceForLevel(lvl, sessionDuration);
+                        const desc = LEVEL_DESCRIPTIONS[lvl] || "Targeted mock interview prep";
+                        return (
+                          <button
+                            key={lvl}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setSelectedLevel(lvl);
+                              setIsLevelDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-blue-50 text-[#0755E8] font-bold border border-blue-200"
+                                : "hover:bg-slate-50 text-slate-700 border border-transparent"
+                            }`}
+                          >
+                            <div className="min-w-0 pr-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs sm:text-sm font-bold text-slate-900">
+                                  {lvl}
                                 </span>
+                                {isSelected && (
+                                  <span className="text-[10px] bg-[#0755E8] text-white font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                    Selected
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                                {desc}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs font-bold text-[#0755E8] tabular-nums">
+                                ₹{lvlPrice}
+                              </span>
+                              {isSelected ? (
+                                <Check className="w-4 h-4 text-[#0755E8] stroke-[3]" />
+                              ) : (
+                                <div className="w-4 h-4" />
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                              {desc}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs font-bold text-[#0755E8] tabular-nums">
-                              ₹{lvlPrice}
-                            </span>
-                            {isSelected ? (
-                              <Check className="w-4 h-4 text-[#0755E8] stroke-[3]" />
-                            ) : (
-                              <div className="w-4 h-4" />
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 

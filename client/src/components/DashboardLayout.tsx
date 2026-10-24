@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
 import Sidebar, { SkeletonSidebar } from "./Sidebar";
 import Footer from "./Footer";
-import { ArrowUp, Menu, X, Users, Calendar, Bookmark } from "lucide-react";
+import { ArrowUp, Menu, X, Users, Calendar, Bookmark, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -22,7 +22,32 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const showLeftSidebar = !hideSidebars;
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const isExpertsActive =
+    location.pathname === "/" ||
+    location.pathname === "/dashboard" ||
+    location.pathname === "/mentors" ||
+    location.pathname === "/find-mentor" ||
+    location.pathname === "/book-session" ||
+    location.pathname.startsWith("/expert");
+
+  const isSavedActive =
+    location.pathname === "/saved-experts" ||
+    location.pathname === "/liked-mentors";
+
+  const isSessionsActive =
+    location.pathname === "/my-sessions" ||
+    location.pathname.startsWith("/my-sessions");
+
+  const isProfileActive =
+    location.pathname === "/profile" ||
+    location.pathname.startsWith("/profile");
+
+  const handleProfileClick = () => {
+    navigate("/profile");
+  };
 
   const isHomeOrDiscovery =
     location.pathname === "/" ||
@@ -83,15 +108,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1.5 shadow-lg flex items-center justify-around">
           <button
             onClick={() => navigate("/")}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
-              location.pathname === "/" ||
-              location.pathname === "/dashboard" ||
-              location.pathname === "/mentors" ||
-              location.pathname === "/find-mentor" ||
-              location.pathname === "/book-session"
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+              isExpertsActive
                 ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
+            title="Interview Experts"
+            aria-label="Interview Experts"
           >
             <Users size={18} />
             <span>Experts</span>
@@ -99,11 +122,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           <button
             onClick={() => navigate("/saved-experts")}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
-              location.pathname === "/saved-experts"
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+              isSavedActive
                 ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
+            title="Saved Experts"
+            aria-label="Saved Experts"
           >
             <Bookmark size={18} />
             <span>Saved</span>
@@ -111,22 +136,30 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           <button
             onClick={() => navigate("/my-sessions")}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors ${
-              location.pathname === "/my-sessions"
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+              isSessionsActive
                 ? "text-[#0755E8]"
                 : "text-slate-500 hover:text-slate-800"
             }`}
+            title="My Sessions"
+            aria-label="My Sessions"
           >
             <Calendar size={18} />
             <span>Sessions</span>
           </button>
 
           <button
-            onClick={() => setIsMobileNavOpen(true)}
-            className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-800"
+            onClick={handleProfileClick}
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+              isProfileActive
+                ? "text-[#0755E8]"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+            title="Profile & Resumes"
+            aria-label="Profile & Resumes"
           >
-            <Menu size={18} />
-            <span>Menu</span>
+            <User size={18} />
+            <span>Profile</span>
           </button>
         </div>
       )}
