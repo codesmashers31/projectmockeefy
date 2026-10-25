@@ -56,17 +56,40 @@ type Session = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    Upcoming: "bg-[#EAF2FF] text-[#0755E8] border-[#93B8FF]",
-    Confirmed: "bg-[#0755E8] text-white border-[#0755E8]",
-    Completed: "bg-slate-50 text-slate-500 border-slate-200",
-    Cancelled: "bg-rose-50 text-rose-600 border-rose-100",
-    Live: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    Expired: "bg-amber-50/80 text-amber-700 border-amber-200"
-  };
+  const s = (status || "").toLowerCase();
+  if (s === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10.5px] font-bold tracking-tight shadow-2xs shrink-0">
+        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+        <span>Completed</span>
+      </span>
+    );
+  }
+  if (s === "live") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10.5px] font-black uppercase tracking-tight shadow-2xs shrink-0">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+        <span>Live Now</span>
+      </span>
+    );
+  }
+  if (s === "cancelled") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200 text-[10.5px] font-bold tracking-tight shadow-2xs shrink-0">
+        <span>Cancelled</span>
+      </span>
+    );
+  }
+  if (s === "expired") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10.5px] font-semibold tracking-tight shrink-0">
+        <span>Expired</span>
+      </span>
+    );
+  }
   return (
-    <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black tracking-tight border shadow-sm ${styles[status] || styles.Completed}`}>
-      {status}
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/70 text-[10.5px] font-bold tracking-tight shadow-2xs shrink-0">
+      <span>{status || "Upcoming"}</span>
     </span>
   );
 }
@@ -228,46 +251,46 @@ const SessionCard: React.FC<{
   const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   return (
-    <article className="group relative bg-white rounded-2xl border border-slate-200/80 hover:border-[#0755E8]/40 hover:shadow-[0_4px_18px_-4px_rgba(7,85,232,0.1)] transition-all duration-200 p-4.5 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border">
+    <article className="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-[#0755E8]/40 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_-6px_rgba(7,85,232,0.12)] transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border">
       <div className="space-y-3 flex-1 flex flex-col">
-        {/* 1. Header: Avatar (44x44) + Name, Role, Company & Status */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            {/* Standard 44x44 Avatar Container matching MentorJobCard */}
-            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 border border-slate-200/70 overflow-hidden shrink-0 flex items-center justify-center">
+        {/* 1. Header: Avatar + Expert Name & Role/Company + Status Badge */}
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
               <SessionAvatar name={session.expert} profileImage={session.profileImage} />
             </div>
 
-            {/* Expert Info */}
-            <div className="min-w-0 flex-1 leading-tight">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="font-black text-slate-900 text-[15px] truncate group-hover:text-[#0755E8] transition-colors">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3 className="font-black text-slate-900 text-sm sm:text-[15px] truncate group-hover:text-[#0755E8] transition-colors leading-tight">
                   {session.expert}
                 </h3>
-                <span className="inline-flex items-center text-blue-600 shrink-0" title="Verified Interview Expert">
-                  <CheckCircle2 className="w-4 h-4 fill-blue-600 text-white" />
-                </span>
+                <CheckCircle2 className="w-4 h-4 fill-[#0755E8] text-white shrink-0" title="Verified Interview Expert" />
               </div>
 
-              <p className="text-xs font-semibold text-slate-500 truncate mt-0.5">
-                {session.role || "Senior Tech Expert"}
+              <p className="text-xs font-semibold text-slate-500 truncate mt-0.5 leading-tight">
+                {session.company ? (
+                  <>
+                    <span className="font-bold text-slate-800">{session.company}</span>
+                    <span className="text-slate-400 font-normal"> • {session.role || "Tech Expert"}</span>
+                  </>
+                ) : (
+                  session.role || "Senior Tech Expert"
+                )}
               </p>
-
-              {session.company && (
-                <div className="mt-1">
-                  <span className="inline-flex items-center text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[150px]">
-                    {session.company}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Status or Countdown Badge */}
-          <div className="shrink-0">
-            {countdown ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black uppercase tracking-tight shadow-2xs">
-                <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+          {/* Status or Countdown Badge (Top Right) */}
+          <div className="shrink-0 pt-0.5">
+            {joinable ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10.5px] font-black uppercase tracking-tight shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>Live Now</span>
+              </span>
+            ) : countdown ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/70 text-[10.5px] font-black uppercase tracking-tight shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-[#0755E8] animate-pulse" />
                 <span>{countdown}</span>
               </span>
             ) : (
@@ -276,99 +299,138 @@ const SessionCard: React.FC<{
           </div>
         </div>
 
-        {/* 2. Metadata Tags Row (Category, Date, Time) matching MentorJobCard chips */}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600 pt-0.5">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF] text-[10px] font-black uppercase tracking-tight">
-            <Briefcase className="w-3 h-3 text-[#0755E8]" />
-            <span>{session.category || "IT & Software"}</span>
-          </span>
+        {/* 2. Integrated Schedule & Session Details Box */}
+        <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-3 sm:p-3.5 space-y-2.5 mt-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 min-w-0">
+              <div className="flex items-center gap-1.5 text-slate-900 font-bold shrink-0">
+                <Calendar className="w-3.5 h-3.5 text-[#0755E8]" />
+                <span>{dateStr}</span>
+              </div>
+              <span className="text-slate-300 shrink-0">•</span>
+              <div className="flex items-center gap-1.5 text-slate-600 truncate">
+                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>{timeLabel}</span>
+              </div>
+            </div>
 
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 border border-slate-200/80 text-[11px] font-bold">
-            <Calendar className="w-3 h-3 text-[#0755E8]" />
-            <span>{dateStr}</span>
-          </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white border border-slate-200/80 text-[#0755E8] text-[10.5px] font-black uppercase tracking-tight shadow-2xs shrink-0">
+              <Briefcase className="w-3 h-3 text-[#0755E8]" />
+              <span>{session.category || "IT"}</span>
+            </span>
+          </div>
 
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 border border-slate-200/80 text-[11px] font-bold">
-            <Clock className="w-3 h-3 text-slate-400" />
-            <span>{timeLabel}</span>
-          </span>
-        </div>
-
-        {/* 3. Session Topic / Drill Description */}
-        <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-xs text-slate-600 leading-relaxed font-medium mt-auto">
-          <span className="font-bold text-slate-800">Topic: </span>
-          <span>{session.topic || "1-on-1 Mock Interview & Live Code Review"}</span>
+          {/* Session Focus / Topic */}
+          <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/60 text-[9.5px] font-black uppercase tracking-wider shrink-0">
+              Topic
+            </span>
+            <span className="font-bold text-slate-800 text-xs truncate">
+              {session.topic && session.topic.trim().toLowerCase() !== (session.category || "").toLowerCase()
+                ? session.topic
+                : `${session.category || "Technical"} 1-on-1 Mock Interview & Live Review`}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 4. Action Row matching MentorJobCard CTA buttons */}
-      <div className="flex items-center gap-2 w-full pt-3.5 mt-3.5 border-t border-slate-100">
+      {/* 3. Action Row */}
+      <div className="w-full pt-3.5 mt-3.5 border-t border-slate-100">
         {displayStatus === 'Completed' ? (
-          <>
-            {session.candidateReview ? (
-              session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
+          <div className="space-y-2.5 w-full">
+            {/* Top Action Row: Review + Feedback / Certificate */}
+            <div className="flex items-center gap-2 w-full">
+              {!session.candidateReview ? (
+                <button
+                  type="button"
+                  onClick={() => setReviewModalSession(session)}
+                  className="flex-1 py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-amber-500/20 whitespace-nowrap cursor-pointer"
+                >
+                  <Star className="w-3.5 h-3.5 fill-white text-white shrink-0" />
+                  <span>Rate Expert</span>
+                </button>
+              ) : session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="flex-1 py-2 px-3 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white cursor-pointer shadow-2xs"
+                  className="flex-1 py-2.5 px-3 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
                 >
-                  <Award className="w-3.5 h-3.5 text-blue-600" />
+                  <Award className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
                   <span>Certificate</span>
                 </button>
-              ) : null
-            ) : (
+              ) : null}
+
+              {session.expertReview ? (
+                <button
+                  type="button"
+                  onClick={() => setCertificateModalSession(session)}
+                  className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white active:scale-95 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#0755E8]/20 whitespace-nowrap cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                  <span>View Feedback</span>
+                </button>
+              ) : session.feedbackRequested ? (
+                <button
+                  disabled
+                  className="flex-1 py-2.5 px-3 bg-slate-100 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed whitespace-nowrap"
+                >
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>Report Requested</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRequestFeedback(session.sessionId)}
+                  className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white active:scale-95 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#0755E8]/20 whitespace-nowrap cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5 shrink-0" />
+                  <span>Request Report</span>
+                </button>
+              )}
+
+              {/* If candidate already reviewed and no certificate button needed, put Book Again in this row */}
+              {session.candidateReview && !(session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3) && (
+                <button
+                  type="button"
+                  onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
+                  className="flex-1 py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+                >
+                  <span>Book Again</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 stroke-[2.5]" />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Row: Book with Expert Again (shown when Rate Expert is on top row) */}
+            {(!session.candidateReview || (session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3)) && (
               <button
                 type="button"
-                onClick={() => setReviewModalSession(session)}
-                className="flex-1 py-2 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
+                className="w-full py-2.5 px-3 bg-slate-50 hover:bg-slate-100/90 active:scale-98 text-slate-700 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Rate Interview Expert</span>
+                <span>Book with {session.expert?.split(" ")[0] || "Expert"} Again</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 stroke-[2.5]" />
               </button>
             )}
 
-            {session.expertReview ? (
-              <button
-                type="button"
-                onClick={() => setCertificateModalSession(session)}
-                className="flex-1 py-2 px-3 border border-[#93B8FF] hover:border-[#0755E8] hover:text-[#0755E8] text-[#0755E8] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-[#EAF2FF] cursor-pointer shadow-2xs"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>View Feedback</span>
-              </button>
-            ) : session.feedbackRequested ? (
-              <button
-                disabled
-                className="flex-1 py-2 px-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed"
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Requested</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleRequestFeedback(session.sessionId)}
-                className="flex-1 py-2 px-3 bg-[#EAF2FF] border border-[#93B8FF] text-[#0755E8] hover:bg-[#d8e5fc] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Request Report</span>
-              </button>
+            {/* Candidate Review summary pill if already rated */}
+            {session.candidateReview && (
+              <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-slate-500 pt-0.5">
+                <span className="flex items-center gap-1">
+                  <Check className="w-3 h-3 text-emerald-600" /> Your feedback submitted
+                </span>
+                <span className="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                  {session.candidateReview.overallRating || 5}.0 / 5.0
+                </span>
+              </div>
             )}
-
-            <button
-              type="button"
-              onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-              className="py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
-              title="Book again"
-            >
-              <span>Book Again</span>
-            </button>
-          </>
+          </div>
         ) : displayStatus === 'Cancelled' ? (
           <button
             type="button"
             onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-            className="w-full py-2.5 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            className="w-full py-2.5 px-4 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
           >
             <span>Book Another Interview Expert</span>
             <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -377,35 +439,36 @@ const SessionCard: React.FC<{
           <button
             type="button"
             onClick={() => handleJoin(session)}
-            className="w-full py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+            className="w-full py-3 px-4 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-[#0755E8]/20 flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
           >
-            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-            <span>Join Live Meeting</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+            <span>Join Live Interview Meeting</span>
             <ChevronRight className="w-4 h-4 stroke-[3]" />
           </button>
         ) : countdown ? (
-          <div className="w-full flex items-center justify-between gap-2">
-            <span className="py-2 px-3 text-xs font-bold text-amber-700 rounded-xl bg-amber-50 border border-amber-200 inline-flex items-center gap-1.5 shadow-2xs">
-              <Clock className="w-3.5 h-3.5 animate-pulse" />
-              <span>{countdown}</span>
-            </span>
+          <div className="w-full flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span className="truncate">Meeting link activates at start time</span>
+            </div>
             <button
               type="button"
               onClick={() => session.expertId && navigate(`/book-session?expertId=${session.expertId}`)}
-              className="py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all cursor-pointer shadow-2xs"
+              className="py-2 px-3.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs shadow-[#0755E8]/25 active:scale-95 flex items-center gap-1"
             >
-              View Interview Expert
+              <span>View Expert</span>
+              <ChevronRight className="w-3.5 h-3.5 text-white/90" />
             </button>
           </div>
         ) : (
           <div className="w-full flex items-center justify-between gap-2">
-            <span className="py-2 px-3 text-xs font-bold text-slate-400 rounded-xl bg-slate-50 border border-slate-100 inline-flex items-center">
+            <span className="text-xs font-semibold text-slate-400">
               {displayStatus === 'Expired' ? 'Session Expired' : displayStatus}
             </span>
             <button
               type="button"
               onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-              className="py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all cursor-pointer shadow-2xs"
+              className="py-2 px-3.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs shadow-[#0755E8]/25 active:scale-95"
             >
               Book Again
             </button>
@@ -648,77 +711,61 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
   };
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
+    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
       {/* Decorative gradient glow */}
       <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
 
-      <div className="w-full space-y-6 relative z-10">
+      <div className="w-full space-y-5 sm:space-y-6 relative z-10">
 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
         {activeView === 'overview' && (
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             {/* Header - simple, flat title row with icon */}
-            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
-                  <Sparkles className="w-5 h-5 text-[#0755E8]" />
+            <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200/80 pb-4">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#0755E8]" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Bookings</h1>
-                  <p className="text-xs font-semibold text-gray-500 mt-1">Real-time sessions, countdowns, and interview expert feedback</p>
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight leading-none truncate">My Bookings</h1>
+                  <p className="text-xs font-semibold text-gray-500 mt-1 truncate">Real-time sessions, countdowns, and expert feedback</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10px] font-black text-[#0755E8] uppercase tracking-wider">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10px] font-black text-[#0755E8] uppercase tracking-wider">
                   Bookings
                 </span>
-                <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
                   Total: {sessions.length}
                 </span>
               </div>
             </div>
 
-            {/* Status Filter Tabs with Themed Background Colors */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {/* Status Filter Tabs - Modern Segmented Control */}
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
               {[
                 {
                   id: 'all',
                   label: 'All',
                   count: sessions.length,
-                  activeClass: 'bg-slate-900 text-white shadow-xs ring-2 ring-slate-900/20',
-                  inactiveClass: 'bg-slate-100 text-slate-700 hover:bg-slate-200/80 border border-slate-300/80',
-                  activeBadgeClass: 'bg-white/25 text-white',
-                  inactiveBadgeClass: 'bg-white text-slate-800 shadow-2xs',
                 },
                 {
                   id: 'upcoming',
                   label: 'Upcoming',
                   count: upcomingCount,
                   hasDot: true,
-                  activeClass: 'bg-[#00875A] text-white shadow-xs ring-2 ring-emerald-500/25',
-                  inactiveClass: 'bg-[#E8FAF4] text-[#065F46] hover:bg-[#D5F5EA] border border-[#7FE3C3]/70',
-                  activeBadgeClass: 'bg-white/25 text-white',
-                  inactiveBadgeClass: 'bg-[#059669]/15 text-[#065F46]',
                 },
                 {
                   id: 'completed',
                   label: 'Completed',
                   count: completedCount,
-                  activeClass: 'bg-[#0755E8] text-white shadow-xs ring-2 ring-blue-500/25',
-                  inactiveClass: 'bg-[#EAF2FF] text-[#0755E8] hover:bg-[#D9E8FF] border border-[#93B8FF]/70',
-                  activeBadgeClass: 'bg-white/25 text-white',
-                  inactiveBadgeClass: 'bg-[#0755E8]/15 text-[#0755E8]',
                 },
                 {
                   id: 'cancelled',
                   label: 'Cancelled',
                   count: cancelledCount,
-                  activeClass: 'bg-[#E11D48] text-white shadow-xs ring-2 ring-rose-500/25',
-                  inactiveClass: 'bg-[#FFF1F2] text-[#BE123C] hover:bg-[#FFE4E6] border border-[#FDA4AF]/70',
-                  activeBadgeClass: 'bg-white/25 text-white',
-                  inactiveBadgeClass: 'bg-[#BE123C]/15 text-[#BE123C]',
                 },
               ].map((tab) => {
                 const isActive = statusFilter === tab.id;
@@ -727,21 +774,25 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
                     key={tab.id}
                     type="button"
                     onClick={() => setStatusFilter(tab.id as any)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      isActive ? tab.activeClass : tab.inactiveClass
+                    className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                      isActive
+                        ? 'bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25'
+                        : 'bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 border border-slate-200/60'
                     }`}
                   >
                     {tab.hasDot && (
                       <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          isActive ? 'bg-white animate-pulse' : 'bg-[#059669] animate-pulse'
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          isActive ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'
                         }`}
                       />
                     )}
                     <span>{tab.label}</span>
                     <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-black tabular-nums transition-colors ${
-                        isActive ? tab.activeBadgeClass : tab.inactiveBadgeClass
+                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-black tabular-nums transition-colors ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-white text-slate-700 shadow-2xs border border-slate-200/60'
                       }`}
                     >
                       {tab.count}

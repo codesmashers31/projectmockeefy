@@ -14,7 +14,11 @@ import {
   Calendar,
   Search,
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  CheckCheck,
+  CheckCircle2,
+  ChevronRight,
+  X
 } from "lucide-react";
 import { io } from "socket.io-client";
 
@@ -162,24 +166,66 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
             )}
           </button>
           
+          {/* Backdrop for mobile */}
           {isNotificationsOpen && (
-             <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                  <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllAsRead} className="text-xs text-blue-600 hover:text-blue-700 font-semibold">Mark all read</button>
-                  )}
+            <div
+              className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-40 sm:hidden animate-in fade-in duration-150"
+              onClick={() => setIsNotificationsOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+
+          {isNotificationsOpen && (
+             <div className="fixed inset-x-3 sm:inset-x-auto top-[72px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-[360px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF2FF] text-[#0755E8]">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button onClick={markAllAsRead} className="text-[11px] text-[#0755E8] hover:text-[#0645C7] font-semibold cursor-pointer hover:underline flex items-center gap-1">
+                        <CheckCheck size={13} />
+                        <span>Mark all read</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsNotificationsOpen(false)}
+                      className="sm:hidden p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 cursor-pointer"
+                      aria-label="Close notifications"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
+                <div className="max-h-[min(65vh,380px)] overflow-y-auto divide-y divide-slate-100 overscroll-contain">
                     {loadingNotifications ? (
-                      <div className="p-4 text-center text-sm text-slate-400">Loading...</div>
+                      <div className="p-8 text-center text-xs text-slate-400">Loading notifications...</div>
                     ) : notifications.length === 0 ? (
-                      <div className="p-8 text-center text-sm text-gray-400">No new notifications</div>
+                      <div className="p-8 text-center">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2 text-slate-300">
+                          <Bell size={18} />
+                        </div>
+                        <p className="text-slate-700 text-xs font-semibold">All caught up!</p>
+                        <p className="text-slate-400 text-[11px] mt-0.5">No new notifications</p>
+                      </div>
                     ) : (
                       notifications.map(n => (
-                         <div key={n.id} onClick={() => markAsRead(n.id)} className="px-4 py-3 border-b border-slate-50 hover:bg-slate-50/80 cursor-pointer transition-colors">
-                            <p className="font-black text-slate-800 text-[11px] tracking-tight">{n.title}</p>
-                            <p className="text-slate-500 text-[10px] mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
+                         <div key={n.id} onClick={() => markAsRead(n.id)} className={`px-4 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors flex items-start gap-3 relative ${!n.read ? "bg-[#F5F8FF]/80" : ""}`}>
+                            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0 mt-0.5 text-[#0755E8]">
+                               <Bell size={15} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                               <p className={`text-xs truncate ${!n.read ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>{n.title}</p>
+                               <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                            </div>
+                            {!n.read && (
+                               <span className="w-2 h-2 rounded-full bg-[#0755E8] shrink-0 mt-2 self-start ring-4 ring-[#0755E8]/10" />
+                            )}
                          </div>
                       ))
                     )}
@@ -222,8 +268,17 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
             <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
           </button>
 
+          {/* Backdrop for profile menu on mobile */}
           {isProfileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+            <div
+              className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-40 sm:hidden animate-in fade-in duration-150"
+              onClick={() => setIsProfileOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+
+          {isProfileOpen && (
+            <div className="fixed right-3 sm:absolute sm:right-0 top-[72px] sm:top-full mt-0 sm:mt-2 w-[calc(100vw-24px)] sm:w-64 max-w-[280px] bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
               <div className="px-4 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3">
                  <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shadow-sm flex justify-center items-center">
                     {user?.profileImage ? <img src={avatarSrc} className="w-full h-full object-cover" /> : <User size={18} className="text-slate-400" />}
