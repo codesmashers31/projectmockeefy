@@ -19,6 +19,11 @@ import {
   CreditCard,
   Compass,
   Heart,
+  CheckCheck,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -40,6 +45,40 @@ interface Notification {
 
 interface NavigationProps {
   showSkeletons?: boolean;
+}
+
+function formatRelativeTime(dateString?: string) {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffSecs = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffSecs < 60) return "Just now";
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+function getNotificationIcon(type?: string, title?: string) {
+  const t = (type || "").toLowerCase();
+  const text = (title || "").toLowerCase();
+  if (t === "session" || text.includes("meeting") || text.includes("session")) {
+    return <Calendar size={15} className="text-[#0755E8]" />;
+  }
+  if (t === "success" || text.includes("completed") || text.includes("booked") || text.includes("confirmed")) {
+    return <CheckCircle2 size={15} className="text-emerald-500" />;
+  }
+  if (t === "warning" || text.includes("starting soon") || text.includes("urgent")) {
+    return <Clock size={15} className="text-amber-500" />;
+  }
+  return <Bell size={15} className="text-[#0755E8]" />;
 }
 
 export default function Navigation({ showSkeletons = false }: NavigationProps = {}) {
@@ -128,6 +167,22 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     }
   };
 
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsRead(notification._id);
+    }
+    closeAllDropdowns();
+    if (notification.metadata?.link) {
+      navigate(notification.metadata.link);
+    } else if (
+      notification.title?.toLowerCase().includes("session") ||
+      notification.title?.toLowerCase().includes("meeting") ||
+      notification.message?.toLowerCase().includes("session")
+    ) {
+      navigate("/my-sessions");
+    }
+  };
+
   const markAllRead = async () => {
     try {
       await axios.put("/api/notifications/read", { notificationIds: "all" });
@@ -149,7 +204,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     closeAllDropdowns();
   }, [location.pathname]);
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click or escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -167,8 +222,18 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeAllDropdowns();
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isMenuOpen]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -366,62 +431,129 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       setIsNotificationOpen(!isNotificationOpen);
                       setIsProfileMenuOpen(false);
                       setIsMoreOpen(false);
+                      setIsMenuOpen(false);
                       if (!isNotificationOpen) fetchNotifications();
                     }}
-                    className="w-9 h-9 text-slate-600 hover:text-[#0755E8] rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF] ${
+                      isNotificationOpen
+                        ? "bg-[#EAF2FF] text-[#0755E8]"
+                        : "text-slate-600 hover:text-[#0755E8] hover:bg-slate-100"
+                    }`}
                   >
                     <Bell size={18} />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 bg-[#0755E8] text-white text-[8px] rounded-full h-3.5 w-3.5 flex items-center justify-center font-bold border-2 border-white">
+                      <span className="absolute top-1.5 right-1.5 bg-[#0755E8] text-white text-[8px] rounded-full min-w-[15px] h-3.5 px-0.5 flex items-center justify-center font-bold border-2 border-white shadow-xs">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}
                   </button>
 
+                  {/* Backdrop for mobile view */}
+                  {isNotificationOpen && (
+                    <div
+                      className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-40 sm:hidden animate-in fade-in duration-150"
+                      onClick={() => setIsNotificationOpen(false)}
+                      aria-hidden="true"
+                    />
+                  )}
+
                   {/* Notifications Popover */}
                   {isNotificationOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex justify-between items-center">
-                        <h3 className="font-bold text-slate-900 text-xs tracking-tight">
-                          Notifications
-                        </h3>
-                        {unreadCount > 0 && (
+                    <div className="fixed inset-x-3 sm:inset-x-auto top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-[360px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">
+                            Notifications
+                          </h3>
+                          {unreadCount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF2FF] text-[#0755E8]">
+                              {unreadCount} new
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={markAllRead}
+                              className="text-[11px] text-[#0755E8] hover:text-[#0645C7] font-semibold cursor-pointer hover:underline flex items-center gap-1 active:scale-95 transition-transform"
+                            >
+                              <CheckCheck size={13} />
+                              <span>Mark all read</span>
+                            </button>
+                          )}
                           <button
-                            onClick={markAllRead}
-                            className="text-[11px] text-[#0755E8] hover:text-[#0645C7] font-semibold cursor-pointer"
+                            onClick={() => setIsNotificationOpen(false)}
+                            className="sm:hidden p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 cursor-pointer"
+                            aria-label="Close notifications"
                           >
-                            Mark all read
+                            <X size={15} />
                           </button>
-                        )}
+                        </div>
                       </div>
-                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+
+                      <div className="max-h-[min(65vh,380px)] overflow-y-auto divide-y divide-slate-100 overscroll-contain">
                         {notifications.length === 0 ? (
                           <div className="p-8 text-center">
-                            <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2">
-                              <Bell className="w-4 h-4 text-slate-300" />
+                            <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2 text-slate-300">
+                              <Bell size={18} />
                             </div>
-                            <p className="text-slate-400 text-xs font-semibold">
-                              No new notifications
+                            <p className="text-slate-700 text-xs font-semibold">
+                              All caught up!
+                            </p>
+                            <p className="text-slate-400 text-[11px] mt-0.5">
+                              No new notifications right now
                             </p>
                           </div>
                         ) : (
                           notifications.map((notification) => (
                             <div
                               key={notification._id}
-                              className={`px-4 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors ${
-                                !notification.isRead ? "bg-blue-50/40" : ""
+                              className={`px-4 py-3 hover:bg-slate-50/90 active:bg-slate-100/80 cursor-pointer transition-colors flex items-start gap-3 relative group ${
+                                !notification.isRead ? "bg-[#F5F8FF]/80" : ""
                               }`}
-                              onClick={() => markAsRead(notification._id)}
+                              onClick={() => handleNotificationClick(notification)}
                             >
-                              <p className="font-bold text-slate-800 text-xs leading-snug">
-                                {notification.title}
-                              </p>
-                              <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">
-                                {notification.message}
-                              </p>
+                              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
+                                {getNotificationIcon(notification.type, notification.title)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p
+                                    className={`text-xs truncate ${
+                                      !notification.isRead
+                                        ? "font-bold text-slate-900"
+                                        : "font-medium text-slate-700"
+                                    }`}
+                                  >
+                                    {notification.title}
+                                  </p>
+                                  {notification.createdAt && (
+                                    <span className="text-[10px] text-slate-400 shrink-0 font-normal">
+                                      {formatRelativeTime(notification.createdAt)}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">
+                                  {notification.message}
+                                </p>
+                              </div>
+                              {!notification.isRead && (
+                                <span className="w-2 h-2 rounded-full bg-[#0755E8] shrink-0 mt-2 self-start ring-4 ring-[#0755E8]/10" />
+                              )}
                             </div>
                           ))
                         )}
+                      </div>
+
+                      <div className="p-2 border-t border-slate-100 bg-slate-50/50">
+                        <Link
+                          to="/notifications"
+                          onClick={closeAllDropdowns}
+                          className="w-full py-1.5 px-3 text-center text-xs font-semibold text-[#0755E8] hover:text-[#0645C7] hover:bg-[#EAF2FF]/60 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>See all notifications</span>
+                          <ChevronRight size={13} />
+                        </Link>
                       </div>
                     </div>
                   )}
@@ -436,6 +568,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       setIsProfileMenuOpen(!isProfileMenuOpen);
                       setIsNotificationOpen(false);
                       setIsMoreOpen(false);
+                      setIsMenuOpen(false);
                     }}
                     className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
                   >
@@ -458,9 +591,18 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                     />
                   </button>
 
+                  {/* Backdrop for profile menu on mobile */}
+                  {isProfileMenuOpen && (
+                    <div
+                      className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-40 sm:hidden animate-in fade-in duration-150"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                      aria-hidden="true"
+                    />
+                  )}
+
                   {/* Profile Dropdown */}
                   {isProfileMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="fixed right-3 sm:absolute sm:right-0 top-[68px] sm:top-full mt-0 sm:mt-2 w-[calc(100vw-24px)] sm:w-64 max-w-[280px] bg-white border border-slate-200/80 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
                           <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
@@ -543,7 +685,12 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
             <div className="md:hidden flex items-center">
               <button
                 type="button"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                onClick={() => {
+                  setIsMenuOpen(!isMenuOpen);
+                  setIsNotificationOpen(false);
+                  setIsProfileMenuOpen(false);
+                  setIsMoreOpen(false);
+                }}
                 aria-label={isMenuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={isMenuOpen}
                 className="p-2 text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"

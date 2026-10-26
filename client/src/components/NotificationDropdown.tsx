@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, CheckCheck, X } from 'lucide-react';
 import axios from '../lib/axios';
 
 interface Notification {
@@ -88,18 +88,44 @@ const NotificationDropdown = () => {
                 )}
             </button>
 
+            {/* Backdrop for mobile */}
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
-                    <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <h3 className="text-sm font-semibold text-gray-700">Notifications</h3>
-                        {unreadCount > 0 && (
+                <div
+                    className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-40 sm:hidden animate-in fade-in duration-150"
+                    onClick={() => setIsOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+
+            {isOpen && (
+                <div className="fixed inset-x-3 sm:inset-x-auto top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-80 max-w-sm mx-auto sm:max-w-none bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-3.5 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
+                            {unreadCount > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600">
+                                    {unreadCount} new
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={markAsRead}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 cursor-pointer hover:underline"
+                                >
+                                    <CheckCheck size={13} />
+                                    <span>Mark all read</span>
+                                </button>
+                            )}
                             <button
-                                onClick={markAsRead}
-                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                onClick={() => setIsOpen(false)}
+                                className="sm:hidden p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200/50 cursor-pointer"
+                                aria-label="Close notifications"
                             >
-                                Mark all read
+                                <X size={15} />
                             </button>
-                        )}
+                        </div>
                     </div>
 
                     <div className="max-h-96 overflow-y-auto">
