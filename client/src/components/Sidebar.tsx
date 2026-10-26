@@ -222,11 +222,8 @@ export default function Sidebar() {
   return (
     <aside
       aria-label="Sidebar Navigation"
-      className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-3 sm:p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-3.5 font-sans text-left"
+      className="relative w-full bg-white rounded-[24px] border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] p-3 sm:p-3.5 overflow-hidden space-y-3.5 font-sans text-left"
     >
-      {/* Decorative gradient glow matching other cards */}
-      <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
-
       <div className="relative z-10 space-y-3.5">
         {/* Primary Navigation */}
         <div className="space-y-1">
@@ -251,8 +248,8 @@ export default function Sidebar() {
                 }}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF] ${
                   item.isActive
-                    ? "bg-[#EAF2FF] text-[#0755E8] font-bold shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    ? "bg-[#EAF2FF] text-[#0755E8] font-bold shadow-xs border border-[#93B8FF]/50"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -477,11 +474,8 @@ export default function Sidebar() {
 export const SkeletonSidebar = () => (
   <aside
     aria-label="Sidebar Navigation Loading"
-    className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-3 sm:p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-3.5 font-sans text-left"
+    className="relative w-full bg-white rounded-[24px] border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] p-3 sm:p-3.5 overflow-hidden space-y-3.5 font-sans text-left"
   >
-    {/* Decorative gradient glow matching other cards */}
-    <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
-
     <div className="relative z-10 space-y-3.5">
       {/* Primary Navigation Skeleton */}
       <div className="space-y-1">

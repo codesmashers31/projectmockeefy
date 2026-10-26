@@ -208,7 +208,7 @@ function MentorCategoryScrollRow({
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onClickCapture={handleClickCapture}
-          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth"
+          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-1 sm:px-1.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth scroll-pl-1 sm:scroll-pl-1.5"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (

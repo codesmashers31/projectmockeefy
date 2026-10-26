@@ -15,6 +15,8 @@ import {
   getKolkataTimeParts,
   getKolkataDateString,
   getInitialKolkataMonth,
+  generateAvailableSlotsForDate,
+  getFirstAvailableMonth,
   mapExpertToProfile,
   Profile
 } from "../lib/bookSessionUtils";
@@ -661,7 +663,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const isContentLoading = loading && !activeAvailability;
 
-  // Dates for current month
+  // Dates for current month that actually have scheduled, available openings
   const dates = useMemo(() => {
     if (!activeAvailability) return [];
 
@@ -670,33 +672,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const month = parts.month;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const allDates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
-    const today = getKolkataToday();
-    const weekly = activeAvailability.weekly || {};
-    const breakDates = activeAvailability.breakDates || [];
-
-    const activeDays = Object.keys(weekly).filter(day => {
-      const slots = weekly[day];
-      return Array.isArray(slots) && slots.length > 0;
-    }).map(d => d.toLowerCase());
+    const todayDateStr = getKolkataDateString(new Date());
 
     return allDates.filter(date => {
-      const kolkataDateStr = getKolkataDateString(date);
-      const isBreakDate = breakDates.some((breakDate: any) => getKolkataDateString(breakDate.start) === kolkataDateStr);
-      if (isBreakDate) return false;
+      const dateStr = getKolkataDateString(date);
+      // Past days cannot be selected
+      if (dateStr < todayDateStr) return false;
 
-      if (date >= today || date.getMonth() > today.getMonth() || date.getFullYear() > today.getFullYear()) {
-        if (activeDays.length > 0) {
-          const dayShort = date.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }).toLowerCase();
-          const dayLong = date.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "long" }).toLowerCase();
-          if (!activeDays.includes(dayShort) && !activeDays.includes(dayLong)) {
-            return false;
-          }
-        }
-        return true;
-      }
-      return false;
+      // Only show dates where the expert has scheduled timings with remaining available slots
+      const slots = generateAvailableSlotsForDate(date, activeAvailability, sessionDuration, bookedSessions);
+      return slots.length > 0;
     });
-  }, [currentMonth, activeAvailability]);
+  }, [currentMonth, activeAvailability, sessionDuration, bookedSessions]);
 
   // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
   const activeDate = useMemo(() => {
@@ -715,8 +702,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (!exists) {
         setSelectedDateStr(getKolkataDateString(dates[0]));
       }
+    } else {
+      setSelectedDateStr("");
     }
   }, [dates, selectedDateStr]);
+
+  // If opening modal and current month has 0 openings, auto-navigate to the first month with available openings
+  const hasAutoSelectedMonth = useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      hasAutoSelectedMonth.current = false;
+    }
+  }, [isOpen, expertId]);
+
+  useEffect(() => {
+    if (activeAvailability && !hasAutoSelectedMonth.current) {
+      hasAutoSelectedMonth.current = true;
+      const firstAvailMonth = getFirstAvailableMonth(activeAvailability, sessionDuration, bookedSessions);
+      if (
+        firstAvailMonth.getMonth() !== currentMonth.getMonth() ||
+        firstAvailMonth.getFullYear() !== currentMonth.getFullYear()
+      ) {
+        setCurrentMonth(firstAvailMonth);
+      }
+    }
+  }, [activeAvailability, sessionDuration, bookedSessions]);
 
   const nextMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
@@ -739,121 +749,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Generate Available Slots for Selected Date
   const currentSlots = useMemo(() => {
     if (!activeAvailability || !activeDate) return [];
-    const date = activeDate;
-    const kolkataDateStr = getKolkataDateString(date);
-
-    const isBreakDate = (activeAvailability.breakDates || []).some((b: any) => getKolkataDateString(b.start) === kolkataDateStr);
-    if (isBreakDate) return [];
-
-    const weekly = activeAvailability.weekly || {};
-    const dayShort = date.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }).toLowerCase();
-    const dayLong = date.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "long" }).toLowerCase();
-
-    const availableKey = Object.keys(weekly).find(key => {
-      const k = key.toLowerCase();
-      return k === dayShort || k === dayLong;
-    });
-
-    const weeklyRanges = availableKey ? weekly[availableKey] : [];
-    if (!weeklyRanges || weeklyRanges.length === 0) return [];
-
-    const parseTimeToMinutes = (timeStr: string) => {
-      const parts = timeStr.split(":");
-      if (parts.length < 2) return 0;
-      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    };
-
-    const formatMinutesToTime = (totalMinutes: number) => {
-      const adjusted = totalMinutes % (24 * 60);
-      const hours = Math.floor(adjusted / 60);
-      const minutes = adjusted % 60;
-      const period = hours >= 12 ? "PM" : "AM";
-      const displayHours = hours % 12 || 12;
-      return `${displayHours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} ${period}`;
-    };
-
-    const formatMinutesToHHMM = (totalMinutes: number) => {
-      const adjusted = totalMinutes % (24 * 60);
-      return `${Math.floor(adjusted / 60).toString().padStart(2, "0")}:${(adjusted % 60).toString().padStart(2, "0")}`;
-    };
-
-    const generatedSlots: { time: string; startMinutes: number; available: boolean }[] = [];
-    const duration = Number(sessionDuration);
-    const step = duration;
-
-    // Sort ranges by start time
-    const sortedRanges = [...weeklyRanges].sort((a: any, b: any) => parseTimeToMinutes(a.from) - parseTimeToMinutes(b.from));
-
-    sortedRanges.forEach((range: { from: string; to: string }) => {
-      if (!range.from || !range.to) return;
-      let currentMinutes = parseTimeToMinutes(range.from);
-      let endMinutes = parseTimeToMinutes(range.to);
-      if (endMinutes < currentMinutes) endMinutes += 24 * 60;
-
-      // Snap start time to solid 30-minute block boundaries
-      if (currentMinutes % 30 !== 0) {
-        currentMinutes = Math.ceil(currentMinutes / 30) * 30;
-      }
-
-      while (currentMinutes + duration <= endMinutes) {
-        const nowKolkata = getKolkataTimeParts();
-        const isToday = kolkataDateStr === getKolkataDateString(new Date());
-        const currentTimeMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
-
-        if (isToday && currentMinutes < currentTimeMinutes) {
-          currentMinutes += step;
-          continue;
-        }
-
-        // Prevent overlapping with any slot already generated
-        const overlapsWithExisting = generatedSlots.some(s => 
-          currentMinutes < s.startMinutes + duration && (currentMinutes + duration) > s.startMinutes
-        );
-        if (overlapsWithExisting) {
-          currentMinutes += step;
-          continue;
-        }
-
-        const slotStartStr = formatMinutesToHHMM(currentMinutes);
-        const slotEndStr = formatMinutesToHHMM(currentMinutes + duration);
-        const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
-        const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
-
-        const isBooked = bookedSessions.some((session) => {
-          const status = (session.status || "").toLowerCase();
-          if (status === "cancelled") return false;
-
-          const sStart = new Date(session.startTime);
-          const sEnd = new Date(session.endTime);
-          if (isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
-
-          const startMatches = getKolkataDateString(sStart) === kolkataDateStr;
-          const endMatches = getKolkataDateString(sEnd) === kolkataDateStr;
-          if (!startMatches && !endMatches) return false;
-
-          return slotDate.getTime() < sEnd.getTime() && slotEndDate.getTime() > sStart.getTime();
-        });
-
-        // If the slot is already booked, omit it completely so it is removed from available slots for all users
-        if (isBooked) {
-          currentMinutes += step;
-          continue;
-        }
-
-        const slotStart = formatMinutesToTime(currentMinutes);
-        const slotEnd = formatMinutesToTime(currentMinutes + duration);
-        const timeStr = `${slotStart} - ${slotEnd}`;
-
-        const existing = generatedSlots.find(s => s.time === timeStr);
-        if (!existing) {
-          generatedSlots.push({ time: timeStr, startMinutes: currentMinutes, available: true });
-        }
-        currentMinutes += step;
-      }
-    });
-
-    return generatedSlots.sort((a, b) => a.startMinutes - b.startMinutes);
-  }, [activeDate, profile?.availability, sessionDuration, bookedSessions]);
+    return generateAvailableSlotsForDate(activeDate, activeAvailability, sessionDuration, bookedSessions);
+  }, [activeDate, activeAvailability, sessionDuration, bookedSessions]);
 
   // Auto-deselect if the selected slot becomes unavailable or was booked
   useEffect(() => {
@@ -1531,7 +1428,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {dates.length > 0 ? (
                 dates.map((date) => {
                   const dateStr = getKolkataDateString(date);
-                  const isToday = new Date().toDateString() === date.toDateString();
+                  const isToday = getKolkataDateString(new Date()) === dateStr;
                   const isSelected = activeDate && dateStr === getKolkataDateString(activeDate);
                   return (
                     <button
@@ -1566,90 +1463,118 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   );
                 })
               ) : (
-                <div className="w-full py-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  No availability dates configured for this month.
+                <div className="w-full py-4 px-3 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-1.5">
+                  <span>No openings scheduled for this month.</span>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="text-[#0755E8] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    Check next month <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* 4. AVAILABLE SLOTS FOR Header with Badge */}
-          <div className="flex items-center justify-between mb-2 pt-2 border-t border-slate-100">
-            {isContentLoading ? (
-              <div className="h-4 w-44 bg-slate-200/80 rounded animate-pulse" />
-            ) : (
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                AVAILABLE SLOTS FOR {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toUpperCase() : ""}
-              </span>
-            )}
-            {isContentLoading ? (
-              <div className="h-5 w-24 bg-slate-100 rounded-full animate-pulse" />
-            ) : (
-              <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
-                {currentSlots.filter(s => s.available).length} slots available
-              </span>
-            )}
-          </div>
-
-          {/* 5. Time Slots Grid OR Empty State Box */}
-          {isContentLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 p-0.5">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/70 animate-pulse flex items-center px-3.5 gap-2"
-                >
-                  <div className="w-3.5 h-3.5 rounded-full bg-slate-200/80 shrink-0" />
-                  <div className="h-3.5 w-24 bg-slate-200/70 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : currentSlots.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[220px] overflow-y-auto p-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {currentSlots.map((slot) => {
-                const isSelected = selectedSlot?.time === slot.time;
-                const isUnavailable = !slot.available;
-                return (
-                  <button
-                    key={slot.time}
-                    type="button"
-                    disabled={isUnavailable}
-                    onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                    className={`relative flex items-center justify-between px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border outline-none ${
-                      isUnavailable
-                        ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
-                        : isSelected
-                        ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/25 cursor-pointer"
-                        : "bg-white border-slate-200 text-slate-800 hover:border-[#0755E8] hover:bg-[#F8FAFF] cursor-pointer"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : isUnavailable ? "text-slate-300" : "text-[#0755E8]"}`} />
-                      <span className={`whitespace-nowrap tabular-nums text-xs ${
-                        isUnavailable ? "line-through text-slate-400" : isSelected ? "text-white font-bold" : "text-slate-800"
-                      }`}>
-                        {slot.time}
-                      </span>
-                    </div>
-                    {isUnavailable ? (
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded shrink-0">
-                        Booked
-                      </span>
-                    ) : isSelected ? (
-                      <Check className="w-3.5 h-3.5 text-white stroke-[3] shrink-0" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
+          {/* 4 & 5. AVAILABLE SLOTS FOR Header & Time Slots Grid (or empty month state) */}
+          {dates.length === 0 ? (
             <div className="py-8 text-center bg-slate-50/60 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-6 min-h-[140px]">
               <Calendar className="w-10 h-10 text-slate-400 mb-2" />
-              <p className="text-sm font-bold text-slate-800">No time slots available on this day</p>
+              <p className="text-sm font-bold text-slate-800">No time slots scheduled for this month</p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                {expertDisplayName} has no remaining openings for this date. Please select another date from the carousel above.
+                {expertDisplayName} has not scheduled any timings for {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}. Please check the next month for open slots.
               </p>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="mt-3 px-3.5 py-1.5 bg-[#0755E8] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <span>Check Next Month</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
+          ) : (
+            <>
+              {/* AVAILABLE SLOTS FOR Header with Badge */}
+              <div className="flex items-center justify-between mb-2 pt-2 border-t border-slate-100">
+                {isContentLoading ? (
+                  <div className="h-4 w-44 bg-slate-200/80 rounded animate-pulse" />
+                ) : (
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    AVAILABLE SLOTS FOR {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toUpperCase() : ""}
+                  </span>
+                )}
+                {isContentLoading ? (
+                  <div className="h-5 w-24 bg-slate-100 rounded-full animate-pulse" />
+                ) : (
+                  <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
+                    {currentSlots.filter(s => s.available).length} slots available
+                  </span>
+                )}
+              </div>
+
+              {/* Time Slots Grid OR Empty State Box */}
+              {isContentLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 p-0.5">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/70 animate-pulse flex items-center px-3.5 gap-2"
+                    >
+                      <div className="w-3.5 h-3.5 rounded-full bg-slate-200/80 shrink-0" />
+                      <div className="h-3.5 w-24 bg-slate-200/70 rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : currentSlots.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[220px] overflow-y-auto p-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  {currentSlots.map((slot) => {
+                    const isSelected = selectedSlot?.time === slot.time;
+                    const isUnavailable = !slot.available;
+                    return (
+                      <button
+                        key={slot.time}
+                        type="button"
+                        disabled={isUnavailable}
+                        onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                        className={`relative flex items-center justify-between px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border outline-none ${
+                          isUnavailable
+                            ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                            : isSelected
+                            ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/25 cursor-pointer"
+                            : "bg-white border-slate-200 text-slate-800 hover:border-[#0755E8] hover:bg-[#F8FAFF] cursor-pointer"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : isUnavailable ? "text-slate-300" : "text-[#0755E8]"}`} />
+                          <span className={`whitespace-nowrap tabular-nums text-xs ${
+                            isUnavailable ? "line-through text-slate-400" : isSelected ? "text-white font-bold" : "text-slate-800"
+                          }`}>
+                            {slot.time}
+                          </span>
+                        </div>
+                        {isUnavailable ? (
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded shrink-0">
+                            Booked
+                          </span>
+                        ) : isSelected ? (
+                          <Check className="w-3.5 h-3.5 text-white stroke-[3] shrink-0" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center bg-slate-50/60 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-6 min-h-[140px]">
+                  <Calendar className="w-10 h-10 text-slate-400 mb-2" />
+                  <p className="text-sm font-bold text-slate-800">No time slots available on this day</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                    {expertDisplayName} has no remaining openings for this date. Please select another date from the carousel above.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {/* 6. Selected Slot Summary Bar & Optional Promo */}

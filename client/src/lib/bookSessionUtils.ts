@@ -95,6 +95,205 @@ export const getInitialKolkataMonth = () => {
     return new Date(parts.year, parts.month, 1);
 };
 
+export interface AvailableSlot {
+    time: string;
+    startMinutes: number;
+    available: boolean;
+}
+
+/**
+ * Generates all valid, unbooked available slots for a given date according to expert availability, duration, and booked sessions.
+ */
+export const generateAvailableSlotsForDate = (
+    date: Date,
+    availability: any,
+    sessionDuration: number = 30,
+    bookedSessions: any[] = []
+): AvailableSlot[] => {
+    if (!availability || !date) return [];
+
+    const kolkataDateStr = getKolkataDateString(date);
+    const todayDateStr = getKolkataDateString(new Date());
+    // Past dates cannot have available slots
+    if (kolkataDateStr < todayDateStr) return [];
+
+    // Break dates check
+    const breakDates = availability.breakDates || [];
+    const isBreakDate = breakDates.some((b: any) => {
+        const bStart = b?.start ? getKolkataDateString(b.start) : (typeof b === 'string' ? getKolkataDateString(b) : '');
+        const bEnd = b?.end ? getKolkataDateString(b.end) : bStart;
+        return Boolean(bStart && kolkataDateStr >= bStart && kolkataDateStr <= bEnd);
+    });
+    if (isBreakDate) return [];
+
+    let weekly = availability.weekly || {};
+    if (weekly instanceof Map) {
+        weekly = Object.fromEntries(weekly);
+    }
+    const dayShort = date.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }).toLowerCase();
+    const dayLong = date.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "long" }).toLowerCase();
+
+    const availableKey = Object.keys(weekly).find(key => {
+        const k = key.toLowerCase();
+        return k === dayShort || k === dayLong;
+    });
+
+    const weeklyRanges = availableKey ? weekly[availableKey] : [];
+    if (!Array.isArray(weeklyRanges) || weeklyRanges.length === 0) return [];
+
+    const parseTimeToMinutes = (timeStr: string) => {
+        const parts = (timeStr || "").split(":");
+        if (parts.length < 2) return 0;
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    };
+
+    const formatMinutesToTime = (totalMinutes: number) => {
+        const adjusted = totalMinutes % (24 * 60);
+        const hours = Math.floor(adjusted / 60);
+        const minutes = adjusted % 60;
+        const period = hours >= 12 ? "PM" : "AM";
+        const displayHours = hours % 12 || 12;
+        return `${displayHours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} ${period}`;
+    };
+
+    const formatMinutesToHHMM = (totalMinutes: number) => {
+        const adjusted = totalMinutes % (24 * 60);
+        return `${Math.floor(adjusted / 60).toString().padStart(2, "0")}:${(adjusted % 60).toString().padStart(2, "0")}`;
+    };
+
+    const generatedSlots: AvailableSlot[] = [];
+    const duration = Number(sessionDuration) || 30;
+    const step = duration;
+
+    // Sort ranges by start time
+    const sortedRanges = [...weeklyRanges].sort((a: any, b: any) => parseTimeToMinutes(a.from) - parseTimeToMinutes(b.from));
+
+    sortedRanges.forEach((range: { from: string; to: string }) => {
+        if (!range.from || !range.to || !range.from.trim() || !range.to.trim()) return;
+        let currentMinutes = parseTimeToMinutes(range.from);
+        let endMinutes = parseTimeToMinutes(range.to);
+        if (endMinutes < currentMinutes) endMinutes += 24 * 60;
+
+        // Snap start time to solid 30-minute block boundaries
+        if (currentMinutes % 30 !== 0) {
+            currentMinutes = Math.ceil(currentMinutes / 30) * 30;
+        }
+
+        while (currentMinutes + duration <= endMinutes) {
+            const nowKolkata = getKolkataTimeParts();
+            const isToday = kolkataDateStr === todayDateStr;
+            const currentTimeMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
+
+            // Do not display past times today (if start time has passed)
+            if (isToday && currentMinutes < currentTimeMinutes) {
+                currentMinutes += step;
+                continue;
+            }
+
+            // Prevent overlapping with any slot already generated
+            const overlapsWithExisting = generatedSlots.some(s =>
+                currentMinutes < s.startMinutes + duration && (currentMinutes + duration) > s.startMinutes
+            );
+            if (overlapsWithExisting) {
+                currentMinutes += step;
+                continue;
+            }
+
+            const slotStartStr = formatMinutesToHHMM(currentMinutes);
+            const slotEndStr = formatMinutesToHHMM(currentMinutes + duration);
+            const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
+            const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
+
+            const isBooked = (bookedSessions || []).some((session: any) => {
+                const status = (session.status || "").toLowerCase();
+                if (status === "cancelled") return false;
+
+                const sStart = new Date(session.startTime);
+                const sEnd = new Date(session.endTime);
+                if (isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
+
+                const startMatches = getKolkataDateString(sStart) === kolkataDateStr;
+                const endMatches = getKolkataDateString(sEnd) === kolkataDateStr;
+                if (!startMatches && !endMatches) return false;
+
+                return slotDate.getTime() < sEnd.getTime() && slotEndDate.getTime() > sStart.getTime();
+            });
+
+            // If the slot is already booked, omit it completely so it is not shown as available
+            if (isBooked) {
+                currentMinutes += step;
+                continue;
+            }
+
+            const slotStart = formatMinutesToTime(currentMinutes);
+            const slotEnd = formatMinutesToTime(currentMinutes + duration);
+            const timeStr = `${slotStart} - ${slotEnd}`;
+
+            const existing = generatedSlots.find(s => s.time === timeStr);
+            if (!existing) {
+                generatedSlots.push({ time: timeStr, startMinutes: currentMinutes, available: true });
+            }
+            currentMinutes += step;
+        }
+    });
+
+    return generatedSlots.sort((a, b) => a.startMinutes - b.startMinutes);
+};
+
+/**
+ * Returns true if an expert has at least one valid, unbooked available time slot for the date.
+ */
+export const hasAvailableSlotsForDate = (
+    date: Date,
+    availability: any,
+    sessionDuration: number = 30,
+    bookedSessions: any[] = []
+): boolean => {
+    return generateAvailableSlotsForDate(date, availability, sessionDuration, bookedSessions).length > 0;
+};
+
+/**
+ * Finds the first month (starting from initial Kolkata month up to maxLookaheadMonths)
+ * that contains at least one date with available, bookable slots.
+ */
+export const getFirstAvailableMonth = (
+    availability: any,
+    sessionDuration: number = 30,
+    bookedSessions: any[] = [],
+    maxLookaheadMonths: number = 3
+): Date => {
+    const initialMonth = getInitialKolkataMonth();
+    if (!availability) return initialMonth;
+
+    const todayDateStr = getKolkataDateString(new Date());
+
+    for (let offset = 0; offset <= maxLookaheadMonths; offset++) {
+        const candidateMonth = new Date(initialMonth.getFullYear(), initialMonth.getMonth() + offset, 1);
+        const parts = getKolkataTimeParts(candidateMonth);
+        const year = parts.year;
+        const month = parts.month;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let hasSlotsInMonth = false;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dateStr = getKolkataDateString(date);
+            if (dateStr < todayDateStr) continue;
+
+            if (hasAvailableSlotsForDate(date, availability, sessionDuration, bookedSessions)) {
+                hasSlotsInMonth = true;
+                break;
+            }
+        }
+
+        if (hasSlotsInMonth) {
+            return candidateMonth;
+        }
+    }
+
+    return initialMonth;
+};
+
 const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
     const today = new Date();

@@ -21,6 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { MentorJobCard } from "./MentorJobCard";
+import MySessionsSkeleton, { SessionCardSkeleton } from "./MySessionsSkeleton";
 
 // --- Types ---
 type ReviewInfo = {
@@ -300,7 +301,7 @@ const SessionCard: React.FC<{
         </div>
 
         {/* 2. Integrated Schedule & Session Details Box */}
-        <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-3 sm:p-3.5 space-y-2.5 mt-1">
+        <div className="bg-[#F8FAFC] group-hover:bg-[#F3F6FD]/70 border border-slate-200/70 group-hover:border-[#93B8FF]/40 rounded-2xl p-3 sm:p-3.5 space-y-2.5 mt-1 transition-colors duration-200">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-900 font-bold shrink-0">
@@ -314,7 +315,7 @@ const SessionCard: React.FC<{
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white border border-slate-200/80 text-[#0755E8] text-[10.5px] font-black uppercase tracking-tight shadow-2xs shrink-0">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white group-hover:bg-[#EAF2FF]/60 border border-slate-200/80 group-hover:border-[#93B8FF]/60 text-[#0755E8] text-[10.5px] font-black uppercase tracking-tight shadow-2xs shrink-0 transition-colors">
               <Briefcase className="w-3 h-3 text-[#0755E8]" />
               <span>{session.category || "IT"}</span>
             </span>
@@ -344,18 +345,18 @@ const SessionCard: React.FC<{
                 <button
                   type="button"
                   onClick={() => setReviewModalSession(session)}
-                  className="flex-1 py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-amber-500/20 whitespace-nowrap cursor-pointer"
+                  className="group/rate flex-1 py-2.5 px-3 bg-amber-50 hover:bg-amber-100/90 active:bg-amber-200/70 text-amber-800 hover:text-amber-900 border border-amber-200/90 hover:border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:shadow-amber-500/10 active:scale-95 whitespace-nowrap cursor-pointer"
                 >
-                  <Star className="w-3.5 h-3.5 fill-white text-white shrink-0" />
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 group-hover/rate:scale-110 transition-transform shrink-0" />
                   <span>Rate Expert</span>
                 </button>
               ) : session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="flex-1 py-2.5 px-3 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+                  className="group/cert flex-1 py-2.5 px-3 bg-indigo-50/70 hover:bg-indigo-100 active:bg-indigo-200/70 text-indigo-700 hover:text-indigo-800 border border-indigo-200/80 hover:border-indigo-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 whitespace-nowrap"
                 >
-                  <Award className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                  <Award className="w-3.5 h-3.5 text-indigo-600 group-hover/cert:scale-110 transition-transform shrink-0" />
                   <span>Certificate</span>
                 </button>
               ) : null}
@@ -364,26 +365,26 @@ const SessionCard: React.FC<{
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white active:scale-95 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#0755E8]/20 whitespace-nowrap cursor-pointer"
+                  className="group/view flex-1 py-2.5 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:shadow-[#0755E8]/10 active:scale-95 whitespace-nowrap cursor-pointer"
                 >
-                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                  <MessageSquare className="w-3.5 h-3.5 text-[#0755E8] group-hover/view:scale-110 transition-transform shrink-0" />
                   <span>View Feedback</span>
                 </button>
               ) : session.feedbackRequested ? (
                 <button
                   disabled
-                  className="flex-1 py-2.5 px-3 bg-slate-100 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed whitespace-nowrap"
+                  className="flex-1 py-2.5 px-3 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed whitespace-nowrap"
                 >
-                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>Report Requested</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => handleRequestFeedback(session.sessionId)}
-                  className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white active:scale-95 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#0755E8]/20 whitespace-nowrap cursor-pointer"
+                  className="group/req flex-1 py-2.5 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:shadow-[#0755E8]/10 active:scale-95 whitespace-nowrap cursor-pointer"
                 >
-                  <Send className="w-3.5 h-3.5 shrink-0" />
+                  <Send className="w-3.5 h-3.5 text-[#0755E8] group-hover/req:translate-x-0.5 group-hover/req:-translate-y-0.5 transition-transform shrink-0" />
                   <span>Request Report</span>
                 </button>
               )}
@@ -393,10 +394,10 @@ const SessionCard: React.FC<{
                 <button
                   type="button"
                   onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-                  className="flex-1 py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+                  className="group/book flex-1 py-2.5 px-3 bg-slate-50 hover:bg-[#EAF2FF] active:bg-[#D9E8FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF]/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
                 >
                   <span>Book Again</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 stroke-[2.5]" />
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all stroke-[2.5]" />
                 </button>
               )}
             </div>
@@ -406,10 +407,10 @@ const SessionCard: React.FC<{
               <button
                 type="button"
                 onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-                className="w-full py-2.5 px-3 bg-slate-50 hover:bg-slate-100/90 active:scale-98 text-slate-700 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                className="group/book w-full py-2.5 px-3 bg-slate-50/80 hover:bg-[#EAF2FF] active:bg-[#D9E8FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF]/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
               >
                 <span>Book with {session.expert?.split(" ")[0] || "Expert"} Again</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 stroke-[2.5]" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all stroke-[2.5]" />
               </button>
             )}
 
@@ -454,10 +455,10 @@ const SessionCard: React.FC<{
             <button
               type="button"
               onClick={() => session.expertId && navigate(`/book-session?expertId=${session.expertId}`)}
-              className="py-2 px-3.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs shadow-[#0755E8]/25 active:scale-95 flex items-center gap-1"
+              className="group/exp py-2 px-3.5 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
             >
               <span>View Expert</span>
-              <ChevronRight className="w-3.5 h-3.5 text-white/90" />
+              <ChevronRight className="w-3.5 h-3.5 text-[#0755E8] group-hover/exp:translate-x-0.5 transition-transform" />
             </button>
           </div>
         ) : (
@@ -468,7 +469,7 @@ const SessionCard: React.FC<{
             <button
               type="button"
               onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-              className="py-2 px-3.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs shadow-[#0755E8]/25 active:scale-95"
+              className="py-2 px-3.5 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
             >
               Book Again
             </button>
@@ -479,7 +480,13 @@ const SessionCard: React.FC<{
   );
 };
 
-const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' | 'jobs' | 'saved' } = {}) => {
+const MySessions = ({
+  initialViewOverride,
+  showSkeletons: propShowSkeletons,
+}: {
+  initialViewOverride?: 'overview' | 'jobs' | 'saved';
+  showSkeletons?: boolean;
+} = {}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const location = useLocation();
@@ -710,12 +717,14 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
     }
   };
 
-  return (
-    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+  const isPageLoading = (propShowSkeletons ?? false) || (loading && sessions.length === 0);
 
+  if (isPageLoading && activeView === 'overview') {
+    return <MySessionsSkeleton />;
+  }
+
+  return (
+    <div className="relative w-full bg-white border border-slate-200/90 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden pb-12 font-sans text-left">
       <div className="w-full space-y-5 sm:space-y-6 relative z-10">
 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
@@ -806,8 +815,8 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
             <div>
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div key={`skeleton-${index}`} className="h-[210px] bg-white border border-slate-200/60 rounded-2xl animate-pulse" />
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <SessionCardSkeleton key={`skeleton-${index}`} />
                   ))}
                 </div>
               ) : pagedSessions.length > 0 ? (
