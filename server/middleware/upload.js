@@ -17,7 +17,7 @@ const cloudProfileStorage = createCloudinaryStorage({
   params: {
     folder: "mockeefy/profiles",
     allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [{ width: 500, height: 500, crop: "limit" }],
+    transformation: [{ width: 2048, height: 2048, crop: "limit" }],
   },
 });
 
@@ -44,7 +44,7 @@ const cloudUserStorage = createCloudinaryStorage({
   params: {
     folder: "mockeefy/user_profiles",
     allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [{ width: 500, height: 500, crop: "limit" }],
+    transformation: [{ width: 2048, height: 2048, crop: "limit" }],
   },
 });
 

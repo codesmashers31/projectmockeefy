@@ -2,6 +2,7 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { syncDataChange } from '../services/socketService.js';
 dotenv.config();
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -256,6 +257,22 @@ export const verifyPayment = async (req, res) => {
 
                 const session = await sessionService.createSession(sessionData);
 
+                syncDataChange({
+                    type: "SESSION_CREATED",
+                    userId: session.candidateId,
+                    sessionId: session.sessionId,
+                    data: session,
+                    toAdmin: true
+                });
+                if (expertUserId) {
+                    syncDataChange({
+                        type: "SESSION_CREATED",
+                        userId: expertUserId,
+                        sessionId: session.sessionId,
+                        data: session
+                    });
+                }
+
                 const dt = formatSessionDateTime(startTime, endTime);
 
                 // Notify Expert
@@ -404,6 +421,22 @@ export const usePremiumCredit = async (req, res) => {
             candidateUserFallback: user
         });
 
+        syncDataChange({
+            type: "SESSION_CREATED",
+            userId: createdSession.candidateId,
+            sessionId: createdSession.sessionId,
+            data: createdSession,
+            toAdmin: true
+        });
+        if (expertUserId) {
+            syncDataChange({
+                type: "SESSION_CREATED",
+                userId: expertUserId,
+                sessionId: createdSession.sessionId,
+                data: createdSession
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: 'Session booked successfully using premium credit!',
@@ -522,6 +555,22 @@ export const createFreeBooking = async (req, res) => {
             price: 0,
             candidateUserFallback: req.user
         });
+
+        syncDataChange({
+            type: "SESSION_CREATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+        if (expertUserId) {
+            syncDataChange({
+                type: "SESSION_CREATED",
+                userId: expertUserId,
+                sessionId: session.sessionId,
+                data: session
+            });
+        }
 
         return res.status(200).json({
             success: true,

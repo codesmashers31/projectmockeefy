@@ -24,9 +24,12 @@ import {
   Sparkles,
   Globe,
   Building2,
-  GraduationCap
+  GraduationCap,
+  Crop,
+  Upload
 } from "lucide-react";
-import { compressImage } from "../lib/imageUtils";
+import { compressImage, compressOriginalImage, getProfileImageUrl } from "../lib/imageUtils";
+import ImageCropperModal from "./ImageCropperModal";
 
 interface ExpertProfileHeaderProps {
   onNavigate?: (tab: string) => void;
@@ -49,6 +52,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     city: "",
     country: "",
     photoUrl: "",
+    originalPhotoUrl: "",
     status: "pending",
     rejectionReason: "",
     verificationRequested: false
@@ -59,6 +63,60 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   const [missingSections, setMissingSections] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const hasLoadedRef = useRef(false);
+
+  // --- Image Cropper & Menu State ---
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
+  const [cropperFileName, setCropperFileName] = useState("profile_photo.jpg");
+  const [selectedOriginalFile, setSelectedOriginalFile] = useState<File | null>(null);
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const photoMenuRef = useRef<HTMLDivElement>(null);
+
+  const hasCustomPhoto = Boolean(
+    profile.photoUrl &&
+    !profile.photoUrl.includes("default-avatar.png") &&
+    !profile.photoUrl.includes("ui-avatars.com")
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (photoMenuRef.current && !photoMenuRef.current.contains(e.target as Node)) {
+        setPhotoMenuOpen(false);
+      }
+    };
+    if (photoMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [photoMenuOpen]);
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Photo size must be below 15MB.");
+      return;
+    }
+    setSelectedOriginalFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setCropperImageSrc(objectUrl);
+    setCropperFileName(file.name);
+    setCropperOpen(true);
+    setPhotoMenuOpen(false);
+    e.target.value = "";
+  };
+
+  const handleAdjustCurrentPhoto = () => {
+    // Open cropper with the FULL original uncropped image so user can crop again with all pixels intact
+    const rawSrc = profile.originalPhotoUrl || profile.photoUrl;
+    if (!rawSrc) return;
+    setSelectedOriginalFile(null); // Keep original photo already saved on server
+    const resolvedSrc = getProfileImageUrl(rawSrc);
+    setCropperImageSrc(resolvedSrc);
+    setCropperFileName("profile_photo.jpg");
+    setCropperOpen(true);
+    setPhotoMenuOpen(false);
+  };
 
   const fetchProfile = useCallback(async () => {
     if (!user) return;
@@ -82,6 +140,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           city: p.city || "",
           country: p.country || "",
           photoUrl: p.photoUrl || "",
+          originalPhotoUrl: p.originalPhotoUrl || p.photoUrl || "",
           status: p.status || "pending",
           rejectionReason: p.rejectionReason || "",
           verificationRequested: Boolean(p.verificationRequested || res.data.verificationRequested)
@@ -104,16 +163,20 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   const handlePhotoUpload = async (file: File) => {
     if (!file || !user) return;
 
-    if (file.size > 1 * 1024 * 1024) {
-      toast.error("Photo size must be below 1MB. Please upload a smaller image.");
-      return;
-    }
-
     setUploading(true);
     try {
-      const compressedFile = await compressImage(file);
+      const compressedCrop = await compressImage(file, 600, 0.85);
       const formData = new FormData();
-      formData.append("photo", compressedFile);
+      formData.append("photo", compressedCrop);
+
+      // If user uploaded a brand new file, include the high-resolution original file
+      if (selectedOriginalFile) {
+        const compressedOrig = await compressOriginalImage(selectedOriginalFile);
+        formData.append("originalPhoto", compressedOrig);
+      } else if (profile.originalPhotoUrl) {
+        // If re-cropping existing photo, preserve original photo url
+        formData.append("originalPhotoUrl", profile.originalPhotoUrl);
+      }
 
       const res = await axios.post("/api/expert/profile/photo", formData, {
         headers: { "Content-Type": "multipart/form-data" }
@@ -123,8 +186,10 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
         toast.success("Profile photo updated");
         setProfile(prev => ({
           ...prev,
-          photoUrl: res.data.profile?.photoUrl || prev.photoUrl
+          photoUrl: res.data.profile?.photoUrl || prev.photoUrl,
+          originalPhotoUrl: res.data.profile?.originalPhotoUrl || prev.originalPhotoUrl
         }));
+        setSelectedOriginalFile(null);
         fetchProfile();
         refreshGlobalUser();
         onRefresh?.();
@@ -347,9 +412,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
             <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden border-2 border-white shadow-md ring-1 ring-slate-200 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
               {(profile.photoUrl && !profile.photoUrl.includes("default-avatar.png") && !profile.photoUrl.includes("ui-avatars.com")) ? (
                 <img
-                  src={profile.photoUrl}
+                  src={getProfileImageUrl(profile.photoUrl)}
                   alt={profile.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-top"
                 />
               ) : (
                 <span className="text-2xl sm:text-3xl font-black text-blue-700 uppercase tracking-wider">
@@ -358,25 +423,60 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
               )}
             </div>
 
-            {/* Quick Upload Button */}
-            <button
-              onClick={() => photoInputRef.current?.click()}
-              disabled={uploading}
-              className="absolute -bottom-1.5 -right-1.5 bg-white p-1.5 rounded-xl shadow-md border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer group-hover:scale-105"
-              title="Change profile photo"
-            >
-              {uploading ? (
-                <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Camera className="w-3.5 h-3.5 text-slate-600" />
+            {/* Quick Upload / Adjust Button & Popover */}
+            <div ref={photoMenuRef} className="absolute -bottom-1.5 -right-1.5 z-20">
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasCustomPhoto) {
+                    setPhotoMenuOpen(prev => !prev);
+                  } else {
+                    photoInputRef.current?.click();
+                  }
+                }}
+                disabled={uploading}
+                className="bg-white p-1.5 rounded-xl shadow-md border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-blue-600 transition-all cursor-pointer group-hover:scale-105 active:scale-95 flex items-center justify-center"
+                title={hasCustomPhoto ? "Adjust or change photo" : "Upload profile photo"}
+              >
+                {uploading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5 text-slate-600" />
+                )}
+              </button>
+
+              {/* Photo Options Dropdown */}
+              {photoMenuOpen && (
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                  <button
+                    type="button"
+                    onClick={handleAdjustCurrentPhoto}
+                    className="w-full px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Crop className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Adjust & Crop Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoMenuOpen(false);
+                      photoInputRef.current?.click();
+                    }}
+                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-2 transition-colors cursor-pointer border-t border-slate-100"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Upload New Photo</span>
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
+
             <input
               ref={photoInputRef}
               type="file"
               className="hidden"
               accept="image/*"
-              onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])}
+              onChange={handleFileSelected}
             />
           </div>
 
@@ -818,6 +918,18 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           </div>
         </div>
       )}
+
+      {/* Image Cropper Modal */}
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        imageSrc={cropperImageSrc}
+        fileName={cropperFileName}
+        title="Adjust & Crop Profile Photo"
+        onClose={() => setCropperOpen(false)}
+        onCropComplete={(croppedFile) => {
+          handlePhotoUpload(croppedFile);
+        }}
+      />
     </div>
   );
 });

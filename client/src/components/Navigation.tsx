@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
-import { io } from "socket.io-client";
+import { useSocketEvent, useDataSync } from "../context/SocketContext";
 import MockeefyLogo from "./MockeefyLogo";
 import Avatar from "./ui/avatar";
 
@@ -131,31 +131,32 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     return () => clearInterval(interval);
   }, [user]);
 
-  useEffect(() => {
-    if (!user || !token) return;
-
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
-      auth: { token },
-    });
-
-    socket.on("new_notification", (notification) => {
-      const formatted: Notification = {
-        _id: notification._id,
-        type: notification.type || "info",
-        title: notification.title,
-        message: notification.message,
-        isRead: false,
-        createdAt: notification.createdAt || new Date().toISOString(),
-        metadata: notification.metadata,
-      };
-      setNotifications((prev) => [formatted, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    return () => {
-      socket.disconnect();
+  // Real-time notification arrival
+  useSocketEvent("new_notification", (notification: any) => {
+    const formatted: Notification = {
+      _id: notification._id,
+      type: notification.type || "info",
+      title: notification.title,
+      message: notification.message,
+      isRead: false,
+      createdAt: notification.createdAt || new Date().toISOString(),
+      metadata: notification.metadata,
     };
-  }, [user, token]);
+    setNotifications((prev) => [formatted, ...prev]);
+    setUnreadCount((prev) => prev + 1);
+  });
+
+  // Real-time synchronization when notifications are marked read in another session
+  useDataSync("NOTIFICATION_SYNC", (payload) => {
+    const ids = payload.data?.notificationIds;
+    if (ids === "all") {
+      setNotifications([]);
+      setUnreadCount(0);
+    } else if (Array.isArray(ids)) {
+      setNotifications((prev) => prev.filter((n) => !ids.includes(n._id)));
+      setUnreadCount((prev) => Math.max(0, prev - ids.length));
+    }
+  });
 
   const markAsRead = async (id: string) => {
     try {

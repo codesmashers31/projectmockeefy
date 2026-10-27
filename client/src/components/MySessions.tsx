@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
+import { useDataSync } from "../context/SocketContext";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { MentorJobCard } from "./MentorJobCard";
@@ -645,6 +646,12 @@ const MySessions = ({ initialViewOverride }: { initialViewOverride?: 'overview' 
       window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
     }
     loadSavedExperts();
+
+  // Real-time synchronization for candidate bookings
+  useDataSync(['SESSION_CREATED', 'SESSION_UPDATED', 'RECONNECTED'], () => {
+    console.log('[MySessions] Real-time session sync event received');
+    fetchSessions();
+  });
 
     const handleStorageChange = () => {
       loadSavedExperts();

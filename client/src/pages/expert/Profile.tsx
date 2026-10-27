@@ -9,6 +9,7 @@ import CategoryAndLevelSection from "../../components/CategoryAndLevelSection";
 import AgreementPage from "./Agreement";
 import axios from '../../lib/axios';
 import { useAuth } from "../../context/AuthContext";
+import { useDataSync } from "../../context/SocketContext";
 import { Skeleton } from "../../components/ui/skeleton";
 import {
   User,
@@ -116,6 +117,30 @@ export default function ProfilePage() {
       fetchProfileData();
     }
   }, [user, fetchProfileData]);
+
+  // Synchronize in real time when any profile section is updated in another session or by admin
+  useDataSync(
+    [
+      "PROFILE_UPDATED",
+      "PERSONAL_INFO_UPDATED",
+      "STATUS_UPDATED",
+      "VERIFICATION_UPDATED",
+      "EDUCATION_UPDATED",
+      "EXPERIENCE_UPDATED",
+      "SKILLS_UPDATED",
+      "AVAILABILITY_UPDATED",
+      "AGREEMENT_UPDATED",
+      "RECONNECTED",
+    ],
+    (payload) => {
+      console.log("[ProfilePage] Real-time DATA_SYNC event received:", payload.type);
+      if (payload.type === "STATUS_UPDATED" && payload.data?.status) {
+        setStatus(payload.data.status);
+        localStorage.setItem("profile_status", payload.data.status);
+      }
+      fetchProfileData();
+    }
+  );
 
   // Handler to refresh data after updates in child components
   const handleUpdate = () => {

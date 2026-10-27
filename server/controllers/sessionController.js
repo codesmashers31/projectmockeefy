@@ -4,6 +4,7 @@ import PricingRule from '../models/PricingRule.js';
 import ExpertDetails from '../models/expertModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import { triggerBookingEmails } from './paymentController.js';
+import { syncDataChange } from '../services/socketService.js';
 
 export const createSession = async (req, res) => {
     try {
@@ -113,6 +114,23 @@ export const createSession = async (req, res) => {
             price: finalPrice,
         });
 
+        syncDataChange({
+            type: "SESSION_CREATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+        if (expert?.userId) {
+            syncDataChange({
+                type: "SESSION_CREATED",
+                userId: expert.userId,
+                expertId: expert._id,
+                sessionId: session.sessionId,
+                data: session
+            });
+        }
+
         res.status(201).json({ success: true, message: "Session created successfully", data: session });
     } catch (error) {
         console.error("Create Session Error:", error);
@@ -133,14 +151,32 @@ export const updateMeetingLink = async (req, res) => {
         // Authorization check: Only the session's expert or admin can update meeting link
         const expertProfile = await ExpertDetails.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
         const isAuthorized = req.user.userType === 'admin' ||
-                             String(session.expertId) === String(req.user.userId) ||
-                             (expertProfile && String(expertProfile.userId) === String(req.user.userId));
+            String(session.expertId) === String(req.user.userId) ||
+            (expertProfile && String(expertProfile.userId) === String(req.user.userId));
 
         if (!isAuthorized) {
             return res.status(403).json({ message: "Forbidden: Access denied" });
         }
 
         const updated = await sessionService.updateSessionMeetingLink(sessionId, meetingLink);
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: updated,
+            toAdmin: true
+        });
+        if (expertProfile?.userId) {
+            syncDataChange({
+                type: "SESSION_UPDATED",
+                userId: expertProfile.userId,
+                expertId: expertProfile._id,
+                sessionId: session.sessionId,
+                data: updated
+            });
+        }
+
         return res.json({ success: true, data: updated });
     } catch (error) {
         console.error("Update meeting link error:", error);
@@ -159,8 +195,8 @@ export const completeSession = async (req, res) => {
         // Authorization check: Only the session's expert or admin can mark session completed
         const expertProfile = await ExpertDetails.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
         const isAuthorized = req.user.userType === 'admin' ||
-                             String(session.expertId) === String(req.user.userId) ||
-                             (expertProfile && String(expertProfile.userId) === String(req.user.userId));
+            String(session.expertId) === String(req.user.userId) ||
+            (expertProfile && String(expertProfile.userId) === String(req.user.userId));
 
         if (!isAuthorized) {
             return res.status(403).json({ message: "Forbidden: Access denied" });
@@ -170,6 +206,24 @@ export const completeSession = async (req, res) => {
         try {
             await meetingService.updateMeetingStatus(sessionId, 'finished');
         } catch (_) { /* meeting may not exist */ }
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: { status: 'completed' },
+            toAdmin: true
+        });
+        if (expertProfile?.userId) {
+            syncDataChange({
+                type: "SESSION_UPDATED",
+                userId: expertProfile.userId,
+                expertId: expertProfile._id,
+                sessionId: session.sessionId,
+                data: { status: 'completed' }
+            });
+        }
+
         return res.json({ success: true, message: "Session completed" });
     } catch (error) {
         console.error("Complete session error:", error);
@@ -188,9 +242,9 @@ export const getSession = async (req, res) => {
         // Authorization check: Only the candidate, the expert, or admin can view this session
         const expertProfile = await ExpertDetails.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
         const isAuthorized = req.user.userType === 'admin' ||
-                             String(session.candidateId) === String(req.user.userId) ||
-                             String(session.expertId) === String(req.user.userId) ||
-                             (expertProfile && String(expertProfile.userId) === String(req.user.userId));
+            String(session.candidateId) === String(req.user.userId) ||
+            String(session.expertId) === String(req.user.userId) ||
+            (expertProfile && String(expertProfile.userId) === String(req.user.userId));
 
         if (!isAuthorized) {
             return res.status(403).json({ message: "Forbidden: Access denied" });
@@ -295,9 +349,9 @@ export const getSessionsByExpert = async (req, res) => {
         const Expert = (await import('../models/expertModel.js')).default;
         const expertProfile = await Expert.findOne({ $or: [{ _id: expertId }, { userId: expertId }] });
         const isAuthorized = req.user && (
-                             req.user.userType === 'admin' ||
-                             String(expertId) === String(req.user.userId) ||
-                             (expertProfile && String(expertProfile.userId) === String(req.user.userId))
+            req.user.userType === 'admin' ||
+            String(expertId) === String(req.user.userId) ||
+            (expertProfile && String(expertProfile.userId) === String(req.user.userId))
         );
 
         const sessions = await sessionService.getSessionsByExpertId(expertId);
@@ -619,6 +673,8 @@ export const submitReview = async (req, res) => {
             suggestions,
             strengths,
             weaknesses,
+            hiringDecision,
+            recommendation,
             expertId,
             candidateId,
             reviewerRole
@@ -645,7 +701,7 @@ export const submitReview = async (req, res) => {
         if (reviewerRole === 'expert') {
             const expertProfile = await ExpertDetails.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
             const isAuthorized = String(session.expertId) === String(req.user.userId) ||
-                                 (expertProfile && String(expertProfile.userId) === String(req.user.userId));
+                (expertProfile && String(expertProfile.userId) === String(req.user.userId));
             if (!isAuthorized) {
                 return res.status(403).json({ success: false, message: "Forbidden: You are not authorized as the expert for this session" });
             }
@@ -658,33 +714,48 @@ export const submitReview = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid reviewer role" });
         }
 
-        // Check if review already exists for this role
-        const existingReview = await ReviewDetails.findOne({ sessionId, reviewerRole });
-        if (existingReview) {
-            return res.status(400).json({ success: false, message: "Review already submitted for this session" });
+        // Upsert review (update if already exists from a previous retry, or create new)
+        let reviewDoc = await ReviewDetails.findOne({ sessionId, reviewerRole });
+        if (reviewDoc) {
+            reviewDoc.overallRating = overallRating;
+            reviewDoc.technicalRating = technicalRating || 0;
+            reviewDoc.communicationRating = communicationRating || 0;
+            reviewDoc.problemSolvingRating = problemSolvingRating || 0;
+            reviewDoc.designRating = designRating || 0;
+            reviewDoc.behavioralRating = behavioralRating || 0;
+            reviewDoc.feedback = feedback;
+            reviewDoc.suggestions = suggestions;
+            reviewDoc.strengths = strengths || [];
+            reviewDoc.weaknesses = weaknesses || [];
+            reviewDoc.hiringDecision = hiringDecision || reviewDoc.hiringDecision || 'Hire';
+            reviewDoc.recommendation = recommendation !== undefined ? recommendation : reviewDoc.recommendation;
+            await reviewDoc.save();
+        } else {
+            reviewDoc = new ReviewDetails({
+                sessionId,
+                expertId: session.expertId, // Use verified ID from DB session
+                candidateId: session.candidateId, // Use verified ID from DB session
+                reviewerRole,
+                overallRating,
+                technicalRating: technicalRating || 0,
+                communicationRating: communicationRating || 0,
+                problemSolvingRating: problemSolvingRating || 0,
+                designRating: designRating || 0,
+                behavioralRating: behavioralRating || 0,
+                feedback,
+                suggestions,
+                strengths: strengths || [],
+                weaknesses: weaknesses || [],
+                hiringDecision: hiringDecision || 'Hire',
+                recommendation: recommendation || ''
+            });
+            await reviewDoc.save();
         }
-
-        const newReview = new ReviewDetails({
-            sessionId,
-            expertId: session.expertId, // Use verified ID from DB session
-            candidateId: session.candidateId, // Use verified ID from DB session
-            reviewerRole,
-            overallRating,
-            technicalRating: technicalRating || 0,
-            communicationRating: communicationRating || 0,
-            problemSolvingRating: problemSolvingRating || 0,
-            designRating: designRating || 0,
-            behavioralRating: behavioralRating || 0,
-            feedback,
-            suggestions,
-            strengths: strengths || [],
-            weaknesses: weaknesses || []
-        });
-
-        await newReview.save();
+        const newReview = reviewDoc;
 
         // Update Session status
         let walletCreditResult = null;
+        let expertUser = null;
         if (session) {
             if (session.status !== 'completed') {
                 session.status = 'completed'; // Ensure it's marked completed
@@ -695,7 +766,6 @@ export const submitReview = async (req, res) => {
                 try {
                     const payoutAmount = (Number(session.price) > 0 ? Number(session.price) : 1000) * 0.8; // Platform takes 20% fee, fallback to 1000 for test sessions
                     if (!session.payoutCredited) {
-                        let expertUser = null;
                         const rawExpertId = session.expertId || expertId;
 
                         if (rawExpertId) {
@@ -826,10 +896,56 @@ export const submitReview = async (req, res) => {
             }
         }
 
+        const sessionUpdateData = {
+            status: session.status,
+            payoutCredited: session.payoutCredited,
+            payoutAmount: session.payoutAmount,
+            payoutCreditedAt: session.payoutCreditedAt,
+            review: newReview
+        };
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            sessionId: session.sessionId,
+            data: sessionUpdateData,
+            toAdmin: true
+        });
+        if (session.candidateId) {
+            syncDataChange({
+                type: "SESSION_UPDATED",
+                userId: session.candidateId,
+                sessionId: session.sessionId,
+                data: sessionUpdateData
+            });
+        }
+        if (session.expertId) {
+            syncDataChange({
+                type: "SESSION_UPDATED",
+                userId: session.expertId,
+                sessionId: session.sessionId,
+                data: sessionUpdateData
+            });
+        }
+        if (expertUser && String(expertUser._id) !== String(session.expertId)) {
+            syncDataChange({
+                type: "SESSION_UPDATED",
+                userId: expertUser._id,
+                sessionId: session.sessionId,
+                data: sessionUpdateData
+            });
+        }
+
         res.status(201).json({
             success: true,
             message: "Review submitted successfully",
             data: newReview,
+            session: {
+                sessionId: session.sessionId,
+                status: session.status,
+                payoutCredited: session.payoutCredited,
+                payoutAmount: session.payoutAmount,
+                payoutCreditedAt: session.payoutCreditedAt
+            },
             walletCredit: walletCreditResult
         });
     } catch (error) {
@@ -842,7 +958,7 @@ export const submitReview = async (req, res) => {
 export const getSessionReviews = async (req, res) => {
     try {
         const { sessionId } = req.params;
-        
+
         // Find session to check authorization
         const Session = (await import('../models/Session.js')).default;
         const session = await Session.findOne({ sessionId });
@@ -854,9 +970,9 @@ export const getSessionReviews = async (req, res) => {
         const Expert = (await import('../models/expertModel.js')).default;
         const expertProfile = await Expert.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
         const isAuthorized = req.user.userType === 'admin' ||
-                             String(session.candidateId) === String(req.user.userId) ||
-                             String(session.expertId) === String(req.user.userId) ||
-                             (expertProfile && String(expertProfile.userId) === String(req.user.userId));
+            String(session.candidateId) === String(req.user.userId) ||
+            String(session.expertId) === String(req.user.userId) ||
+            (expertProfile && String(expertProfile.userId) === String(req.user.userId));
 
         if (!isAuthorized) {
             return res.status(403).json({ success: false, message: "Forbidden: Access denied" });
@@ -927,3 +1043,59 @@ export const requestFeedback = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/* -------------------- Get Candidate Resume (Secure Delivery) -------------------- */
+export const getCandidateResume = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const mode = (req.query.mode || 'view').toLowerCase(); // 'view' or 'download'
+
+        const Session = (await import('../models/Session.js')).default;
+        const User = (await import('../models/User.js')).default;
+        const Resume = (await import('../models/Resume.js')).default;
+        const { fetchResumeBuffer, generatePrintableResumeHtml } = await import('../services/resumeService.js');
+
+        const session = await Session.findOne({
+            $or: [
+                { sessionId },
+                { _id: sessionId && sessionId.match(/^[0-9a-fA-F]{24}$/) ? sessionId : null }
+            ]
+        }).lean();
+
+        if (!session) {
+            return res.status(404).send("Session not found");
+        }
+
+        const candidateId = session.candidateId;
+        const candidate = await User.findById(candidateId).lean();
+        const candidateName = candidate?.name || session.candidateName || "Candidate";
+
+        // Find candidate resume
+        let resume = await Resume.findOne({ userId: candidateId, isDefault: true }).lean();
+        if (!resume) {
+            resume = await Resume.findOne({ userId: candidateId }).sort({ updatedAt: -1 }).lean();
+        }
+
+        const fileName = resume?.fileName || `${candidateName.replace(/\s+/g, '_')}_Resume.pdf`;
+        const disposition = mode === 'download' ? 'attachment' : 'inline';
+
+        // Try to fetch binary PDF buffer
+        if (resume?.fileUrl) {
+            const buffer = await fetchResumeBuffer(resume.fileUrl);
+            if (buffer && buffer.length > 0) {
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName)}"`);
+                return res.send(buffer);
+            }
+        }
+
+        // Fallback: Generate printable ATS HTML resume
+        const html = generatePrintableResumeHtml({ candidate, resume, session });
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (error) {
+        console.error("Get Candidate Resume Error:", error);
+        res.status(500).send("Error loading resume: " + error.message);
+    }
+};
+

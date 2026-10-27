@@ -48,6 +48,11 @@ export const getProfileImageUrl = (path?: string | null, seed?: string | null): 
         return getDeterministicAvatar(nameSeed || path || seed);
     }
 
+    // Blob URLs or Base64 data URLs
+    if (path.startsWith('blob:') || path.startsWith('data:')) {
+        return path;
+    }
+
     // If it's already a full URL (Cloudinary or valid external image)
     if (path.startsWith('http')) {
         if (path.includes('cloudinary.com')) {
@@ -134,4 +139,12 @@ export const compressImage = (file: File, maxWidth = 600, quality = 0.5): Promis
         };
         reader.onerror = () => resolve(file);
     });
+};
+
+/**
+ * Compresses the full original image file before upload (preserving high resolution up to 1920px
+ * and high quality 0.85) to optimize network speed while ensuring crystal clear re-crops later.
+ */
+export const compressOriginalImage = (file: File): Promise<File> => {
+    return compressImage(file, 1920, 0.85);
 };

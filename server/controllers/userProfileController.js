@@ -9,6 +9,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { getFileUrl } from "../middleware/upload.js";
+import { syncDataChange } from "../services/socketService.js";
 
 /**
  * Robustly extract userId from either custom header or authenticated JWT payload
@@ -135,6 +136,19 @@ export const updatePersonalInfo = async (req, res) => {
 
         await user.save();
 
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: {
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    personalInfo: user.personalInfo,
+                    profileCompletion: user.profileCompletion
+                }
+            }
+        });
+
         return res.json({
             success: true,
             message: "Personal info updated successfully",
@@ -166,6 +180,12 @@ export const updateEducation = async (req, res) => {
         user.profileCompletion = calculateProfileCompletion(user);
 
         await user.save();
+
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: { education: user.education, profileCompletion: user.profileCompletion }
+        });
 
         return res.json({
             success: true,
@@ -199,6 +219,12 @@ export const updateExperience = async (req, res) => {
 
         await user.save();
 
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: { experience: user.experience, profileCompletion: user.profileCompletion }
+        });
+
         return res.json({
             success: true,
             message: "Experience updated successfully",
@@ -230,6 +256,12 @@ export const updateCertifications = async (req, res) => {
         user.profileCompletion = calculateProfileCompletion(user);
 
         await user.save();
+
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: { certifications: user.certifications, profileCompletion: user.profileCompletion }
+        });
 
         return res.json({
             success: true,
@@ -267,6 +299,12 @@ export const updateSkills = async (req, res) => {
         user.profileCompletion = calculateProfileCompletion(user);
 
         await user.save();
+
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: { skills: user.skills, profileCompletion: user.profileCompletion }
+        });
 
         return res.json({
             success: true,
@@ -308,6 +346,12 @@ export const updatePreferences = async (req, res) => {
 
         await user.save();
 
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: { preferences: user.preferences, profileCompletion: user.profileCompletion }
+        });
+
         return res.json({
             success: true,
             message: "Preferences updated successfully",
@@ -329,7 +373,10 @@ export const saveProfileImage = async (req, res) => {
             return res.status(400).json({ success: false, message: "User ID required" });
         }
 
-        if (!req.file) {
+        const imageFile = req.files?.profileImage?.[0] || req.file;
+        const originalFile = req.files?.originalProfileImage?.[0];
+
+        if (!imageFile && !originalFile && !req.body?.profileImage) {
             return res.status(400).json({ success: false, message: "No file uploaded" });
         }
 
@@ -339,23 +386,56 @@ export const saveProfileImage = async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        // (Optional) We could delete the old image from Cloudinary here using the public_id
-        // For now, we just overwrite the URL in the database
-
         // Get URL: Cloudinary sets secure_url/url on req.file; local storage uses getFileUrl path
-        let imageUrl = getFileUrl(req, req.file);
-        if (!imageUrl && req.file) {
-            imageUrl = req.file.secure_url || req.file.url || (req.file.path && req.file.path.startsWith("http") ? req.file.path : "") || "";
+        let imageUrl = getFileUrl(req, imageFile);
+        if (!imageUrl && imageFile) {
+            imageUrl = imageFile.secure_url || imageFile.url || (imageFile.path && imageFile.path.startsWith("http") ? imageFile.path : "") || "";
         }
-        user.profileImage = imageUrl || user.profileImage;
+
+        let originalImageUrl = "";
+        if (originalFile) {
+            originalImageUrl = getFileUrl(req, originalFile);
+            if (!originalImageUrl) {
+                originalImageUrl = originalFile.secure_url || originalFile.url || (originalFile.path && originalFile.path.startsWith("http") ? originalFile.path : "") || "";
+            }
+        } else if (req.body?.originalProfileImage) {
+            originalImageUrl = req.body.originalProfileImage;
+        }
+
+        if (imageUrl) {
+            user.profileImage = imageUrl;
+        }
+        if (originalImageUrl) {
+            user.originalProfileImage = originalImageUrl;
+        }
         user.profileCompletion = calculateProfileCompletion(user);
 
         await user.save();
+
+        syncDataChange({
+            type: "PROFILE_PHOTO_UPDATED",
+            userId: user._id,
+            data: {
+                profileImage: user.profileImage,
+                originalProfileImage: user.originalProfileImage,
+                profileCompletion: user.profileCompletion
+            }
+        });
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: {
+                profileImage: user.profileImage,
+                originalProfileImage: user.originalProfileImage,
+                profileCompletion: user.profileCompletion
+            }
+        });
 
         return res.json({
             success: true,
             message: "Profile image uploaded successfully",
             imageUrl: user.profileImage || "",
+            originalImageUrl: user.originalProfileImage || user.profileImage || "",
             profileCompletion: user.profileCompletion
         });
     } catch (err) {
@@ -705,8 +785,20 @@ export const deleteProfileImage = async (req, res) => {
         }
 
         user.profileImage = "";
+        user.originalProfileImage = "";
         user.profileCompletion = calculateProfileCompletion(user);
         await user.save();
+
+        syncDataChange({
+            type: "PROFILE_PHOTO_UPDATED",
+            userId: user._id,
+            data: { profileImage: "", originalProfileImage: "", profileCompletion: user.profileCompletion }
+        });
+        syncDataChange({
+            type: "PROFILE_UPDATED",
+            userId: user._id,
+            data: { profileImage: "", originalProfileImage: "", profileCompletion: user.profileCompletion }
+        });
 
         return res.json({
             success: true,
@@ -718,4 +810,39 @@ export const deleteProfileImage = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal error" });
     }
 };
+
+/* ----------------- Get Resume File By ID (Secure Streaming) ------------------ */
+export const getResumeFileById = async (req, res) => {
+    try {
+        const resumeId = req.params.id;
+        const mode = (req.query.mode || 'view').toLowerCase();
+        const { fetchResumeBuffer, generatePrintableResumeHtml } = await import('../services/resumeService.js');
+
+        const resume = await Resume.findById(resumeId).lean();
+        if (!resume) {
+            return res.status(404).send("Resume not found");
+        }
+
+        const candidate = await User.findById(resume.userId).lean();
+        const fileName = resume.fileName || `${(candidate?.name || 'Candidate').replace(/\s+/g, '_')}_Resume.pdf`;
+        const disposition = mode === 'download' ? 'attachment' : 'inline';
+
+        if (resume.fileUrl) {
+            const buffer = await fetchResumeBuffer(resume.fileUrl);
+            if (buffer && buffer.length > 0) {
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName)}"`);
+                return res.send(buffer);
+            }
+        }
+
+        const html = generatePrintableResumeHtml({ candidate, resume });
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (err) {
+        console.error("getResumeFileById error:", err);
+        return res.status(500).send("Error fetching resume file: " + err.message);
+    }
+};
+
 

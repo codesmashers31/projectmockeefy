@@ -19,13 +19,15 @@ import {
   ChevronRight,
   ShieldCheck,
   Heart,
+  Crop,
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
-import { getProfileImageUrl, compressImage } from "../lib/imageUtils";
+import { getProfileImageUrl, compressImage, compressOriginalImage } from "../lib/imageUtils";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../config";
+import ImageCropperModal from "../components/ImageCropperModal";
 
 interface ResumeItem {
   _id: string;
@@ -43,10 +45,14 @@ export default function UserProfile() {
   const { user, fetchProfile } = useAuth();
   const userId = user?.id || user?._id || user?.userId;
 
-  // Image Upload States
+  // Image Upload & Cropper States
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
+  const [cropperFileName, setCropperFileName] = useState("profile_photo.jpg");
+  const [selectedOriginalFile, setSelectedOriginalFile] = useState<File | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Resume Management States
@@ -108,25 +114,57 @@ export default function UserProfile() {
 
   const completedCount = completedSessions.length;
 
-  // Handle Profile Image Selection & Upload
-  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Profile Image Selection (Opens Cropper Modal)
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
 
-    // Validate size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size must be less than 5MB");
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Image size must be less than 15MB");
       return;
     }
 
+    setSelectedOriginalFile(file);
+    const localUrl = URL.createObjectURL(file);
+    setCropperImageSrc(localUrl);
+    setCropperFileName(file.name);
+    setCropperOpen(true);
+    e.target.value = "";
+  };
+
+  const handleAdjustCurrentPhoto = () => {
+    const rawSrc = user?.originalProfileImage || currentPhoto;
+    if (!rawSrc) {
+      imageInputRef.current?.click();
+      return;
+    }
+    setSelectedOriginalFile(null); // Keep original photo already saved on server
+    const resolved = getProfileImageUrl(rawSrc);
+    setCropperImageSrc(resolved);
+    setCropperFileName("profile_photo.jpg");
+    setCropperOpen(true);
+  };
+
+  // Upload cropped image file from cropper modal
+  const uploadCroppedPhoto = async (croppedFile: File) => {
+    if (!userId) return;
+
     try {
       setIsUploadingImage(true);
-      const compressed = await compressImage(file, 600, 0.7);
-      const localUrl = URL.createObjectURL(compressed);
+      const localUrl = URL.createObjectURL(croppedFile);
       setImagePreview(localUrl);
 
+      const compressedCrop = await compressImage(croppedFile, 600, 0.85);
       const formData = new FormData();
-      formData.append("profileImage", compressed);
+      formData.append("profileImage", compressedCrop);
+
+      // If user uploaded a brand new file, include the high-resolution original file
+      if (selectedOriginalFile) {
+        const compressedOrig = await compressOriginalImage(selectedOriginalFile);
+        formData.append("originalProfileImage", compressedOrig);
+      } else if (user?.originalProfileImage) {
+        formData.append("originalProfileImage", user.originalProfileImage);
+      }
 
       const res = await axios.post("/api/user/profile/image", formData, {
         headers: {
@@ -136,6 +174,7 @@ export default function UserProfile() {
 
       if (res.data?.success) {
         toast.success("Profile photo updated successfully!");
+        setSelectedOriginalFile(null);
         await fetchProfile();
       } else {
         toast.error(res.data?.message || "Failed to update profile image");
@@ -145,9 +184,6 @@ export default function UserProfile() {
       toast.error(err.response?.data?.message || "Error uploading image. Please try again.");
     } finally {
       setIsUploadingImage(false);
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
     }
   };
 
@@ -414,7 +450,7 @@ export default function UserProfile() {
                     <img
                       src={currentPhoto!}
                       alt={user?.name || "Profile Photo"}
-                      className="w-full h-full object-cover rounded-xl"
+                      className="w-full h-full object-cover object-top rounded-xl"
                     />
                   ) : (
                     <div className="w-full h-full bg-[#EAF2FF] text-[#0755E8] font-bold text-lg sm:text-xl flex items-center justify-center select-none">
@@ -432,10 +468,16 @@ export default function UserProfile() {
                 {/* Camera Quick Button */}
                 <button
                   type="button"
-                  onClick={() => imageInputRef.current?.click()}
+                  onClick={() => {
+                    if (hasPhoto) {
+                      handleAdjustCurrentPhoto();
+                    } else {
+                      imageInputRef.current?.click();
+                    }
+                  }}
                   disabled={isUploadingImage}
                   className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center shadow-xs border-2 border-white transition-all active:scale-90 cursor-pointer"
-                  title="Upload new photo"
+                  title={hasPhoto ? "Adjust or crop photo from original" : "Upload new photo"}
                 >
                   <Camera className="w-3 h-3" />
                 </button>
@@ -493,6 +535,19 @@ export default function UserProfile() {
                   </>
                 )}
               </button>
+
+              {hasPhoto && (
+                <button
+                  type="button"
+                  onClick={handleAdjustCurrentPhoto}
+                  disabled={isUploadingImage}
+                  className="h-9 sm:h-9.5 px-3 sm:px-3.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+                  title="Adjust framing and re-crop from full original photo"
+                >
+                  <Crop className="w-3.5 h-3.5 text-[#0755E8]" />
+                  <span>Adjust & Crop</span>
+                </button>
+              )}
 
               {hasPhoto && (
                 <button
@@ -850,7 +905,7 @@ export default function UserProfile() {
                           {resume.fileUrl ? (
                             <>
                               <a
-                                href={resume.fileUrl}
+                                href={`${API_BASE_URL}/api/user/resumes/${resume._id}/file?mode=view`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-2.5 py-1.5 rounded-xl bg-[#EAF2FF] hover:bg-[#0755E8] text-[#0755E8] hover:text-white border border-[#93B8FF]/60 text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
@@ -860,7 +915,7 @@ export default function UserProfile() {
                                 <span>Preview</span>
                               </a>
                               <a
-                                href={resume.fileUrl}
+                                href={`${API_BASE_URL}/api/user/resumes/${resume._id}/file?mode=download`}
                                 download={resume.fileName || `${resume.title || "Resume"}.pdf`}
                                 className="p-1.5 rounded-xl text-slate-500 hover:text-[#0755E8] hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                                 title="Download Resume File"
@@ -908,6 +963,18 @@ export default function UserProfile() {
         </section>
 
       </div>
+
+      {/* Image Cropper Modal */}
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        imageSrc={cropperImageSrc}
+        fileName={cropperFileName}
+        title="Adjust & Crop Profile Photo"
+        onClose={() => setCropperOpen(false)}
+        onCropComplete={(croppedFile) => {
+          uploadCroppedPhoto(croppedFile);
+        }}
+      />
     </div>
   );
 }

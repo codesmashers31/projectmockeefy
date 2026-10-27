@@ -71,6 +71,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  originalProfileImage: {
+    type: String,
+    trim: true
+  },
 
   personalInfo: {
     phone: { type: String, trim: true },

@@ -10,6 +10,7 @@ export interface User {
   userType: string;
   name?: string;
   profileImage?: string;
+  originalProfileImage?: string;
   phone?: string;
   personalInfo?: {
     phone?: string;
@@ -32,6 +33,7 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   fetchProfile: () => Promise<User | null>;
+  updateUser: (partialUser: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -89,13 +91,12 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         id: userData.userId || (userData as any)._id || userData.id,
         phone: userData.personalInfo?.phone || (userData as any).phone || userData.phone,
         profileImage: expertData.photoUrl || userData.profileImage || (userData as any).photoUrl,
+        originalProfileImage: expertData.originalPhotoUrl || userData.originalProfileImage || (userData as any).originalPhotoUrl || "",
         role: userData.userType || (userData as any).role,
         isPremium: userData.isPremium || (userData as any).isPremium || false,
         freeInterviewsCount: userData.freeInterviewsCount ?? (userData as any).freeInterviewsCount ?? 0,
       };
 
-      setUser(normalizedUser);
-      return normalizedUser;
       setUser(normalizedUser);
       return normalizedUser;
     } catch (error: any) {
@@ -110,6 +111,20 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const updateUser = (partialUser: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        ...partialUser,
+        personalInfo: {
+          ...prev.personalInfo,
+          ...partialUser.personalInfo,
+        },
+      };
+    });
   };
 
   const login = async (email: string, password: string): Promise<User> => {
@@ -207,7 +222,7 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
     window.location.href = '/signin';
   };
 
-  const value: AuthContextType = { user, token, login, googleLogin, register, logout, isLoading, fetchProfile };
+  const value: AuthContextType = { user, token, login, googleLogin, register, logout, isLoading, fetchProfile, updateUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

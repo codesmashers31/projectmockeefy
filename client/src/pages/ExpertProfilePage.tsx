@@ -346,7 +346,7 @@ export default function ExpertProfilePage() {
                 <img
                   src={avatarUrl}
                   alt={profile.name}
-                  className="w-full h-full object-cover rounded-lg"
+                  className="w-full h-full object-cover object-top rounded-lg"
                   onError={(e) => {
                     e.currentTarget.src = getProfileImageUrl(null);
                   }}
