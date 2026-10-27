@@ -253,6 +253,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedLevel, setSelectedLevel] = useState<string>("");
   const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const modalDialogRef = useRef<HTMLDivElement>(null);
+  const modalBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -489,23 +491,134 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     fetchExpert();
   }, [isOpen, targetExpertId]);
 
-  // Handle escape key & lock body scroll
+  // Handle escape key & strictly lock background page scrolling behind modal
   useEffect(() => {
     if (!isOpen) return;
 
-    const originalOverflow = document.body.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverscroll = document.body.style.overscrollBehavior;
+    const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+
+    // Strictly lock root scrolling so the page behind cannot scroll
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overflowY = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
     document.body.style.overflow = "hidden";
+    document.body.style.overflowY = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.classList.add("modal-open");
+    document.body.classList.add("modal-open");
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
+        return;
+      }
+      // Prevent keyboard navigation keys from scrolling the background page
+      const scrollKeys = ["Space", " ", "PageUp", "PageDown", "End", "Home"];
+      if (scrollKeys.includes(e.key)) {
+        const target = e.target as HTMLElement | null;
+        const isInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+        if (!isInput) {
+          const modal = modalDialogRef.current;
+          if (!modal || !modal.contains(target)) {
+            e.preventDefault();
+          }
+        }
       }
     };
+
+    // Prevent background wheel and touch scrolling behind the selecting date & available time slot modal
+    const preventBackgroundScroll = (e: WheelEvent | TouchEvent) => {
+      const modal = modalDialogRef.current;
+      // If the scroll event happened outside the modal dialog (e.g. on backdrop or background page), block it
+      if (!modal || !modal.contains(e.target as Node)) {
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+
+      // If wheel event happened inside the modal dialog
+      if (e instanceof WheelEvent) {
+        // If wheel is over date carousel, handle horizontal scrolling cleanly without triggering vertical page scroll
+        const carousel = carouselRef.current;
+        if (carousel && carousel.contains(e.target as Node)) {
+          if (e.cancelable) e.preventDefault();
+          if (e.deltaY !== 0) {
+            carousel.scrollLeft += e.deltaY;
+            checkCarouselScroll();
+          }
+          return;
+        }
+
+        // Find the closest scrollable container inside the modal dialog
+        let scrollableEl: HTMLElement | null = null;
+        let curr = e.target as HTMLElement | null;
+        while (curr && curr !== modal) {
+          const style = window.getComputedStyle(curr);
+          if (
+            (style.overflowY === "auto" || style.overflowY === "scroll") &&
+            curr.scrollHeight > curr.clientHeight
+          ) {
+            scrollableEl = curr;
+            break;
+          }
+          curr = curr.parentElement;
+        }
+
+        // If target is not inside any scrollable container (e.g. header, footer, static text), prevent background scroll
+        if (!scrollableEl) {
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+
+        // Inside a scrollable container (e.g. modal body or slots grid)
+        const isScrollingDown = e.deltaY > 0;
+        const isAtBottom = scrollableEl.scrollHeight - scrollableEl.scrollTop <= scrollableEl.clientHeight + 1;
+        const isAtTop = scrollableEl.scrollTop <= 0;
+
+        // Prevent scroll from propagating to document once top/bottom boundary is reached
+        if ((isScrollingDown && isAtBottom) || (!isScrollingDown && isAtTop)) {
+          if (e.cancelable) e.preventDefault();
+        }
+      } else if (e instanceof TouchEvent) {
+        // Find closest scrollable container for touch gestures
+        let scrollableEl: HTMLElement | null = null;
+        let curr = e.target as HTMLElement | null;
+        while (curr && curr !== modal) {
+          const style = window.getComputedStyle(curr);
+          if (
+            (style.overflowY === "auto" || style.overflowY === "scroll" || style.overflowX === "auto" || style.overflowX === "scroll") &&
+            (curr.scrollHeight > curr.clientHeight || curr.scrollWidth > curr.clientWidth)
+          ) {
+            scrollableEl = curr;
+            break;
+          }
+          curr = curr.parentElement;
+        }
+
+        if (!scrollableEl) {
+          if (e.cancelable) e.preventDefault();
+        }
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", preventBackgroundScroll, { passive: false });
+    window.addEventListener("touchmove", preventBackgroundScroll, { passive: false });
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.documentElement.style.overflowY = "";
+      document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.overflowY = "";
+      document.body.style.overscrollBehavior = originalBodyOverscroll;
+      document.documentElement.classList.remove("modal-open");
+      document.body.classList.remove("modal-open");
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", preventBackgroundScroll);
+      window.removeEventListener("touchmove", preventBackgroundScroll);
     };
   }, [isOpen, onClose]);
 
@@ -1092,10 +1205,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-modal-title"
-        className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+        className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden overscroll-contain"
         onClick={onClose}
       >
-        <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl my-auto">
+        <div ref={modalDialogRef} onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl my-auto">
           <BookingModalSkeleton onClose={onClose} initialProfile={initialProfile} />
         </div>
       </div>,
@@ -1108,10 +1221,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="booking-modal-title"
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden overscroll-contain"
       onClick={onClose}
     >
       <div
+        ref={modalDialogRef}
         className="relative w-full max-w-2xl bg-white rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-left my-auto animate-in zoom-in-95 duration-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
@@ -1177,7 +1291,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-4.5 space-y-3.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          ref={modalBodyRef}
+          className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-4.5 space-y-3.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
           <div>
             <div className="flex items-start justify-between flex-wrap gap-3">
               <div>
@@ -1313,7 +1430,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       </span>
                     </div>
 
-                    <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto overscroll-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {expertLevels.map((lvl) => {
                         const isSelected = selectedLevel === lvl;
                         const lvlPrice = getPriceForLevel(lvl, sessionDuration);
@@ -1528,7 +1645,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ))}
                 </div>
               ) : currentSlots.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[220px] overflow-y-auto p-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[220px] overflow-y-auto overscroll-contain p-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   {currentSlots.map((slot) => {
                     const isSelected = selectedSlot?.time === slot.time;
                     const isUnavailable = !slot.available;

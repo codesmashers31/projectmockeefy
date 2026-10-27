@@ -823,7 +823,11 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
   // Dedicated Filter Sidebar Component
   const renderFilterPanel = () => (
-    <div className="relative bg-white rounded-[24px] border border-slate-200/90 p-4.5 space-y-4 text-left shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden">
+    <div className="sidebar-main-card relative rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4.5 space-y-4 text-left overflow-hidden">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
       <div className="relative z-10 space-y-4">
         <div className="pb-3 border-b border-slate-100 space-y-2">
           {/* Main Title Row: Filters title & Clear all */}
@@ -1322,7 +1326,11 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </div>
 
           {/* DIV CARD: All Experts Categories & Content */}
-          <div id="all-experts-categories" className="relative bg-white border border-slate-200/90 rounded-[24px] sm:rounded-[28px] p-3.5 sm:p-6 md:p-7 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden space-y-4 scroll-mt-24">
+          <div id="all-experts-categories" className="sidebar-main-card relative rounded-[24px] sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-7 overflow-hidden space-y-4 scroll-mt-24">
+            {/* Decorative ambient blue lighting */}
+            <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
             <div className="relative z-10">
               {/* Mentors Grid / Empty / Error States */}
               {isLoading ? (
@@ -1394,7 +1402,9 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
           {renderFilterPanel()}
 
           {/* Tips Card */}
-          <div className="relative bg-white rounded-[24px] border border-slate-200/90 p-4 space-y-2 text-left shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden">
+          <div className="sidebar-main-card relative rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 space-y-2 text-left overflow-hidden">
+            {/* Decorative ambient blue lighting */}
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-blue-300/35 blur-xl pointer-events-none" />
             <div className="relative z-10 space-y-2">
               <div className="flex items-center gap-1.5 text-[#0755E8]">
                 <Sparkles size={14} />

@@ -19,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { useQuery } from "@tanstack/react-query";
+import { useDataSync } from "../context/SocketContext";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
@@ -41,26 +42,53 @@ export default function Sidebar() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Sync saved mentors count
+  // Sync saved mentors count with local storage and backend wishlist
   useEffect(() => {
-    const updateSavedCount = () => {
+    let isSubscribed = true;
+
+    const updateSavedCount = async () => {
+      let count = 0;
       try {
         const saved = localStorage.getItem("savedExperts");
         if (saved) {
           const parsed = JSON.parse(saved);
-          setSavedCount(Array.isArray(parsed) ? parsed.length : 0);
-        } else {
-          setSavedCount(0);
+          if (Array.isArray(parsed)) {
+            count = parsed.length;
+          }
         }
       } catch (e) {
-        setSavedCount(0);
+        count = 0;
+      }
+
+      // If local storage is empty and candidate is logged in, sync with backend
+      const userId = user?.id || user?._id || (userProfile as any)?._id;
+      if (count === 0 && userId) {
+        try {
+          const res = await axios.get("/api/user/saved-experts");
+          if (isSubscribed && res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
+            count = res.data.data.length;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (isSubscribed) {
+        setSavedCount(count);
       }
     };
 
     updateSavedCount();
     window.addEventListener("storage", updateSavedCount);
-    return () => window.removeEventListener("storage", updateSavedCount);
-  }, []);
+    window.addEventListener("saved-experts-updated", updateSavedCount);
+    window.addEventListener("focus", updateSavedCount);
+    return () => {
+      isSubscribed = false;
+      window.removeEventListener("storage", updateSavedCount);
+      window.removeEventListener("saved-experts-updated", updateSavedCount);
+      window.removeEventListener("focus", updateSavedCount);
+    };
+  }, [user?.id, user?._id, (userProfile as any)?._id, location.pathname, location.search]);
 
   // Fetch upcoming sessions for logged-in user with live event synchronization
   const fetchUpcoming = useCallback(async () => {
@@ -119,6 +147,11 @@ export default function Sidebar() {
       clearInterval(interval);
     };
   }, [fetchUpcoming]);
+
+  // Real-time synchronization for candidate bookings across devices & sockets
+  useDataSync(['SESSION_CREATED', 'SESSION_UPDATED', 'RECONNECTED'], () => {
+    fetchUpcoming();
+  });
 
   // Auto-cycle through upcoming sessions every 2 seconds
   useEffect(() => {
@@ -186,14 +219,18 @@ export default function Sidebar() {
       label: "Saved Interview Experts",
       icon: Bookmark,
       path: "/saved-experts",
-      isActive: location.pathname === "/saved-experts" || location.pathname === "/liked-mentors",
+      isActive:
+        location.pathname === "/saved-experts" ||
+        location.pathname === "/liked-mentors" ||
+        (location.pathname === "/my-sessions" && location.search.includes("view=saved")),
       count: savedCount,
     },
     {
       label: "My Sessions",
       icon: Calendar,
       path: "/my-sessions",
-      isActive: location.pathname === "/my-sessions",
+      isActive:
+        location.pathname === "/my-sessions" && !location.search.includes("view=saved"),
     },
     {
       label: "Certificates",
@@ -222,8 +259,12 @@ export default function Sidebar() {
   return (
     <aside
       aria-label="Sidebar Navigation"
-      className="relative w-full bg-white rounded-[24px] border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] p-3 sm:p-3.5 overflow-hidden space-y-3.5 font-sans text-left"
+      className="sidebar-main-card relative w-full rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3 sm:p-3.5 space-y-3.5 overflow-hidden font-sans text-left"
     >
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
       <div className="relative z-10 space-y-3.5">
         {/* Primary Navigation */}
         <div className="space-y-1">
@@ -248,8 +289,8 @@ export default function Sidebar() {
                 }}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF] ${
                   item.isActive
-                    ? "bg-[#EAF2FF] text-[#0755E8] font-bold shadow-xs border border-[#93B8FF]/50"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+                    ? "bg-white text-[#0755E8] font-bold shadow-xs border border-blue-200/80"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/70 border border-transparent"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -288,7 +329,7 @@ export default function Sidebar() {
         <div
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="relative bg-[#E8FAF4] rounded-[18px] p-2.5 sm:p-3 border border-[#7FE3C3] shadow-[0_2px_10px_-4px_rgba(5,150,105,0.08)] space-y-2.5 transition-all duration-300"
+          className="relative bg-[#E8FAF4] rounded-[18px] p-2.5 sm:p-3 border border-[#7FE3C3] shadow-xs space-y-2.5 transition-all duration-300"
         >
           {/* Top Row: Upcoming Session Pill + Scheduled Time */}
           <div className="flex items-center justify-between gap-1.5">
@@ -318,18 +359,17 @@ export default function Sidebar() {
                 className="flex items-center gap-2.5 animate-session-fade"
               >
                 <div className="w-8 h-8 rounded-full bg-white border border-[#7FE3C3]/50 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
-                  {currentSession.expertDetails?.profileImage ? (
-                    <img
-                      src={getProfileImageUrl(
-                        currentSession.expertDetails.profileImage,
-                        currentSession.expertDetails.name || currentSession.expertName
-                      )}
-                      alt={currentSession.expertDetails?.name || "Expert"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User size={15} className="text-emerald-600/70" />
-                  )}
+                  <img
+                    src={getProfileImageUrl(
+                      currentSession.expertDetails?.profileImage || currentSession.profileImage,
+                      currentSession.expertDetails?.name || currentSession.expertName || "Expert"
+                    )}
+                    alt={currentSession.expertDetails?.name || currentSession.expertName || "Expert"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = getProfileImageUrl(null, currentSession.expertDetails?.name || currentSession.expertName || "Expert");
+                    }}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-bold text-slate-900 truncate leading-tight">
@@ -474,7 +514,7 @@ export default function Sidebar() {
 export const SkeletonSidebar = () => (
   <aside
     aria-label="Sidebar Navigation Loading"
-    className="relative w-full bg-white rounded-[24px] border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] p-3 sm:p-3.5 overflow-hidden space-y-3.5 font-sans text-left"
+    className="sidebar-main-card relative w-full rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3 sm:p-3.5 overflow-hidden space-y-3.5 font-sans text-left"
   >
     <div className="relative z-10 space-y-3.5">
       {/* Primary Navigation Skeleton */}

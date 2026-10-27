@@ -117,7 +117,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
   const fetchNotifications = async () => {
     if (!user) return;
     try {
-      const res = await axios.get("/api/notifications?unreadOnly=true");
+      const res = await axios.get("/api/notifications");
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
     } catch (error) {
@@ -146,14 +146,29 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     setUnreadCount((prev) => prev + 1);
   });
 
-  // Real-time synchronization when notifications are marked read in another session
+  // Real-time synchronization when notifications are marked read in another session or window
+  useSocketEvent("notification_read", (payload: any) => {
+    const ids = payload?.notificationIds;
+    if (ids === "all") {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } else if (Array.isArray(ids)) {
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n._id) ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - ids.length));
+    }
+  });
+
   useDataSync("NOTIFICATION_SYNC", (payload) => {
     const ids = payload.data?.notificationIds;
     if (ids === "all") {
-      setNotifications([]);
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } else if (Array.isArray(ids)) {
-      setNotifications((prev) => prev.filter((n) => !ids.includes(n._id)));
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n._id) ? { ...n, isRead: true } : n))
+      );
       setUnreadCount((prev) => Math.max(0, prev - ids.length));
     }
   });
@@ -161,7 +176,9 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
   const markAsRead = async (id: string) => {
     try {
       await axios.put("/api/notifications/read", { notificationIds: [id] });
-      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Failed to mark read", error);
@@ -174,20 +191,25 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     }
     closeAllDropdowns();
     if (notification.metadata?.link) {
-      navigate(notification.metadata.link);
+      const link = notification.metadata.link;
+      if (link.startsWith("http://") || link.startsWith("https://")) {
+        window.location.href = link;
+      } else {
+        navigate(link);
+      }
     } else if (
       notification.title?.toLowerCase().includes("session") ||
       notification.title?.toLowerCase().includes("meeting") ||
       notification.message?.toLowerCase().includes("session")
     ) {
-      navigate("/my-sessions");
+      navigate(user?.userType === "expert" ? "/expert/dashboard" : "/my-sessions");
     }
   };
 
   const markAllRead = async () => {
     try {
       await axios.put("/api/notifications/read", { notificationIds: "all" });
-      setNotifications([]);
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error("Failed to mark all read", error);
@@ -460,7 +482,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
 
                   {/* Notifications Popover */}
                   {isNotificationOpen && (
-                    <div className="fixed inset-x-3 sm:inset-x-auto top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-[360px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="fixed inset-x-3 sm:inset-x-auto sm:absolute top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-[380px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">

@@ -98,7 +98,7 @@ const NotificationDropdown = () => {
             )}
 
             {isOpen && (
-                <div className="fixed inset-x-3 sm:inset-x-auto top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-80 max-w-sm mx-auto sm:max-w-none bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="fixed inset-x-3 sm:inset-x-auto sm:absolute top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-80 max-w-sm mx-auto sm:max-w-none bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                     <div className="p-3.5 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>

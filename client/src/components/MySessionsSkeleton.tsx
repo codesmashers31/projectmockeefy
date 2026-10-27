@@ -57,7 +57,11 @@ export function SessionCardSkeleton() {
 
 export function MySessionsSkeleton() {
   return (
-    <div className="relative w-full bg-white border border-slate-200/90 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden pb-12 font-sans text-left animate-in fade-in duration-200">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-8 overflow-hidden pb-12 font-sans text-left animate-in fade-in duration-200">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
       <div className="w-full space-y-5 sm:space-y-6 relative z-10">
         {/* Header Skeleton */}
         <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200/80 pb-4">
