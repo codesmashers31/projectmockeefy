@@ -77,6 +77,15 @@ const reviewSchema = new mongoose.Schema(
             type: [String],
             default: [] // Areas for improvement
         },
+        hiringDecision: {
+            type: String,
+            enum: ['Strong Hire', 'Hire', 'Lean Hire', 'No Hire', 'N/A'],
+            default: 'Hire'
+        },
+        recommendation: {
+            type: String,
+            default: ''
+        },
 
         reviewerRole: {
             type: String,

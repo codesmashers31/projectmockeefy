@@ -82,6 +82,7 @@ const availabilitySchema = new mongoose.Schema({
 const expertSchema = new mongoose.Schema(
   {
     profileImage: { type: String, trim: true }, // Legacy: maintained for migration, but source of truth is User
+    originalProfileImage: { type: String, trim: true },
 
     personalInformation: {
       // Identity fields (name, mobile, gender, dob, address) are now in User model.

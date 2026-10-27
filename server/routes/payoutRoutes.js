@@ -9,10 +9,17 @@ import {
     setDefaultPayoutMethod,
     getPayoutHistory
 } from '../controllers/payoutController.js';
+import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Payout Method Routes
+// Admin Payout Management Routes (Strictly Admin Only)
+router.get('/admin/requests', protect, admin, getAdminPayoutRequests);
+router.put('/admin/request/:id', protect, admin, resolvePayoutRequest);
+
+// Expert Payout & Wallet Routes (Require Authentication)
+router.use(protect);
+
 router.post('/method', addPayoutMethod);
 router.get('/methods/:userId', getPayoutMethods);
 router.put('/method/:methodId/default', setDefaultPayoutMethod);
@@ -21,9 +28,5 @@ router.put('/method/:methodId/default', setDefaultPayoutMethod);
 router.post('/request', initiatePayout);
 router.get('/summary/:userId', getUserEarningsSummary);
 router.get('/history/:userId', getPayoutHistory);
-
-// Admin Payout Management Routes
-router.get('/admin/requests', getAdminPayoutRequests);
-router.put('/admin/request/:id', resolvePayoutRequest);
 
 export default router;

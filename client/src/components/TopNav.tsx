@@ -20,7 +20,7 @@ import {
   ChevronRight,
   X
 } from "lucide-react";
-import { io } from "socket.io-client";
+import { useSocketEvent, useDataSync } from "../context/SocketContext";
 
 interface Notification {
   id: string;
@@ -64,23 +64,23 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
     else setNotifications([]);
   }, [user, fetchNotifications]);
 
-  useEffect(() => {
-    if (!user || !token) return;
+  // Real-time notification arrival
+  useSocketEvent("new_notification", (notification: any) => {
+    const formatted = { ...notification, id: notification._id, read: false };
+    setNotifications((prev) => [formatted, ...prev]);
+  });
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
-      auth: { token },
-    });
-
-    socket.on("new_notification", (notification) => {
-      // Unify 'id' and 'read' field names matching frontend expectations
-      const formatted = { ...notification, id: notification._id, read: false };
-      setNotifications((prev) => [formatted, ...prev]);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [user, token]);
+  // Real-time synchronization when notifications are marked read in another session
+  useDataSync("NOTIFICATION_SYNC", (payload) => {
+    const ids = payload.data?.notificationIds;
+    if (ids === "all") {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, isRead: true })));
+    } else if (Array.isArray(ids)) {
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n.id || n._id) ? { ...n, read: true, isRead: true } : n))
+      );
+    }
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -3,8 +3,9 @@ import axios from '../lib/axios';
 import { toast } from "sonner";
 import { PrimaryButton } from '../pages/ExpertDashboard';
 import { useAuth } from '../context/AuthContext';
+import { useDataSync } from '../context/SocketContext';
 import { Country, State, City } from 'country-state-city';
-import { AlertCircle, Lock, ChevronDown, Check } from 'lucide-react';
+import { AlertCircle, Lock, ChevronDown, Check, RefreshCw } from 'lucide-react';
 
 const FormInput = ({ label, value, onChange, placeholder, type = "text", error, maxLength, disabled }: any) => (
     <div className="flex flex-col gap-1.5">
@@ -189,6 +190,7 @@ const PersonalInfo = ({ onUpdate, profileData, isMissing }: PersonalInfoProps) =
     const [countryCode, setCountryCode] = useState("");
     const [stateCode, setStateCode] = useState("");
     const [isEditing, setIsEditing] = useState(false);
+    const [hasIncomingUpdate, setHasIncomingUpdate] = useState(false);
 
     const initialProfile = {
         personal: {
@@ -347,6 +349,16 @@ const PersonalInfo = ({ onUpdate, profileData, isMissing }: PersonalInfoProps) =
         fetchData();
     }, [user]);
 
+    // Real-time synchronization when personal info is updated in another tab/login
+    useDataSync(["PERSONAL_INFO_UPDATED", "PROFILE_UPDATED"], (payload) => {
+        console.log("[PersonalInfo] Received real-time sync update:", payload);
+        if (!isEditing) {
+            fetchData();
+        } else {
+            setHasIncomingUpdate(true);
+        }
+    });
+
     const savePersonal = async () => {
         if (!validate()) {
             toast.error("Please fix the validation errors");
@@ -402,6 +414,35 @@ const PersonalInfo = ({ onUpdate, profileData, isMissing }: PersonalInfoProps) =
                     <p className="text-sm text-gray-500 mt-1">Update your basic details and location</p>
                 </div>
             </div>
+
+            {hasIncomingUpdate && (
+                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-900 flex items-center justify-between shadow-xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span><strong>Update Available:</strong> Personal info was just modified in another session.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                fetchData();
+                                setHasIncomingUpdate(false);
+                                setIsEditing(false);
+                            }}
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
+                        >
+                            Load Latest
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setHasIncomingUpdate(false)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2 py-1 cursor-pointer"
+                        >
+                            Keep My Edits
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">

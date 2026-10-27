@@ -9,9 +9,10 @@ import Session from "../models/Session.js";
 import Review from "../models/reviewModel.js";
 import PricingRule from "../models/PricingRule.js"; // Added
 import Category from "../models/Category.js"; // Added
-import User from "../models/User.js"; // Added User model
-import { sendAadhaarOtp, verifyAadhaarOtp, maskAadhaar, getKnownLegalNameForAadhaar } from "../services/sandboxAadhaarService.js";
+import User from "../models/User.js";
+import { sendAadhaarOtp, verifyAadhaarOtp, maskAadhaar, checkAadhaarRateLimit, recordAadhaarOtpSend, validateAadhaarFormat } from "../services/sandboxAadhaarService.js";
 import { compareNames, hashAadhaar, normalizeName } from "../utils/nameMatcher.js";
+import { syncDataChange, emitToUser, emitToAdmin } from "../services/socketService.js";
 
 /* -------------------- Helpers -------------------- */
 const resolveUserIdFromReq = (req) => {
@@ -192,16 +193,30 @@ export const uploadProfilePhoto = async (req, res) => {
     const userIdRaw = resolveUserIdFromReq(req);
     if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
 
-    if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded. Use field 'photo'." });
+    const photoFile = req.files?.photo?.[0] || req.file;
+    const originalPhotoFile = req.files?.originalPhoto?.[0];
 
-    // Cloudinary returns the secure URL
-    const photoUrl = getFileUrl(req, req.file);
+    if (!photoFile) return res.status(400).json({ success: false, message: "No file uploaded. Use field 'photo'." });
+
+    // Cloudinary returns the secure URL; local storage returns relative URL
+    const photoUrl = getFileUrl(req, photoFile);
+    let originalPhotoUrl = "";
+    if (originalPhotoFile) {
+      originalPhotoUrl = getFileUrl(req, originalPhotoFile);
+    } else if (req.body?.originalPhotoUrl) {
+      originalPhotoUrl = req.body.originalPhotoUrl;
+    }
 
     // find expert & user
     const queryUserId = toObjectId(userIdRaw);
 
     // Update User Profile Image (Source of Truth)
-    const user = await User.findByIdAndUpdate(queryUserId, { profileImage: photoUrl }, { new: true });
+    const updateFields = { profileImage: photoUrl };
+    if (originalPhotoUrl) {
+      updateFields.originalProfileImage = originalPhotoUrl;
+    }
+
+    const user = await User.findByIdAndUpdate(queryUserId, updateFields, { new: true });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     let expert = await ExpertDetails.findOne({ userId: queryUserId });
@@ -218,10 +233,12 @@ export const uploadProfilePhoto = async (req, res) => {
         availability: { sessionDuration: 30, maxPerDay: 1, weekly: {}, breakDates: [] },
         verification: {}
       });
-      await expert.save();
     }
 
-    // We do NOT save photo to expert.profileImage anymore.
+    if (originalPhotoUrl) {
+      expert.originalProfileImage = originalPhotoUrl;
+    }
+    await expert.save({ validateBeforeSave: false });
 
     const completion = computeCompletion(expert, user);
     const missingSections = getMissingSections(expert, user);
@@ -230,8 +247,34 @@ export const uploadProfilePhoto = async (req, res) => {
       name: user.name || "",
       title: expert.professionalDetails?.title || "",
       company: expert.professionalDetails?.company || "",
-      photoUrl: user.profileImage || ""
+      photoUrl: user.profileImage || "",
+      originalPhotoUrl: user.originalProfileImage || expert.originalProfileImage || user.profileImage || ""
     };
+
+    syncDataChange({
+      type: "PROFILE_PHOTO_UPDATED",
+      userId: user._id,
+      expertId: expert._id,
+      data: {
+        profileImage: user.profileImage,
+        originalProfileImage: user.originalProfileImage,
+        completion,
+        missingSections,
+        profile
+      }
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: user._id,
+      expertId: expert._id,
+      data: {
+        profileImage: user.profileImage,
+        originalProfileImage: user.originalProfileImage,
+        completion,
+        missingSections,
+        profile
+      }
+    });
 
     return res.json({ success: true, message: "Photo uploaded", completion, missingSections, profile });
   } catch (err) {
@@ -302,6 +345,13 @@ export const uploadVerificationDocs = async (req, res) => {
 
     await expert.save({ validateBeforeSave: false });
 
+    syncDataChange({
+      type: "VERIFICATION_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { verification: expert.verification }
+    });
+
     return res.json({
       success: true,
       message: 'Verification details updated',
@@ -368,6 +418,21 @@ export const requestVerification = async (req, res) => {
     expert.verificationRequestedAt = new Date();
     expert.rejectionReason = "";
     await expert.save();
+
+    syncDataChange({
+      type: "STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { status: "pending", verificationRequested: true },
+      toAdmin: true
+    });
+    syncDataChange({
+      type: "EXPERT_STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { status: "pending", verificationRequested: true },
+      toAdmin: true
+    });
 
     return res.json({
       success: true,
@@ -437,6 +502,21 @@ export const resubmitProfile = async (req, res) => {
     expert.verificationRequestedAt = new Date();
     expert.rejectionReason = ""; // Clear reason on resubmit
     await expert.save();
+
+    syncDataChange({
+      type: "STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { status: "pending", verificationRequested: true },
+      toAdmin: true
+    });
+    syncDataChange({
+      type: "EXPERT_STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { status: "pending", verificationRequested: true },
+      toAdmin: true
+    });
 
     return res.json({
       success: true,
@@ -515,6 +595,7 @@ export const getExpertProfile = async (req, res) => {
 
       // Photo from User
       photoUrl: user.profileImage || "",
+      originalPhotoUrl: user.originalProfileImage || expertLean.originalProfileImage || user.profileImage || "",
 
       // Category from Expert (Personal Info legacy)
       category: expertLean.personalInformation?.category || ""
@@ -856,6 +937,19 @@ export const updatePersonalInfo = async (req, res) => {
       }
     };
 
+    syncDataChange({
+      type: "PERSONAL_INFO_UPDATED",
+      userId: user._id,
+      expertId: expert._id,
+      data: responseData
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: user._id,
+      expertId: expert._id,
+      data: responseData
+    });
+
     return res.status(200).json({ success: true, message: "Personal info updated successfully", data: responseData });
   } catch (error) {
     console.error("❌ updatePersonalInfo error:", error);
@@ -901,6 +995,19 @@ export const updateEducation = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
+    syncDataChange({
+      type: "EDUCATION_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.education
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { education: expert.education }
+    });
+
     return res.status(200).json({ success: true, message: "Education updated", data: expert.education });
   } catch (err) {
     console.error("updateEducation error:", err);
@@ -924,6 +1031,19 @@ export const deleteEducationEntry = async (req, res) => {
 
     expert.education.splice(idx, 1);
     await expert.save({ validateBeforeSave: false });
+
+    syncDataChange({
+      type: "EDUCATION_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.education
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { education: expert.education }
+    });
 
     return res.status(200).json({ success: true, message: "Education entry deleted", data: expert.education });
   } catch (err) {
@@ -981,6 +1101,19 @@ export const updateProfessional = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
+    syncDataChange({
+      type: "EXPERIENCE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.professionalDetails
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { professionalDetails: expert.professionalDetails }
+    });
+
     return res.status(200).json({ success: true, message: "Professional details updated", data: expert.professionalDetails });
   } catch (err) {
     console.error("updateProfessional error:", err);
@@ -1004,6 +1137,19 @@ export const deletePreviousExperience = async (req, res) => {
 
     expert.professionalDetails.previous.splice(idx, 1);
     await expert.save({ validateBeforeSave: false });
+
+    syncDataChange({
+      type: "EXPERIENCE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.professionalDetails.previous
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { professionalDetails: expert.professionalDetails }
+    });
 
     return res.status(200).json({ success: true, message: "Previous experience deleted", data: expert.professionalDetails.previous });
   } catch (err) {
@@ -1060,6 +1206,19 @@ export const updateSkillsAndExpertise = async (req, res) => {
     if (Array.isArray(languages)) expert.skillsAndExpertise.languages = languages;
 
     await expert.save({ validateBeforeSave: false });
+
+    syncDataChange({
+      type: "SKILLS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.skillsAndExpertise
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { skillsAndExpertise: expert.skillsAndExpertise }
+    });
 
     return res.status(200).json({ success: true, message: "Skills updated", data: expert.skillsAndExpertise });
   } catch (err) {
@@ -1119,16 +1278,16 @@ export const getExpertStats = async (req, res) => {
     let walletBalance = userDoc?.availableBalance || 0;
 
     if (!userDoc) {
-        // Run migration if no wallet exists but legacy user.walletBalance exists
-        const user = await import("../models/User.js").then(m => m.default.findById(queryUserId));
-        if (user && user.walletBalance) {
-             const Wallet = (await import("../models/Wallet.js")).default;
-             const newWallet = await Wallet.create({
-                 userId: queryUserId,
-                 availableBalance: user.walletBalance || 0
-             });
-             walletBalance = newWallet.availableBalance;
-        }
+      // Run migration if no wallet exists but legacy user.walletBalance exists
+      const user = await import("../models/User.js").then(m => m.default.findById(queryUserId));
+      if (user && user.walletBalance) {
+        const Wallet = (await import("../models/Wallet.js")).default;
+        const newWallet = await Wallet.create({
+          userId: queryUserId,
+          availableBalance: user.walletBalance || 0
+        });
+        walletBalance = newWallet.availableBalance;
+      }
     }
 
     // Calculate revenue (legacy sessions used price, new ones use payoutAmount)
@@ -1213,9 +1372,9 @@ export const updateAvailability = async (req, res) => {
           const end = timeToMinutes(slot.to);
 
           if (start >= end) {
-            return res.status(400).json({ 
-              success: false, 
-              message: `Invalid slot on ${day}: ${slot.from} - ${slot.to} cannot end before it starts.` 
+            return res.status(400).json({
+              success: false,
+              message: `Invalid slot on ${day}: ${slot.from} - ${slot.to} cannot end before it starts.`
             });
           }
 
@@ -1230,9 +1389,9 @@ export const updateAvailability = async (req, res) => {
             const prevSlot = sortedSlots[i - 1];
             const prevEnd = timeToMinutes(prevSlot.to);
             if (start < prevEnd) {
-              return res.status(400).json({ 
-                success: false, 
-                message: `Slot overlap on ${day}: The slot ${slot.from} - ${slot.to} overlaps with ${prevSlot.from} - ${prevSlot.to}.` 
+              return res.status(400).json({
+                success: false,
+                message: `Slot overlap on ${day}: The slot ${slot.from} - ${slot.to} overlaps with ${prevSlot.from} - ${prevSlot.to}.`
               });
             }
           }
@@ -1264,6 +1423,20 @@ export const updateAvailability = async (req, res) => {
     expert.availability.breakDates = newAvailability.breakDates ?? expert.availability.breakDates ?? [];
 
     await expert.save();
+
+    syncDataChange({
+      type: "AVAILABILITY_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.availability
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { availability: expert.availability }
+    });
+
     return res.status(200).json({ success: true, message: "Availability updated", data: expert.availability });
   } catch (err) {
     console.error("updateAvailability error:", err);
@@ -1293,6 +1466,20 @@ export const deleteBreakDate = async (req, res) => {
     });
 
     await expert.save();
+
+    syncDataChange({
+      type: "AVAILABILITY_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.availability
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { availability: expert.availability }
+    });
+
     return res.status(200).json({ success: true, message: "Break date removed", data: expert.availability.breakDates });
   } catch (err) {
     console.error("deleteBreakDate error:", err);
@@ -1324,6 +1511,20 @@ export const deleteWeeklySlot = async (req, res) => {
 
     await expert.save();
     const resultSlots = weekly && typeof weekly.get === 'function' ? weekly.get(day) : (weekly ? weekly[day] : []);
+
+    syncDataChange({
+      type: "AVAILABILITY_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.availability
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { availability: expert.availability }
+    });
+
     return res.status(200).json({ success: true, message: "Slot removed", data: resultSlots });
   } catch (err) {
     console.error("deleteWeeklySlot error:", err);
@@ -1586,16 +1787,16 @@ export const getVerifiedExperts = async (req, res) => {
           from: "reviews",
           let: { expertObjId: "$userId", expertStrId: { $toString: "$userId" } },
           pipeline: [
-            { 
-              $match: { 
-                $expr: { 
-                   $or: [
-                      { $eq: ["$expertId", "$$expertObjId"] },
-                      { $eq: ["$expertId", "$$expertStrId"] }
-                   ] 
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ["$expertId", "$$expertObjId"] },
+                    { $eq: ["$expertId", "$$expertStrId"] }
+                  ]
                 },
-                isVisible: true 
-              } 
+                isVisible: true
+              }
             }
           ],
           as: "reviewsList"
@@ -1605,9 +1806,9 @@ export const getVerifiedExperts = async (req, res) => {
         $addFields: {
           avgRating: {
             $cond: {
-               if: { $gt: [{ $size: "$reviewsList" }, 0] },
-               then: { $round: [{ $avg: "$reviewsList.overallRating" }, 1] },
-               else: 0
+              if: { $gt: [{ $size: "$reviewsList" }, 0] },
+              then: { $round: [{ $avg: "$reviewsList.overallRating" }, 1] },
+              else: 0
             }
           },
           reviewCount: { $size: "$reviewsList" }
@@ -1860,6 +2061,22 @@ export const approveExpert = async (req, res) => {
     }
 
     clearVerifiedExpertsCache();
+
+    syncDataChange({
+      type: "EXPERT_STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert,
+      toAdmin: true
+    });
+    syncDataChange({
+      type: "STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert,
+      toAdmin: true
+    });
+
     return res.json({ success: true, message: "Expert approved successfully", data: expert });
   } catch (err) {
     console.error("approveExpert error:", err);
@@ -1892,6 +2109,22 @@ export const rejectExpert = async (req, res) => {
     }
 
     clearVerifiedExpertsCache();
+
+    syncDataChange({
+      type: "EXPERT_STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert,
+      toAdmin: true
+    });
+    syncDataChange({
+      type: "STATUS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert,
+      toAdmin: true
+    });
+
     return res.json({ success: true, message: "Expert rejected successfully", data: expert });
   } catch (err) {
     console.error("rejectExpert error:", err);
@@ -1903,57 +2136,167 @@ export const rejectExpert = async (req, res) => {
 export const updateExpertByAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      userName, 
-      mobile, 
+    const body = req.body || {};
+
+    const {
+      userName,
+      name,
+      email,
+      mobile,
+      phone,
+      gender,
+      dob,
+      dateOfBirth,
+      bio,
       category,
       city,
+      state,
       country,
-      title, 
-      company, 
-      totalExperience, 
+      title,
+      company,
+      totalExperience,
+      industry,
       level,
-      status 
-    } = req.body;
+      levels,
+      status,
+      domains,
+      tools,
+      languages,
+      mode,
+      linkedin,
+      price,
+      sessionDuration,
+      allowedDurations,
+      defaultMeetingLink,
+      maxPerDay
+    } = body;
 
-    // Build update object based on what's provided
-    const updateObj = {};
-    
-    if (status) updateObj.status = status;
-    
-    // Check and set personal Information
-    if (userName || mobile || category || city || country) {
-      // We use dot notation to update specific fields without wiping others
-      if (userName !== undefined) updateObj["personalInformation.userName"] = userName;
-      if (mobile !== undefined) updateObj["personalInformation.mobile"] = mobile;
-      if (category !== undefined) updateObj["personalInformation.category"] = category;
-      if (city !== undefined) updateObj["personalInformation.city"] = city;
-      if (country !== undefined) updateObj["personalInformation.country"] = country;
+    let expert = null;
+    if (isValidObjectId(id)) {
+      expert = await ExpertDetails.findById(id);
+      if (!expert) {
+        expert = await ExpertDetails.findOne({ userId: id });
+      }
     }
-
-    // Check and set professional details
-    if (title || company || totalExperience !== undefined || level) {
-      if (title !== undefined) updateObj["professionalDetails.title"] = title;
-      if (company !== undefined) updateObj["professionalDetails.company"] = company;
-      if (totalExperience !== undefined) updateObj["professionalDetails.totalExperience"] = totalExperience;
-      if (level !== undefined) updateObj["professionalDetails.level"] = level;
-    }
-
-    const expert = await ExpertDetails.findByIdAndUpdate(
-      id,
-      { $set: updateObj },
-      { new: true }
-    );
 
     if (!expert) {
       return res.status(404).json({ success: false, message: "Expert not found" });
     }
 
+    const expertId = expert._id;
+    const userId = expert.userId;
+
+    // Build update object for ExpertDetails
+    const updateObj = {};
+
+    if (status !== undefined) updateObj.status = status;
+
+    // Personal Information / Category
+    if (category !== undefined) updateObj["personalInformation.category"] = category;
+    if (userName || name) updateObj["personalInformation.userName"] = userName || name;
+    if (mobile || phone) updateObj["personalInformation.mobile"] = mobile || phone;
+    if (city !== undefined) updateObj["personalInformation.city"] = city;
+    if (state !== undefined) updateObj["personalInformation.state"] = state;
+    if (country !== undefined) updateObj["personalInformation.country"] = country;
+    if (gender !== undefined) updateObj["personalInformation.gender"] = gender;
+    if (dob || dateOfBirth) updateObj["personalInformation.dob"] = dob || dateOfBirth;
+
+    // Professional Details
+    if (title !== undefined) updateObj["professionalDetails.title"] = title;
+    if (company !== undefined) updateObj["professionalDetails.company"] = company;
+    if (totalExperience !== undefined && totalExperience !== "") updateObj["professionalDetails.totalExperience"] = Number(totalExperience);
+    if (industry !== undefined) updateObj["professionalDetails.industry"] = industry;
+    if (level !== undefined) {
+      updateObj["professionalDetails.level"] = level;
+      if (!levels) {
+        updateObj["professionalDetails.levels"] = [level];
+      }
+    }
+    if (Array.isArray(levels)) updateObj["professionalDetails.levels"] = levels;
+
+    // Skills & Expertise
+    if (mode !== undefined) updateObj["skillsAndExpertise.mode"] = mode;
+    if (domains !== undefined) {
+      updateObj["skillsAndExpertise.domains"] = Array.isArray(domains) ? domains : String(domains).split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (tools !== undefined) {
+      updateObj["skillsAndExpertise.tools"] = Array.isArray(tools) ? tools : String(tools).split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (languages !== undefined) {
+      updateObj["skillsAndExpertise.languages"] = Array.isArray(languages) ? languages : String(languages).split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    // Verification
+    if (linkedin !== undefined) {
+      let l = String(linkedin).trim();
+      if (l && !/^https?:\/\//i.test(l)) {
+        l = 'https://' + l;
+      }
+      updateObj["verification.linkedin"] = l;
+    }
+
+    // Availability
+    if (sessionDuration !== undefined && sessionDuration !== "") updateObj["availability.sessionDuration"] = Number(sessionDuration);
+    if (allowedDurations !== undefined) updateObj["availability.allowedDurations"] = Array.isArray(allowedDurations) ? allowedDurations : [Number(allowedDurations)];
+    if (defaultMeetingLink !== undefined) updateObj["availability.defaultMeetingLink"] = defaultMeetingLink;
+    if (maxPerDay !== undefined && maxPerDay !== "") updateObj["availability.maxPerDay"] = Number(maxPerDay);
+
+    const updatedExpert = await ExpertDetails.findByIdAndUpdate(
+      expertId,
+      { $set: updateObj },
+      { new: true }
+    );
+
+    // Update User model (Source of Truth for name, email, phone, city, etc.)
+    if (userId) {
+      const userUpdates = {};
+      const finalName = userName || name;
+      if (finalName) userUpdates.name = finalName;
+      if (email) userUpdates.email = email.toLowerCase().trim();
+
+      if (status) {
+        if (status === 'Active') userUpdates.status = 'Active';
+        else if (status === 'suspended' || status === 'rejected') userUpdates.status = 'Blocked';
+      }
+
+      if (mobile || phone) userUpdates["personalInfo.phone"] = mobile || phone;
+      if (gender) userUpdates["personalInfo.gender"] = gender;
+      if (dob || dateOfBirth) userUpdates["personalInfo.dateOfBirth"] = dob || dateOfBirth;
+      if (city !== undefined) userUpdates["personalInfo.city"] = city;
+      if (state !== undefined) userUpdates["personalInfo.state"] = state;
+      if (country !== undefined) userUpdates["personalInfo.country"] = country;
+      if (bio !== undefined) userUpdates["personalInfo.bio"] = bio;
+
+      if (Object.keys(userUpdates).length > 0) {
+        await User.findByIdAndUpdate(userId, { $set: userUpdates }, { new: true });
+      }
+    }
+
     clearVerifiedExpertsCache();
-    return res.json({ success: true, message: "Expert updated successfully", data: expert });
+
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: updatedExpert.userId,
+      expertId: updatedExpert._id,
+      data: updatedExpert,
+      toAdmin: true
+    });
+    syncDataChange({
+      type: "EXPERT_STATUS_UPDATED",
+      userId: updatedExpert.userId,
+      expertId: updatedExpert._id,
+      data: updatedExpert,
+      toAdmin: true
+    });
+
+    return res.json({
+      success: true,
+      message: "Expert updated successfully",
+      data: updatedExpert
+    });
   } catch (err) {
     console.error("updateExpertByAdmin error:", err);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res.status(500).json({ success: false, message: "Internal server error: " + err.message });
   }
 };
 
@@ -2109,40 +2452,43 @@ export const sendAadhaarOtpController = async (req, res) => {
       return res.status(400).json({ success: false, message: "Please enter a valid 12-digit Aadhaar number." });
     }
 
-    // Fetch user account to get the profile personal details name
-    const user = await User.findById(queryUserId);
+    const formatCheck = validateAadhaarFormat(cleanAadhaar);
+    if (!formatCheck.valid) {
+      return res.status(400).json({ success: false, message: formatCheck.message });
+    }
+
+    // Rate Limiting: Max 5 OTP requests per 10 minutes per user
+    const rateCheck = checkAadhaarRateLimit(queryUserId.toString());
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        code: "RATE_LIMITED",
+        message: rateCheck.message
+      });
+    }
+
+    // Fetch user and expert profile
+    const [expert, user] = await Promise.all([
+      ExpertDetails.findOne({ userId: queryUserId }),
+      User.findById(queryUserId)
+    ]);
     if (!user) {
       return res.status(404).json({ success: false, message: "User account not found." });
     }
 
-    const rawProfileName = (user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
-    const cleanProfileName = normalizeName(rawProfileName);
+    // Profile full name from Personal Details
+    const rawProfileName = (expert?.personalInformation?.userName || user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
 
-    // Check if profile name is complete and matches
-    const nameTokens = cleanProfileName.split(/\s+/).filter(Boolean);
-    if (nameTokens.length < 2) {
+    if (!rawProfileName || rawProfileName.length < 2) {
       return res.status(400).json({
         success: false,
-        code: "NAME_MISMATCH",
-        message: "Name in Aadhaar is not same as profile name. Please update your name in Personal Details."
+        code: "PROFILE_NAME_REQUIRED",
+        message: "Please complete your Full Name in Personal Details before verifying your Aadhaar card."
       });
     }
 
-    // Check if there is a known legal name for this Aadhaar (e.g., from Sandbox/government records)
-    const knownLegalName = getKnownLegalNameForAadhaar(cleanAadhaar);
-    if (knownLegalName) {
-      const preCheck = compareNames(cleanProfileName, knownLegalName);
-      if (!preCheck.isAcceptable) {
-        return res.status(400).json({
-          success: false,
-          code: "NAME_MISMATCH",
-          message: "Name in Aadhaar is not same as profile name. Please update your name in Personal Details."
-        });
-      }
-    }
-
-    // CHECK: ONE AADHAAR = ONE PERSON (Before sending OTP)
-    // Verify that NO other account has used or verified this Aadhaar number
+    // CHECK: IS THE AADHAAR ID USED BY ANY OTHER USER?
+    // Check if this Aadhaar number is already verified on another account
     const aadhaarHash = hashAadhaar(cleanAadhaar);
     const maskedNumber = maskAadhaar(cleanAadhaar);
 
@@ -2158,11 +2504,14 @@ export const sendAadhaarOtpController = async (req, res) => {
       return res.status(400).json({
         success: false,
         code: "AADHAAR_ALREADY_USED",
-        message: "This Aadhaar number is already linked and verified on another Mockeefy account. Each expert must use their own unique Aadhaar card."
+        message: "This Aadhaar card number is already registered and verified on another Mockeefy account. Each expert must use their own unique Aadhaar card."
       });
     }
 
-    // Send OTP with profile name
+    // Record rate limit consumption only AFTER all validations pass
+    recordAadhaarOtpSend(queryUserId.toString());
+
+    // Send OTP to Aadhaar-registered mobile
     const result = await sendAadhaarOtp(cleanAadhaar, rawProfileName);
     return res.json(result);
   } catch (err) {
@@ -2212,8 +2561,9 @@ export const verifyAadhaarOtpController = async (req, res) => {
       }
     }
 
-    const rawProfileName = (user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
+    const rawProfileName = (expert?.personalInformation?.userName || user.name || "").replace(/\s*\((expert|coach|mentor|candidate|admin|user)\)\s*/gi, "").trim();
 
+    console.log(`[VERIFY AADHAAR] Calling verifyAadhaarOtp for user "${rawProfileName}" with refId: ${referenceId}`);
     const result = await verifyAadhaarOtp({
       referenceId,
       otp,
@@ -2222,19 +2572,23 @@ export const verifyAadhaarOtpController = async (req, res) => {
     });
 
     // Legal name returned by UIDAI Aadhaar e-KYC
-    const aadhaarLegalName = result.name || getKnownLegalNameForAadhaar(cleanAadhaar) || rawProfileName;
+    const aadhaarLegalName = result.name || rawProfileName;
+    console.log(`[VERIFY AADHAAR] Profile Name: "${rawProfileName}" | Aadhaar Legal Name: "${aadhaarLegalName}"`);
 
-    // Compare profile personal details name against official legal Aadhaar name
+    // Compare names handling initials and variations
     const nameComparison = compareNames(rawProfileName, aadhaarLegalName);
+    console.log(`[VERIFY AADHAAR] Name Comparison:`, nameComparison);
 
     if (!nameComparison.isAcceptable) {
+      console.warn(`[VERIFY AADHAAR] Name mismatch: "${rawProfileName}" vs "${aadhaarLegalName}"`);
       return res.status(400).json({
         success: false,
         code: "NAME_MISMATCH",
-        message: "Name in Aadhaar is not same as profile name. Please update your name in Personal Details.",
+        message: `Name mismatch: The legal name on your Aadhaar card ("${aadhaarLegalName}") does not match the name in your Personal Details ("${rawProfileName}"). Please ensure you are verifying your own Aadhaar card, or update your name in Personal Details.`,
         matchScore: nameComparison.score,
         nameOnAadhaar: aadhaarLegalName,
-        accountName: rawProfileName
+        accountName: rawProfileName,
+        reason: nameComparison.reason
       });
     }
 
@@ -2248,17 +2602,37 @@ export const verifyAadhaarOtpController = async (req, res) => {
       nameOnAadhaar: aadhaarLegalName,
       nameMatchScore: nameComparison.score,
       nameMatchStatus: "MATCH",
+      consentGiven: true,
+      consentTimestamp: new Date(),
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
+      purpose: "Identity Verification for Mockeefy Expert Onboarding",
       url: expert.verification.aadhar?.url || "",
       name: expert.verification.aadhar?.name || ""
     };
 
-    // Lock User Account Name to the verified government Aadhaar legal name
-    if (aadhaarLegalName) {
-      user.name = aadhaarLegalName;
-      await user.save();
-    }
+    // Lock User and Expert Account Names to the verified government Aadhaar legal name
+    user.name = aadhaarLegalName;
+    await user.save();
+
+    if (!expert.personalInformation) expert.personalInformation = {};
+    expert.personalInformation.userName = aadhaarLegalName;
 
     await expert.save({ validateBeforeSave: false });
+
+    console.log(`[VERIFY AADHAAR SUCCESS] Aadhaar successfully verified for user ${user._id}`);
+
+    syncDataChange({
+      type: "VERIFICATION_UPDATED",
+      userId: user._id,
+      expertId: expert._id,
+      data: { aadhar: expert.verification.aadhar, matchScore: nameComparison.score, matchStatus: nameComparison.status }
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: user._id,
+      expertId: expert._id,
+      data: { name: aadhaarLegalName, personalInformation: expert.personalInformation, verification: expert.verification }
+    });
 
     return res.json({
       success: true,
@@ -2268,7 +2642,7 @@ export const verifyAadhaarOtpController = async (req, res) => {
       matchStatus: nameComparison.status
     });
   } catch (err) {
-    console.error("verifyAadhaarOtpController error:", err);
+    console.error("verifyAadhaarOtpController error:", err.message || err);
     return res.status(400).json({ success: false, message: err.message || "Failed to verify Aadhaar OTP" });
   }
 };
@@ -2295,6 +2669,13 @@ export const resetAadhaarVerification = async (req, res) => {
     };
 
     await expert.save({ validateBeforeSave: false });
+
+    syncDataChange({
+      type: "VERIFICATION_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { aadhar: expert.verification.aadhar }
+    });
 
     return res.json({
       success: true,
@@ -2370,6 +2751,19 @@ export const saveExpertAgreement = async (req, res) => {
 
     await expert.save({ validateBeforeSave: false });
 
+    syncDataChange({
+      type: "AGREEMENT_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.agreement
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { agreement: expert.agreement }
+    });
+
     return res.json({
       success: true,
       message: "Expert agreement successfully signed and recorded",
@@ -2380,3 +2774,4 @@ export const saveExpertAgreement = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message || "Failed to save agreement" });
   }
 };
+

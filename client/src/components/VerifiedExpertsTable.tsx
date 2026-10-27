@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from '../lib/axios';
+import { useDataSync } from "../context/SocketContext";
 import { ChevronLeft, ChevronRight, Search, RefreshCw, Eye, FileText, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -121,6 +122,13 @@ const VerifiedExpertsTable = () => {
     fetchSessions(); // Fetch sessions too
   }, []);
 
+  // Real-time synchronization for verified experts and sessions
+  useDataSync(['EXPERT_STATUS_UPDATED', 'STATUS_UPDATED', 'PROFILE_UPDATED', 'SESSION_CREATED', 'SESSION_UPDATED', 'RECONNECTED'], () => {
+    console.log('[VerifiedExpertsTable] Real-time sync event received');
+    fetchVerifiedExperts();
+    fetchSessions();
+  });
+
   // Effect to reset pagination when search changes
   useEffect(() => {
     setCurrentPage(1);
@@ -146,8 +154,17 @@ const VerifiedExpertsTable = () => {
     if (!editingExpert) return;
     try {
       const formData = new FormData(e.currentTarget);
-      const data = Object.fromEntries(formData);
+      const data: Record<string, any> = Object.fromEntries(formData);
       
+      // Auto-prefix https:// if user typed www.linkedin.com or linkedin.com
+      if (typeof data.linkedin === 'string' && data.linkedin.trim()) {
+        let l = data.linkedin.trim();
+        if (!/^https?:\/\//i.test(l)) {
+          l = 'https://' + l;
+        }
+        data.linkedin = l;
+      }
+
       const response = await axios.put(`/api/expert/admin/update/${editingExpert._id}`, data);
       if (response.data.success) {
         toast.success("Expert updated successfully");
@@ -156,8 +173,8 @@ const VerifiedExpertsTable = () => {
       } else {
         toast.error(response.data.message || "Failed to update expert");
       }
-    } catch (error) {
-      toast.error("Error updating expert");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error updating expert");
     }
   };
 
@@ -580,7 +597,7 @@ const VerifiedExpertsTable = () => {
             </div>
 
             <div className="p-6 overflow-y-auto">
-              <form id="edit-expert-form" onSubmit={handleEditSubmit} className="space-y-6">
+              <form id="edit-expert-form" onSubmit={handleEditSubmit} noValidate className="space-y-6">
                 
                 {/* Status Update */}
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
@@ -607,6 +624,15 @@ const VerifiedExpertsTable = () => {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                    <input 
+                      type="email" 
+                      name="email" 
+                      defaultValue={editingExpert.userDetails?.email || ''}
+                      className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Mobile</label>
                     <input 
                       type="text" 
@@ -624,7 +650,7 @@ const VerifiedExpertsTable = () => {
                       className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Expert Level</label>
                     <select 
                       name="level" 
@@ -635,6 +661,11 @@ const VerifiedExpertsTable = () => {
                       <option value="Intermediate">Intermediate</option>
                       <option value="Advanced">Advanced</option>
                       <option value="Expert">Expert</option>
+                      <option value="Rising Mentor">Rising Mentor</option>
+                      <option value="Professional Mentor">Professional Mentor</option>
+                      <option value="Senior Mentor">Senior Mentor</option>
+                      <option value="Elite Mentor">Elite Mentor</option>
+                      <option value="FAANG Mentor">FAANG Mentor</option>
                     </select>
                   </div>
                 </div>
@@ -656,6 +687,16 @@ const VerifiedExpertsTable = () => {
                       name="company" 
                       defaultValue={editingExpert.professionalDetails.company}
                       className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Industry</label>
+                    <input 
+                      type="text" 
+                      name="industry" 
+                      defaultValue={editingExpert.professionalDetails?.industry || ''}
+                      className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g. IT, FinTech, EdTech"
                     />
                   </div>
                   <div>
@@ -686,6 +727,26 @@ const VerifiedExpertsTable = () => {
                       name="country" 
                       defaultValue={editingExpert.personalInformation.country}
                       className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">LinkedIn Profile</label>
+                    <input 
+                      type="text" 
+                      name="linkedin" 
+                      defaultValue={editingExpert.verification?.linkedin || ''}
+                      className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g. www.linkedin.com/in/... or full URL"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Domains / Expertise (comma-separated)</label>
+                    <input 
+                      type="text" 
+                      name="domains" 
+                      defaultValue={editingExpert.skillsAndExpertise?.domains?.join(', ') || ''}
+                      className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g. Frontend Development, React, System Design"
                     />
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import Notification from '../models/Notification.js';
-import { emitToUser } from '../services/socketService.js';
+import { emitToUser, syncDataChange } from '../services/socketService.js';
 
 // Get all notifications for a user
 export const getNotifications = async (req, res) => {
@@ -42,6 +42,13 @@ export const markAsRead = async (req, res) => {
                 { isRead: true }
             );
         }
+
+        emitToUser(userId, 'notification_read', { notificationIds });
+        syncDataChange({
+            type: 'NOTIFICATION_SYNC',
+            userId,
+            data: { notificationIds }
+        });
 
         res.json({ success: true });
     } catch (error) {

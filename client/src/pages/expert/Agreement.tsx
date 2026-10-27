@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from '../../lib/axios';
 import { toast } from 'sonner';
+import { useDataSync } from '../../context/SocketContext';
 import { 
   FileText, 
   CheckCircle, 
@@ -88,6 +89,12 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
   useEffect(() => {
     fetchAgreement();
   }, []);
+
+  // Real-time synchronization when agreement is signed/updated in another session or admin
+  useDataSync(['AGREEMENT_UPDATED', 'RECONNECTED'], () => {
+    console.log('[Agreement] Received real-time AGREEMENT_UPDATED event');
+    fetchAgreement();
+  });
 
   const fetchAgreement = async () => {
     try {

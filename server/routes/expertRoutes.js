@@ -41,21 +41,23 @@ import {
 
 import { authenticateToken } from "../controllers/authController.js";
 import { uploadProfile, uploadVerification } from "../middleware/upload.js";
-import { admin } from "../middleware/authMiddleware.js";
+import { protect, admin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Public Routes
-router.post('/search', searchExperts); // Public search
+// Public Routes (Accessible for candidate browsing & search)
+router.post('/search', searchExperts);
 router.get("/all-experts", getAllExperts);
-router.get("/pending", getPendingExperts);
 router.get("/verified", getVerifiedExperts);
 router.get("/verified-experts", getVerifiedExperts); // Alias for compatibility
-router.get("/rejected", getRejectedExperts);
-router.put("/approve/:id", approveExpert);
-router.put("/reject/:id", rejectExpert);
-router.put("/admin/update/:id", admin, updateExpertByAdmin); // Admin endpoint to edit expert details
-router.get("/public/profile/:id", getPublicExpertById); // New Public Profile getter (PII stripped)
+router.get("/public/profile/:id", getPublicExpertById); // Public Profile (PII stripped)
+
+// Admin-Only Expert Verification & Status Management
+router.get("/pending", protect, admin, getPendingExperts);
+router.get("/rejected", protect, admin, getRejectedExperts);
+router.put("/approve/:id", protect, admin, approveExpert);
+router.put("/reject/:id", protect, admin, rejectExpert);
+router.put("/admin/update/:id", protect, admin, updateExpertByAdmin); // Admin endpoint to edit expert details
 
 // Protect all expert routes
 router.use(authenticateToken);
@@ -63,8 +65,15 @@ router.use(authenticateToken);
 // Profile
 router.get("/profile", getExpertProfile);
 router.get("/stats", getExpertStats);
-router.get("/admin/profile/:id", admin, getExpertById); // Restricted to Admin role only
-router.post("/profile/photo", uploadProfile.single("photo"), uploadProfilePhoto);
+router.get("/admin/profile/:id", protect, admin, getExpertById); // Restricted to Admin role only
+router.post(
+  "/profile/photo",
+  uploadProfile.fields([
+    { name: "photo", maxCount: 1 },
+    { name: "originalPhoto", maxCount: 1 }
+  ]),
+  uploadProfilePhoto
+);
 router.get("/profile/image", getExpertProfileImage);
 
 // The rest of your expert routes (implementations must exist in controller)

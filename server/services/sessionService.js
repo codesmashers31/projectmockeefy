@@ -84,12 +84,43 @@ export const getSessionsForUser = async (userId, role) => {
                         overallRating: review.overallRating,
                         technicalRating: review.technicalRating,
                         communicationRating: review.communicationRating,
+                        problemSolvingRating: review.problemSolvingRating,
+                        designRating: review.designRating,
+                        behavioralRating: review.behavioralRating,
+                        hiringDecision: review.hiringDecision || 'Hire',
+                        recommendation: review.recommendation || '',
                         feedback: review.feedback,
+                        suggestions: review.suggestions,
                         strengths: review.strengths,
                         weaknesses: review.weaknesses
                     };
                 }
             }
+
+            let candidateResume = null;
+            if (candidate?._id) {
+                try {
+                    const Resume = (await import('../models/Resume.js')).default;
+                    candidateResume = await Resume.findOne({ userId: candidate._id, isDefault: true }).lean();
+                    if (!candidateResume) {
+                        candidateResume = await Resume.findOne({ userId: candidate._id }).sort({ updatedAt: -1 }).lean();
+                    }
+                } catch (resErr) {
+                    console.error("Resume lookup failed:", resErr);
+                }
+            }
+
+            const candidatePhone = candidate?.personalInfo?.phone || "";
+            const candidateLocation = [candidate?.personalInfo?.city, candidate?.personalInfo?.state, candidate?.personalInfo?.country].filter(Boolean).join(', ');
+            const candidateSkills = [
+                ...(candidate?.skills?.technical || []),
+                ...(candidate?.skills?.soft || [])
+            ];
+            const candidateEducation = candidate?.education || [];
+            const candidateExperience = candidate?.experience || [];
+            const candidateResumeUrl = `/api/sessions/${session.sessionId}/resume`;
+            const candidateRawResumeUrl = candidateResume?.fileUrl || null;
+            const candidateResumeName = candidateResume?.fileName || (candidateName ? `${candidateName.replace(/\s+/g, '_')}_Resume.pdf` : 'Resume.pdf');
 
             return {
                 ...session,
@@ -105,7 +136,16 @@ export const getSessionsForUser = async (userId, role) => {
                 candidateDetails: candidate ? {
                     name: candidateName,
                     email: candidate.email,
-                    profileImage: candidate.profileImage
+                    phone: candidatePhone,
+                    location: candidateLocation,
+                    profileImage: candidate.profileImage,
+                    skills: candidateSkills,
+                    education: candidateEducation,
+                    experience: candidateExperience,
+                    resumeUrl: candidateResumeUrl,
+                    rawResumeUrl: candidateRawResumeUrl,
+                    resumeName: candidateResumeName,
+                    resumeData: candidateResume || null
                 } : null
             };
         } catch (err) {
@@ -253,7 +293,7 @@ export const getSessionsByExpertId = async (expertId) => {
             if (mongoose.Types.ObjectId.isValid(id) && typeof id === 'string') {
                 try {
                     queryIds.push(new mongoose.Types.ObjectId(id));
-                } catch (_) {}
+                } catch (_) { }
             }
         }
     }

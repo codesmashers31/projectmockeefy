@@ -16,6 +16,15 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// IDOR & Authorization ownership helper
+const isAuthorizedUserOrAdmin = (req, targetUserId) => {
+    if (!req.user) return false;
+    const reqRole = (req.user.userType || req.user.role || '').toLowerCase();
+    if (reqRole === 'admin') return true;
+    const reqUserId = (req.user.userId || req.user.id || req.user._id || '').toString();
+    return reqUserId === targetUserId?.toString();
+};
+
 // Add a Payout Method
 export const addPayoutMethod = async (req, res) => {
     try {
@@ -23,6 +32,10 @@ export const addPayoutMethod = async (req, res) => {
         
         if (!userId || !type || !details || !email || !otp) {
             return res.status(400).json({ success: false, message: "Missing required fields, including email and OTP" });
+        }
+
+        if (!isAuthorizedUserOrAdmin(req, userId)) {
+            return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
         // Verify OTP securely
@@ -58,6 +71,9 @@ export const addPayoutMethod = async (req, res) => {
 export const getPayoutMethods = async (req, res) => {
     try {
         const { userId } = req.params;
+        if (!isAuthorizedUserOrAdmin(req, userId)) {
+            return res.status(403).json({ success: false, message: "Unauthorized access." });
+        }
         const methods = await PayoutMethod.find({ userId, status: 'active' });
         res.status(200).json({ success: true, data: methods });
     } catch (error) {
@@ -73,6 +89,10 @@ export const setDefaultPayoutMethod = async (req, res) => {
 
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID is required" });
+        }
+
+        if (!isAuthorizedUserOrAdmin(req, userId)) {
+            return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
         // Unset previous defaults
@@ -106,6 +126,10 @@ export const initiatePayout = async (req, res) => {
 
         if (!expertId || !amount) {
             return res.status(400).json({ success: false, message: "Missing required fields: expertId and amount" });
+        }
+
+        if (!isAuthorizedUserOrAdmin(req, expertId)) {
+            return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
         if (amount < 5) {
@@ -399,6 +423,10 @@ export const getUserEarningsSummary = async (req, res) => {
     try {
         const { userId } = req.params;
 
+        if (!isAuthorizedUserOrAdmin(req, userId)) {
+            return res.status(403).json({ success: false, message: "Unauthorized access." });
+        }
+
         const user = await User.findById(userId);
         let wallet = await Wallet.findOne({ userId });
         
@@ -460,6 +488,10 @@ export const getUserEarningsSummary = async (req, res) => {
 export const getPayoutHistory = async (req, res) => {
     try {
         const { userId } = req.params;
+
+        if (!isAuthorizedUserOrAdmin(req, userId)) {
+            return res.status(403).json({ success: false, message: "Unauthorized access." });
+        }
         const payouts = await PayoutRequest.find({ expertId: userId })
             .populate('methodId')
             .sort({ createdAt: -1 });

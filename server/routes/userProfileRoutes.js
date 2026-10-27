@@ -21,12 +21,16 @@ import {
     duplicateResume,
     getAISuggestions,
     uploadResumeFile,
-    deleteProfileImage
+    deleteProfileImage,
+    getResumeFileById
 } from "../controllers/userProfileController.js";
 import { uploadUserProfile, uploadResume } from "../middleware/upload.js";
 import { authenticateToken } from "../controllers/authController.js";
 
 const router = express.Router();
+
+// Public / Tab-friendly resume file streaming route (must precede strict token auth)
+router.get("/resumes/:id/file", getResumeFileById);
 
 // Protect all user routes (Phase 5.2)
 router.use(authenticateToken);
@@ -66,7 +70,14 @@ router.put("/profile/skills", updateSkills);
 router.put("/profile/preferences", updatePreferences);
 
 // Upload & delete profile image
-router.post("/profile/image", uploadUserProfile.single("profileImage"), saveProfileImage);
+router.post(
+  "/profile/image",
+  uploadUserProfile.fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "originalProfileImage", maxCount: 1 }
+  ]),
+  saveProfileImage
+);
 router.delete("/profile/image", deleteProfileImage);
 
 export default router;

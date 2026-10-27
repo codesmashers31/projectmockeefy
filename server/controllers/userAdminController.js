@@ -1,5 +1,6 @@
 
 import User from "../models/User.js";
+import { syncDataChange } from "../services/socketService.js";
 
 // @desc    Get all users (candidates & experts, excluding admins?)
 // @route   GET /api/admin/users
@@ -33,6 +34,13 @@ export const toggleUserStatus = async (req, res) => {
         // Toggle status
         user.status = user.status === 'Active' ? 'Blocked' : 'Active';
         await user.save();
+
+        syncDataChange({
+            type: "USER_STATUS_UPDATED",
+            userId: user._id,
+            data: { _id: user._id, status: user.status },
+            toAdmin: true
+        });
 
         res.status(200).json({
             success: true,

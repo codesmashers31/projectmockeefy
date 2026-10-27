@@ -83,12 +83,13 @@ const allowedOrigins = [
 
 const isDev = process.env.NODE_ENV !== "production";
 const devOriginRegex = /^https?:\/\/[^/]+:(5173|5174)$/;
+const localDevRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 const renderFrontendRegex = /^https:\/\/[a-z0-9-]+\.onrender\.com$/;
 
 function isOriginAllowed(origin) {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
-  if (isDev && devOriginRegex.test(origin)) return true;
+  if (isDev && (localDevRegex.test(origin) || devOriginRegex.test(origin))) return true;
   if (renderFrontendRegex.test(origin)) return true;
   return false;
 }
@@ -252,3 +253,5 @@ const PORT = process.env.PORT || 5000;
 // }
 
 httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Reload trigger
+

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import axios from "../lib/axios";
 import { toast } from "sonner";
 import { Search, RefreshCw, ChevronLeft, ChevronRight, User, Shield, ShieldAlert, Calendar } from "lucide-react";
+import { useDataSync } from "../context/SocketContext";
 
 interface UserData {
   _id: string;
@@ -40,6 +41,10 @@ const UsersTable = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useDataSync(["USER_STATUS_UPDATED", "PROFILE_UPDATED", "RECONNECTED"], () => {
+    fetchUsers();
+  });
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     try {

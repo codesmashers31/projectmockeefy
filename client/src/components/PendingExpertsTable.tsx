@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from '../lib/axios';
+import { useDataSync } from "../context/SocketContext";
 import { ChevronLeft, ChevronRight, Search, X, RefreshCw, Eye, CheckCircle, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { getProfileImageUrl } from "../lib/imageUtils";
@@ -191,6 +192,10 @@ const PendingExpertsTable: React.FC = () => {
     useEffect(() => {
         fetchPendingExperts();
     }, []);
+
+    useDataSync(["STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "VERIFICATION_UPDATED", "RECONNECTED"], () => {
+        fetchPendingExperts();
+    });
 
     // Effect to reset pagination when search changes
     useEffect(() => {

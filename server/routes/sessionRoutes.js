@@ -23,6 +23,7 @@ router.get('/expert/:expertId', optionalProtect, sessionController.getSessionsBy
 router.get('/:sessionId/reviews', protect, sessionController.getSessionReviews);
 router.post('/:sessionId/review', protect, sessionController.submitReview);
 router.post('/:sessionId/request-feedback', protect, sessionController.requestFeedback);
+router.get('/:sessionId/resume', optionalProtect, sessionController.getCandidateResume);
 router.post('/', protect, sessionController.createSession);
 
 export default router;
