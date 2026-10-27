@@ -429,7 +429,8 @@ export const getSessionsByCandidate = async (req, res) => {
                         strengths: expertReview.strengths,
                         weaknesses: expertReview.weaknesses,
                         feedback: expertReview.feedback,
-                        suggestions: expertReview.suggestions
+                        suggestions: expertReview.suggestions,
+                        createdAt: expertReview.createdAt
                     } : null,
                     candidateReview: candidateReview ? {
                         overallRating: candidateReview.overallRating,
@@ -784,13 +785,14 @@ export const submitReview = async (req, res) => {
                 try {
                     let candidateEmail = null;
                     let candidateUserId = null;
+                    const candIdStr = String(candidateId || session.candidateId || '');
 
-                    if (candidateId.includes('@')) {
-                        candidateEmail = candidateId;
-                        const user = await User.findOne({ email: candidateId });
+                    if (candIdStr.includes('@')) {
+                        candidateEmail = candIdStr;
+                        const user = await User.findOne({ email: candIdStr.toLowerCase() });
                         if (user) candidateUserId = user._id;
-                    } else {
-                        const candidate = await User.findById(candidateId);
+                    } else if (candIdStr) {
+                        const candidate = await User.findById(candIdStr).catch(() => null);
                         if (candidate) {
                             candidateEmail = candidate.email;
                             candidateUserId = candidate._id;

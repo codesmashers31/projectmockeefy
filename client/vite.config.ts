@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "html2canvas": "html2canvas-pro",
     },
   },
   server: {
@@ -35,7 +36,7 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-icons': ['lucide-react'],
-          'vendor-pdf': ['jspdf', 'html2canvas'],
+          'vendor-pdf': ['jspdf', 'html2canvas-pro'],
         },
       },
     },

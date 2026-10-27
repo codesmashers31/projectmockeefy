@@ -103,12 +103,42 @@ export const showBookingSuccessAlert = ({
     confirmButtonColor: "#0755E8",
     allowOutsideClick: false,
     allowEscapeKey: false,
+    scrollbarPadding: true,
     customClass: {
       popup: "swal-professional-popup",
       container: "swal-top-container",
       confirmButton: "swal-professional-btn",
     },
     buttonsStyling: true,
+    didOpen: (popup) => {
+      // Strictly prevent background scroll events on both touch devices and desktop wheels
+      const preventScroll = (e: Event) => {
+        if (popup && popup.contains(e.target as Node)) {
+          if (popup.scrollHeight > popup.clientHeight) {
+            return;
+          }
+        }
+        e.preventDefault();
+      };
+
+      window.addEventListener("wheel", preventScroll, { passive: false });
+      window.addEventListener("touchmove", preventScroll, { passive: false });
+
+      // Save listener reference on popup element for clean unbinding
+      (popup as any).__swalScrollPreventer = preventScroll;
+    },
+    willClose: (popup) => {
+      const preventScroll = (popup as any)?.__swalScrollPreventer;
+      if (preventScroll) {
+        window.removeEventListener("wheel", preventScroll);
+        window.removeEventListener("touchmove", preventScroll);
+      }
+    },
+    didDestroy: () => {
+      // In case willClose didn't run, ensure body and html are restored
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    },
   }).then((result) => {
     onConfirm();
     return result;

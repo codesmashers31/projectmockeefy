@@ -135,11 +135,7 @@ export default function TipsPage() {
   };
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
-
+    <div className="relative w-full bg-white border border-slate-200/90 rounded-[28px] p-6 md:p-8 shadow-[0_6px_28px_-4px_rgba(15,23,42,0.11),0_2px_8px_-2px_rgba(15,23,42,0.06)] ring-1 ring-slate-900/[0.05] overflow-hidden pb-12 font-sans text-left">
       <div className="w-full space-y-6 relative z-10">
         {/* Header - simple, flat title row with icon */}
         <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">

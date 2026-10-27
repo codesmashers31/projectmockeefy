@@ -1,11 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "../lib/axios";
-import { Award, ChevronRight, Download, X } from "lucide-react";
-import { getProfileImageUrl } from "../lib/imageUtils";
-import MockeefyLogo from "../components/MockeefyLogo";
-// @ts-ignore
-import html2pdf from "html2pdf.js";
+import {
+  Award,
+  ChevronRight,
+  Download,
+  X,
+  Briefcase,
+  CheckCircle2,
+  Calendar,
+  Loader2,
+  Sparkles,
+  ShieldCheck,
+  FileCheck,
+  Eye
+} from "lucide-react";
+import { toast } from "sonner";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
+import CertificatesSkeleton from "../components/CertificatesSkeleton";
 
 type ReviewInfo = {
   overallRating?: number;
@@ -14,6 +28,7 @@ type ReviewInfo = {
   feedback?: string;
   strengths?: string[];
   weaknesses?: string[];
+  createdAt?: string;
 };
 
 type Session = {
@@ -21,283 +36,693 @@ type Session = {
   sessionId: string;
   expert: string;
   profileImage?: string | null;
+  company?: string | null;
+  role?: string | null;
+  topic?: string | null;
   startTime?: string;
+  endTime?: string;
   category?: string;
   status: string;
   expertReview?: ReviewInfo | null;
   candidateReview?: ReviewInfo | null;
 };
 
-// Certificate Template for full A4 landscape rendering (hidden in page, captured by html2pdf)
+// Certificate Template matching the official Mockefy Certificate of Completion design
+// Styled with standard web hex colors to guarantee 100% vector-crisp PDF capture without modern CSS parser collisions
 const CertificateTemplate = ({
   userName,
-  isMaster,
-  category,
+  domain = "IT",
   expertName,
-  issueDate,
-  certId
+  issueDateStr,
+  certId,
+  isMaster = false
 }: {
   userName: string;
-  isMaster: boolean;
-  category?: string;
+  domain?: string;
   expertName?: string;
-  issueDate: string;
+  issueDateStr: string;
   certId: string;
+  isMaster?: boolean;
 }) => {
+  const displayDomain = (domain || "IT").toUpperCase();
+
   return (
-    <div className="w-[842px] h-[595px] p-2 bg-white border-2 border-[#002366] relative font-serif flex flex-col box-border">
-      {/* Inner thin border frame */}
-      <div className="w-full h-full p-8 border border-[#002366] flex flex-col justify-between relative box-border bg-[#fafbfc]">
-        {/* Header Ornaments */}
-        <div className="text-center mt-2 flex flex-col items-center">
-          <div className="w-12 h-12 shadow-md mb-2">
-            <MockeefyLogo className="w-full h-full object-contain" variant="brand" />
+    <div
+      className="relative overflow-hidden select-none box-border"
+      style={{
+        width: "1000px",
+        height: "707px",
+        backgroundColor: "#FFFFFF",
+        color: "#0A2540",
+        fontFamily: "'Source Sans 3', 'Segoe UI', Arial, sans-serif",
+      }}
+    >
+      {/* SVG Decorative Background: Corners, Waves, Borders */}
+      <svg
+        className="absolute inset-0 pointer-events-none"
+        style={{ width: "1000px", height: "707px" }}
+        viewBox="0 0 1000 707"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="certGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FDE68A" />
+            <stop offset="35%" stopColor="#D4AF37" />
+            <stop offset="70%" stopColor="#AA7C11" />
+            <stop offset="100%" stopColor="#E2B755" />
+          </linearGradient>
+          <linearGradient id="certNavyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#0B2545" />
+            <stop offset="100%" stopColor="#06182B" />
+          </linearGradient>
+        </defs>
+
+        {/* 1. TOP-LEFT CORNER DECORATION */}
+        <path d="M 0,260 Q 180,240 260,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.6" />
+        <path d="M 0,290 Q 200,260 290,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.45" />
+        <path d="M 0,320 Q 220,280 320,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.3" />
+        <path d="M 0,350 Q 240,300 350,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.18" />
+
+        {/* Navy and Gold geometric corner polygons */}
+        <polygon points="0,0 230,0 0,230" fill="url(#certNavyGrad)" />
+        <polygon points="0,0 155,0 0,210" fill="#06182B" />
+        <polygon points="0,215 15,225 225,15 215,0 195,0 0,195" fill="url(#certGoldGrad)" />
+        <polygon points="0,110 110,0 75,0 0,75" fill="url(#certGoldGrad)" opacity="0.35" />
+
+        {/* 2. BOTTOM-RIGHT CORNER DECORATION (Mirrored) */}
+        <g transform="translate(1000, 707) rotate(180)">
+          <path d="M 0,260 Q 180,240 260,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.6" />
+          <path d="M 0,290 Q 200,260 290,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.45" />
+          <path d="M 0,320 Q 220,280 320,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.3" />
+          <path d="M 0,350 Q 240,300 350,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.18" />
+
+          <polygon points="0,0 230,0 0,230" fill="url(#certNavyGrad)" />
+          <polygon points="0,0 155,0 0,210" fill="#06182B" />
+          <polygon points="0,215 15,225 225,15 215,0 195,0 0,195" fill="url(#certGoldGrad)" />
+          <polygon points="0,110 110,0 75,0 0,75" fill="url(#certGoldGrad)" opacity="0.35" />
+        </g>
+
+        {/* 3. DUAL REFINED BORDER FRAME */}
+        <rect x="26" y="26" width="948" height="655" fill="none" stroke="#0A2540" strokeWidth="1.5" />
+
+        {/* Inner stepped/notched gold and navy border */}
+        <path
+          d="M 54,38 L 946,38 L 946,54 L 962,54 L 962,653 L 946,653 L 946,669 L 54,669 L 54,653 L 38,653 L 38,54 L 54,54 Z"
+          fill="none"
+          stroke="url(#certGoldGrad)"
+          strokeWidth="1.2"
+        />
+        <path
+          d="M 57,41 L 943,41 L 943,57 L 959,57 L 959,650 L 943,650 L 943,666 L 57,666 L 57,650 L 41,650 L 41,57 L 57,57 Z"
+          fill="none"
+          stroke="#0A2540"
+          strokeWidth="0.6"
+          opacity="0.4"
+        />
+      </svg>
+
+      {/* Main Content Layout */}
+      <div className="relative z-10 w-full h-full flex flex-col justify-between py-10 px-16 box-border text-center">
+        {/* Top: Mockefy Logo, Name, Verified Badge & Tagline */}
+        <div className="flex flex-col items-center mt-1">
+          <div className="flex items-center justify-center gap-2.5">
+            {/* Logo Icon */}
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #0D6EFD, #0048BA)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#FFFFFF",
+                fontWeight: 900,
+                fontSize: "22px",
+              }}
+            >
+              M
+            </div>
+            {/* Brand Name */}
+            <span style={{ fontSize: "30px", fontWeight: 900, color: "#0A2540", letterSpacing: "-0.5px" }}>
+              Mockefy
+            </span>
+            {/* Verified Check Badge */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#0755E8">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5l-4-4 1.41-1.41L11 13.67l6.59-6.59L19 8.5l-8 8z" />
+            </svg>
           </div>
-          <div className="text-[9px] font-sans font-bold text-gray-550 tracking-[0.25em] uppercase leading-none">
-            Mockeefy Certified Assessment
-          </div>
-          
-          {/* Gold Diamond Divider */}
-          <div className="flex items-center justify-center gap-2.5 w-60 mx-auto mt-2">
-            <div className="h-[1px] bg-amber-500/50 flex-1" />
-            <div className="w-1.5 h-1.5 bg-amber-500 rotate-45" />
-            <div className="h-[1px] bg-amber-500/50 flex-1" />
+          <div style={{ fontSize: "9.5px", fontWeight: 700, color: "#475569", letterSpacing: "0.35em", textTransform: "uppercase", marginTop: "8px" }}>
+            P R A C T I C E . &nbsp; I M P R O V E . &nbsp; S U C C E E D .
           </div>
         </div>
 
-        {/* Certificate Content */}
-        <div className="text-center space-y-4 my-auto">
-          <h1 className="text-5xl font-serif text-[#002366] tracking-[0.2em] uppercase font-bold leading-none">
-            M O C K E E F Y
-          </h1>
-          <p className="text-[10px] text-gray-550 font-sans tracking-widest uppercase leading-none mt-2">
-            This verified credential is proudly conferred upon
-          </p>
-          <h2 className="text-4xl font-bold font-serif text-[#002366] tracking-wide mt-3">
+        {/* Center: Certificate of Completion & Recipient */}
+        <div className="my-auto space-y-3 py-1">
+          {/* Main Title */}
+          <div className="space-y-2">
+            <h1
+              style={{
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                fontSize: "40px",
+                fontWeight: 700,
+                color: "#0A2540",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                lineHeight: 1.15,
+                margin: 0,
+              }}
+            >
+              CERTIFICATE <span style={{ fontSize: "24px", fontWeight: 400, opacity: 0.85 }}>OF</span> COMPLETION
+            </h1>
+
+            {/* Divider with Center Diamond */}
+            <div className="flex items-center justify-center gap-2 max-w-sm mx-auto" style={{ maxWidth: "340px", margin: "6px auto" }}>
+              <div style={{ height: "1px", backgroundColor: "#0A2540", opacity: 0.35, flex: 1 }} />
+              <div style={{ width: "6px", height: "6px", backgroundColor: "#0A2540", transform: "rotate(45deg)" }} />
+              <div style={{ height: "1px", backgroundColor: "#0A2540", opacity: 0.35, flex: 1 }} />
+            </div>
+          </div>
+
+          {/* Subtitle */}
+          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.28em", color: "#475569", textTransform: "uppercase", paddingTop: "4px" }}>
+            THIS CERTIFIES THAT
+          </div>
+
+          {/* Recipient Name */}
+          <div
+            style={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: "36px",
+              fontWeight: 700,
+              color: "#0A2540",
+              letterSpacing: "0.02em",
+            }}
+          >
             {userName}
-          </h2>
+          </div>
 
-          {/* Gold Diamond Divider (Single Diamond) */}
-          <div className="w-2 h-2 bg-amber-500 rotate-45 mx-auto my-2" />
-
-          <p className="text-[12px] font-sans text-gray-750 max-w-xl mx-auto leading-relaxed">
+          {/* Achievement Description mentioning Domain */}
+          <p
+            style={{
+              fontSize: "12.5px",
+              color: "#475569",
+              maxWidth: "640px",
+              margin: "0 auto",
+              lineHeight: 1.6,
+            }}
+          >
             {isMaster ? (
               <span>
-                for successfully completing the <strong>Mockeefy Master Interview Readiness Program</strong>, comprising 3+ comprehensive mock interview simulations guided by verified industry experts.
+                Successfully completed the comprehensive{" "}
+                <strong style={{ color: "#0A2540", fontWeight: 700 }}>Mockeefy Master Interview Readiness Program</strong>,
+                demonstrating superior technical expertise, problem-solving, and professional interview readiness across domains.
               </span>
             ) : (
               <span>
-                for successfully completing a comprehensive <strong>{category || "IT"} Mock Interview Simulation</strong> under the guidance of verified industry experts.
+                Successfully completed a structured mock interview in the{" "}
+                <strong style={{ color: "#0A2540", fontWeight: 700 }}>{displayDomain}</strong> domain,
+                demonstrating dedication to improving interview skills and professional growth.
               </span>
             )}
           </p>
 
-          {/* Certificate ID block */}
-          <div className="flex flex-col items-center pt-2">
-            <span className="text-[6px] uppercase tracking-wider text-gray-400 font-bold font-sans">Certificate ID</span>
-            <span className="text-[11px] font-mono font-bold text-[#002366] border-y border-amber-500/40 py-1 px-5 mt-0.5">
-              {certId}
-            </span>
+          {/* Domain Ribbon Banner with Gold Accents */}
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <div style={{ width: "60px", height: "1.5px", backgroundColor: "#D4AF37" }} />
+            <div
+              style={{
+                position: "relative",
+                padding: "7px 28px",
+                borderRadius: "9999px",
+                backgroundColor: "#06182B",
+                border: "1px solid #D4AF37",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "0.18em", color: "#FFFFFF", textTransform: "uppercase" }}>
+                {isMaster ? "MASTER INTERVIEW EXCELLENCE" : `${displayDomain} PROFESSIONAL MOCK INTERVIEW SESSION`}
+              </span>
+            </div>
+            <div style={{ width: "60px", height: "1.5px", backgroundColor: "#D4AF37" }} />
           </div>
         </div>
 
-        {/* Footer containing seal, dates, signatures */}
-        <div className="flex items-end justify-between px-4 pb-2">
-          {/* Left Part: ASSESSING BOARD */}
-          <div className="flex flex-col items-center pb-4 text-center">
-            <div className="w-36 flex items-center gap-1">
-              <div className="h-[1px] bg-amber-500/30 flex-1" />
-              <div className="w-1 h-1 bg-amber-500 rotate-45" />
-              <div className="h-[1px] bg-amber-500/30 flex-1" />
-            </div>
-            <span className="text-[8px] text-gray-500 font-sans font-bold uppercase tracking-wider mt-1.5">
-              Assessing Board
+        {/* Bottom: Issued By (Date & Expert) + Medallion Seal + Director Signature */}
+        <div className="flex items-end justify-between px-10 pb-3 relative z-20">
+          {/* Left: Issued By & Date */}
+          <div className="flex flex-col items-start text-left" style={{ width: "250px" }}>
+            <span style={{ fontSize: "9px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              MOCKEFY CERTIFICATE ISSUED BY :
             </span>
+            <span style={{ fontSize: "12px", fontWeight: 900, color: "#0A2540", marginTop: "4px" }}>
+              {expertName || "Verified Mockeefy Expert"}
+            </span>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#334155", marginTop: "2px" }}>
+              Issued on {issueDateStr}
+            </span>
+            <div style={{ width: "180px", height: "1px", backgroundColor: "#0A2540", opacity: 0.35, marginTop: "8px" }} />
           </div>
 
-          {/* Right Part: Gold Seal with trailing blue ribbons */}
-          <div className="relative w-20 h-20 flex items-center justify-center z-10">
-            {/* Dark Blue Ribbon Tails */}
-            <div className="absolute -bottom-6 left-3 w-4.5 h-12 bg-[#002366]" style={{ clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%)" }} />
-            <div className="absolute -bottom-6 right-3 w-4.5 h-12 bg-[#002366]" style={{ clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%)" }} />
+          {/* Center: Medallion Seal with Ribbons */}
+          <div className="relative flex flex-col items-center justify-center" style={{ marginBottom: "-8px" }}>
+            {/* Trailing Dark Blue Ribbon Tails */}
+            <div className="absolute flex items-center gap-1 z-0" style={{ bottom: "-18px" }}>
+              <svg width="18" height="38" viewBox="0 0 18 40">
+                <polygon points="0,0 18,0 18,40 9,32 0,40" fill="#06182B" />
+              </svg>
+              <svg width="18" height="38" viewBox="0 0 18 40">
+                <polygon points="0,0 18,0 18,40 9,32 0,40" fill="#06182B" />
+              </svg>
+            </div>
 
-            <svg className="w-20 h-20 drop-shadow-md" viewBox="0 0 100 100">
+            {/* Medallion SVG */}
+            <svg width="78" height="78" viewBox="0 0 100 100" className="relative z-10">
               <defs>
-                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#fef3c7" />
-                  <stop offset="30%" stopColor="#fbbf24" />
-                  <stop offset="70%" stopColor="#d97706" />
-                  <stop offset="100%" stopColor="#92400e" />
-                </linearGradient>
+                <radialGradient id="sealGoldRadial" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#FFF2B2" />
+                  <stop offset="40%" stopColor="#E5C068" />
+                  <stop offset="75%" stopColor="#C59B27" />
+                  <stop offset="100%" stopColor="#8C6510" />
+                </radialGradient>
               </defs>
-              {/* Rosette base */}
-              <circle cx="50" cy="50" r="45" fill="url(#goldGrad)" stroke="#b45309" strokeWidth="1" />
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#b45309" strokeWidth="1" strokeDasharray="3 2" />
-              <circle cx="50" cy="50" r="33" fill="#ffffff" stroke="#b45309" strokeWidth="0.5" />
-              {/* Star details */}
-              <text x="50" y="38" textAnchor="middle" fill="#d97706" fontSize="6">★ ★ ★</text>
-              <text x="50" y="52" textAnchor="middle" fill="#002366" fontSize="7" fontWeight="900" fontFamily="sans-serif" letterSpacing="0.2">VERIFIED</text>
-              <text x="50" y="65" textAnchor="middle" fill="#d97706" fontSize="6">★ ★ ★</text>
+              <circle cx="50" cy="50" r="45" fill="url(#sealGoldRadial)" stroke="#8C6510" strokeWidth="0.8" />
+              <circle cx="50" cy="50" r="41" fill="none" stroke="#FFFFFF" strokeWidth="1" strokeDasharray="3 2" opacity="0.7" />
+              <circle cx="50" cy="50" r="33" fill="#0A2540" stroke="#E5C068" strokeWidth="1.2" />
+              <circle cx="50" cy="50" r="29" fill="none" stroke="#D4AF37" strokeWidth="0.75" strokeDasharray="2 2" />
+              <rect x="42" y="36" width="16" height="15" rx="3.5" fill="#FFFFFF" />
+              <text x="50" y="48" textAnchor="middle" fill="#0A2540" fontSize="12" fontWeight="900" fontFamily="sans-serif">M</text>
+              <text x="50" y="58" textAnchor="middle" fill="#E5C068" fontSize="6.5">★ ★ ★</text>
             </svg>
           </div>
+
+          {/* Right: Director Signature */}
+          <div className="flex flex-col items-center text-center" style={{ width: "240px" }}>
+            <svg width="128" height="36" viewBox="0 0 140 40">
+              <path
+                d="M 10,26 C 25,8 32,4 45,20 C 55,33 60,7 75,23 C 85,33 105,10 125,22"
+                fill="none"
+                stroke="#0A2540"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M 28,20 Q 68,18 135,14"
+                fill="none"
+                stroke="#0A2540"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div style={{ width: "180px", height: "1px", backgroundColor: "#0A2540", opacity: 0.35, marginTop: "4px" }} />
+            <span style={{ fontSize: "9px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.15em", marginTop: "6px" }}>
+              DIRECTOR SIGNATURE
+            </span>
+          </div>
         </div>
 
-        {/* Issued Date at the very bottom left */}
-        <div className="absolute bottom-2 left-8 text-[9px] text-gray-550 font-sans">
-          Issued: {issueDate}
+        {/* Certificate ID on bottom edge */}
+        <div style={{ position: "absolute", bottom: "8px", left: "64px", fontSize: "8px", fontFamily: "monospace", fontWeight: 600, color: "#94A3B8" }}>
+          ID: {certId}
         </div>
       </div>
     </div>
   );
 };
 
-export default function CertificatesPage() {
+// Scalable, lightweight vector certificate thumbnail for direct visual preview inside certificate cards
+const CertificateThumbnail = ({
+  userName,
+  domain = "IT",
+  expertName,
+  issueDateStr,
+  certId,
+  isMaster = false,
+}: {
+  userName: string;
+  domain?: string;
+  expertName?: string;
+  issueDateStr: string;
+  certId: string;
+  isMaster?: boolean;
+}) => {
+  const displayDomain = (domain || "IT").toUpperCase();
+  const safeId = (certId || "CERT").replace(/[^a-zA-Z0-9]/g, "_");
+
+  return (
+    <svg
+      viewBox="0 0 1000 707"
+      className="w-full h-full block select-none pointer-events-none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ backgroundColor: "#FFFFFF" }}
+    >
+      <defs>
+        <linearGradient id={`thumbGoldGrad_${safeId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FDE68A" />
+          <stop offset="35%" stopColor="#D4AF37" />
+          <stop offset="70%" stopColor="#AA7C11" />
+          <stop offset="100%" stopColor="#E2B755" />
+        </linearGradient>
+        <linearGradient id={`thumbNavyGrad_${safeId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0B2545" />
+          <stop offset="100%" stopColor="#06182B" />
+        </linearGradient>
+        <linearGradient id={`thumbLogoGrad_${safeId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0D6EFD" />
+          <stop offset="100%" stopColor="#0048BA" />
+        </linearGradient>
+        <radialGradient id={`thumbSealGrad_${safeId}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FFF2B2" />
+          <stop offset="40%" stopColor="#E5C068" />
+          <stop offset="75%" stopColor="#C59B27" />
+          <stop offset="100%" stopColor="#8C6510" />
+        </radialGradient>
+      </defs>
+
+      {/* Background fill */}
+      <rect x="0" y="0" width="1000" height="707" fill="#FFFFFF" />
+
+      {/* TOP-LEFT CORNER DECORATION */}
+      <path d="M 0,260 Q 180,240 260,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.6" />
+      <path d="M 0,290 Q 200,260 290,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.45" />
+      <path d="M 0,320 Q 220,280 320,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.3" />
+      <path d="M 0,350 Q 240,300 350,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.18" />
+
+      <polygon points="0,0 230,0 0,230" fill={`url(#thumbNavyGrad_${safeId})`} />
+      <polygon points="0,0 155,0 0,210" fill="#06182B" />
+      <polygon points="0,215 15,225 225,15 215,0 195,0 0,195" fill={`url(#thumbGoldGrad_${safeId})`} />
+      <polygon points="0,110 110,0 75,0 0,75" fill={`url(#thumbGoldGrad_${safeId})`} opacity="0.35" />
+
+      {/* BOTTOM-RIGHT CORNER DECORATION (Mirrored) */}
+      <g transform="translate(1000, 707) rotate(180)">
+        <path d="M 0,260 Q 180,240 260,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.6" />
+        <path d="M 0,290 Q 200,260 290,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.45" />
+        <path d="M 0,320 Q 220,280 320,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.3" />
+        <path d="M 0,350 Q 240,300 350,0" stroke="#BFDBFE" strokeWidth="1" fill="none" opacity="0.18" />
+
+        <polygon points="0,0 230,0 0,230" fill={`url(#thumbNavyGrad_${safeId})`} />
+        <polygon points="0,0 155,0 0,210" fill="#06182B" />
+        <polygon points="0,215 15,225 225,15 215,0 195,0 0,195" fill={`url(#thumbGoldGrad_${safeId})`} />
+        <polygon points="0,110 110,0 75,0 0,75" fill={`url(#thumbGoldGrad_${safeId})`} opacity="0.35" />
+      </g>
+
+      {/* DUAL BORDER FRAME */}
+      <rect x="26" y="26" width="948" height="655" fill="none" stroke="#0A2540" strokeWidth="1.5" />
+      <path
+        d="M 54,38 L 946,38 L 946,54 L 962,54 L 962,653 L 946,653 L 946,669 L 54,669 L 54,653 L 38,653 L 38,54 L 54,54 Z"
+        fill="none"
+        stroke={`url(#thumbGoldGrad_${safeId})`}
+        strokeWidth="1.2"
+      />
+      <path
+        d="M 57,41 L 943,41 L 943,57 L 959,57 L 959,650 L 943,650 L 943,666 L 57,666 L 57,650 L 41,650 L 41,57 L 57,57 Z"
+        fill="none"
+        stroke="#0A2540"
+        strokeWidth="0.6"
+        opacity="0.4"
+      />
+
+      {/* HEADER LOGO & BRAND */}
+      <g transform="translate(500, 52)">
+        <rect x="-85" y="0" width="36" height="36" rx="10" fill={`url(#thumbLogoGrad_${safeId})`} />
+        <text x="-67" y="26" textAnchor="middle" fill="#FFFFFF" fontSize="22" fontWeight="900" fontFamily="sans-serif">M</text>
+        <text x="-40" y="28" textAnchor="start" fill="#0A2540" fontSize="28" fontWeight="900" fontFamily="sans-serif">Mockefy</text>
+        <circle cx="82" cy="18" r="10" fill="#0755E8" />
+        <path d="M 77,18 l 3,3 l 7,-7" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="0" y="52" textAnchor="middle" fill="#475569" fontSize="9.5" fontWeight="700" letterSpacing="3.5" fontFamily="sans-serif">P R A C T I C E . &nbsp; I M P R O V E . &nbsp; S U C C E E D .</text>
+      </g>
+
+      {/* MAIN TITLE & RECIPIENT */}
+      <g transform="translate(500, 168)">
+        <text x="0" y="0" textAnchor="middle" fill="#0A2540" fontSize="36" fontWeight="700" letterSpacing="2.5" fontFamily="Georgia, serif">
+          CERTIFICATE OF COMPLETION
+        </text>
+        <line x1="-150" y1="18" x2="-10" y2="18" stroke="#0A2540" strokeWidth="1" opacity="0.35" />
+        <polygon points="0,15 4,19 0,23 -4,19" fill="#0A2540" />
+        <line x1="10" y1="18" x2="150" y2="18" stroke="#0A2540" strokeWidth="1" opacity="0.35" />
+
+        <text x="0" y="44" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="3" fontFamily="sans-serif">
+          THIS CERTIFIES THAT
+        </text>
+
+        <text x="0" y="98" textAnchor="middle" fill="#0A2540" fontSize="34" fontWeight="700" fontFamily="Georgia, serif">
+          {userName}
+        </text>
+
+        <text x="0" y="132" textAnchor="middle" fill="#475569" fontSize="12" fontFamily="sans-serif">
+          {isMaster
+            ? "Successfully completed the Mockeefy Master Interview Readiness Program"
+            : `Successfully completed a structured mock interview in the ${displayDomain} domain`}
+        </text>
+
+        <g transform="translate(0, 172)">
+          <line x1="-240" y1="0" x2="-170" y2="0" stroke="#D4AF37" strokeWidth="1.5" />
+          <rect x="-165" y="-14" width="330" height="28" rx="14" fill="#06182B" stroke="#D4AF37" strokeWidth="1" />
+          <text x="0" y="4.5" textAnchor="middle" fill="#FFFFFF" fontSize="10.5" fontWeight="900" letterSpacing="1.8" fontFamily="sans-serif">
+            {isMaster ? "MASTER INTERVIEW EXCELLENCE" : `${displayDomain} PROFESSIONAL MOCK INTERVIEW`}
+          </text>
+          <line x1="170" y1="0" x2="240" y2="0" stroke="#D4AF37" strokeWidth="1.5" />
+        </g>
+      </g>
+
+      {/* FOOTER: Issued By + Seal + Signature */}
+      <g transform="translate(0, 580)">
+        <g transform="translate(100, 0)">
+          <text x="0" y="0" fill="#475569" fontSize="9" fontWeight="700" letterSpacing="0.8" fontFamily="sans-serif">MOCKEFY CERTIFICATE ISSUED BY :</text>
+          <text x="0" y="18" fill="#0A2540" fontSize="12" fontWeight="900" fontFamily="sans-serif">{expertName || "Verified Mockeefy Expert"}</text>
+          <text x="0" y="34" fill="#334155" fontSize="10" fontWeight="700" fontFamily="sans-serif">Issued on {issueDateStr}</text>
+          <line x1="0" y1="46" x2="180" y2="46" stroke="#0A2540" strokeWidth="1" opacity="0.35" />
+        </g>
+
+        <g transform="translate(500, 10)">
+          <polygon points="-12,18 0,18 0,55 -6,47 -12,55" fill="#06182B" />
+          <polygon points="0,18 12,18 12,55 6,47 0,55" fill="#06182B" />
+          <circle cx="0" cy="0" r="38" fill={`url(#thumbSealGrad_${safeId})`} stroke="#8C6510" strokeWidth="0.8" />
+          <circle cx="0" cy="0" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" strokeDasharray="3 2" opacity="0.7" />
+          <circle cx="0" cy="0" r="27" fill="#0A2540" stroke="#E5C068" strokeWidth="1.2" />
+          <circle cx="0" cy="0" r="23" fill="none" stroke="#D4AF37" strokeWidth="0.75" strokeDasharray="2 2" />
+          <rect x="-7" y="-12" width="14" height="13" rx="3" fill="#FFFFFF" />
+          <text x="0" y="-2" textAnchor="middle" fill="#0A2540" fontSize="11" fontWeight="900" fontFamily="sans-serif">M</text>
+          <text x="0" y="8" textAnchor="middle" fill="#E5C068" fontSize="6.5">★ ★ ★</text>
+        </g>
+
+        <g transform="translate(760, 0)">
+          <path
+            d="M 0,18 C 15,2 22,-2 35,12 C 45,23 50,2 62,15 C 72,23 90,4 110,14"
+            fill="none"
+            stroke="#0A2540"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <path d="M 18,12 Q 55,10 120,6" fill="none" stroke="#0A2540" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="0" y1="26" x2="160" y2="26" stroke="#0A2540" strokeWidth="1" opacity="0.35" />
+          <text x="80" y="42" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="700" letterSpacing="1.2" fontFamily="sans-serif">DIRECTOR SIGNATURE</text>
+        </g>
+      </g>
+
+      <text x="64" y="694" fill="#94A3B8" fontSize="8" fontFamily="monospace" fontWeight="600">
+        ID: {certId}
+      </text>
+    </svg>
+  );
+};
+
+interface CertificatesPageProps {
+  showSkeletons?: boolean;
+}
+
+export default function CertificatesPage({ showSkeletons = false }: CertificatesPageProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isMasterSelected, setIsMasterSelected] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadingMaster, setDownloadingMaster] = useState(false);
+  const pdfRenderRef = useRef<HTMLDivElement>(null);
+  const [downloadTarget, setDownloadTarget] = useState<{
+    session: Session | null;
+    isMaster: boolean;
+  } | null>(null);
 
-  const allCompletedAndReviewed = useMemo(() => {
-    return sessions.filter(
-      (s) =>
-        (s.status || "").toLowerCase() === "completed" &&
-        s.candidateReview &&
-        s.expertReview
-    );
-  }, [sessions]);
+  const getFormattedIssueDate = (session: Session) => {
+    const rawDate = session.expertReview?.createdAt || session.startTime || new Date();
+    const d = new Date(rawDate);
+    const day = d.getDate();
+    const month = d.toLocaleString("en-US", { month: "long" });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
 
   const completedSessions = useMemo(() => {
-    const categoryCounts: Record<string, number> = {};
-    for (const s of allCompletedAndReviewed) {
-      const cat = (s.category || "General").trim().toLowerCase();
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-    }
-    return allCompletedAndReviewed.filter((s) => {
-      const cat = (s.category || "General").trim().toLowerCase();
-      return categoryCounts[cat] >= 3;
-    });
-  }, [allCompletedAndReviewed]);
-
-  const categoryGroups = useMemo(() => {
-    const groups: Record<string, { category: string; sessions: Session[]; latestSession: Session }> = {};
-    for (const s of allCompletedAndReviewed) {
-      const cat = s.category || "IT";
-      const catKey = cat.trim().toLowerCase();
-      if (!groups[catKey]) {
-        groups[catKey] = {
-          category: cat,
-          sessions: [],
-          latestSession: s
-        };
-      }
-      groups[catKey].sessions.push(s);
-      if (new Date(s.startTime || 0).getTime() > new Date(groups[catKey].latestSession.startTime || 0).getTime()) {
-        groups[catKey].latestSession = s;
-      }
-    }
-    return Object.values(groups);
-  }, [allCompletedAndReviewed]);
+    return sessions
+      .filter((s) => (s.status || "").toLowerCase() === "completed")
+      .sort((a, b) => new Date(b.startTime || 0).getTime() - new Date(a.startTime || 0).getTime());
+  }, [sessions]);
 
   const masterCertId = useMemo(() => {
     const userId = (user as any)?.id || (user as any)?._id || "USR";
     return `MCFY-MST-${userId.slice(-6).toUpperCase()}-${new Date().getFullYear()}`;
   }, [user]);
 
-  const handleDownloadPDF = async (sessionObj: Session) => {
-    setDownloading(sessionObj.id);
-    setSelectedSession(sessionObj);
-    
-    // Give react time to render template
-    setTimeout(async () => {
-      const element = document.getElementById("certificate-pdf-content");
-      if (element) {
-        const name = user?.name || "Candidate";
-        const filename = `${name.replace(/\s+/g, "_")}_${sessionObj.category || "Interview"}_Certificate.pdf`;
-        const opt = {
-          margin:       0,
-          filename:     filename,
-          image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, letterRendering: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-        try {
-          // @ts-ignore
-          await html2pdf().from(element).set(opt).save();
-        } catch (err) {
-          console.error(err);
+  const isMasterUnlocked = completedSessions.length >= 3;
+
+  const downloadElementAsPDF = async (element: HTMLElement, filename: string) => {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+      width: 1000,
+      height: 707,
+      windowWidth: 1000,
+      windowHeight: 707,
+      onclone: (clonedDoc) => {
+        const container = clonedDoc.getElementById("pdf-capture-container");
+        if (container) {
+          container.style.position = "static";
+          container.style.left = "0px";
+          container.style.top = "0px";
+          container.style.opacity = "1";
+          container.style.display = "block";
+          container.style.visibility = "visible";
         }
+        const stage = clonedDoc.getElementById("pdf-capture-stage");
+        if (stage) {
+          stage.style.position = "static";
+          stage.style.left = "0px";
+          stage.style.top = "0px";
+          stage.style.opacity = "1";
+          stage.style.display = "block";
+          stage.style.visibility = "visible";
+        }
+      },
+    });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210, undefined, "FAST");
+    pdf.save(filename);
+  };
+
+  const handleDownloadPDF = async (sessionObj: Session) => {
+    if (downloading) return;
+    setDownloading(sessionObj.id);
+    setDownloadTarget({ session: sessionObj, isMaster: false });
+
+    try {
+      // Give React 300ms to mount CertificateTemplate into pdfRenderRef
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const target = pdfRenderRef.current?.firstElementChild as HTMLElement | null;
+      if (!target) {
+        throw new Error("Unable to locate certificate template");
       }
+
+      const name = user?.name || "Candidate";
+      const filename = `${name.replace(/\s+/g, "_")}_${sessionObj.category || "Interview"}_Certificate.pdf`;
+      await downloadElementAsPDF(target, filename);
+      toast.success("Certificate downloaded successfully!");
+    } catch (err: any) {
+      console.error("PDF download error:", err);
+      toast.error(err?.message ? `Download error: ${err.message}` : "Failed to generate PDF. Please try previewing the certificate first.");
+    } finally {
       setDownloading(null);
-      setSelectedSession(null);
-    }, 150);
+      setDownloadTarget(null);
+    }
   };
 
   const handleDownloadMasterPDF = async () => {
+    if (downloadingMaster) return;
     setDownloadingMaster(true);
-    setIsMasterSelected(true);
-    
-    setTimeout(async () => {
-      const element = document.getElementById("certificate-pdf-content");
-      if (element) {
-        const name = user?.name || "Candidate";
-        const filename = `${name.replace(/\s+/g, "_")}_Master_Interview_Certificate.pdf`;
-        const opt = {
-          margin:       0,
-          filename:     filename,
-          image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, letterRendering: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-        try {
-          // @ts-ignore
-          await html2pdf().from(element).set(opt).save();
-        } catch (err) {
-          console.error(err);
-        }
+    setDownloadTarget({ session: null, isMaster: true });
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const target = pdfRenderRef.current?.firstElementChild as HTMLElement | null;
+      if (!target) {
+        throw new Error("Unable to locate master certificate template");
       }
+
+      const name = user?.name || "Candidate";
+      const filename = `${name.replace(/\s+/g, "_")}_Master_Interview_Certificate.pdf`;
+      await downloadElementAsPDF(target, filename);
+      toast.success("Master Certificate downloaded successfully!");
+    } catch (err: any) {
+      console.error("Master PDF download error:", err);
+      toast.error(err?.message ? `Download error: ${err.message}` : "Failed to generate Master Certificate PDF.");
+    } finally {
       setDownloadingMaster(false);
-      setIsMasterSelected(false);
-    }, 150);
+      setDownloadTarget(null);
+    }
   };
 
-  // Pagination (same pattern as My Bookings)
-  const sortedCompleted = useMemo(() => {
-    const sorted = completedSessions
-      .slice()
-      .sort((a, b) => new Date(b.startTime || 0).getTime() - new Date(a.startTime || 0).getTime());
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-    const seenCategories = new Set<string>();
-    const uniqueByCategory: Session[] = [];
-
-    for (const session of sorted) {
-      const categoryKey = (session.category || "General").trim().toLowerCase();
-      if (!seenCategories.has(categoryKey)) {
-        seenCategories.add(categoryKey);
-        uniqueByCategory.push(session);
-      }
-    }
-
-    return uniqueByCategory;
+  const categories = useMemo(() => {
+    const map = new Map<string, number>();
+    completedSessions.forEach((s) => {
+      const cat = s.category || "IT";
+      map.set(cat, (map.get(cat) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
   }, [completedSessions]);
 
-  const PAGE_SIZE = 10;
+  const filteredCertificates = useMemo(() => {
+    if (selectedCategory === "all") return completedSessions;
+    return completedSessions.filter(
+      (s) => (s.category || "IT").toLowerCase() === selectedCategory.toLowerCase()
+    );
+  }, [completedSessions, selectedCategory]);
+
+  const PAGE_SIZE = 6;
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(sortedCompleted.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredCertificates.length / PAGE_SIZE));
+  const certificatesListRef = useRef<HTMLDivElement>(null);
+
+  const scrollToCertificatesTop = () => {
+    requestAnimationFrame(() => {
+      if (certificatesListRef.current) {
+        const navOffset = 84; // Clearance for the sticky navbar
+        const rect = certificatesListRef.current.getBoundingClientRect();
+        const currentScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+        const targetScrollY = rect.top + currentScrollY - navOffset;
+        window.scrollTo({
+          top: Math.max(0, targetScrollY),
+          behavior: "smooth",
+        });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+    setPage(newPage);
+    scrollToCertificatesTop();
+  };
 
   useEffect(() => {
     setPage(1);
-  }, [sortedCompleted.length]);
+  }, [selectedCategory, filteredCertificates.length]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   const pageStartIdx = (page - 1) * PAGE_SIZE;
-  const pageEndIdx = Math.min(sortedCompleted.length, pageStartIdx + PAGE_SIZE);
-  const pagedCertificates = sortedCompleted.slice(pageStartIdx, pageEndIdx);
+  const pageEndIdx = Math.min(filteredCertificates.length, pageStartIdx + PAGE_SIZE);
+  const pagedCertificates = filteredCertificates.slice(pageStartIdx, pageEndIdx);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -315,7 +740,11 @@ export default function CertificatesPage() {
           sessionId: s.sessionId,
           expert: s.expertDetails?.name || s.expertId?.name || "Expert",
           profileImage: s.expertDetails?.profileImage || s.expertId?.profileImage || null,
+          company: s.expertDetails?.company || s.expertId?.company || "Mockeefy",
+          role: s.expertDetails?.currentRole || s.expertDetails?.role || s.expertId?.currentRole || s.expertId?.role || "Tech Expert",
+          topic: s.topic || s.category,
           startTime: s.startTime,
+          endTime: s.endTime,
           category: s.category || s.expertDetails?.category || "IT",
           status: (s.status || "").charAt(0).toUpperCase() + (s.status || "").slice(1),
           expertReview: s.expertReview || null,
@@ -333,182 +762,456 @@ export default function CertificatesPage() {
     fetchSessions();
   }, [user]);
 
-  return (
-    <div className="relative w-full bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[28px] p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden pb-12 font-sans text-left">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
+  if (showSkeletons || loading) {
+    return <CertificatesSkeleton />;
+  }
 
+  return (
+    <div className="relative w-full bg-white border border-slate-200/90 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden pb-12 font-sans text-left">
       <div className="w-full space-y-6 relative z-10">
-        {/* Header - simple, flat title row with icon */}
-        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
-              <Award className="w-5 h-5 text-blue-600" />
+        {/* Header - Verified Certificates Title Row */}
+        <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200/80 pb-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
+              <Award className="w-4 h-4 sm:w-5 sm:h-5 text-[#0755E8]" />
             </div>
-            <div>
-              <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">My Certificates</h1>
-              <p className="text-xs font-semibold text-gray-500 mt-1">Completed sessions — view verified certificates</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight leading-none truncate">
+                My Certificates
+              </h1>
+              <p className="text-xs font-semibold text-gray-500 mt-1 truncate">
+                Official verified credentials conferred from completed mock interviews
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-100 bg-blue-50 text-[10px] font-black text-blue-700 uppercase tracking-wider">
-              Verified
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10px] font-black text-[#0755E8] uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Official Credentials</span>
+            </span>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-2xs">
+              Total: {completedSessions.length}
             </span>
           </div>
         </div>
 
-        {loading ? (
-          <div className="p-6">
-            <div className="h-10 bg-gray-50 rounded-xl animate-pulse" />
-            <div className="h-10 bg-gray-50 rounded-xl animate-pulse mt-3" />
-            <div className="h-10 bg-gray-50 rounded-xl animate-pulse mt-3" />
+        {/* Master Certificate Milestone Banner */}
+        {completedSessions.length > 0 && (
+          <div className="rounded-2xl border p-4 sm:p-5 relative overflow-hidden transition-all duration-200 bg-gradient-to-r from-[#06182B] via-[#0A2540] to-[#0B2A4A] text-white border-amber-500/30 shadow-md">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shrink-0 text-amber-300">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black tracking-wider uppercase bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      {isMasterUnlocked ? "Master Credential Conferred" : "Master Credential Track"}
+                    </span>
+                    <span className="text-slate-300 text-xs font-mono">
+                      ID: {masterCertId}
+                    </span>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                    Mockeefy Master Interview Excellence Credential
+                  </h2>
+                  <p className="text-xs text-slate-300 font-medium max-w-2xl leading-relaxed">
+                    {isMasterUnlocked
+                      ? `Conferred for completing ${completedSessions.length} sessions across multiple domains. Demonstrates comprehensive interview mastery.`
+                      : `Complete 3 mock interview sessions to unlock the prestigious Mockeefy Master Interview Certificate (${completedSessions.length}/3 completed).`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0 self-start md:self-center">
+                {isMasterUnlocked ? (
+                  <>
+                    <div
+                      onClick={() => {
+                        setSelectedSession(null);
+                        setIsMasterSelected(true);
+                      }}
+                      className="hidden sm:block w-28 aspect-[1000/707] rounded-lg overflow-hidden border border-amber-400/40 shadow-sm shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                      title="Click to preview Master Certificate"
+                    >
+                      <CertificateThumbnail
+                        userName={user?.name || "Candidate"}
+                        domain="Master"
+                        expertName="Mockeefy Board of Directors"
+                        issueDateStr={new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}
+                        certId={masterCertId}
+                        isMaster={true}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSession(null);
+                        setIsMasterSelected(true);
+                      }}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all cursor-pointer"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadMasterPDF}
+                      disabled={downloadingMaster}
+                      className="px-4 py-2 rounded-xl text-xs font-black text-[#06182B] bg-gradient-to-r from-[#FDE68A] via-[#D4AF37] to-[#E2B755] hover:brightness-105 shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                    >
+                      {downloadingMaster ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>Downloading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download size={13} strokeWidth={2.5} />
+                          <span>Download Master PDF</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <div className="w-full sm:w-48 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
+                      <span>Progress</span>
+                      <span>{Math.round((completedSessions.length / 3) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-400 to-amber-300 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, (completedSessions.length / 3) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="p-6">
-            {/* Category Certificate Progress Grid */}
-            {categoryGroups.length === 0 ? (
-              <div className="text-center p-8 flex flex-col items-center">
-                <Award className="w-8 h-8 text-gray-300 mb-3 animate-pulse" />
-                <h3 className="font-bold text-gray-900 text-sm">No Category Progress Yet</h3>
-                <p className="text-xs text-gray-550 max-w-sm mt-1">
-                  Complete at least 3 mock interviews in the same category (e.g. Java, HR, AI) to unlock its Verified Certificate.
+        )}
+
+        {/* Category Filter Tabs */}
+        {completedSessions.length > 0 && (
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("all")}
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                selectedCategory === "all"
+                  ? "bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25"
+                  : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 border border-slate-200/60"
+              }`}
+            >
+              <span>All Certificates</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-black tabular-nums transition-colors ${
+                  selectedCategory === "all"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-slate-700 shadow-2xs border border-slate-200/60"
+                }`}
+              >
+                {completedSessions.length}
+              </span>
+            </button>
+
+            {categories.map((cat) => {
+              const isActive = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+              return (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.name)}
+                  className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                    isActive
+                      ? "bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25"
+                      : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 border border-slate-200/60"
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      isActive ? "bg-emerald-400 animate-pulse" : "bg-emerald-500"
+                    }`}
+                  />
+                  <span>{cat.name}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-black tabular-nums transition-colors ${
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-white text-slate-700 shadow-2xs border border-slate-200/60"
+                    }`}
+                  >
+                    {cat.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+          <div>
+            {filteredCertificates.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200/70 p-12 sm:p-16 text-center flex flex-col items-center shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-[#EAF2FF] border border-[#BFD7FE] flex items-center justify-center mb-4 text-[#0755E8] shadow-sm">
+                  <Award className="w-8 h-8" />
+                </div>
+                <h3 className="text-gray-900 font-black text-base mb-1">No Certificates Found</h3>
+                <p className="text-gray-500 font-medium text-xs max-w-sm mx-auto leading-relaxed">
+                  {completedSessions.length === 0
+                    ? "Complete mock interview sessions with verified industry experts to earn official verified Certificates of Completion."
+                    : "No certificates found in this selected category."}
                 </p>
+                {completedSessions.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/find-mentor')}
+                    className="mt-6 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Briefcase size={14} />
+                    <span>Explore Interview Experts</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory("all")}
+                    className="mt-6 px-5 py-2 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    View All Certificates
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoryGroups.map((group) => {
-                  const count = group.sessions.length;
-                  const isUnlocked = count >= 3;
-                  return (
-                    <div key={group.category} className="bg-gray-50/50 rounded-2xl border border-gray-200/80 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${isUnlocked ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500 border border-gray-200/50'}`}>
-                            {isUnlocked ? 'Unlocked' : 'In Progress'}
-                          </span>
-                          <Award className={`w-5 h-5 ${isUnlocked ? 'text-blue-600' : 'text-gray-350'}`} />
-                        </div>
-                        
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-sm">{group.category} Interview Excellence</h3>
-                          <p className="text-[10px] text-gray-400 mt-0.5">Category Certification</p>
+              <div ref={certificatesListRef} className="space-y-6 scroll-mt-24">
+                {/* Certificate Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5 sm:gap-6">
+                  {pagedCertificates.map((session) => {
+                    const isDownloading = downloading === session.id;
+                    const formattedIssueDate = getFormattedIssueDate(session);
+                    const certIdString = `MCFY-${(session.id || "CERT").slice(-8).toUpperCase()}`;
+
+                    return (
+                      <article
+                        key={session.id}
+                        className="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-[#0755E8]/40 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_-6px_rgba(7,85,232,0.12)] transition-all duration-200 p-3.5 sm:p-4.5 flex flex-col justify-between h-full w-full text-left box-border"
+                      >
+                        <div className="space-y-3 flex-1 flex flex-col">
+                          {/* Certificate Visual Thumbnail Preview with Reduced Compact Size */}
+                          <div className="w-full flex items-center justify-center bg-slate-50/80 rounded-xl p-2 sm:p-2.5 border border-slate-100/80">
+                            <div
+                              onClick={() => {
+                                setIsMasterSelected(false);
+                                setSelectedSession(session);
+                              }}
+                              className="relative w-full max-w-[260px] sm:max-w-[290px] aspect-[1000/707] rounded-lg sm:rounded-xl overflow-hidden border border-slate-200/90 shadow-2xs group/thumb cursor-pointer bg-white transition-all duration-200 hover:shadow-md hover:border-[#0755E8]/60 hover:scale-[1.02]"
+                              title="Click to view full certificate preview"
+                            >
+                              <CertificateThumbnail
+                                userName={user?.name || "Candidate"}
+                                domain={session.category || "IT"}
+                                expertName={session.expert}
+                                issueDateStr={formattedIssueDate}
+                                certId={certIdString}
+                              />
+                              
+                              {/* Hover Overlay */}
+                              <div className="absolute inset-0 bg-[#06182B]/60 backdrop-blur-[1px] opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1.5 text-white">
+                                <span className="px-3 py-1 rounded-lg bg-white/20 border border-white/30 text-[11px] font-black tracking-wide flex items-center gap-1.5 shadow-md">
+                                  <Eye size={13} />
+                                  <span>Click to Preview</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 1. Header: Certificate Title & Recipient + Verification Tag */}
+                          <div className="flex items-start justify-between gap-2.5 pt-0.5">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-[#EAF2FF] border border-[#93B8FF]/60 flex items-center justify-center text-[#0755E8] shrink-0 shadow-2xs">
+                                <Award className="w-5 h-5 text-[#0755E8]" />
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-black text-slate-900 text-sm sm:text-[15px] truncate group-hover:text-[#0755E8] transition-colors leading-tight">
+                                  {session.category || "Professional"} Mock Interview Certificate
+                                </h3>
+
+                                <p className="text-xs font-semibold text-slate-500 truncate mt-1 leading-tight flex items-center gap-1.5">
+                                  <span>Certificate of Completion</span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-700 font-bold">{user?.name || "Candidate"}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Verified Credential Tag */}
+                            <div className="shrink-0 pt-0.5">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-tight shadow-2xs">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Verified Credential</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 2. Structured Certificate Credential Details Box */}
+                          <div className="bg-[#F8FAFC] group-hover:bg-[#F3F6FD]/70 border border-slate-200/70 group-hover:border-[#93B8FF]/40 rounded-2xl p-3 sm:p-3.5 space-y-2.5 transition-colors duration-200">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {/* Specialization / Category */}
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Specialization
+                                </span>
+                                <div className="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                                  <Briefcase className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                                  <span className="truncate">{session.category || "IT"}</span>
+                                </div>
+                              </div>
+
+                              {/* Issue Date */}
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Issue Date
+                                </span>
+                                <div className="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                                  <Calendar className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                                  <span className="truncate">{formattedIssueDate}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Evaluator & Issuer Row */}
+                            <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-2 text-xs">
+                              <div className="min-w-0 flex items-center gap-1.5">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">
+                                  Conferred by:
+                                </span>
+                                <span className="font-bold text-slate-800 truncate">
+                                  {session.expert}
+                                </span>
+                                <span className="text-slate-400 font-normal truncate">
+                                  ({session.company || "Mockeefy"})
+                                </span>
+                              </div>
+
+                              {session.expertReview?.overallRating && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-black shrink-0">
+                                  ★ {session.expertReview.overallRating}/5 Score
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="space-y-1.5 pt-1">
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span className="text-gray-500 font-bold">{count}/3 Completed</span>
-                            <span className="text-gray-400">{Math.round(Math.min(100, (count / 3) * 100))}%</span>
+                        {/* 3. Certificate Action Row */}
+                        <div className="w-full pt-3.5 mt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[10.5px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80 truncate">
+                              ID: {certIdString}
+                            </span>
                           </div>
-                          <div className="w-full bg-gray-200/60 rounded-full h-1.5 overflow-hidden border border-gray-200/30">
-                            <div 
-                              className="bg-blue-600 h-full rounded-full transition-all duration-500" 
-                              style={{ width: `${Math.min(100, (count / 3) * 100)}%` }} 
-                            />
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="mt-4 pt-3 border-t border-gray-200/60 flex items-center justify-between gap-2">
-                        {isUnlocked ? (
-                          <>
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
-                              onClick={() => setSelectedSession(group.latestSession)}
-                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-[10px] transition-all flex items-center gap-1"
+                              onClick={() => {
+                                setIsMasterSelected(false);
+                                setSelectedSession(session);
+                              }}
+                              className="px-3 py-2 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] hover:bg-[#EAF2FF]/40 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
                             >
                               Preview
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDownloadPDF(group.latestSession)}
-                              disabled={downloading === group.latestSession.id}
-                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] transition-all flex items-center gap-1 disabled:opacity-50"
+                              onClick={() => handleDownloadPDF(session)}
+                              disabled={isDownloading}
+                              className="px-3.5 py-2 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 hover:bg-[#EAF2FF]/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-white cursor-pointer shadow-2xs disabled:opacity-60"
                             >
-                              <Download size={12} className={downloading === group.latestSession.id ? "animate-bounce" : ""} />
-                              PDF
+                              {isDownloading ? (
+                                <>
+                                  <Loader2 size={13} className="animate-spin text-[#0755E8]" />
+                                  <span>Downloading...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={13} strokeWidth={2.5} />
+                                  <span>Download PDF</span>
+                                </>
+                              )}
                             </button>
-                          </>
-                        ) : (
-                          <p className="text-[10px] text-gray-400 italic">
-                            Complete {3 - count} more sessions to unlock.
-                          </p>
-                        )}
-                      </div>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination footer (desktop) */}
+                {filteredCertificates.length > PAGE_SIZE && (
+                  <div className="hidden md:flex items-center justify-between pt-5 border-t border-slate-100">
+                    <div className="text-[11px] font-bold text-gray-500">
+                      Showing <span className="text-gray-800 tabular-nums">{pageStartIdx + 1}</span>–<span className="text-gray-800 tabular-nums">{pageEndIdx}</span> of{" "}
+                      <span className="text-gray-800 tabular-nums">{filteredCertificates.length}</span> certificates
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page <= 1}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:border-[#0755E8] hover:text-[#0755E8] disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-700 transition-all cursor-pointer"
+                      >
+                        Prev
+                      </button>
+                      <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-black text-slate-800 tabular-nums">
+                        Page {page} of {totalPages}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page >= totalPages}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:border-[#0755E8] hover:text-[#0755E8] disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-700 transition-all cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pagination footer (mobile) */}
+                {filteredCertificates.length > PAGE_SIZE && (
+                  <div className="md:hidden pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(page - 1)}
+                      disabled={page <= 1}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold disabled:opacity-40 cursor-pointer"
+                    >
+                      Prev
+                    </button>
+                    <div className="text-xs font-bold text-slate-700 tabular-nums">
+                      {pageStartIdx + 1}-{pageEndIdx} of {filteredCertificates.length}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(page + 1)}
+                      disabled={page >= totalPages}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold disabled:opacity-40 cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-
-        {/* Pagination footer (desktop) */}
-        {!loading && sortedCompleted.length > 0 && (
-          <div className="hidden md:flex items-center justify-between px-6 md:px-8 py-4 md:py-5 border-t border-gray-100 bg-white">
-            <div className="text-[10px] font-bold text-gray-500">
-              Showing <span className="text-gray-700 tabular-nums">{pageStartIdx + 1}</span>–<span className="text-gray-700 tabular-nums">{pageEndIdx}</span> of{" "}
-              <span className="text-gray-700 tabular-nums">{sortedCompleted.length}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black hover:border-blue-600 hover:text-blue-600 disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600 transition-all"
-              >
-                Prev
-              </button>
-              <div className="px-3 py-2 rounded-xl bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-700 tabular-nums">
-                Page {page} / {totalPages}
-              </div>
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 text-[10px] font-black hover:border-blue-600 hover:text-blue-600 disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600 transition-all"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Pagination footer (mobile) */}
-        {!loading && sortedCompleted.length > 0 && (
-          <div className="md:hidden px-4 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <div className="text-xs font-bold text-gray-600 tabular-nums">
-              {pageStartIdx + 1}-{pageEndIdx} / {sortedCompleted.length}
-            </div>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        )}
 
       {/* Certificate View Modal */}
       {(selectedSession || isMasterSelected) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-950 flex items-center gap-2 text-base">
-                <Award className="text-blue-600" />
-                {isMasterSelected ? "Master Certificate Preview" : "Verified Certificate Preview"}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-gray-950/75 backdrop-blur-md overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto border border-slate-200/80">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+              <h3 className="font-black text-gray-900 flex items-center gap-2 text-base">
+                <Award className="text-[#0755E8]" />
+                {isMasterSelected ? "Master Certificate Preview" : "Verified Mockeefy Certificate of Completion"}
               </h3>
               <button
                 type="button"
@@ -516,136 +1219,59 @@ export default function CertificatesPage() {
                   setSelectedSession(null);
                   setIsMasterSelected(false);
                 }}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-6 bg-gray-50/50 flex flex-col items-center gap-6">
-              <div className="w-full overflow-hidden border border-gray-200 rounded-2xl bg-white p-2.5 flex justify-center shadow-lg">
-                <div className="w-full aspect-[1.414] bg-white border-[2px] border-[#002366] p-1 font-serif flex flex-col justify-between relative shadow-md">
-                  <div className="w-full h-full p-2.5 md:p-4 border border-[#002366]/40 flex flex-col justify-between relative bg-[#fafbfc]">
-                    {/* Header Ornaments */}
-                    <div className="text-center mt-1 flex flex-col items-center">
-                      <div className="w-6 h-6 md:w-10 md:h-10 rounded-lg overflow-hidden shadow-sm mb-1">
-                        <MockeefyLogo className="w-full h-full object-contain" variant="brand" />
-                      </div>
-                      <div className="text-[4px] md:text-[8px] font-sans font-bold text-gray-550 tracking-[0.25em] uppercase leading-none">
-                        Mockeefy Certified Assessment
-                      </div>
-                      
-                      {/* Gold Diamond Divider */}
-                      <div className="flex items-center justify-center gap-1.5 w-32 md:w-60 mx-auto mt-1 md:mt-2">
-                        <div className="h-[1px] bg-amber-500/50 flex-1" />
-                        <div className="w-1.5 h-1.5 bg-amber-500 rotate-45" />
-                        <div className="h-[1px] bg-amber-500/50 flex-1" />
-                      </div>
-                    </div>
-
-                    {/* Certificate Content */}
-                    <div className="text-center my-auto py-1 md:py-2">
-                      <h4 className="text-lg md:text-3xl font-serif text-[#002366] tracking-[0.2em] uppercase font-bold leading-none">
-                        M O C K E E F Y
-                      </h4>
-                      <p className="text-[5px] md:text-[9px] font-sans text-gray-550 mt-1 md:mt-2 tracking-wide uppercase leading-none">
-                        This verified credential is proudly conferred upon
-                      </p>
-                      <h5 className="text-xs md:text-2xl font-bold font-serif text-[#002366] mt-1.5 md:mt-3">
-                        {user?.name || "Candidate"}
-                      </h5>
-
-                      {/* Gold Diamond Divider */}
-                      <div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-amber-500 rotate-45 mx-auto my-1 md:my-2" />
-
-                      <p className="text-[5px] md:text-[11px] font-sans text-gray-700 max-w-[90%] mx-auto leading-relaxed">
-                        {isMasterSelected ? (
-                          <span>
-                            for successfully completing the <strong>Mockeefy Master Interview Readiness Program</strong>, comprising 3+ comprehensive mock interview simulations guided by verified industry experts.
-                          </span>
-                        ) : (
-                          <span>
-                            for successfully completing a comprehensive <strong>{selectedSession?.category || "IT"} Mock Interview Simulation</strong> under the guidance of verified industry experts.
-                          </span>
-                        )}
-                      </p>
-
-                      {/* Certificate ID block */}
-                      <div className="flex flex-col items-center pt-1 md:pt-2">
-                        <span className="text-[3px] md:text-[6px] uppercase tracking-wider text-gray-400 font-bold font-sans">Certificate ID</span>
-                        <span className="text-[5px] md:text-[10px] font-mono font-bold text-[#002366] border-y border-amber-500/40 py-0.5 px-2 md:px-4 mt-0.5">
-                          {isMasterSelected ? masterCertId : `MCFY-${selectedSession?.id.slice(-8).toUpperCase()}`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Footer containing seal, dates, signatures */}
-                    <div className="flex items-end justify-between px-2 md:px-6 pb-1">
-                      {/* Left Part: ASSESSING BOARD */}
-                      <div className="flex flex-col items-center pb-2">
-                        <div className="w-16 md:w-32 flex items-center gap-0.5 md:gap-1">
-                          <div className="h-[1px] bg-amber-500/30 flex-1" />
-                          <div className="w-0.5 h-0.5 md:w-1 md:h-1 bg-amber-500 rotate-45" />
-                          <div className="h-[1px] bg-amber-500/30 flex-1" />
-                        </div>
-                        <span className="text-[4px] md:text-[7px] text-gray-550 font-sans font-bold uppercase tracking-wider mt-1 leading-none">
-                          Assessing Board
-                        </span>
-                      </div>
-
-                      {/* Right Part: Gold Seal */}
-                      <div className="relative w-8 h-8 md:w-16 md:h-16 flex items-center justify-center z-10">
-                        {/* Dark Blue Ribbon Tails */}
-                        <div className="absolute -bottom-2.5 md:-bottom-5 left-1 w-1.5 md:w-3.5 h-5 md:h-10 bg-[#002366]" style={{ clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%)" }} />
-                        <div className="absolute -bottom-2.5 md:-bottom-5 right-1 w-1.5 md:w-3.5 h-5 md:h-10 bg-[#002366]" style={{ clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%)" }} />
-                        
-                        <svg className="w-8 h-8 md:w-16 md:h-16 drop-shadow-sm" viewBox="0 0 100 100">
-                          {/* Rosette base */}
-                          <circle cx="50" cy="50" r="45" fill="url(#goldGrad)" stroke="#b45309" strokeWidth="1" />
-                          <circle cx="50" cy="50" r="40" fill="none" stroke="#b45309" strokeWidth="1" strokeDasharray="3 2" />
-                          <circle cx="50" cy="50" r="33" fill="#ffffff" stroke="#b45309" strokeWidth="0.5" />
-                          <text x="50" y="38" textAnchor="middle" fill="#d97706" fontSize="6">★ ★ ★</text>
-                          <text x="50" y="52" textAnchor="middle" fill="#002366" fontSize="7" fontWeight="900" fontFamily="sans-serif" letterSpacing="0.2">VERIFIED</text>
-                          <text x="50" y="65" textAnchor="middle" fill="#d97706" fontSize="6">★ ★ ★</text>
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Issued Date at the bottom left */}
-                    <div className="absolute bottom-1 md:bottom-2 left-4 md:left-8 text-[4px] md:text-[9px] text-gray-550 font-sans">
-                      Issued: {isMasterSelected ? new Date().toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }) : (selectedSession?.startTime ? new Date(selectedSession.startTime).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }) : "—")}
-                    </div>
-                  </div>
+            <div className="p-3 sm:p-6 bg-slate-100/70 flex flex-col items-center gap-4 overflow-x-auto">
+              <div className="w-full max-w-[1000px] shadow-2xl rounded-xl overflow-hidden border border-slate-200 bg-white">
+                <div className="w-full overflow-x-auto">
+                  <CertificateTemplate
+                    userName={user?.name || "Candidate"}
+                    domain={isMasterSelected ? "Master" : (selectedSession?.category || "IT")}
+                    expertName={
+                      isMasterSelected
+                        ? "Mockeefy Board of Directors"
+                        : (selectedSession?.expert || "Verified Mockeefy Expert")
+                    }
+                    issueDateStr={
+                      isMasterSelected
+                        ? new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
+                        : (selectedSession ? getFormattedIssueDate(selectedSession) : new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }))
+                    }
+                    certId={isMasterSelected ? masterCertId : `MCFY-${(selectedSession?.id || "CERT").slice(-8).toUpperCase()}`}
+                    isMaster={isMasterSelected}
+                  />
                 </div>
               </div>
             </div>
             
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-between bg-white">
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-white">
               <button
                 type="button"
+                disabled={Boolean(downloading) || downloadingMaster}
                 onClick={async () => {
-                  const element = document.getElementById("certificate-pdf-content");
-                  if (element) {
-                    const name = user?.name || "Candidate";
-                    const filename = `${name.replace(/\s+/g, "_")}_${isMasterSelected ? "Master" : selectedSession?.category || "Interview"}_Certificate.pdf`;
-                    const opt = {
-                      margin:       0,
-                      filename:     filename,
-                      image:        { type: 'jpeg', quality: 0.98 },
-                      html2canvas:  { scale: 2, useCORS: true, letterRendering: true, logging: false },
-                      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-                    };
-                    try {
-                      // @ts-ignore
-                      await html2pdf().from(element).set(opt).save();
-                    } catch (err) {
-                      console.error(err);
-                    }
+                  if (isMasterSelected) {
+                    await handleDownloadMasterPDF();
+                  } else if (selectedSession) {
+                    await handleDownloadPDF(selectedSession);
                   }
                 }}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-md hover:shadow-lg"
+                className="px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60"
               >
-                <Download size={14} /> Download PDF Certificate
+                {Boolean(downloading) || downloadingMaster ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Generating Official PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    <span>Download Official PDF Certificate</span>
+                  </>
+                )}
               </button>
 
               <button
@@ -654,7 +1280,7 @@ export default function CertificatesPage() {
                   setSelectedSession(null);
                   setIsMasterSelected(false);
                 }}
-                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all"
+                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Close
               </button>
@@ -663,25 +1289,43 @@ export default function CertificatesPage() {
         </div>
       )}
 
-      {/* Hidden container for A4 PDF generation */}
-      <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
-        <div id="certificate-pdf-content">
-          {selectedSession && (
+      {/* Dedicated Off-Screen Capture Stage for Vector-Perfect A4 Landscape PDF */}
+      <div
+        id="pdf-capture-container"
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: "-99999px",
+          left: "-99999px",
+          width: "1000px",
+          height: "707px",
+          opacity: 0,
+          pointerEvents: "none",
+          overflow: "hidden",
+          zIndex: -99999,
+        }}
+      >
+        <div ref={pdfRenderRef} id="pdf-capture-stage" style={{ width: "1000px", height: "707px" }}>
+          {downloadTarget && (
             <CertificateTemplate
               userName={user?.name || "Candidate"}
-              isMaster={false}
-              category={selectedSession.category}
-              expertName={selectedSession.expert}
-              issueDate={selectedSession.startTime ? new Date(selectedSession.startTime).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }) : "—"}
-              certId={`MCFY-${selectedSession.id.slice(-8).toUpperCase()}`}
-            />
-          )}
-          {isMasterSelected && (
-            <CertificateTemplate
-              userName={user?.name || "Candidate"}
-              isMaster={true}
-              issueDate={new Date().toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' })}
-              certId={masterCertId}
+              domain={downloadTarget.isMaster ? "Master" : (downloadTarget.session?.category || "IT")}
+              expertName={
+                downloadTarget.isMaster
+                  ? "Mockeefy Board of Directors"
+                  : (downloadTarget.session?.expert || "Verified Mockeefy Expert")
+              }
+              issueDateStr={
+                downloadTarget.isMaster
+                  ? new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
+                  : (downloadTarget.session ? getFormattedIssueDate(downloadTarget.session) : "")
+              }
+              certId={
+                downloadTarget.isMaster
+                  ? masterCertId
+                  : `MCFY-${(downloadTarget.session?.id || "").slice(-8).toUpperCase()}`
+              }
+              isMaster={downloadTarget.isMaster}
             />
           )}
         </div>
@@ -690,4 +1334,3 @@ export default function CertificatesPage() {
     </div>
   );
 }
-

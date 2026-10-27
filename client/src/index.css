@@ -65,7 +65,7 @@
 @layer base {
     html {
         overflow-x: clip;
-        overflow-y: scroll !important;
+        overflow-y: scroll;
         scrollbar-gutter: stable;
         width: 100%;
         box-sizing: border-box;
@@ -407,9 +407,24 @@
 }
 
 /* SweetAlert2 Highest Priority Z-Index & Elevation */
+html.swal2-shown,
+body.swal2-shown {
+    overflow: hidden !important;
+    overflow-y: hidden !important;
+    height: 100vh !important;
+    overscroll-behavior: none !important;
+    touch-action: none;
+}
+
+html.swal2-shown body {
+    overflow: hidden !important;
+    overflow-y: hidden !important;
+}
+
 .swal2-container,
 .swal-top-container {
     z-index: 10000000 !important;
+    overscroll-behavior: contain !important;
 }
 
 .swal2-popup {

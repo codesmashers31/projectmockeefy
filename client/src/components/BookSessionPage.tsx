@@ -18,7 +18,9 @@ import {
   getKolkataToday,
   getKolkataTimeParts,
   getKolkataDateString,
-  getInitialKolkataMonth
+  getInitialKolkataMonth,
+  generateAvailableSlotsForDate,
+  getFirstAvailableMonth
 } from "../lib/bookSessionUtils";
 import { AVAILABLE_LEVELS } from "./BookingModal";
 import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
@@ -526,7 +528,7 @@ export default function BookSessionPage() {
     fetchReviews();
   }, [expertId]);
 
-  // Compute valid dates for currentMonth
+  // Compute valid dates for currentMonth that actually have scheduled, available openings
   const dates = useMemo(() => {
     if (!profile?.availability) return [];
 
@@ -535,35 +537,18 @@ export default function BookSessionPage() {
     const month = parts.month;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const allDates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
-
-    const today = getKolkataToday();
-    const weekly = profile.availability.weekly || {};
-    const breakDates = profile.availability.breakDates || [];
-
-    const activeDays = Object.keys(weekly).filter(day => {
-      const slots = weekly[day];
-      return Array.isArray(slots) && slots.length > 0;
-    }).map(d => d.toLowerCase());
+    const todayDateStr = getKolkataDateString(new Date());
 
     return allDates.filter(date => {
-      const kolkataDateStr = getKolkataDateString(date);
-      const isBreakDate = breakDates.some((b: any) => getKolkataDateString(b.start) === kolkataDateStr);
-      if (isBreakDate) return false;
+      const dateStr = getKolkataDateString(date);
+      // Past days cannot be selected
+      if (dateStr < todayDateStr) return false;
 
-      // In current month, cannot pick past days
-      if (date < today) return false;
-
-      // If activeDays configured, check weekday
-      if (activeDays.length > 0) {
-        const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase();
-        const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();
-        if (!activeDays.includes(dayShort) && !activeDays.includes(dayLong)) {
-          return false;
-        }
-      }
-      return true;
+      // Only show dates where the expert has scheduled timings with remaining available slots
+      const slots = generateAvailableSlotsForDate(date, profile.availability, sessionDuration, bookedSessions);
+      return slots.length > 0;
     });
-  }, [currentMonth, profile?.availability]);
+  }, [currentMonth, profile?.availability, sessionDuration, bookedSessions]);
 
   // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
   const activeDate = useMemo(() => {
@@ -582,8 +567,29 @@ export default function BookSessionPage() {
       if (!exists) {
         setSelectedDateStr(getKolkataDateString(dates[0]));
       }
+    } else {
+      setSelectedDateStr("");
     }
   }, [dates, selectedDateStr]);
+
+  // If opening page and current month has 0 openings, auto-navigate to the first month with available openings
+  const hasAutoSelectedMonth = useRef(false);
+  useEffect(() => {
+    hasAutoSelectedMonth.current = false;
+  }, [expertId]);
+
+  useEffect(() => {
+    if (profile?.availability && !hasAutoSelectedMonth.current) {
+      hasAutoSelectedMonth.current = true;
+      const firstAvailMonth = getFirstAvailableMonth(profile.availability, sessionDuration, bookedSessions);
+      if (
+        firstAvailMonth.getMonth() !== currentMonth.getMonth() ||
+        firstAvailMonth.getFullYear() !== currentMonth.getFullYear()
+      ) {
+        setCurrentMonth(firstAvailMonth);
+      }
+    }
+  }, [profile?.availability, sessionDuration, bookedSessions]);
 
   const nextMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
@@ -606,115 +612,7 @@ export default function BookSessionPage() {
   // Generate slots for selected date
   const currentSlots = useMemo(() => {
     if (!profile?.availability || !activeDate) return [];
-
-    const date = activeDate;
-    const kolkataDateStr = getKolkataDateString(date);
-
-    const weekly = profile.availability.weekly || {};
-    const dayShort = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).toLowerCase();
-    const dayLong = date.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).toLowerCase();
-
-    const activeKey = Object.keys(weekly).find(k => {
-      const lower = k.toLowerCase();
-      return lower === dayShort || lower === dayLong;
-    });
-
-    const weeklyRanges = activeKey ? weekly[activeKey] : [];
-    if (!weeklyRanges || weeklyRanges.length === 0) return [];
-
-    const parseTimeToMinutes = (t: string) => {
-      const parts = t.split(":");
-      return parseInt(parts[0] || "0", 10) * 60 + parseInt(parts[1] || "0", 10);
-    };
-
-    const formatMinutesToTime = (min: number) => {
-      const adjusted = min % (24 * 60);
-      const h = Math.floor(adjusted / 60);
-      const m = adjusted % 60;
-      const period = h >= 12 ? "PM" : "AM";
-      const displayHours = h % 12 || 12;
-      return `${displayHours.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${period}`;
-    };
-
-    const formatMinutesToHHMM = (min: number) => {
-      const adjusted = min % (24 * 60);
-      return `${Math.floor(adjusted / 60).toString().padStart(2, "0")}:${(adjusted % 60).toString().padStart(2, "0")}`;
-    };
-
-    const generatedSlots: { time: string; startMinutes: number; available: boolean }[] = [];
-    const duration = sessionDuration;
-    const step = duration;
-
-    // Sort ranges by start time
-    const sortedRanges = [...weeklyRanges].sort((a: any, b: any) => parseTimeToMinutes(a.from) - parseTimeToMinutes(b.from));
-
-    sortedRanges.forEach((range: { from: string; to: string }) => {
-      if (!range.from || !range.to) return;
-      let currentMin = parseTimeToMinutes(range.from);
-      let endMin = parseTimeToMinutes(range.to);
-      if (endMin < currentMin) endMin += 24 * 60;
-
-      // Snap start time to solid 30-minute block boundaries
-      if (currentMin % 30 !== 0) {
-        currentMin = Math.ceil(currentMin / 30) * 30;
-      }
-
-      while (currentMin + duration <= endMin) {
-        const nowKolkata = getKolkataTimeParts();
-        const isToday = kolkataDateStr === getKolkataDateString(new Date());
-        const nowMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
-
-        // Do not display past times today
-        if (isToday && currentMin < nowMinutes) {
-          currentMin += step;
-          continue;
-        }
-
-        // Prevent overlapping with any slot already generated
-        const overlapsWithExisting = generatedSlots.some(s => 
-          currentMin < s.startMinutes + duration && (currentMin + duration) > s.startMinutes
-        );
-        if (overlapsWithExisting) {
-          currentMin += step;
-          continue;
-        }
-
-        const slotStartStr = formatMinutesToHHMM(currentMin);
-        const slotEndStr = formatMinutesToHHMM(currentMin + duration);
-        const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
-        const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
-
-        const isBooked = bookedSessions.some((session) => {
-          const status = (session.status || "").toLowerCase();
-          if (status === "cancelled") return false;
-
-          const sStart = new Date(session.startTime);
-          const sEnd = new Date(session.endTime);
-          if (isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
-
-          const startMatches = getKolkataDateString(sStart) === kolkataDateStr;
-          const endMatches = getKolkataDateString(sEnd) === kolkataDateStr;
-          if (!startMatches && !endMatches) return false;
-
-          return slotDate.getTime() < sEnd.getTime() && slotEndDate.getTime() > sStart.getTime();
-        });
-
-        // Completely omit booked timing slot from available slots
-        if (isBooked) {
-          currentMin += step;
-          continue;
-        }
-
-        const timeStr = `${formatMinutesToTime(currentMin)} - ${formatMinutesToTime(currentMin + duration)}`;
-        const existing = generatedSlots.find(s => s.time === timeStr);
-        if (!existing) {
-          generatedSlots.push({ time: timeStr, startMinutes: currentMin, available: true });
-        }
-        currentMin += step;
-      }
-    });
-
-    return generatedSlots.sort((a, b) => a.startMinutes - b.startMinutes);
+    return generateAvailableSlotsForDate(activeDate, profile.availability, sessionDuration, bookedSessions);
   }, [activeDate, profile?.availability, sessionDuration, bookedSessions]);
 
   // Auto-deselect if the selected slot becomes unavailable or was booked
@@ -1431,7 +1329,7 @@ export default function BookSessionPage() {
                         }`}
                       >
                         <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-                          {isToday ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" })}
+                          {isToday ? "TODAY" : date.toLocaleDateString("en-US", { weekday: "short" })}
                         </div>
                         <div className="font-extrabold text-lg my-0.5 tabular-nums leading-none">
                           {date.getDate()}
@@ -1443,84 +1341,112 @@ export default function BookSessionPage() {
                     );
                   })
                 ) : (
-                  <div className="w-full py-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    No availability dates configured for this month.
+                  <div className="w-full py-4 px-3 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-1.5">
+                    <span>No openings scheduled for this month.</span>
+                    <button
+                      type="button"
+                      onClick={nextMonth}
+                      className="text-[#0755E8] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      Check next month <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Available Time Slots Header */}
-            <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Available Slots for {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
-              </span>
-              <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
-                {currentSlots.filter(s => s.available).length} slots available
-              </span>
-            </div>
-
-            {/* Time Slot Grid (Natural flow, non-truncated time ranges) */}
-            {loading || !profile?.availability ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse"
-                  />
-                ))}
-              </div>
-            ) : currentSlots.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
-                {currentSlots.map((slot) => {
-                  const isSelected = selectedSlot?.time === slot.time;
-                  const isUnavailable = !slot.available;
-
-                  return (
-                    <button
-                      key={slot.time}
-                      type="button"
-                      disabled={isUnavailable}
-                      onClick={() => {
-                        setSelectedSlot(isSelected ? null : slot);
-                        setPaymentStatus("not_paid");
-                      }}
-                      className={`relative flex items-center justify-between px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-[#0755E8] ${
-                        isUnavailable
-                          ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-75"
-                          : isSelected
-                          ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/25 cursor-pointer"
-                          : "bg-white border-slate-200 text-slate-700 hover:border-[#0755E8] hover:bg-[#F5F8FF] hover:text-[#0755E8] cursor-pointer"
-                      }`}
-                      title={isUnavailable ? `${slot.time} (Already Booked)` : slot.time}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : isUnavailable ? "text-slate-300" : "text-[#0755E8]"}`} />
-                        <span className={`whitespace-nowrap tabular-nums tracking-tight font-semibold text-xs ${
-                          isUnavailable ? "line-through text-slate-400" : isSelected ? "text-white font-bold" : "text-slate-800"
-                        }`}>
-                          {slot.time}
-                        </span>
-                      </div>
-                      {isUnavailable ? (
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded shrink-0">
-                          Booked
-                        </span>
-                      ) : isSelected ? (
-                        <Check className="w-3.5 h-3.5 text-white stroke-[3] shrink-0" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
+            {/* Available Time Slots Header & Grid (or empty month state) */}
+            {dates.length === 0 ? (
               <div className="py-8 text-center bg-slate-50/60 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4">
                 <Calendar className="w-8 h-8 text-slate-400 mb-2" />
-                <p className="text-xs sm:text-sm font-bold text-slate-800">No time slots available on this day</p>
+                <p className="text-xs sm:text-sm font-bold text-slate-800">No time slots scheduled for this month</p>
                 <p className="text-xs text-slate-500 mt-0.5 max-w-sm">
-                  {profile.name} has no remaining openings for this date. Please select another date from the carousel above.
+                  {profile.name} has not scheduled any timings for {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}. Please check the next month for open slots.
                 </p>
+                <button
+                  type="button"
+                  onClick={nextMonth}
+                  className="mt-3 px-3.5 py-1.5 bg-[#0755E8] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>Check Next Month</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
+            ) : (
+              <>
+                {/* Available Time Slots Header */}
+                <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Available Slots for {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
+                  </span>
+                  <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
+                    {currentSlots.filter(s => s.available).length} slots available
+                  </span>
+                </div>
+
+                {/* Time Slot Grid (Natural flow, non-truncated time ranges) */}
+                {loading || !profile?.availability ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : currentSlots.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                    {currentSlots.map((slot) => {
+                      const isSelected = selectedSlot?.time === slot.time;
+                      const isUnavailable = !slot.available;
+
+                      return (
+                        <button
+                          key={slot.time}
+                          type="button"
+                          disabled={isUnavailable}
+                          onClick={() => {
+                            setSelectedSlot(isSelected ? null : slot);
+                            setPaymentStatus("not_paid");
+                          }}
+                          className={`relative flex items-center justify-between px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-[#0755E8] ${
+                            isUnavailable
+                              ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-75"
+                              : isSelected
+                              ? "bg-[#0755E8] border-[#0755E8] text-white shadow-xs ring-2 ring-[#0755E8]/25 cursor-pointer"
+                              : "bg-white border-slate-200 text-slate-700 hover:border-[#0755E8] hover:bg-[#F5F8FF] hover:text-[#0755E8] cursor-pointer"
+                          }`}
+                          title={isUnavailable ? `${slot.time} (Already Booked)` : slot.time}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : isUnavailable ? "text-slate-300" : "text-[#0755E8]"}`} />
+                            <span className={`whitespace-nowrap tabular-nums tracking-tight font-semibold text-xs ${
+                              isUnavailable ? "line-through text-slate-400" : isSelected ? "text-white font-bold" : "text-slate-800"
+                            }`}>
+                              {slot.time}
+                            </span>
+                          </div>
+                          {isUnavailable ? (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded shrink-0">
+                              Booked
+                            </span>
+                          ) : isSelected ? (
+                            <Check className="w-3.5 h-3.5 text-white stroke-[3] shrink-0" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center bg-slate-50/60 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4">
+                    <Calendar className="w-8 h-8 text-slate-400 mb-2" />
+                    <p className="text-xs sm:text-sm font-bold text-slate-800">No time slots available on this day</p>
+                    <p className="text-xs text-slate-500 mt-0.5 max-w-sm">
+                      {profile.name} has no remaining openings for this date. Please select another date from the carousel above.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Divider and Relocated Promo Code & Payment Details - Displayed only when user selects an available time slot */}

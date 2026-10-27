@@ -211,7 +211,7 @@ function MentorCategoryScrollRow({
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onClickCapture={handleClickCapture}
-          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth"
+          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-1 sm:px-1.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth scroll-pl-1 sm:scroll-pl-1.5"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (
@@ -823,9 +823,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
   // Dedicated Filter Sidebar Component
   const renderFilterPanel = () => (
-    <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-4.5 space-y-4 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden">
-      {/* Decorative gradient glow */}
-      <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
+    <div className="relative bg-white rounded-[24px] border border-slate-200/90 p-4.5 space-y-4 text-left shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden">
       <div className="relative z-10 space-y-4">
         <div className="pb-3 border-b border-slate-100 space-y-2">
           {/* Main Title Row: Filters title & Clear all */}
@@ -1324,11 +1322,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </div>
 
           {/* DIV CARD: All Experts Categories & Content */}
-          <div id="all-experts-categories" className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white border border-slate-200/80 rounded-[24px] sm:rounded-[28px] p-3.5 sm:p-6 md:p-7 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden space-y-4 scroll-mt-24">
-            {/* Decorative gradient glow */}
-            <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/35 to-transparent blur-3xl pointer-events-none" />
-            <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0f5ff]/50 to-transparent pointer-events-none" />
-
+          <div id="all-experts-categories" className="relative bg-white border border-slate-200/90 rounded-[24px] sm:rounded-[28px] p-3.5 sm:p-6 md:p-7 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden space-y-4 scroll-mt-24">
             <div className="relative z-10">
               {/* Mentors Grid / Empty / Error States */}
               {isLoading ? (
@@ -1400,8 +1394,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
           {renderFilterPanel()}
 
           {/* Tips Card */}
-          <div className="relative bg-gradient-to-b from-[#f0f5ff]/60 via-white to-white rounded-[24px] border border-slate-200/80 p-4 space-y-2 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden">
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-gradient-to-br from-blue-100/40 via-indigo-100/30 to-transparent blur-2xl pointer-events-none" />
+          <div className="relative bg-white rounded-[24px] border border-slate-200/90 p-4 space-y-2 text-left shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden">
             <div className="relative z-10 space-y-2">
               <div className="flex items-center gap-1.5 text-[#0755E8]">
                 <Sparkles size={14} />
