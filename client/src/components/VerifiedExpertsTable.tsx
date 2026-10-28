@@ -3,6 +3,7 @@ import axios from '../lib/axios';
 import { useDataSync } from "../context/SocketContext";
 import { ChevronLeft, ChevronRight, Search, RefreshCw, Eye, FileText, Edit2 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminPageError } from "./AdminPageSkeleton";
 
 interface PersonalInformation {
   userName: string;
@@ -80,6 +81,8 @@ const VerifiedExpertsTable = () => {
   const [verifiedExperts, setVerifiedExperts] = useState<Expert[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,16 +90,20 @@ const VerifiedExpertsTable = () => {
 
   const fetchVerifiedExperts = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const response = await axios.get("/api/expert/verified");
-      if (response.data.success) {
-        setVerifiedExperts(response.data.data);
+      if (!response.data.success || !Array.isArray(response.data.data)) {
+        throw new Error(response.data.message || "Invalid verified experts response");
       }
+      setVerifiedExperts(response.data.data);
+      setHasLoaded(true);
     } catch (error) {
       console.error("Error fetching verified experts:", error);
+      setLoadError("Verified experts could not be loaded. Check your connection and try again.");
+      toast.error("Failed to load verified experts");
     } finally {
-      // Small delay prevents flicker if data loads instantly
-      setTimeout(() => setLoading(false), 300);
+      setLoading(false);
     }
   };
 
@@ -223,14 +230,23 @@ const VerifiedExpertsTable = () => {
         </div>
       </div>
 
+      {loadError && hasLoaded && (
+        <div role="alert" className="mb-4 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{loadError} Previously loaded experts are still shown.</span>
+          <button type="button" onClick={fetchVerifiedExperts} className="font-semibold underline" disabled={loading}>Retry</button>
+        </div>
+      )}
+
       {/* Cards Container */}
       <div className="rounded-xl min-h-[400px]">
-        {loading ? (
+        {loading && !hasLoaded ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white rounded-xl h-48 animate-pulse shadow-sm border border-gray-100"></div>
             ))}
           </div>
+        ) : loadError && !hasLoaded ? (
+          <AdminPageError title="Verified experts unavailable" message={loadError} onRetry={fetchVerifiedExperts} />
         ) : currentExperts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentExperts.map((expert) => (

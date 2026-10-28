@@ -4,6 +4,7 @@ import axios from "../../lib/axios";
 import { toast } from "sonner";
 import { Search, FileText, CheckCircle, Clock } from "lucide-react";
 import { PrimaryButton } from "../ExpertDashboard";
+import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 
 interface Session {
     _id: string;
@@ -30,7 +31,7 @@ export default function ExpertReports() {
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
     const [sessions, setSessions] = useState<Session[]>([]);
     const [reports, setReports] = useState<Report[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     // Modal State
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -124,6 +125,8 @@ export default function ExpertReports() {
             toast.error("Failed to submit report");
         }
     };
+
+    if (loading) return <ExpertPageSkeleton variant="reports" />;
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden">

@@ -17,6 +17,8 @@ interface UserData {
 const UsersTable = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<keyof UserData | "sessions">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -25,16 +27,20 @@ const UsersTable = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await axios.get('/api/admin/users');
-      if (res.data.success) {
-        setUsers(res.data.data);
+      if (!res.data.success || !Array.isArray(res.data.data)) {
+        throw new Error(res.data.message || "Invalid users response");
       }
+      setUsers(res.data.data);
+      setHasLoaded(true);
     } catch (error) {
       console.error("Error fetching users:", error);
+      setLoadError("Users could not be loaded. Check your connection and try again.");
       toast.error("Failed to fetch users");
     } finally {
-      setTimeout(() => setLoading(false), 300);
+      setLoading(false);
     }
   };
 
@@ -160,6 +166,13 @@ const UsersTable = () => {
         </div>
       </div>
 
+      {loadError && hasLoaded && (
+        <div role="alert" className="mb-4 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{loadError} Previously loaded users are still shown.</span>
+          <button type="button" onClick={fetchUsers} className="font-semibold underline" disabled={loading}>Retry</button>
+        </div>
+      )}
+
       {/* Table Container */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[400px]">
         <table className="w-full text-left text-sm">
@@ -174,9 +187,16 @@ const UsersTable = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {loading ? (
+            {loading && !hasLoaded ? (
               // Flicker-Free Skeleton Loading
               Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+            ) : loadError && !hasLoaded ? (
+              <tr>
+                <td colSpan={6} className="py-16 text-center" role="alert">
+                  <p className="text-sm text-red-700">{loadError}</p>
+                  <button type="button" onClick={fetchUsers} className="mt-3 font-semibold text-[#004fcb] underline">Retry</button>
+                </td>
+              </tr>
             ) : pageData.length > 0 ? (
               pageData.map((u) => (
                 <tr key={u._id} className="hover:bg-gray-50/50 transition-colors">

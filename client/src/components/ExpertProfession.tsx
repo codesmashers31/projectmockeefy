@@ -4,6 +4,7 @@ import axios from '../lib/axios';
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { AlertCircle } from "lucide-react";
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -115,7 +116,7 @@ const ExpertProfession = ({ onUpdate, isMissing }: ExpertProfessionProps) => {
     }
   };
 
-  if (loading) return <p>Loading professional info...</p>;
+  if (loading) return <ExpertPageSkeleton variant="form" />;
 
   return (
     <div className="h-full">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "../../lib/axios";
 import { toast } from "sonner";
+import AdminPageSkeleton, { AdminPageError } from "../../components/AdminPageSkeleton";
 import {
   Wallet,
   Landmark,
@@ -66,6 +67,8 @@ export default function PayoutManagement() {
     expertSummary: []
   });
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Filter States
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -91,12 +94,16 @@ export default function PayoutManagement() {
           methodType: methodFilter || undefined
         }
       });
-      if (res.data.success) {
-        setRequests(res.data.data);
-        setAnalytics(res.data.analytics);
+      if (!res.data.success || !Array.isArray(res.data.data) || !res.data.analytics) {
+        throw new Error(res.data.message || "Failed to load payout requests.");
       }
+      setRequests(res.data.data);
+      setAnalytics(res.data.analytics);
+      setHasLoaded(true);
+      setLoadError(null);
     } catch (error: any) {
       console.error("Error fetching admin payout requests:", error);
+      setLoadError("Payout requests could not be loaded. Check your connection and try again.");
       toast.error("Failed to load payout requests.");
     } finally {
       setLoading(false);
@@ -143,6 +150,20 @@ export default function PayoutManagement() {
     return name.includes(query) || email.includes(query);
   });
 
+  if (loading && !hasLoaded) {
+    return <AdminPageSkeleton variant="payouts" rows={6} columns={6} />;
+  }
+
+  if (loadError && !hasLoaded) {
+    return (
+      <AdminPageError
+        title="Payout data unavailable"
+        message={loadError}
+        onRetry={fetchPayoutData}
+      />
+    );
+  }
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-8 p-4 sm:p-6 lg:p-8 font-sans bg-slate-50 min-h-screen">
       {/* Header */}
@@ -163,6 +184,13 @@ export default function PayoutManagement() {
           Refresh Data
         </button>
       </div>
+
+      {loadError && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{loadError} Previously loaded payout data is still shown.</span>
+          <button type="button" onClick={fetchPayoutData} className="font-semibold underline" disabled={loading}>Retry</button>
+        </div>
+      )}
 
       {/* Analytics Widget Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -286,16 +314,7 @@ export default function PayoutManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-150">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Syncing Ledger Accounts...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredRequests.length === 0 ? (
+              {filteredRequests.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-semibold">
                     No matching payout requests found.

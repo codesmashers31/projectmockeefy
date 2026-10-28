@@ -5,6 +5,7 @@ import { PrimaryButton } from '../pages/ExpertDashboard';
 import { X, Copy, Plus, Clock, Calendar as CalendarIcon, CheckCircle2, ChevronDown, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 const formatKolkataDateString = (dateStr: string) => {
   if (!dateStr) return "";
@@ -488,6 +489,7 @@ const TimeSelect = ({ value, onChange }: { value: string, onChange: (val: string
 const EditExpertAvailability = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileState>({
     availability: {
       sessionDuration: 30,
@@ -541,6 +543,9 @@ const EditExpertAvailability = () => {
       }));
     } catch (err) {
       console.error("Error fetching availability:", err);
+      toast.error("Failed to load availability.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -767,6 +772,8 @@ const EditExpertAvailability = () => {
       toast.error(message);
     }
   };
+
+  if (loading) return <ExpertPageSkeleton variant="availability" />;
 
   return (
     <div className="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

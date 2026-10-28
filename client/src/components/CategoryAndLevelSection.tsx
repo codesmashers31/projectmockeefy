@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { PrimaryButton } from "../pages/ExpertDashboard";
 import { Award, CheckSquare, Square } from "lucide-react";
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 interface CategoryAndLevelSectionProps {
   onUpdate?: () => void;
@@ -132,12 +133,7 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
   };
 
   if (loading) {
-    return (
-      <div className="p-8 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm text-gray-500 font-medium">Loading details...</p>
-      </div>
-    );
+    return <ExpertPageSkeleton variant="form" />;
   }
 
   return (

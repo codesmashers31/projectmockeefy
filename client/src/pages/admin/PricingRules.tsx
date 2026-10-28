@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { DollarSign, RotateCcw, Search, Filter, Award, Layers, Sparkles, TrendingUp } from 'lucide-react';
 import axios from '../../lib/axios';
 import { toast } from 'sonner';
+import AdminPageSkeleton, { AdminPageError } from '../../components/AdminPageSkeleton';
 
 interface Category {
     _id: string;
@@ -28,6 +29,8 @@ export default function PricingRules() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [rules, setRules] = useState<Rule[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [resetting, setResetting] = useState(false);
 
     // Search and filter states
@@ -42,36 +45,44 @@ export default function PricingRules() {
         try {
             // Get full matrix rules and active categories
             const matrixRes = await axios.get('/api/pricing');
-            if (matrixRes.data.success) {
-                const allCats: Category[] = matrixRes.data.categories || [];
-                setCategories(allCats);
-
-                // Load rules
-                const allRules = (matrixRes.data.rules || [])
-                    .filter((r: any) => r.duration === 30 && !r.skillId)
-                    .map((r: any) => ({
-                        categoryId: r.categoryId,
-                        level: r.level,
-                        price: r.price,
-                        originalPrice: r.originalPrice || 0
-                    }));
-                setRules(allRules);
-
-                // Build initial edit state
-                const edits: Record<string, Record<string, number>> = {};
-                const origEdits: Record<string, Record<string, number>> = {};
-                allRules.forEach((r: Rule) => {
-                    if (!edits[r.categoryId]) edits[r.categoryId] = {};
-                    edits[r.categoryId][r.level] = r.price;
-
-                    if (!origEdits[r.categoryId]) origEdits[r.categoryId] = {};
-                    origEdits[r.categoryId][r.level] = r.originalPrice || 0;
-                });
-                setEditedPrices(edits);
-                setEditedOriginalPrices(origEdits);
+            if (
+                !matrixRes.data.success
+                || !Array.isArray(matrixRes.data.categories)
+                || !Array.isArray(matrixRes.data.rules)
+            ) {
+                throw new Error(matrixRes.data.message || 'Failed to load pricing configurations');
             }
+            const allCats: Category[] = matrixRes.data.categories || [];
+            setCategories(allCats);
+
+            // Load rules
+            const allRules = (matrixRes.data.rules || [])
+                .filter((r: any) => r.duration === 30 && !r.skillId)
+                .map((r: any) => ({
+                    categoryId: r.categoryId,
+                    level: r.level,
+                    price: r.price,
+                    originalPrice: r.originalPrice || 0
+                }));
+            setRules(allRules);
+
+            // Build initial edit state
+            const edits: Record<string, Record<string, number>> = {};
+            const origEdits: Record<string, Record<string, number>> = {};
+            allRules.forEach((r: Rule) => {
+                if (!edits[r.categoryId]) edits[r.categoryId] = {};
+                edits[r.categoryId][r.level] = r.price;
+
+                if (!origEdits[r.categoryId]) origEdits[r.categoryId] = {};
+                origEdits[r.categoryId][r.level] = r.originalPrice || 0;
+            });
+            setEditedPrices(edits);
+            setEditedOriginalPrices(origEdits);
+            setHasLoaded(true);
+            setLoadError(null);
         } catch (error) {
             console.error("Failed to load pricing configurations:", error);
+            setLoadError("Pricing configurations could not be loaded. Check your connection and try again.");
             toast.error("Failed to load pricing configurations");
         } finally {
             if (showLoading) setLoading(false);
@@ -81,6 +92,20 @@ export default function PricingRules() {
     useEffect(() => {
         fetchData(true);
     }, []);
+
+    if (loading && !hasLoaded) {
+        return <AdminPageSkeleton variant="pricing" rows={6} />;
+    }
+
+    if (loadError && !hasLoaded) {
+        return (
+            <AdminPageError
+                title="Pricing unavailable"
+                message={loadError}
+                onRetry={() => fetchData(true)}
+            />
+        );
+    }
 
     // Price change handler for keystrokes
     const handlePriceChange = (catId: string, level: string, value: string) => {
@@ -266,6 +291,13 @@ export default function PricingRules() {
                 </div>
             </div>
 
+            {loadError && (
+                <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{loadError} Previously loaded pricing is still shown.</span>
+                    <button type="button" onClick={() => fetchData(true)} className="font-semibold underline" disabled={loading}>Retry</button>
+                </div>
+            )}
+
             {/* Top Dashboard Metrics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* Categories Card */}
@@ -343,13 +375,7 @@ export default function PricingRules() {
 
                 {/* Table Container */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-                            <RotateCcw className="w-8 h-8 animate-spin mb-3 text-purple-600" />
-                            <p className="font-semibold text-sm">Loading pricing rules matrix...</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
+                    <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50/50 border-b border-gray-100">
@@ -432,14 +458,13 @@ export default function PricingRules() {
                                     ) : (
                                         <tr>
                                             <td colSpan={LEVELS.length + 1} className="py-12 text-center text-gray-400 text-sm italic">
-                                                No categories match your search.
+                                                {categories.length === 0 ? 'No pricing categories are configured.' : 'No categories match your search.'}
                                             </td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

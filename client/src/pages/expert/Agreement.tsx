@@ -28,6 +28,7 @@ import { convertPdfPageToImage } from '../../lib/pdfSignatureHelper';
 import MockeefyLogo from '../../components/MockeefyLogo';
 import PdfViewer from '../../components/PdfViewer';
 import { getProfileImageUrl } from '../../lib/imageUtils';
+import ExpertPageSkeleton from '../../components/ExpertPageSkeleton';
 
 interface AgreementData {
   isSigned?: boolean;
@@ -291,7 +292,7 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-400">Loading agreement details...</div>;
+    return <ExpertPageSkeleton variant="agreement" />;
   }
 
   const isSigned = Boolean(agreement.isSigned);

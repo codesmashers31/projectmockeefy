@@ -16,6 +16,8 @@ interface Category {
 const CategoriesPanel = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // UI States (Search, Sort, Pagination)
   const [search, setSearch] = useState("");
@@ -33,19 +35,21 @@ const CategoriesPanel = () => {
 
   const fetchCategories = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const response = await axios.get(`/api/categories`);
 
-      if (Array.isArray(response.data)) {
-        setCategories(response.data);
-      } else {
-        setCategories([]);
+      if (!Array.isArray(response.data)) {
+        throw new Error("Invalid categories response");
       }
+      setCategories(response.data);
+      setHasLoaded(true);
     } catch (error) {
       console.error("Error fetching categories:", error);
+      setLoadError("Categories could not be loaded. Check your connection and try again.");
       toast.error("Failed to load categories");
     } finally {
-      setTimeout(() => setLoading(false), 300);
+      setLoading(false);
     }
   };
 
@@ -203,6 +207,13 @@ const CategoriesPanel = () => {
         </div>
       </div>
 
+      {loadError && hasLoaded && (
+        <div role="alert" className="mb-4 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{loadError} Previously loaded categories are still shown.</span>
+          <button type="button" onClick={fetchCategories} className="font-semibold underline" disabled={loading}>Retry</button>
+        </div>
+      )}
+
       {/* Table Container */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[400px]">
         <table className="w-full text-left text-sm">
@@ -220,9 +231,16 @@ const CategoriesPanel = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {loading ? (
+            {loading && !hasLoaded ? (
               // Flicker-Free Skeleton Loading
               Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+            ) : loadError && !hasLoaded ? (
+              <tr>
+                <td colSpan={4} className="py-16 text-center" role="alert">
+                  <p className="text-sm text-red-700">{loadError}</p>
+                  <button type="button" onClick={fetchCategories} className="mt-3 font-semibold text-[#004fcb] underline">Retry</button>
+                </td>
+              </tr>
             ) : paginatedCategories.length > 0 ? (
               paginatedCategories.map((cat) => (
                 <tr key={cat._id} className="hover:bg-gray-50/50 transition-colors group">

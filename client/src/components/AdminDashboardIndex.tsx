@@ -1,6 +1,7 @@
 // src/pages/admin/Index.tsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "../lib/axios";
+import AdminPageSkeleton, { AdminPageError } from "./AdminPageSkeleton";
 import {
   Users,
   UserCheck,
@@ -38,23 +39,28 @@ export default function AdminDashboardIndex() {
     chartData: []
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await axios.get(`/api/admin/stats`);
+      if (!res.data.success || !res.data.data) {
+        throw new Error(res.data.message || "Failed to load dashboard statistics.");
+      }
+      setStats(res.data.data);
+    } catch (error) {
+      console.error("Failed to fetch admin stats:", error);
+      setLoadError("Dashboard statistics could not be loaded. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Updated to use the correct endpoint path
-        const res = await axios.get(`/api/admin/stats`);
-        if (res.data.success) {
-          setStats(res.data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch admin stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   // Inner Stat Card (Contrast against White Main Container)
   const StatCard = ({ title, value, icon: Icon, trend, trendValue, color }: any) => (
@@ -85,6 +91,14 @@ export default function AdminDashboardIndex() {
     const colors = ["bg-blue-500", "bg-purple-500", "bg-pink-500", "bg-orange-500", "bg-green-500"];
     return colors[index % colors.length];
   };
+
+  if (loading) {
+    return <AdminPageSkeleton variant="dashboard" />;
+  }
+
+  if (loadError) {
+    return <AdminPageError title="Dashboard unavailable" message={loadError} onRetry={fetchStats} />;
+  }
 
   return (
     // MAIN PAGE CONTAINER: Wraps everything in a single white "sheet"

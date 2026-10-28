@@ -10,7 +10,7 @@ import AgreementPage from "./Agreement";
 import axios from '../../lib/axios';
 import { useAuth } from "../../context/AuthContext";
 import { useDataSync } from "../../context/SocketContext";
-import { Skeleton } from "../../components/ui/skeleton";
+import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 import {
   User,
   BookOpen,
@@ -35,7 +35,7 @@ const TABS = [
 ];
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabQuery = searchParams.get("tab");
@@ -163,7 +163,7 @@ export default function ProfilePage() {
       case "profession":
         return <ExpertProfession {...commonProps} isMissing={isSectionMissing('professional') || isSectionMissing('profession')} />;
       case "verification":
-        return <VerificationManager />;
+        return <VerificationManager onUpdate={handleUpdate} />;
       case "agreement":
         return <AgreementPage onUpdate={handleUpdate} />;
       default:
@@ -171,20 +171,8 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading && !profileData) {
-    return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-12 gap-8">
-          <div className="col-span-3 space-y-4">
-            <Skeleton className="h-64 w-full rounded-xl" />
-          </div>
-          <div className="col-span-9 space-y-4">
-            <Skeleton className="h-12 w-full rounded-md" />
-            <Skeleton className="h-96 w-full rounded-xl" />
-          </div>
-        </div>
-      </div>
-    );
+  if (isAuthLoading || (loading && !profileData)) {
+    return <ExpertPageSkeleton variant="profile" />;
   }
 
   return (

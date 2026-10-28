@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { getProfileImageUrl } from '../../lib/imageUtils';
 import PdfViewer from '../../components/PdfViewer';
+import AdminPageSkeleton, { AdminPageError } from '../../components/AdminPageSkeleton';
 
 interface AgreementRecord {
   _id: string;
@@ -44,6 +45,8 @@ interface AgreementRecord {
 export default function AdminAgreements() {
   const [agreements, setAgreements] = useState<AgreementRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'VERIFIED' | 'PENDING' | 'REJECTED'>('ALL');
   const [selectedRecord, setSelectedRecord] = useState<AgreementRecord | null>(null);
@@ -56,11 +59,15 @@ export default function AdminAgreements() {
       setLoading(true);
       // Fetch signed agreements (or pass filter=all if needed)
       const res = await axios.get('/api/admin/agreements');
-      if (res.data.success) {
-        setAgreements(res.data.agreements || []);
+      if (!res.data.success) {
+        throw new Error(res.data.message || 'Failed to load expert agreements');
       }
+      setAgreements(res.data.agreements || []);
+      setLoadError(null);
+      setHasLoaded(true);
     } catch (error) {
       console.error('Error fetching admin agreements:', error);
+      setLoadError('Expert agreements could not be loaded. Check your connection and try again.');
       toast.error('Failed to load expert agreements');
     } finally {
       setLoading(false);
@@ -165,6 +172,20 @@ export default function AdminAgreements() {
     return getProfileImageUrl(raw);
   };
 
+  if (loading && !hasLoaded) {
+    return <AdminPageSkeleton variant="agreements" rows={6} columns={5} />;
+  }
+
+  if (loadError && !hasLoaded) {
+    return (
+      <AdminPageError
+        title="Agreements unavailable"
+        message={loadError}
+        onRetry={fetchAgreements}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -184,6 +205,13 @@ export default function AdminAgreements() {
             </div>
           </div>
         </div>
+
+        {loadError && (
+          <div role="alert" className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+            <span>{loadError} Previously loaded agreements are still shown.</span>
+            <button type="button" onClick={fetchAgreements} className="font-semibold underline" disabled={loading}>Retry</button>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
@@ -319,13 +347,7 @@ export default function AdminAgreements() {
 
       {/* Main Agreements Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 text-[#004fcb] animate-spin mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-700">Loading expert agreements...</p>
-            <p className="text-xs text-gray-400 mt-1">Fetching digital signature files and compliance records</p>
-          </div>
-        ) : filteredAgreements.length === 0 ? (
+        {filteredAgreements.length === 0 ? (
           <div className="p-16 text-center">
             <div className="w-16 h-16 bg-blue-50 text-[#004fcb] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
               <FileSignature className="w-8 h-8" />

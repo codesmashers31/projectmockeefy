@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Shield, Clock, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../../context/AuthContext";
+import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 
 // Simple Tailwind Switch Component
 const Toggle = ({ checked, onChange, label, description }: { checked: boolean; onChange: () => void; label: string; description?: string }) => (
@@ -29,6 +31,8 @@ const Toggle = ({ checked, onChange, label, description }: { checked: boolean; o
 );
 
 export default function Settings() {
+    const { isLoading: isAuthLoading } = useAuth();
+    const [initialLoading, setInitialLoading] = useState(true);
     const [loading, setLoading] = useState(false);
     const [settings, setSettings] = useState({
         // Notifications
@@ -47,18 +51,36 @@ export default function Settings() {
         allowRescheduling: true
     });
 
+    useEffect(() => {
+        const saved = localStorage.getItem("expert_settings");
+        if (saved) {
+            try {
+                setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
+            } catch (e) {}
+        }
+        const timer = setTimeout(() => {
+            setInitialLoading(false);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
+
     const handleToggle = (key: keyof typeof settings) => {
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const handleSave = async () => {
         setLoading(true);
-        // Simulate API call
+        // Simulate API call & persist
         setTimeout(() => {
+            localStorage.setItem("expert_settings", JSON.stringify(settings));
             setLoading(false);
             toast.success("Settings saved successfully");
         }, 800);
     };
+
+    if (isAuthLoading || initialLoading) {
+        return <ExpertPageSkeleton variant="settings" />;
+    }
 
     return (
         <div className="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

@@ -53,6 +53,7 @@ import axios from '../../lib/axios';
 import { API_BASE_URL } from '../../config';
 import { toast } from "sonner";
 import { PrimaryButton, SecondaryButton } from '../ExpertDashboard';
+import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 
 interface CandidateDetails {
     email: string;
@@ -89,7 +90,7 @@ const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 export default function Sessions() {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, isLoading: isAuthLoading } = useAuth();
     const [allSessions, setAllSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadingSessions, setLoadingSessions] = useState(true);
@@ -126,7 +127,7 @@ export default function Sessions() {
         suggestions: ""
     });
 
-    const currentUserId = user?.id || "";
+    const currentUserId = user?.id || user?.userId || user?._id || "";
 
     // Timer Effect
     useEffect(() => {
@@ -136,7 +137,11 @@ export default function Sessions() {
 
     // Fetch Sessions Logic
     const fetchSessions = async (showLoading = true) => {
-        if (!currentUserId) return;
+        if (isAuthLoading) return;
+        if (!currentUserId) {
+            if (showLoading) setLoadingSessions(false);
+            return;
+        }
         if (showLoading) setLoadingSessions(true);
         try {
             const res = await axios.get(`/api/sessions/user/${currentUserId}/role/expert`);
@@ -162,7 +167,7 @@ export default function Sessions() {
 
     useEffect(() => {
         fetchSessions();
-    }, [currentUserId]);
+    }, [currentUserId, isAuthLoading]);
 
     // Real-time synchronization across logins
     useDataSync(['SESSION_CREATED', 'SESSION_UPDATED', 'RECONNECTED'], () => {
@@ -560,6 +565,9 @@ export default function Sessions() {
         return filteredSessions.filter(s => isSameDay(new Date(s.startTime), date));
     };
 
+    if (isAuthLoading || (loadingSessions && allSessions.length === 0)) {
+        return <ExpertPageSkeleton variant="calendar" />;
+    }
     if (!user) return <div className="p-8 text-center text-slate-500 font-medium">Please log in to view sessions.</div>;
 
     return (

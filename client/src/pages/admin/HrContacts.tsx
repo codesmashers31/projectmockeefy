@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Mail, Phone, Building } from 'lucide-react';
 import axios from '../../lib/axios';
 import { toast } from 'sonner';
+import AdminPageSkeleton, { AdminPageError } from '../../components/AdminPageSkeleton';
 
 interface HrContact {
     id: string; // or _id
@@ -15,7 +16,8 @@ interface HrContact {
 }
 
 interface Category {
-    id: string;
+    id?: string;
+    _id?: string;
     name: string;
 }
 
@@ -23,6 +25,8 @@ export default function HrContacts() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [contacts, setContacts] = useState<HrContact[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     // Form State
     const [showForm, setShowForm] = useState(false);
@@ -46,10 +50,17 @@ export default function HrContacts() {
                 axios.get('/api/categories'),
                 axios.get('/api/hr-contacts')
             ]);
+            if (!Array.isArray(catsRes.data) || !Array.isArray(contactsRes.data)) {
+                throw new Error('Invalid HR contacts response');
+            }
             setCategories(catsRes.data);
             setContacts(contactsRes.data);
+            setHasLoaded(true);
+            setLoadError(null);
         } catch (error) {
             console.error("Error fetching data", error);
+            setLoadError("HR contacts could not be loaded. Check your connection and try again.");
+            toast.error("Failed to load HR contacts");
         } finally {
             setLoading(false);
         }
@@ -80,7 +91,21 @@ export default function HrContacts() {
         }
     };
 
-    const getCategoryName = (catId: string) => categories.find(c => c.id === catId)?.name || 'Unknown';
+    const getCategoryName = (catId: string) => categories.find(c => (c.id || c._id) === catId)?.name || 'Unknown';
+
+    if (loading && !hasLoaded) {
+        return <AdminPageSkeleton variant="contacts" />;
+    }
+
+    if (loadError && !hasLoaded) {
+        return (
+            <AdminPageError
+                title="HR contacts unavailable"
+                message={loadError}
+                onRetry={fetchData}
+            />
+        );
+    }
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 min-h-[calc(100vh-8rem)] space-y-6">
@@ -97,6 +122,13 @@ export default function HrContacts() {
                     Add New Contact
                 </button>
             </div>
+
+            {loadError && (
+                <div role="alert" className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{loadError} Previously loaded contacts are still shown.</span>
+                    <button type="button" onClick={fetchData} className="font-semibold underline" disabled={loading}>Retry</button>
+                </div>
+            )}
 
             {showForm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -115,7 +147,10 @@ export default function HrContacts() {
                                     onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                                 >
                                     <option value="">Select Category</option>
-                                    {Array.isArray(categories) && categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    {Array.isArray(categories) && categories.map(c => {
+                                        const categoryId = c.id || c._id || '';
+                                        return <option key={categoryId || c.name} value={categoryId}>{c.name}</option>;
+                                    })}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -168,8 +203,20 @@ export default function HrContacts() {
 
             {/* Contacts List */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {loading ? (
-                    <div className="col-span-full text-center py-12 text-gray-500">Loading contacts...</div>
+                {loading && contacts.length === 0 ? (
+                    Array.from({ length: 6 }, (_, index) => (
+                        <div key={index} aria-hidden="true" className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+                            <div className="flex gap-4">
+                                <div className="h-12 w-12 animate-pulse rounded-xl bg-gray-200" />
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                                    <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+                                </div>
+                            </div>
+                            <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
+                            <div className="h-3 w-3/4 animate-pulse rounded bg-gray-200" />
+                        </div>
+                    ))
                 ) : (Array.isArray(contacts) ? contacts : []).map(contact => (
                     <div key={contact.id || contact._id} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-shadow group relative">
                         <button

@@ -4,6 +4,7 @@ import axios from '../lib/axios';
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { AlertCircle } from "lucide-react";
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 interface ExpertEducationProps {
     onUpdate?: () => void;
@@ -109,7 +110,7 @@ const ExpertEducation = ({ onUpdate, isMissing }: ExpertEducationProps) => {
         }
     };
 
-    if (loading) return <p>Loading education...</p>;
+    if (loading) return <ExpertPageSkeleton variant="form" />;
 
     return (
         <div className="h-full">

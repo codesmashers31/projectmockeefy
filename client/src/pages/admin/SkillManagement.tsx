@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit2, Hexagon, X } from 'lucide-react';
 import axios from '../../lib/axios';
 import { toast } from 'sonner';
+import AdminPageSkeleton, { AdminPageError } from '../../components/AdminPageSkeleton';
 
 interface Skill {
     id: string; // _id
@@ -23,6 +24,10 @@ export default function SkillManagement() {
     const [skills, setSkills] = useState<Skill[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
+    const [categoriesError, setCategoriesError] = useState<string | null>(null);
+    const [skillsError, setSkillsError] = useState<string | null>(null);
+    const skillRequestId = useRef(0);
 
     // Form State
     const [showForm, setShowForm] = useState(false);
@@ -33,37 +38,64 @@ export default function SkillManagement() {
     });
     const [editingId, setEditingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        // Fetch Categories
-        const fetchCategories = async () => {
-            try {
-                const res = await axios.get('/api/categories');
-                setCategories(res.data);
-            } catch (error) {
-                console.error("Error fetching categories", error);
+    const fetchCategories = async () => {
+        setCategoriesLoading(true);
+        setCategoriesError(null);
+        try {
+            const res = await axios.get('/api/categories');
+            if (!Array.isArray(res.data)) {
+                throw new Error('Invalid categories response');
             }
-        };
+            setCategories(res.data);
+        } catch (error) {
+            console.error("Error fetching categories", error);
+            setCategoriesError("Categories could not be loaded. Check your connection and try again.");
+            toast.error("Failed to load categories");
+        } finally {
+            setCategoriesLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchCategories();
     }, []);
 
     useEffect(() => {
         if (!selectedCategory) {
+            skillRequestId.current += 1;
             setSkills([]);
+            setLoading(false);
             return;
         }
+        setSkills([]);
+        setSkillsError(null);
         fetchSkills();
+        return () => {
+            skillRequestId.current += 1;
+        };
     }, [selectedCategory]);
 
     const fetchSkills = async () => {
+        const requestId = ++skillRequestId.current;
+        const categoryId = selectedCategory;
         setLoading(true);
+        setSkillsError(null);
         try {
-            const res = await axios.get(`/api/skills/category/${selectedCategory}`);
+            const res = await axios.get(`/api/skills/category/${categoryId}`);
+            if (requestId !== skillRequestId.current) return;
+            if (!Array.isArray(res.data)) {
+                throw new Error('Invalid skills response');
+            }
             setSkills(res.data);
         } catch (error) {
+            if (requestId !== skillRequestId.current) return;
             console.error("Error fetching skills", error);
-            // setSkills([]); // Keep empty on error
+            setSkillsError("Skills could not be loaded. Check your connection and try again.");
+            toast.error("Failed to load skills");
         } finally {
-            setLoading(false);
+            if (requestId === skillRequestId.current) {
+                setLoading(false);
+            }
         }
     };
 
@@ -111,6 +143,20 @@ export default function SkillManagement() {
         }
     };
 
+    if (categoriesLoading && categories.length === 0) {
+        return <AdminPageSkeleton variant="skills" />;
+    }
+
+    if (categoriesError && categories.length === 0) {
+        return (
+            <AdminPageError
+                title="Skill categories unavailable"
+                message={categoriesError}
+                onRetry={fetchCategories}
+            />
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -125,7 +171,17 @@ export default function SkillManagement() {
                     {/* Sidebar: Categories */}
                     <div className="w-full md:w-64 space-y-2">
                         <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Categories</h3>
-                        {categories.map((cat, idx) => (
+                        {categoriesError && (
+                            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                                <p>{categoriesError}</p>
+                                <button type="button" onClick={fetchCategories} className="mt-2 font-semibold underline" disabled={categoriesLoading}>Retry</button>
+                            </div>
+                        )}
+                        {categoriesLoading && categories.length === 0 ? (
+                            <div className="space-y-2" aria-label="Loading categories">
+                                {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-11 animate-pulse rounded-xl bg-gray-200" />)}
+                            </div>
+                        ) : categories.map((cat, idx) => (
                             <button
                                 key={cat.id || cat._id || idx}
                                 onClick={() => setSelectedCategory(cat.id || cat._id!)}
@@ -137,6 +193,9 @@ export default function SkillManagement() {
                                 {cat.name}
                             </button>
                         ))}
+                        {!categoriesLoading && !categoriesError && categories.length === 0 && (
+                            <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No categories are available yet.</p>
+                        )}
                     </div>
 
                     {/* Main Content: Skills List */}
@@ -200,9 +259,22 @@ export default function SkillManagement() {
                                 )}
 
                                 <div className="space-y-3">
-                                    {loading ? (
-                                        <p className="text-gray-500 text-center py-8">Loading skills...</p>
-                                    ) : skills.length === 0 ? (
+                                        {skillsError && skills.length > 0 && (
+                                            <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                                                <span>{skillsError} Previously loaded skills are still shown. </span>
+                                                <button type="button" onClick={fetchSkills} className="font-semibold underline" disabled={loading}>Retry</button>
+                                            </div>
+                                        )}
+                                        {loading && skills.length === 0 ? (
+                                            <div className="space-y-3" aria-label="Loading skills">
+                                                {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}
+                                            </div>
+                                        ) : skillsError && skills.length === 0 ? (
+                                            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                                                <p>{skillsError}</p>
+                                                <button type="button" onClick={fetchSkills} className="mt-2 font-semibold underline">Retry</button>
+                                            </div>
+                                        ) : skills.length === 0 ? (
                                         <p className="text-gray-400 text-center py-12 italic">No skills defined for this category yet.</p>
                                     ) : (
                                         skills.map((skill, idx) => (

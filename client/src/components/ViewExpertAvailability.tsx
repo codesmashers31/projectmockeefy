@@ -3,6 +3,7 @@ import axios from '../lib/axios';
 import { useNavigate } from "react-router-dom";
 import { PrimaryButton } from '../pages/ExpertDashboard';
 import { Clock, Calendar as CalendarIcon, Edit3 } from "lucide-react";
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 const formatKolkataDateString = (dateStr: string) => {
   if (!dateStr) return "";
@@ -100,11 +101,7 @@ const ViewExpertAvailability = () => {
   }
 
   if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <ExpertPageSkeleton variant="availability" />;
   }
 
   if (!profile) return null;
