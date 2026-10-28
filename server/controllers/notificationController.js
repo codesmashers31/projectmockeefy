@@ -4,7 +4,10 @@ import { emitToUser, syncDataChange } from '../services/socketService.js';
 // Get all notifications for a user
 export const getNotifications = async (req, res) => {
     try {
-        const userId = req.user.userId; // From auth middleware
+        const userId = req.user?.userId || req.user?.id || req.user?._id;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized: User ID not found" });
+        }
         const { unreadOnly } = req.query;
 
         const query = { userId };
@@ -28,26 +31,36 @@ export const getNotifications = async (req, res) => {
 // Mark as read
 export const markAsRead = async (req, res) => {
     try {
-        const userId = req.user.userId;
-        const { notificationIds } = req.body; // Array of IDs or 'all'
+        const userId = req.user?.userId || req.user?.id || req.user?._id;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized: User ID not found" });
+        }
+        const { notificationIds } = req.body; // Array of IDs, single ID string, or 'all'
 
-        if (notificationIds === 'all') {
+        let ids = notificationIds;
+        if (typeof ids === 'string' && ids !== 'all') {
+            ids = [ids];
+        } else if (!ids && req.body.notificationId) {
+            ids = [req.body.notificationId];
+        }
+
+        if (ids === 'all') {
             await Notification.updateMany(
                 { userId, isRead: false },
                 { isRead: true }
             );
-        } else if (Array.isArray(notificationIds) && notificationIds.length > 0) {
+        } else if (Array.isArray(ids) && ids.length > 0) {
             await Notification.updateMany(
-                { userId, _id: { $in: notificationIds } },
+                { userId, _id: { $in: ids } },
                 { isRead: true }
             );
         }
 
-        emitToUser(userId, 'notification_read', { notificationIds });
+        emitToUser(userId, 'notification_read', { notificationIds: ids });
         syncDataChange({
             type: 'NOTIFICATION_SYNC',
             userId,
-            data: { notificationIds }
+            data: { notificationIds: ids }
         });
 
         res.json({ success: true });
@@ -62,7 +75,7 @@ export const createNotification = async ({ userId, type, title, message, metadat
     try {
         const notification = new Notification({
             userId,
-            type,
+            type: type || 'system',
             title,
             message,
             metadata

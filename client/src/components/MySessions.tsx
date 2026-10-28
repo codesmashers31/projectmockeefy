@@ -107,11 +107,11 @@ function SessionAvatar({
 }) {
   const [imageError, setImageError] = useState(false);
   const initial = (name || "E").trim().substring(0, 2).toUpperCase();
-  const shouldShowLetter = !profileImage || profileImage.includes('default-avatar.png') || imageError;
+  const avatarUrl = getProfileImageUrl(profileImage, name);
 
-  if (shouldShowLetter) {
+  if (imageError || !avatarUrl) {
     return (
-      <div className={`w-full h-full rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black uppercase text-[10px] ${className || ""}`}>
+      <div className={`w-full h-full rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center font-black uppercase text-[10px] ${className || ""}`}>
         {initial}
       </div>
     );
@@ -119,7 +119,7 @@ function SessionAvatar({
 
   return (
     <img
-      src={getProfileImageUrl(profileImage)}
+      src={avatarUrl}
       alt={name}
       className={`w-full h-full object-cover rounded-lg ${className || ""}`}
       onError={() => setImageError(true)}
@@ -610,9 +610,10 @@ const MySessions = ({
         const mapped = res.data.map((s: any) => ({
           id: s._id,
           sessionId: s.sessionId,
-          expert: s.expertDetails?.name || 'Expert',
-          company: s.expertDetails?.company || '',
-          profileImage: s.expertDetails?.profileImage,
+          expert: s.expertDetails?.name || s.expertName || 'Expert',
+          role: s.expertDetails?.role || s.role || 'Tech Expert',
+          company: s.expertDetails?.company || s.company || '',
+          profileImage: s.expertDetails?.profileImage || s.profileImage || null,
           category: s.category || s.expertDetails?.category || 'IT',
           topic: s.skill || (s.topics && s.topics[0]) || 'Interview Simulation',
           startTime: s.startTime,
@@ -636,13 +637,64 @@ const MySessions = ({
     }
   };
 
-  const loadSavedExperts = () => {
-    const saved = localStorage.getItem("savedExperts");
-    if (saved) {
-      setSavedExperts(JSON.parse(saved));
-    } else {
-      setSavedExperts([]);
+  // Real-time synchronization for candidate bookings (registered at component level)
+  useDataSync(['SESSION_CREATED', 'SESSION_UPDATED', 'RECONNECTED'], () => {
+    console.log('[MySessions] Real-time session sync event received');
+    fetchSessions();
+  });
+
+  const loadSavedExperts = async () => {
+    let list: any[] = [];
+    try {
+      const saved = localStorage.getItem("savedExperts");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          list = parsed;
+        }
+      }
+    } catch {
+      list = [];
     }
+
+    // If local list is empty and user is logged in, try fetching from backend
+    const userId = user?.id || user?._id;
+    if (list.length === 0 && userId) {
+      try {
+        const res = await axios.get("/api/user/saved-experts");
+        if (res.data?.success && Array.isArray(res.data?.data)) {
+          list = res.data.data.map((item: any) => {
+            const exp = item.expertId || item;
+            return {
+              id: exp._id || item._id,
+              expertID: exp._id || item._id,
+              name: exp.personalInformation?.userName || exp.name || "Interview Expert",
+              role: exp.professionalDetails?.title || exp.role || "Consultant",
+              company: exp.professionalDetails?.company || exp.company || "",
+              avatar: getProfileImageUrl(exp.profileImage, exp.personalInformation?.userName || exp.name),
+              rating: exp.metrics?.avgRating || 4.9,
+              reviews: exp.metrics?.totalReviews || 0,
+              price: exp.price ? String(exp.price) : "799",
+              skills: exp.skillsAndExpertise?.domains || exp.skills || ["Mock Interview"],
+              experience: exp.professionalDetails?.totalExperience ? `${exp.professionalDetails.totalExperience} yrs` : "5+ yrs",
+              location: exp.personalInformation?.city || "Remote",
+              isVerified: true,
+              totalSessions: exp.metrics?.totalSessions || 10,
+              category: exp.personalInformation?.category || "IT",
+            };
+          });
+          if (list.length > 0) {
+            localStorage.setItem("savedExperts", JSON.stringify(list));
+            window.dispatchEvent(new Event("storage"));
+            window.dispatchEvent(new CustomEvent("saved-experts-updated"));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load saved experts from backend:", err);
+      }
+    }
+
+    setSavedExperts(list);
   };
 
   useEffect(() => {
@@ -654,18 +706,16 @@ const MySessions = ({
     }
     loadSavedExperts();
 
-  // Real-time synchronization for candidate bookings
-  useDataSync(['SESSION_CREATED', 'SESSION_UPDATED', 'RECONNECTED'], () => {
-    console.log('[MySessions] Real-time session sync event received');
-    fetchSessions();
-  });
-
     const handleStorageChange = () => {
       loadSavedExperts();
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("saved-experts-updated", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("saved-experts-updated", handleStorageChange);
+    };
   }, [user?.id, user?._id, activeView]);
 
   const handleJoin = (session: Session) => {
@@ -731,7 +781,11 @@ const MySessions = ({
   }
 
   return (
-    <div className="relative w-full bg-white border border-slate-200/90 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden pb-12 font-sans text-left">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-8 overflow-hidden pb-12 font-sans text-left">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
       <div className="w-full space-y-5 sm:space-y-6 relative z-10">
 
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
@@ -793,7 +847,7 @@ const MySessions = ({
                     className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                       isActive
                         ? 'bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25'
-                        : 'bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 border border-slate-200/60'
+                        : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 shadow-2xs'
                     }`}
                   >
                     {tab.hasDot && (

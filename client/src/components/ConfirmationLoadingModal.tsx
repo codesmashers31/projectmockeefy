@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 export type BookingFlowState =
@@ -19,6 +19,42 @@ export const ConfirmationLoadingModal: React.FC<ConfirmationLoadingModalProps> =
   isConfirming,
   usePortal = true,
 }) => {
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverscroll = document.body.style.overscrollBehavior;
+    const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overflowY = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    document.body.style.overflow = "hidden";
+    document.body.style.overflowY = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.classList.add("modal-open");
+    document.body.classList.add("modal-open");
+
+    const preventDefault = (e: Event) => {
+      if (e.cancelable) e.preventDefault();
+    };
+
+    window.addEventListener("wheel", preventDefault, { passive: false });
+    window.addEventListener("touchmove", preventDefault, { passive: false });
+
+    return () => {
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.documentElement.style.overflowY = "";
+      document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.overflowY = "";
+      document.body.style.overscrollBehavior = originalBodyOverscroll;
+      document.documentElement.classList.remove("modal-open");
+      document.body.classList.remove("modal-open");
+      window.removeEventListener("wheel", preventDefault);
+      window.removeEventListener("touchmove", preventDefault);
+    };
+  }, []);
+
   const content = (
     <div
       role="dialog"

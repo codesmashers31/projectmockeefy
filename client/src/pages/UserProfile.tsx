@@ -406,14 +406,18 @@ export default function UserProfile() {
   const hasPhoto = !!currentPhoto && !currentPhoto.includes("mockeefy.png") && !currentPhoto.includes("default-avatar.png");
 
   return (
-    <div className="relative w-full bg-white border border-slate-200/90 rounded-[28px] p-6 md:p-8 shadow-[0_6px_28px_-4px_rgba(15,23,42,0.11),0_2px_8px_-2px_rgba(15,23,42,0.06)] ring-1 ring-slate-900/[0.05] overflow-hidden pb-16 font-sans text-left">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 overflow-hidden pb-16 font-sans text-left">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
       <div className="w-full space-y-6 relative z-10">
 
         {/* 1. Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-slate-200/80 pb-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-              Profile & Resumes
+              Profile &amp; Resumes
             </h1>
             <p className="text-xs sm:text-[13px] font-medium text-slate-500 mt-0.5">
               Update your photo and manage multiple resumes for technical mock interviews.
@@ -435,7 +439,7 @@ export default function UserProfile() {
         </div>
 
         {/* 2. SECTION 1: PROFILE PHOTO UPDATE */}
-        <section className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs">
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
             
             {/* Avatar & User Details */}

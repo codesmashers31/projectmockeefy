@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import CertificatesSkeleton from "../components/CertificatesSkeleton";
+import mockeefyLogo from "../assets/logo/mockeefylogo.png";
 
 type ReviewInfo = {
   overallRating?: number;
@@ -142,43 +143,87 @@ const CertificateTemplate = ({
       </svg>
 
       {/* Main Content Layout */}
-      <div className="relative z-10 w-full h-full flex flex-col justify-between py-10 px-16 box-border text-center">
-        {/* Top: Mockefy Logo, Name, Verified Badge & Tagline */}
-        <div className="flex flex-col items-center mt-1">
+      <div className="relative z-10 w-full h-full flex flex-col justify-between px-16 box-border text-center" style={{ paddingTop: "74px", paddingBottom: "38px" }}>
+        {/* Top: Mockeefy Logo, Name, Verified Badge & Tagline */}
+        <div className="flex flex-col items-center">
           <div className="flex items-center justify-center gap-2.5">
-            {/* Logo Icon */}
-            <div
+            {/* Official Mockeefy 3D Logo Mark */}
+            <img
+              src={mockeefyLogo}
+              alt="Mockeefy"
               style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, #0D6EFD, #0048BA)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#FFFFFF",
+                width: "42px",
+                height: "42px",
+                borderRadius: "11px",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+            {/* Brand Name */}
+            <span
+              style={{
+                fontSize: "31px",
                 fontWeight: 900,
-                fontSize: "22px",
+                color: "#0755E8",
+                letterSpacing: "-0.5px",
+                fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+                lineHeight: 1,
               }}
             >
-              M
-            </div>
-            {/* Brand Name */}
-            <span style={{ fontSize: "30px", fontWeight: 900, color: "#0A2540", letterSpacing: "-0.5px" }}>
-              Mockefy
+              Mockeefy
             </span>
-            {/* Verified Check Badge */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#0755E8">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5l-4-4 1.41-1.41L11 13.67l6.59-6.59L19 8.5l-8 8z" />
-            </svg>
+            {/* Professional Verified Accreditation Rosette Seal */}
+            <div
+              title="Official Verified Accreditation"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginLeft: "3px",
+              }}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="certBadgeGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FDE68A" />
+                    <stop offset="35%" stopColor="#E5C068" />
+                    <stop offset="70%" stopColor="#C59B27" />
+                    <stop offset="100%" stopColor="#8C6510" />
+                  </linearGradient>
+                  <linearGradient id="certBadgeNavyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#0B2545" />
+                    <stop offset="100%" stopColor="#06182B" />
+                  </linearGradient>
+                </defs>
+                {/* 12-point scalloped security rosette */}
+                <path
+                  d="M12 1.2l1.6 1.8 2.4-.3 1 2.2 2.4.7.2 2.4 2 1.5-.7 2.3 1.4 2-1.4 2 .7 2.3-2 1.5-.2 2.4-2.4.7-1 2.2-2.4-.3L12 22.8l-1.6 1.8-2.4-.3-1-2.2-2.4-.7-.2-2.4-2-1.5.7-2.3-1.4-2 1.4-2-.7-2.3 2-1.5.2-2.4 2.4-.7 1-2.2 2.4.3L12 1.2z"
+                  fill="url(#certBadgeGoldGrad)"
+                  stroke="#AA7C11"
+                  strokeWidth="0.5"
+                />
+                {/* Deep Royal Navy Medallion Core */}
+                <circle cx="12" cy="12" r="8" fill="url(#certBadgeNavyGrad)" stroke="#FDE68A" strokeWidth="0.8" />
+                {/* Subtle Inner Security Ring */}
+                <circle cx="12" cy="12" r="6.8" fill="none" stroke="#D4AF37" strokeWidth="0.6" strokeDasharray="1.5 1" opacity="0.85" />
+                {/* Polished Gold Checkmark */}
+                <path
+                  d="M8.5 12.2l2.3 2.3 4.7-4.8"
+                  stroke="#FDE68A"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           </div>
-          <div style={{ fontSize: "9.5px", fontWeight: 700, color: "#475569", letterSpacing: "0.35em", textTransform: "uppercase", marginTop: "8px" }}>
-            P R A C T I C E . &nbsp; I M P R O V E . &nbsp; S U C C E E D .
+          <div style={{ fontSize: "9.5px", fontWeight: 700, color: "#475569", letterSpacing: "0.15em", textTransform: "uppercase", marginTop: "13px" }}>
+            PRACTICE . IMPROVE . SUCCEED.
           </div>
         </div>
 
         {/* Center: Certificate of Completion & Recipient */}
-        <div className="my-auto space-y-3 py-1">
+        <div className="my-auto w-full text-center space-y-3.5 py-1" style={{ marginTop: "auto", marginBottom: "auto" }}>
           {/* Main Title */}
           <div className="space-y-2">
             <h1
@@ -272,7 +317,7 @@ const CertificateTemplate = ({
           {/* Left: Issued By & Date */}
           <div className="flex flex-col items-start text-left" style={{ width: "250px" }}>
             <span style={{ fontSize: "9px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              MOCKEFY CERTIFICATE ISSUED BY :
+              MOCKEEFY CERTIFICATE ISSUED BY :
             </span>
             <span style={{ fontSize: "12px", fontWeight: 900, color: "#0A2540", marginTop: "4px" }}>
               {expertName || "Verified Mockeefy Expert"}
@@ -281,38 +326,6 @@ const CertificateTemplate = ({
               Issued on {issueDateStr}
             </span>
             <div style={{ width: "180px", height: "1px", backgroundColor: "#0A2540", opacity: 0.35, marginTop: "8px" }} />
-          </div>
-
-          {/* Center: Medallion Seal with Ribbons */}
-          <div className="relative flex flex-col items-center justify-center" style={{ marginBottom: "-8px" }}>
-            {/* Trailing Dark Blue Ribbon Tails */}
-            <div className="absolute flex items-center gap-1 z-0" style={{ bottom: "-18px" }}>
-              <svg width="18" height="38" viewBox="0 0 18 40">
-                <polygon points="0,0 18,0 18,40 9,32 0,40" fill="#06182B" />
-              </svg>
-              <svg width="18" height="38" viewBox="0 0 18 40">
-                <polygon points="0,0 18,0 18,40 9,32 0,40" fill="#06182B" />
-              </svg>
-            </div>
-
-            {/* Medallion SVG */}
-            <svg width="78" height="78" viewBox="0 0 100 100" className="relative z-10">
-              <defs>
-                <radialGradient id="sealGoldRadial" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#FFF2B2" />
-                  <stop offset="40%" stopColor="#E5C068" />
-                  <stop offset="75%" stopColor="#C59B27" />
-                  <stop offset="100%" stopColor="#8C6510" />
-                </radialGradient>
-              </defs>
-              <circle cx="50" cy="50" r="45" fill="url(#sealGoldRadial)" stroke="#8C6510" strokeWidth="0.8" />
-              <circle cx="50" cy="50" r="41" fill="none" stroke="#FFFFFF" strokeWidth="1" strokeDasharray="3 2" opacity="0.7" />
-              <circle cx="50" cy="50" r="33" fill="#0A2540" stroke="#E5C068" strokeWidth="1.2" />
-              <circle cx="50" cy="50" r="29" fill="none" stroke="#D4AF37" strokeWidth="0.75" strokeDasharray="2 2" />
-              <rect x="42" y="36" width="16" height="15" rx="3.5" fill="#FFFFFF" />
-              <text x="50" y="48" textAnchor="middle" fill="#0A2540" fontSize="12" fontWeight="900" fontFamily="sans-serif">M</text>
-              <text x="50" y="58" textAnchor="middle" fill="#E5C068" fontSize="6.5">★ ★ ★</text>
-            </svg>
           </div>
 
           {/* Right: Director Signature */}
@@ -391,12 +404,6 @@ const CertificateThumbnail = ({
           <stop offset="0%" stopColor="#0D6EFD" />
           <stop offset="100%" stopColor="#0048BA" />
         </linearGradient>
-        <radialGradient id={`thumbSealGrad_${safeId}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFF2B2" />
-          <stop offset="40%" stopColor="#E5C068" />
-          <stop offset="75%" stopColor="#C59B27" />
-          <stop offset="100%" stopColor="#8C6510" />
-        </radialGradient>
       </defs>
 
       {/* Background fill */}
@@ -443,17 +450,26 @@ const CertificateThumbnail = ({
       />
 
       {/* HEADER LOGO & BRAND */}
-      <g transform="translate(500, 52)">
-        <rect x="-85" y="0" width="36" height="36" rx="10" fill={`url(#thumbLogoGrad_${safeId})`} />
-        <text x="-67" y="26" textAnchor="middle" fill="#FFFFFF" fontSize="22" fontWeight="900" fontFamily="sans-serif">M</text>
-        <text x="-40" y="28" textAnchor="start" fill="#0A2540" fontSize="28" fontWeight="900" fontFamily="sans-serif">Mockefy</text>
-        <circle cx="82" cy="18" r="10" fill="#0755E8" />
-        <path d="M 77,18 l 3,3 l 7,-7" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        <text x="0" y="52" textAnchor="middle" fill="#475569" fontSize="9.5" fontWeight="700" letterSpacing="3.5" fontFamily="sans-serif">P R A C T I C E . &nbsp; I M P R O V E . &nbsp; S U C C E E D .</text>
+      <g transform="translate(500, 74)">
+        <image href={mockeefyLogo} x="-104" y="-3" width="38" height="38" />
+        <text x="-58" y="27" textAnchor="start" fill="#0755E8" fontSize="29" fontWeight="900" fontFamily="sans-serif">Mockeefy</text>
+
+        {/* 12-point scalloped gold rosette verified badge */}
+        <g transform="translate(86, 17)">
+          <path
+            d="M 0,-12 L 2,-9.5 L 5,-10 L 5.5,-7 L 8.5,-5.5 L 8,-2.5 L 10.5,-0.5 L 9,2.5 L 10.5,5.5 L 8,7.5 L 8.5,10.5 L 5.5,9.5 L 5,12.5 L 2,10.5 L 0,13 L -2,10.5 L -5,12.5 L -5.5,9.5 L -8.5,10.5 L -8,7.5 L -10.5,5.5 L -9,2.5 L -10.5,-0.5 L -8,-2.5 L -8.5,-5.5 L -5.5,-7 L -5,-10 L -2,-9.5 Z"
+            fill={`url(#thumbGoldGrad_${safeId})`}
+            stroke="#AA7C11"
+            strokeWidth="0.5"
+          />
+          <circle cx="0" cy="0.5" r="7.5" fill={`url(#thumbNavyGrad_${safeId})`} stroke="#FDE68A" strokeWidth="0.75" />
+          <path d="M -3.2,0.5 L -1,2.8 L 3.5,-2" fill="none" stroke="#FDE68A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+        <text x="0" y="57" textAnchor="middle" fill="#475569" fontSize="9.5" fontWeight="700" letterSpacing="1.5" fontFamily="sans-serif">PRACTICE . IMPROVE . SUCCEED.</text>
       </g>
 
       {/* MAIN TITLE & RECIPIENT */}
-      <g transform="translate(500, 168)">
+      <g transform="translate(500, 245)">
         <text x="0" y="0" textAnchor="middle" fill="#0A2540" fontSize="36" fontWeight="700" letterSpacing="2.5" fontFamily="Georgia, serif">
           CERTIFICATE OF COMPLETION
         </text>
@@ -488,22 +504,10 @@ const CertificateThumbnail = ({
       {/* FOOTER: Issued By + Seal + Signature */}
       <g transform="translate(0, 580)">
         <g transform="translate(100, 0)">
-          <text x="0" y="0" fill="#475569" fontSize="9" fontWeight="700" letterSpacing="0.8" fontFamily="sans-serif">MOCKEFY CERTIFICATE ISSUED BY :</text>
+          <text x="0" y="0" fill="#475569" fontSize="9" fontWeight="700" letterSpacing="0.8" fontFamily="sans-serif">MOCKEEFY CERTIFICATE ISSUED BY :</text>
           <text x="0" y="18" fill="#0A2540" fontSize="12" fontWeight="900" fontFamily="sans-serif">{expertName || "Verified Mockeefy Expert"}</text>
           <text x="0" y="34" fill="#334155" fontSize="10" fontWeight="700" fontFamily="sans-serif">Issued on {issueDateStr}</text>
           <line x1="0" y1="46" x2="180" y2="46" stroke="#0A2540" strokeWidth="1" opacity="0.35" />
-        </g>
-
-        <g transform="translate(500, 10)">
-          <polygon points="-12,18 0,18 0,55 -6,47 -12,55" fill="#06182B" />
-          <polygon points="0,18 12,18 12,55 6,47 0,55" fill="#06182B" />
-          <circle cx="0" cy="0" r="38" fill={`url(#thumbSealGrad_${safeId})`} stroke="#8C6510" strokeWidth="0.8" />
-          <circle cx="0" cy="0" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" strokeDasharray="3 2" opacity="0.7" />
-          <circle cx="0" cy="0" r="27" fill="#0A2540" stroke="#E5C068" strokeWidth="1.2" />
-          <circle cx="0" cy="0" r="23" fill="none" stroke="#D4AF37" strokeWidth="0.75" strokeDasharray="2 2" />
-          <rect x="-7" y="-12" width="14" height="13" rx="3" fill="#FFFFFF" />
-          <text x="0" y="-2" textAnchor="middle" fill="#0A2540" fontSize="11" fontWeight="900" fontFamily="sans-serif">M</text>
-          <text x="0" y="8" textAnchor="middle" fill="#E5C068" fontSize="6.5">★ ★ ★</text>
         </g>
 
         <g transform="translate(760, 0)">
@@ -767,7 +771,11 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   }
 
   return (
-    <div className="relative w-full bg-white border border-slate-200/90 rounded-2xl sm:rounded-[28px] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.04] overflow-hidden pb-12 font-sans text-left">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-8 overflow-hidden pb-12 font-sans text-left">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
       <div className="w-full space-y-6 relative z-10">
         {/* Header - Verified Certificates Title Row */}
         <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200/80 pb-4">
@@ -901,7 +909,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
               className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                 selectedCategory === "all"
                   ? "bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25"
-                  : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 border border-slate-200/60"
+                  : "bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 shadow-2xs"
               }`}
             >
               <span>All Certificates</span>
@@ -926,7 +934,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                   className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                     isActive
                       ? "bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25"
-                      : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 border border-slate-200/60"
+                      : "bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 shadow-2xs"
                   }`}
                 >
                   <span

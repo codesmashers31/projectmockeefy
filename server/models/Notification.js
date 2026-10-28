@@ -9,8 +9,8 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['meeting_reminder', 'review_received', 'system', 'booking_confirmed', 'booking_cancelled'],
-        required: true
+        default: 'system',
+        trim: true
     },
     title: {
         type: String,
@@ -27,12 +27,13 @@ const notificationSchema = new mongoose.Schema({
         default: false
     },
     metadata: {
-        sessionId: String,
-        link: String
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     }
 }, { timestamps: true });
 
-// Index for fetching unread notifications quickly
+// Index for fetching notifications quickly
 notificationSchema.index({ userId: 1, isRead: 1 });
+notificationSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.model("Notification", notificationSchema);

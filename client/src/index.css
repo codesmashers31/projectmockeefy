@@ -416,9 +416,13 @@ body.swal2-shown {
     touch-action: none;
 }
 
-html.swal2-shown body {
+html.swal2-shown body,
+html.modal-open,
+body.modal-open {
     overflow: hidden !important;
     overflow-y: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: none;
 }
 
 .swal2-container,
@@ -460,4 +464,13 @@ html.swal2-shown body {
 .swal-professional-btn:hover {
     background-color: #0645C7 !important;
 }
+
+/* Sidebar and container navigation card with light gray outline, no outer shadow, top blue gradient and pure white bottom */
+.sidebar-main-card,
+.elevated-main-card {
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    background: linear-gradient(180deg, #EBF3FF 0%, #FFFFFF 45%, #FFFFFF 100%) !important;
+    box-shadow: none !important;
+}
+
 

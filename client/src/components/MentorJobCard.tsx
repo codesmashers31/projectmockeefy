@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BookingModal } from "./BookingModal";
+import { getProfileImageUrl } from "../lib/imageUtils";
 
 // Types
 export interface MentorProfile {
@@ -98,16 +99,16 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
       localStorage.setItem("savedExperts", JSON.stringify(parsed));
       setIsSaved(!isSaved);
       window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("saved-experts-updated"));
     } catch (e) {
       console.error("Failed to toggle save", e);
     }
   };
 
-  const showPlaceholder =
-    !mentor.avatar ||
-    mentor.avatar.includes("default-avatar.png") ||
-    mentor.avatar.includes("mockeefy.png") ||
-    avatarFailed;
+  const avatarUrl = getProfileImageUrl(
+    mentor.avatar || (mentor as any).profileImage,
+    mentor.name
+  );
 
   const priceNum =
     mentor.price && mentor.price !== "₹—"
@@ -146,13 +147,13 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Standardized Avatar Container (44x44) */}
             <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 border border-slate-200/70 overflow-hidden shrink-0 flex items-center justify-center">
-              {showPlaceholder ? (
+              {avatarFailed || !avatarUrl ? (
                 <span className="text-xs font-black tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
                   {initials}
                 </span>
               ) : (
                 <img
-                  src={mentor.avatar}
+                  src={avatarUrl}
                   alt={mentor.name}
                   className="w-full h-full object-cover object-top"
                   onError={() => setAvatarFailed(true)}
