@@ -34,6 +34,7 @@ interface AuthContextType {
   isLoading: boolean;
   fetchProfile: () => Promise<User | null>;
   updateUser: (partialUser: Partial<User>) => void;
+  setAuthSession: (accessToken: string, userData: any) => User;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -177,9 +178,18 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         };
 
         setUser(normalizedUser);
-        return { success: true, user: normalizedUser };
+        return {
+          success: true,
+          exists: true,
+          user: normalizedUser,
+          googleData: googleData || {
+            email: userData.email,
+            name: userData.name,
+            googleId: userData.googleId,
+          },
+        };
       } else {
-        return { success: false, googleData };
+        return { success: false, exists: false, googleData };
       }
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Google Auth failed');
@@ -213,6 +223,24 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
     }
   };
 
+  const setAuthSession = (accessToken: string, userData: any): User => {
+    localStorage.setItem('token', accessToken);
+    setToken(accessToken);
+
+    const normalizedUser: User = {
+      ...userData,
+      id: userData.userId || userData._id || userData.id,
+      phone: userData.personalInfo?.phone || (userData as any).phone || userData.phone,
+      role: userData.userType || (userData as any).role,
+      isPremium: userData.isPremium ?? false,
+      freeInterviewsCount: userData.freeInterviewsCount ?? 0,
+      profileImage: (userData as any).profileImage ?? userData.profileImage,
+    };
+
+    setUser(normalizedUser);
+    return normalizedUser;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -222,7 +250,7 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
     window.location.href = '/signin';
   };
 
-  const value: AuthContextType = { user, token, login, googleLogin, register, logout, isLoading, fetchProfile, updateUser };
+  const value: AuthContextType = { user, token, login, googleLogin, register, logout, isLoading, fetchProfile, updateUser, setAuthSession };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

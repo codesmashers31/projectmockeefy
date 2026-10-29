@@ -107,6 +107,12 @@ export const verifyGoogleToken = async (req, res) => {
           userId: existingUser._id,
           personalInfo: existingUser.personalInfo,
           profileImage: existingUser.profileImage
+        },
+        googleData: {
+          email: existingUser.email,
+          name: existingUser.name,
+          googleId: existingUser.googleId || googleId,
+          picture
         }
       });
     }
@@ -164,7 +170,7 @@ export const googleCallback = async (req, res) => {
     // Redirect to Client Dashboard
     // Use CLIENT_URL from env or fallback
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    res.redirect(`${clientUrl}/dashboard?token=${accessToken}`);
+    res.redirect(`${clientUrl}/complete-profile?token=${accessToken}`);
 
   } catch (error) {
     console.error("Google Callback Error:", error);
@@ -176,8 +182,8 @@ export const googleCallback = async (req, res) => {
 export const registerUser = async (req, res) => {
   const { email, password, userType, name, googleId } = req.body;
 
-  if (!email || !password || !userType || !name) {
-    return res.status(400).json({ message: "All fields are required" });
+  if (!email || !userType || !name) {
+    return res.status(400).json({ message: "Email, userType, and name are required" });
   }
 
   // Security Hardening: Prevent role escalation during registration
@@ -196,7 +202,60 @@ export const registerUser = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      if (password && password.trim().length >= 6) {
+        existingUser.password = await bcrypt.hash(password, 10);
+      }
+      if (name && name.trim()) {
+        existingUser.name = name.trim();
+      }
+      if (safeUserType) {
+        existingUser.userType = safeUserType;
+      }
+      if (googleId) {
+        existingUser.googleId = googleId;
+      }
+      await existingUser.save();
+
+      const accessToken = jwt.sign(
+        {
+          email: existingUser.email,
+          userType: existingUser.userType,
+          name: existingUser.name,
+          userId: existingUser._id
+        },
+        JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      const refreshToken = jwt.sign(
+        { userId: existingUser._id },
+        REFRESH_TOKEN_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      res.cookie('jwt', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+
+      return res.status(200).json({
+        message: "Profile completed successfully",
+        accessToken,
+        user: {
+          email: existingUser.email,
+          userType: existingUser.userType,
+          name: existingUser.name,
+          userId: existingUser._id,
+          personalInfo: existingUser.personalInfo,
+          profileImage: existingUser.profileImage
+        }
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
     }
 
     // Hash password
@@ -590,10 +649,18 @@ export const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    // Prevent brute force by deleting OTP upon any check (requires new OTP after 1 attempt, pass or fail)
-    await Otp.deleteOne({ _id: record._id });
+    // Generate a secure reset token valid for 15 minutes
+    const resetToken = jwt.sign(
+      { email: cleanEmail, purpose: "reset-password" },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    );
 
-    res.json({ success: true, message: "OTP verified successfully" });
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
+      resetToken
+    });
 
   } catch (error) {
     console.error("Verify OTP Error:", error);
@@ -603,25 +670,44 @@ export const verifyOtp = async (req, res) => {
 
 // Reset Password
 export const resetPassword = async (req, res) => {
-  const { email, otp, newPassword } = req.body;
+  const { email, otp, resetToken, newPassword } = req.body;
 
-  if (!email || !otp || !newPassword) {
+  if (!email || !newPassword || (!otp && !resetToken)) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
     const cleanEmail = email.trim().toLowerCase();
-    // 1. Verify OTP again
-    const record = await Otp.findOne({ email: cleanEmail }).sort({ createdAt: -1 });
+    let isAuthorized = false;
 
-    if (!record || record.otp !== parseInt(otp) || record.expires < Date.now()) {
+    // 1. Verify resetToken if provided
+    if (resetToken) {
+      try {
+        const decoded = jwt.verify(resetToken, JWT_SECRET);
+        if (decoded && decoded.email === cleanEmail && decoded.purpose === "reset-password") {
+          isAuthorized = true;
+        }
+      } catch (tokenErr) {
+        console.warn("Invalid or expired resetToken in resetPassword:", tokenErr.message);
+      }
+    }
+
+    // 2. Fallback: verify OTP in database if resetToken was not valid or not sent
+    if (!isAuthorized && otp) {
+      const record = await Otp.findOne({ email: cleanEmail }).sort({ createdAt: -1 });
+      if (record && record.otp === parseInt(otp) && record.expires >= Date.now()) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // 2. Hash New Password
+    // 3. Hash New Password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // 3. Update User
+    // 4. Update User
     const user = await User.findOneAndUpdate(
       { email: cleanEmail },
       { password: hashedPassword },
@@ -632,10 +718,47 @@ export const resetPassword = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // 4. Cleanup OTPs
+    // 5. Cleanup OTPs now that password has been safely reset
     await Otp.deleteMany({ email: cleanEmail });
 
-    res.json({ success: true, message: "Password reset successfully" });
+    // 6. Generate access token & refresh token so user connects directly to dashboard
+    const accessToken = jwt.sign(
+      {
+        email: user.email,
+        userType: user.userType,
+        name: user.name,
+        userId: user._id
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      REFRESH_TOKEN_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie('jwt', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.json({
+      success: true,
+      message: "Password reset successfully",
+      accessToken,
+      user: {
+        email: user.email,
+        userType: user.userType,
+        name: user.name,
+        userId: user._id,
+        personalInfo: user.personalInfo,
+        profileImage: user.profileImage
+      }
+    });
 
   } catch (error) {
     console.error("Reset Password Error:", error);

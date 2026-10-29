@@ -543,6 +543,8 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isMasterSelected, setIsMasterSelected] = useState(false);
+  const [isSampleSelected, setIsSampleSelected] = useState(false);
+  const [downloadingSample, setDownloadingSample] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadingMaster, setDownloadingMaster] = useState(false);
   const pdfRenderRef = useRef<HTMLDivElement>(null);
@@ -559,6 +561,10 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
     const year = d.getFullYear();
     return `${day} ${month} ${year}`;
   };
+
+  const candidateName = useMemo(() => {
+    return user?.name || (user as any)?.personalInfo?.name || "Candidate";
+  }, [user]);
 
   const completedSessions = useMemo(() => {
     return sessions
@@ -671,6 +677,28 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
     }
   };
 
+  const handleDownloadSamplePDF = async () => {
+    if (downloadingSample) return;
+    setDownloadingSample(true);
+    setDownloadTarget({ session: null, isMaster: false, isSample: true } as any);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const target = pdfRenderRef.current?.firstElementChild as HTMLElement | null;
+      if (!target) throw new Error("Unable to locate certificate template");
+      const name = user?.name || "Candidate";
+      const filename = `${name.replace(/\s+/g, "_")}_Sample_Certificate.pdf`;
+      await downloadElementAsPDF(target, filename);
+      toast.success("Sample Certificate downloaded successfully!");
+    } catch (err: any) {
+      console.error("Sample PDF download error:", err);
+      toast.error("Failed to generate Sample Certificate PDF.");
+    } finally {
+      setDownloadingSample(false);
+      setDownloadTarget(null);
+    }
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const categories = useMemo(() => {
@@ -769,11 +797,12 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
 
   // Handle Escape key to close certificate modal
   useEffect(() => {
-    if (!selectedSession && !isMasterSelected) return;
+    if (!selectedSession && !isMasterSelected && !isSampleSelected) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSelectedSession(null);
         setIsMasterSelected(false);
+        setIsSampleSelected(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -819,8 +848,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
         </div>
 
         {/* Master Certificate Milestone Banner */}
-        {completedSessions.length > 0 && (
-          <div className="rounded-2xl border p-4 sm:p-5 relative overflow-hidden transition-all duration-200 bg-gradient-to-r from-[#06182B] via-[#0A2540] to-[#0B2A4A] text-white border-amber-500/30 shadow-md">
+        <div className="rounded-2xl border p-4 sm:p-5 relative overflow-hidden transition-all duration-200 bg-gradient-to-r from-[#06182B] via-[#0A2540] to-[#0B2A4A] text-white border-amber-500/30 shadow-md">
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5 min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shrink-0 text-amber-300">
@@ -896,23 +924,34 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                     </button>
                   </>
                 ) : (
-                  <div className="w-full sm:w-48 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
-                      <span>Progress</span>
-                      <span>{Math.round((completedSessions.length / 3) * 100)}%</span>
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="w-full sm:w-44 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
+                        <span>Milestone Track</span>
+                        <span>{Math.round((completedSessions.length / 3) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden border border-white/10">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-400 to-amber-300 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, (completedSessions.length / 3) * 100)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden border border-white/10">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-400 to-amber-300 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, (completedSessions.length / 3) * 100)}%` }}
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSession(null);
+                        setIsMasterSelected(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Preview Credential
+                    </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        )}
 
         {/* Category Filter Tabs */}
         {completedSessions.length > 0 && (
@@ -973,35 +1012,231 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
         )}
           <div>
             {filteredCertificates.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200/70 p-12 sm:p-16 text-center flex flex-col items-center shadow-sm">
-                <div className="w-16 h-16 rounded-2xl bg-[#EAF2FF] border border-[#BFD7FE] flex items-center justify-center mb-4 text-[#0755E8] shadow-sm">
-                  <Award className="w-8 h-8" />
+              completedSessions.length === 0 ? (
+                /* Professional Credentials Hub & Official Certificate Template Showcase for New Users */
+                <div className="space-y-6">
+                  {/* Top Notification Card */}
+                  <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/60 flex items-center justify-center text-[#0755E8] shrink-0 shadow-xs">
+                          <Award className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-[#0755E8] border border-blue-200/60">
+                              Credential Program
+                            </span>
+                            <span className="text-xs font-semibold text-slate-500">
+                              Official Mockeefy Accreditation
+                            </span>
+                          </div>
+                          <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
+                            No Certificates Earned Yet
+                          </h2>
+                          <p className="text-xs sm:text-sm font-medium text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                            Every mock interview you complete with a verified industry expert confers an official, tamper-proof Certificate of Completion. Below is a live preview of the credential you will earn upon completing your first session.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => navigate('/find-mentor')}
+                          className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 sm:py-3 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-black shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Briefcase size={15} />
+                          <span>Explore Interview Experts</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsSampleSelected(true)}
+                          className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-3 border border-slate-200 hover:border-[#0755E8] hover:bg-blue-50/50 text-slate-700 hover:text-[#0755E8] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Eye size={15} />
+                          <span>Preview Template</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Certificate Template Showcase Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    {/* Left Column (7 cols): The Official Certificate Template Card */}
+                    <div className="lg:col-span-7 flex flex-col">
+                      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full">
+                        <div>
+                          {/* Badge & Title */}
+                          <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span className="text-xs font-bold text-slate-900">Certificate Template Preview</span>
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                              Sample Template
+                            </span>
+                          </div>
+
+                          {/* Interactive Certificate Thumbnail */}
+                          <div
+                            onClick={() => setIsSampleSelected(true)}
+                            className="group relative w-full aspect-[1000/707] rounded-xl overflow-hidden border border-slate-200/90 shadow-2xs cursor-pointer bg-white transition-all duration-200 hover:shadow-lg hover:border-[#0755E8]/60 hover:scale-[1.01]"
+                            title="Click to view full high-resolution certificate"
+                          >
+                            <CertificateThumbnail
+                              userName={candidateName}
+                              domain="Software Engineering"
+                              expertName="Senior Engineering Lead, Mockeefy"
+                              issueDateStr={new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                              certId="MCFY-SAMPLE-TEMPLATE"
+                            />
+                            {/* Hover overlay hint */}
+                            <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-bold text-sm backdrop-blur-[1px]">
+                              <Eye size={18} />
+                              <span>Click to view full certificate</span>
+                            </div>
+                          </div>
+
+                          {/* Credential Metadata Box */}
+                          <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-3.5 mt-4 space-y-2">
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Conferred To</span>
+                                <span className="font-bold text-slate-900 truncate block">{candidateName}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Domain Category</span>
+                                <span className="font-bold text-slate-900 truncate block">Software Engineering (IT)</span>
+                              </div>
+                            </div>
+                            <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                              <span className="text-slate-500 font-medium">Verification Security</span>
+                              <span className="text-[#0755E8] font-mono font-bold">MCFY-VERIFIED-ID</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Action */}
+                        <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                            Vector-crisp PDF with digital verification
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsSampleSelected(true)}
+                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Eye size={14} />
+                            <span>Preview</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column (5 cols): How It Works & Credential Benefits */}
+                    <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+                      {/* 3 Steps to Earn */}
+                      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-sm flex-1">
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-4">
+                          <Sparkles className="text-[#0755E8] w-4 h-4" />
+                          <span>How To Earn Your Certificate</span>
+                        </h3>
+
+                        <div className="space-y-4">
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] font-black text-xs shrink-0">
+                              1
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-900">Book a Mock Interview</h4>
+                              <p className="text-[11.5px] font-medium text-slate-500 mt-0.5 leading-relaxed">
+                                Choose from 50+ verified engineering managers and senior developers from top tech companies.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] font-black text-xs shrink-0">
+                              2
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-900">Complete 1:1 Live Practice</h4>
+                              <p className="text-[11.5px] font-medium text-slate-500 mt-0.5 leading-relaxed">
+                                Experience real technical problem-solving, live coding, and receive detailed rating scores.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-black text-xs shrink-0">
+                              3
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-900">Download & Share Credential</h4>
+                              <p className="text-[11.5px] font-medium text-slate-500 mt-0.5 leading-relaxed">
+                                Your certificate is automatically generated, shareable on LinkedIn, and verifiable by recruiters.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Benefits Card */}
+                      <div className="bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 shadow-sm">
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-3">
+                          Official Credential Features
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2.5 text-[11px] font-bold text-slate-700">
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                            <span>Recruiter Verifiable</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                            <span>LinkedIn Shareable</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                            <span>Vector High-DPI PDF</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                            <span>Expert Sign-Off</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/find-mentor')}
+                          className="mt-4 w-full py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Briefcase size={14} />
+                          <span>Book Your First Mock Session</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-gray-900 font-black text-base mb-1">No Certificates Found</h3>
-                <p className="text-gray-500 font-medium text-xs max-w-sm mx-auto leading-relaxed">
-                  {completedSessions.length === 0
-                    ? "Complete mock interview sessions with verified industry experts to earn official verified Certificates of Completion."
-                    : "No certificates found in this selected category."}
-                </p>
-                {completedSessions.length === 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate('/find-mentor')}
-                    className="mt-6 px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
-                  >
-                    <Briefcase size={14} />
-                    <span>Explore Interview Experts</span>
-                  </button>
-                ) : (
+              ) : (
+                /* Category Filter Empty State */
+                <div className="bg-white rounded-2xl border border-slate-200/70 p-12 sm:p-16 text-center flex flex-col items-center shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-[#EAF2FF] border border-[#BFD7FE] flex items-center justify-center mb-4 text-[#0755E8] shadow-sm">
+                    <Award className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-gray-900 font-black text-base mb-1">No Certificates in this Category</h3>
+                  <p className="text-gray-500 font-medium text-xs max-w-sm mx-auto leading-relaxed">
+                    No completed mock interview certificates found in the "{selectedCategory}" category.
+                  </p>
                   <button
                     type="button"
                     onClick={() => setSelectedCategory("all")}
                     className="mt-6 px-5 py-2 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
-                    View All Certificates
+                    View All Certificates ({completedSessions.length})
                   </button>
-                )}
-              </div>
+                </div>
+              )
             ) : (
               <div ref={certificatesListRef} className="space-y-6 scroll-mt-24">
                 {/* Certificate Cards Grid */}
@@ -1227,7 +1462,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
           </div>
 
       {/* Certificate View Modal */}
-      {(selectedSession || isMasterSelected) && typeof document !== "undefined" && createPortal(
+      {(selectedSession || isMasterSelected || isSampleSelected) && typeof document !== "undefined" && createPortal(
         <div
           role="dialog"
           aria-modal="true"
@@ -1245,13 +1480,14 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
             <div className="px-5 sm:px-7 py-4 sm:py-4.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 z-20">
               <h3 className="font-black text-gray-900 flex items-center gap-2.5 text-sm sm:text-base truncate mr-3">
                 <Award className="text-[#0755E8] shrink-0 w-5 h-5 sm:w-6 sm:h-6" />
-                <span className="truncate">{isMasterSelected ? "Master Certificate Preview" : "Verified Mockeefy Certificate of Completion"}</span>
+                <span className="truncate">{isMasterSelected ? "Master Certificate Preview" : isSampleSelected ? "Official Certificate Template Preview" : "Verified Mockeefy Certificate of Completion"}</span>
               </h3>
               <button
                 type="button"
                 onClick={() => {
                   setSelectedSession(null);
                   setIsMasterSelected(false);
+                  setIsSampleSelected(false);
                 }}
                 className="shrink-0 px-4 sm:px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shadow-md shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 cursor-pointer"
                 aria-label="Close certificate modal"
@@ -1267,10 +1503,12 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                 <div className="w-full overflow-x-auto">
                   <CertificateTemplate
                     userName={user?.name || "Candidate"}
-                    domain={isMasterSelected ? "Master" : (selectedSession?.category || "IT")}
+                    domain={isMasterSelected ? "Master" : isSampleSelected ? "Software Engineering" : (selectedSession?.category || "IT")}
                     expertName={
                       isMasterSelected
                         ? "Mockeefy Board of Directors"
+                        : isSampleSelected
+                        ? "Senior Engineering Lead, Verified Mockeefy Expert"
                         : (selectedSession?.expert || "Verified Mockeefy Expert")
                     }
                     issueDateStr={
@@ -1278,7 +1516,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                         ? new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
                         : (selectedSession ? getFormattedIssueDate(selectedSession) : new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }))
                     }
-                    certId={isMasterSelected ? masterCertId : `MCFY-${(selectedSession?.id || "CERT").slice(-8).toUpperCase()}`}
+                    certId={isMasterSelected ? masterCertId : isSampleSelected ? "MCFY-SAMPLE-TEMPLATE" : `MCFY-${(selectedSession?.id || "CERT").slice(-8).toUpperCase()}`}
                     isMaster={isMasterSelected}
                   />
                 </div>
@@ -1287,30 +1525,60 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
             
             {/* Modal Footer — Download action only */}
             <div className="px-5 sm:px-7 py-3.5 sm:py-4 border-t border-gray-100 flex items-center justify-between bg-white shrink-0 z-20">
-              <button
-                type="button"
-                disabled={Boolean(downloading) || downloadingMaster}
-                onClick={async () => {
-                  if (isMasterSelected) {
-                    await handleDownloadMasterPDF();
-                  } else if (selectedSession) {
-                    await handleDownloadPDF(selectedSession);
-                  }
-                }}
-                className="px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60"
-              >
-                {Boolean(downloading) || downloadingMaster ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span>Generating Official PDF...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download size={14} />
-                    <span>Download Official PDF Certificate</span>
-                  </>
-                )}
-              </button>
+              {isSampleSelected ? (
+                <div className="flex items-center justify-between w-full flex-wrap gap-3">
+                  <span className="text-xs font-semibold text-slate-500">
+                    Sample preview. Complete your first mock interview to earn your official credential.
+                  </span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button
+                      type="button"
+                      disabled={downloadingSample}
+                      onClick={handleDownloadSamplePDF}
+                      className="px-4 py-2.5 border border-slate-200 hover:border-[#0755E8] hover:text-[#0755E8] text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                    >
+                      {downloadingSample ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      <span>Download Sample PDF</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSampleSelected(false);
+                        navigate('/find-mentor');
+                      }}
+                      className="px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer"
+                    >
+                      <Briefcase size={14} />
+                      <span>Explore Interview Experts</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={Boolean(downloading) || downloadingMaster}
+                  onClick={async () => {
+                    if (isMasterSelected) {
+                      await handleDownloadMasterPDF();
+                    } else if (selectedSession) {
+                      await handleDownloadPDF(selectedSession);
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60"
+                >
+                  {Boolean(downloading) || downloadingMaster ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Generating Official PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={14} />
+                      <span>Download Official PDF Certificate</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>,
@@ -1337,10 +1605,12 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
           {downloadTarget && (
             <CertificateTemplate
               userName={user?.name || "Candidate"}
-              domain={downloadTarget.isMaster ? "Master" : (downloadTarget.session?.category || "IT")}
+              domain={downloadTarget.isMaster ? "Master" : (downloadTarget as any).isSample ? "Software Engineering" : (downloadTarget.session?.category || "IT")}
               expertName={
                 downloadTarget.isMaster
                   ? "Mockeefy Board of Directors"
+                  : (downloadTarget as any).isSample
+                  ? "Senior Engineering Lead, Verified Mockeefy Expert"
                   : (downloadTarget.session?.expert || "Verified Mockeefy Expert")
               }
               issueDateStr={
@@ -1351,6 +1621,8 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
               certId={
                 downloadTarget.isMaster
                   ? masterCertId
+                  : (downloadTarget as any).isSample
+                  ? "MCFY-SAMPLE-TEMPLATE"
                   : `MCFY-${(downloadTarget.session?.id || "").slice(-8).toUpperCase()}`
               }
               isMaster={downloadTarget.isMaster}
