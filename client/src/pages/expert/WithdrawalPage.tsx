@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import axios from "../../lib/axios";
 import { toast } from "sonner";
+import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 import {
   Wallet,
   ArrowUpRight,
@@ -52,7 +53,7 @@ interface PayoutHistory {
 }
 
 export default function WithdrawalPage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [methods, setMethods] = useState<PayoutMethod[]>([]);
   const [summary, setSummary] = useState<Summary>({
     currentBalance: 0,
@@ -275,8 +276,8 @@ export default function WithdrawalPage() {
     }
   };
 
-  if (loading) {
-    return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
+  if (isAuthLoading || loading) {
+    return <ExpertPageSkeleton variant="finance" />;
   }
 
   return (

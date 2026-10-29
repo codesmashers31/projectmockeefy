@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axios from "../../lib/axios";
+import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 import {
   Activity,
   CalendarDays,
@@ -83,7 +84,7 @@ function QuickActionCard({ title, description, icon, onClick }: QuickActionCardP
 // --- Main Page Component ---
 
 export default function DashboardIndex() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
@@ -138,6 +139,8 @@ export default function DashboardIndex() {
   }, [user]);
 
   const formattedRevenue = `₹${stats.revenue.toLocaleString()}`;
+
+  if (isAuthLoading || loading) return <ExpertPageSkeleton variant="dashboard" />;
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 bg-white min-h-full font-sans p-4 sm:p-6 lg:p-8">

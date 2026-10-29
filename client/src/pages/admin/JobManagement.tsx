@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import axios from "../../lib/axios";
 import { Briefcase, Trash2, Plus, MapPin, DollarSign, ExternalLink, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
+import { AdminPageError } from "../../components/AdminPageSkeleton";
 
 interface Job {
     _id: string;
@@ -24,6 +25,8 @@ interface Job {
 const JobManagement = () => {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -46,18 +49,25 @@ const JobManagement = () => {
     const [formData, setFormData] = useState(initialFormState);
 
     useEffect(() => {
-        fetchJobs();
+        fetchJobs(true);
     }, []);
 
-    const fetchJobs = async () => {
+    const fetchJobs = async (showLoading = false) => {
+        if (showLoading) setLoading(true);
+        setLoadError(null);
         try {
             const res = await axios.get("/api/jobs");
+            if (!res.data.success || !Array.isArray(res.data.data)) {
+                throw new Error(res.data.message || "Invalid jobs response");
+            }
             setJobs(res.data.data || []);
+            setHasLoaded(true);
         } catch (err) {
             console.error("Failed to fetch jobs", err);
+            setLoadError("Job posts could not be loaded. Check your connection and try again.");
             toast.error("Failed to load jobs");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -137,12 +147,25 @@ const JobManagement = () => {
                 </button>
             </div>
 
-            {loading ? (
+            {loadError && hasLoaded && (
+                <div role="alert" className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{loadError} Previously loaded job posts are still shown.</span>
+                    <button type="button" onClick={() => fetchJobs()} className="font-semibold underline">Retry</button>
+                </div>
+            )}
+
+            {loading && !hasLoaded ? (
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse"></div>
                     ))}
                 </div>
+            ) : loadError && !hasLoaded ? (
+                <AdminPageError
+                    title="Job posts unavailable"
+                    message={loadError}
+                    onRetry={() => fetchJobs(true)}
+                />
             ) : jobs.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                     <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />

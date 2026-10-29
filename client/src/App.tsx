@@ -31,6 +31,7 @@ import SkillsPage from "./pages/expert/Skills";
 import SettingsPage from "./pages/expert/Settings";
 import WithdrawalPage from "./pages/expert/WithdrawalPage";
 import AgreementPage from "./pages/expert/Agreement";
+import ReportsPage from "./pages/expert/Reports";
 import LiveMeeting from "./pages/LiveMeeting";
 import TipsPage from "./pages/TipsPage";
 import CertificatesPage from "./pages/CertificatesPage";
@@ -219,6 +220,7 @@ function AppRoutes() {
             <Route path="skills" element={<SkillsPage />} />
             <Route path="withdraw" element={<WithdrawalPage />} />
             <Route path="agreement" element={<AgreementPage />} />
+            <Route path="reports" element={<ReportsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

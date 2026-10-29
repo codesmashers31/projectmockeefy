@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { compressImage, compressOriginalImage, getProfileImageUrl } from "../lib/imageUtils";
 import ImageCropperModal from "./ImageCropperModal";
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 interface ExpertProfileHeaderProps {
   onNavigate?: (tab: string) => void;
@@ -358,7 +359,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
       id: "verification",
       name: "Verification Docs",
       backendKey: "Verification Documents",
-      desc: "Govt ID (Aadhaar), Company ID & LinkedIn",
+      desc: "Aadhaar number, Company ID & LinkedIn",
       icon: ShieldCheck,
       mandatory: true,
       onClick: () => onNavigate?.("verification")
@@ -393,12 +394,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   ];
 
   if (loading && !profile.name) {
-    return (
-      <div className="p-12 flex flex-col items-center justify-center min-h-[360px] bg-white rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-500 font-semibold">Loading profile details...</p>
-      </div>
-    );
+    return <ExpertPageSkeleton variant="profile" />;
   }
 
   return (

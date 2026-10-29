@@ -34,6 +34,8 @@ export default function SessionManagement() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,24 +44,27 @@ export default function SessionManagement() {
 
   const fetchSessions = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const response = await axios.get("/api/sessions/all");
-      if (response.data.success) {
-        // Transform incoming data to handle MongoDB Extended JSON format
-        const formattedSessions = response.data.data.map((session: any) => ({
-          ...session,
-          _id: session._id?.$oid || session._id,
-          startTime: session.startTime?.$date || session.startTime,
-          endTime: session.endTime?.$date || session.endTime,
-        }));
-        setSessions(formattedSessions);
+      if (!response.data.success || !Array.isArray(response.data.data)) {
+        throw new Error(response.data.message || "Invalid sessions response");
       }
+      // Transform incoming data to handle MongoDB Extended JSON format
+      const formattedSessions = response.data.data.map((session: any) => ({
+        ...session,
+        _id: session._id?.$oid || session._id,
+        startTime: session.startTime?.$date || session.startTime,
+        endTime: session.endTime?.$date || session.endTime,
+      }));
+      setSessions(formattedSessions);
+      setHasLoaded(true);
     } catch (error) {
       console.error("Error fetching sessions:", error);
+      setLoadError("Sessions could not be loaded. Check your connection and try again.");
       toast.error("Failed to load sessions");
     } finally {
-      // Small delay to prevent instant flicker if data is cached/fast
-      setTimeout(() => setLoading(false), 300);
+      setLoading(false);
     }
   };
 
@@ -141,7 +146,7 @@ export default function SessionManagement() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => { setLoading(true); fetchSessions(); }}
+                onClick={fetchSessions}
                 className="p-2 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                 title="Refresh"
               >
@@ -180,11 +185,22 @@ export default function SessionManagement() {
 
         {/* Scrollable List */}
         <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-4 bg-gray-50/50">
-          {loading ? (
+          {loadError && hasLoaded && (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p>{loadError} Previously loaded sessions are still shown.</p>
+              <button type="button" onClick={fetchSessions} className="mt-2 font-semibold underline" disabled={loading}>Retry</button>
+            </div>
+          )}
+          {loading && !hasLoaded ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 animate-pulse h-32"></div>
               ))}
+            </div>
+          ) : loadError && !hasLoaded ? (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p>{loadError}</p>
+              <button type="button" onClick={fetchSessions} className="mt-2 font-semibold underline">Retry</button>
             </div>
           ) : filteredSessions.length > 0 ? (
             <div className="space-y-3">

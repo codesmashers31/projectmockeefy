@@ -5,6 +5,7 @@ import { PrimaryButton } from '../pages/ExpertDashboard';
 import { useAuth } from '../context/AuthContext';
 import { useDataSync } from '../context/SocketContext';
 import { Country, State, City } from 'country-state-city';
+import ExpertPageSkeleton from "./ExpertPageSkeleton";
 import { AlertCircle, Lock, ChevronDown, Check, RefreshCw } from 'lucide-react';
 
 const FormInput = ({ label, value, onChange, placeholder, type = "text", error, maxLength, disabled }: any) => (
@@ -396,12 +397,7 @@ const PersonalInfo = ({ onUpdate, profileData, isMissing }: PersonalInfoProps) =
         }
     };
 
-    if (loading) return (
-        <div className="flex flex-col space-y-4 animate-pulse">
-            <div className="h-48 bg-gray-100 rounded-xl"></div>
-            <div className="h-48 bg-gray-100 rounded-xl"></div>
-        </div>
-    );
+    if (loading) return <ExpertPageSkeleton variant="form" />;
 
     return (
         <div className="h-full">

@@ -106,7 +106,7 @@ const getMissingSections = (expert, user) => {
 
   // Verification (Source: Expert)
   const v = expert.verification || {};
-  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url);
+  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url || v.aadhar?.hash);
   const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
   if (!verificationFilled) missing.push("Verification Documents");
 
@@ -161,7 +161,7 @@ const computeCompletion = (expert, user) => {
 
   // Verification (10%) - From Expert
   const v = expert.verification || {};
-  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url);
+  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url || v.aadhar?.hash);
   const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
   if (verificationFilled) score += 10;
 
@@ -341,6 +341,26 @@ export const uploadVerificationDocs = async (req, res) => {
     // Handle linkedin URL
     if (req.body.linkedin) {
       expert.verification.linkedin = req.body.linkedin;
+    }
+
+    if (req.body.aadhaarNumber !== undefined) {
+      const cleanAadhaar = String(req.body.aadhaarNumber).trim().replace(/\s/g, "");
+      if (!/^\d{12}$/.test(cleanAadhaar)) {
+        return res.status(400).json({ success: false, message: "Aadhaar number must contain exactly 12 digits." });
+      }
+
+      const previousAadhaar = expert.verification.aadhar?.toObject?.() || expert.verification.aadhar || {};
+      expert.verification.aadhar = {
+        ...previousAadhaar,
+        number: maskAadhaar(cleanAadhaar),
+        hash: hashAadhaar(cleanAadhaar),
+        isVerified: false,
+        verifiedAt: undefined,
+        referenceId: undefined,
+        nameOnAadhaar: undefined,
+        nameMatchScore: 0,
+        nameMatchStatus: "UNVERIFIED"
+      };
     }
 
     await expert.save({ validateBeforeSave: false });
@@ -2774,4 +2794,3 @@ export const saveExpertAgreement = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message || "Failed to save agreement" });
   }
 };
-

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { FileText, CheckCircle, Search, Filter } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Award, CheckCircle, FileText, RefreshCw, Search } from 'lucide-react';
+import axios from '../../lib/axios';
+import AdminPageSkeleton, { AdminPageError } from '../../components/AdminPageSkeleton';
 
 interface Report {
     id: string; // _id
@@ -18,39 +19,55 @@ interface Report {
 export default function Reports() {
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        // Mock fetch - assume endpoint returns reports joined with user/expert
-        const fetchReports = async () => {
-            try {
-                // const res = await axios.get('/api/reports');
-                // setReports(res.data);
-
-                // MOCK DATA for visualization since backend logic for aggregation might be complex
-                setTimeout(() => {
-                    setReports([
-                        { id: '1', expertName: 'Sarah Jenkins', candidateName: 'John Doe', date: '2023-10-15', status: 'Submitted', scores: { total: 85 }, category: 'Frontend React', certificateId: 'CERT-123' },
-                        { id: '2', expertName: 'Mike Ross', candidateName: 'Jane Smith', date: '2023-10-18', status: 'Draft', scores: { total: 0 }, category: 'System Design' },
-                        { id: '3', expertName: 'Sarah Jenkins', candidateName: 'Robert Fox', date: '2023-10-20', status: 'Submitted', scores: { total: 92 }, category: 'Frontend React' },
-                    ]);
-                    setLoading(false);
-                }, 800);
-            } catch (error) {
-                console.error(error);
-                setLoading(false);
+    const fetchReports = useCallback(async () => {
+        setLoading(true);
+        setLoadError(null);
+        try {
+            const res = await axios.get('/api/admin/reports');
+            if (!res.data.success || !Array.isArray(res.data.reports)) {
+                throw new Error(res.data.message || 'Invalid reports response');
             }
-        };
-        fetchReports();
+            setReports(res.data.reports);
+            setHasLoaded(true);
+        } catch (error) {
+            console.error('Failed to load admin reports:', error);
+            setLoadError('Reports could not be loaded. Check your connection and try again.');
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const generateCertificate = (reportId: string) => {
-        toast.promise(new Promise((resolve) => setTimeout(resolve, 2000)), {
-            loading: 'Generating Certificate...',
-            success: 'Certificate Generated & Emailed to Candidate!',
-            error: 'Failed to generate certificate'
-        });
-        // In reality: await axios.post(`/api/certifications/generate`, { reportId });
-    };
+    useEffect(() => {
+        fetchReports();
+    }, [fetchReports]);
+
+    const filteredReports = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return reports;
+        return reports.filter(report =>
+            report.candidateName.toLowerCase().includes(query)
+            || report.expertName.toLowerCase().includes(query)
+            || report.category.toLowerCase().includes(query)
+        );
+    }, [reports, searchQuery]);
+
+    if (loading && !hasLoaded) {
+        return <AdminPageSkeleton variant="table" rows={6} columns={5} />;
+    }
+
+    if (loadError && !hasLoaded) {
+        return (
+            <AdminPageError
+                title="Reports unavailable"
+                message={loadError}
+                onRetry={fetchReports}
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -60,15 +77,22 @@ export default function Reports() {
                     <p className="text-gray-500 mt-1">Review interview performance and issue certificates.</p>
                 </div>
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 bg-white border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
-                        <Filter className="w-4 h-4" /> Filter
+                    <button onClick={fetchReports} disabled={loading} className="flex items-center gap-2 bg-white border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-60">
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
                     </button>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004fcb]" />
+                        <input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} type="search" placeholder="Search..." className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#004fcb]" />
                     </div>
                 </div>
             </div>
+
+            {loadError && (
+                <div role="alert" className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{loadError} Previously loaded reports are still shown.</span>
+                    <button type="button" onClick={fetchReports} className="font-semibold underline" disabled={loading}>Retry</button>
+                </div>
+            )}
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <table className="w-full text-left">
@@ -82,9 +106,7 @@ export default function Reports() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {loading ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">Loading reports...</td></tr>
-                        ) : reports.map((report) => (
+                        {filteredReports.map((report) => (
                             <tr key={report.id} className="hover:bg-blue-50/10 transition-colors">
                                 <td className="px-6 py-4">
                                     <div>
@@ -124,42 +146,25 @@ export default function Reports() {
                                                     <CheckCircle className="w-3 h-3" /> Issued
                                                 </button>
                                             ) : (
-                                                <button
-                                                    onClick={() => generateCertificate(report.id)}
-                                                    className="flex items-center gap-1 px-3 py-1 bg-[#004fcb]/10 text-[#004fcb] text-xs font-bold rounded-lg hover:bg-[#004fcb] hover:text-white transition-all"
-                                                >
-                                                    <Award className="w-3 h-3" /> Generate Cert
-                                                </button>
+                                                <span title="Certificate issuing is not available for admin reports yet" className="flex items-center gap-1 px-3 py-1 text-xs font-bold text-gray-400">
+                                                    <Award className="w-3 h-3" /> Not issued
+                                                </span>
                                             )
                                         )}
                                     </div>
                                 </td>
                             </tr>
                         ))}
+                        {filteredReports.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                                    {searchQuery ? 'No reports match your search.' : 'No interview reports have been submitted yet.'}
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
         </div>
     );
-}
-
-// Reuse Award icon
-function Award(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <circle cx="12" cy="8" r="7" />
-            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-        </svg>
-    )
 }

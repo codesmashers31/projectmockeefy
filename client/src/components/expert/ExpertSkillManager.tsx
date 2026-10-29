@@ -3,6 +3,7 @@ import axios from '../../lib/axios';
 import { toast } from 'sonner';
 import { Plus, Save, Award, X, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExpertPageSkeleton from '../ExpertPageSkeleton';
 
 interface Skill {
     _id: string;
@@ -128,6 +129,8 @@ export default function ExpertSkillManager() {
         skillsByCategory[catName].push(skill);
     });
 
+    if (profileLoading) return <ExpertPageSkeleton variant="skills" />;
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden">
             {/* Header */}
@@ -186,12 +189,7 @@ export default function ExpertSkillManager() {
                         {/* Skill Selection Grid */}
                         <div className="p-6">
                             <div className="min-h-[200px]">
-                                {profileLoading ? (
-                                    <div className="h-48 flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                                        <Award className="w-8 h-8 mb-2 opacity-50 animate-pulse" />
-                                        <p className="text-sm font-medium">Loading available skills...</p>
-                                    </div>
-                                ) : Object.keys(skillsByCategory).length === 0 ? (
+                                {Object.keys(skillsByCategory).length === 0 ? (
                                     <div className="h-48 flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
                                         <p className="text-sm">No skills found matching your search</p>
                                     </div>

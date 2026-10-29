@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import axios from "../lib/axios";
+import ExpertPageSkeleton from "../components/ExpertPageSkeleton";
 import {
   FileText,
   DollarSign,
@@ -291,6 +292,14 @@ export default function ExpertDashboard() {
 
 
 
+  if (loading) {
+    return (
+      <Layout active="dashboard">
+        <ExpertPageSkeleton variant="dashboard" />
+      </Layout>
+    );
+  }
+
   return (
     <Layout active="dashboard">
       <div className="min-h-screen bg-white p-6 lg:p-8 space-y-6 font-sans">
@@ -452,6 +461,5 @@ export default function ExpertDashboard() {
     </Layout>
   );
 }
-
 
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from '../lib/axios';
 import { ChevronLeft, ChevronRight, Search, X, RefreshCw, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { AdminPageError } from "./AdminPageSkeleton";
 
 interface PersonalInformation {
   userName: string;
@@ -61,6 +62,8 @@ const RejectedExpertsTable: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [rejectedExperts, setRejectedExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Reject Modal State
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -73,16 +76,20 @@ const RejectedExpertsTable: React.FC = () => {
 
   const fetchRejectedExperts = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const response = await axios.get("/api/expert/rejected");
-      if (response.data.success) {
-        setRejectedExperts(response.data.data);
+      if (!response.data.success || !Array.isArray(response.data.data)) {
+        throw new Error(response.data.message || "Invalid rejected experts response");
       }
+      setRejectedExperts(response.data.data);
+      setHasLoaded(true);
     } catch (error) {
       console.error("Error fetching rejected experts:", error);
+      setLoadError("Rejected experts could not be loaded. Check your connection and try again.");
       toast.error("Failed to load rejected experts");
     } finally {
-      setTimeout(() => setLoading(false), 300); // Prevent flicker
+      setLoading(false);
     }
   };
 
@@ -211,14 +218,23 @@ const RejectedExpertsTable: React.FC = () => {
         </div>
       </div>
 
+      {loadError && hasLoaded && (
+        <div role="alert" className="mb-4 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{loadError} Previously loaded experts are still shown.</span>
+          <button type="button" onClick={fetchRejectedExperts} className="font-semibold underline" disabled={loading}>Retry</button>
+        </div>
+      )}
+
       {/* Cards Container */}
       <div className="bg-gray-50/50 rounded-xl p-4 min-h-[400px]">
-        {loading ? (
+        {loading && !hasLoaded ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white rounded-xl h-48 animate-pulse shadow-sm border border-gray-100"></div>
             ))}
           </div>
+        ) : loadError && !hasLoaded ? (
+          <AdminPageError title="Rejected experts unavailable" message={loadError} onRetry={fetchRejectedExperts} />
         ) : currentExperts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentExperts.map((exp) => (

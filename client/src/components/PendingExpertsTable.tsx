@@ -82,6 +82,8 @@ const PendingExpertsTable: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [pendingExperts, setPendingExperts] = useState<Expert[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     // Reject Modal State
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -176,16 +178,20 @@ const PendingExpertsTable: React.FC = () => {
 
     const fetchPendingExperts = async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const response = await axios.get("/api/expert/pending");
-            if (response.data.success) {
-                setPendingExperts(response.data.data);
+            if (!response.data.success || !Array.isArray(response.data.data)) {
+                throw new Error(response.data.message || "Invalid pending experts response");
             }
+            setPendingExperts(response.data.data);
+            setHasLoaded(true);
         } catch (error) {
             console.error("Error fetching pending experts:", error);
+            setLoadError("Pending experts could not be loaded. Check your connection and try again.");
             toast.error("Failed to load pending experts");
         } finally {
-            setTimeout(() => setLoading(false), 300);
+            setLoading(false);
         }
     };
 
@@ -292,6 +298,13 @@ const PendingExpertsTable: React.FC = () => {
                 </div>
             </div>
 
+            {loadError && hasLoaded && (
+                <div role="alert" className="mb-4 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{loadError} Previously loaded experts are still shown.</span>
+                    <button type="button" onClick={fetchPendingExperts} className="font-semibold underline" disabled={loading}>Retry</button>
+                </div>
+            )}
+
             {/* Table Container */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[400px]">
                 <table className="w-full text-left text-sm">
@@ -305,9 +318,16 @@ const PendingExpertsTable: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {loading ? (
+                        {loading && !hasLoaded ? (
                             // Flicker-Free Skeleton Loading
                             Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+                        ) : loadError && !hasLoaded ? (
+                            <tr>
+                                <td colSpan={5} className="py-16 text-center" role="alert">
+                                    <p className="text-sm text-red-700">{loadError}</p>
+                                    <button type="button" onClick={fetchPendingExperts} className="mt-3 font-semibold text-[#004fcb] underline">Retry</button>
+                                </td>
+                            </tr>
                         ) : currentExperts.length > 0 ? (
                             currentExperts.map((exp) => (
                                 <tr key={exp._id} className="hover:bg-gray-50/50 transition-colors">

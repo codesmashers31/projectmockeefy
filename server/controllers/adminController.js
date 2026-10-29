@@ -2,6 +2,7 @@
 import User from "../models/User.js";
 import Session from "../models/Session.js";
 import ExpertDetails from "../models/expertModel.js";
+import Report from "../models/Report.js";
 import { isExpertProfileComplete } from "./expertController.js";
 
 // @desc    Get dashboard statistics
@@ -153,5 +154,59 @@ export const getAdminExpertAgreements = async (req, res) => {
     } catch (error) {
         console.error("Error fetching expert agreements for admin:", error);
         res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+// @desc    Get interview reports for the admin dashboard
+// @route   GET /api/admin/reports
+// @access  Private/Admin
+export const getAdminReports = async (req, res) => {
+    try {
+        const reports = await Report.find({})
+            .populate("candidateId", "name")
+            .populate({
+                path: "expertId",
+                select: "userId",
+                populate: { path: "userId", select: "name" }
+            })
+            .populate({
+                path: "sessionId",
+                select: "startTime topics categoryId",
+                populate: { path: "categoryId", select: "name" }
+            })
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            reports: reports.map(report => {
+                const scores = report.scores || {};
+                const scoreValues = [
+                    scores.technical,
+                    scores.communication,
+                    scores.confidence,
+                    scores.systemDesign,
+                    scores.problemSolving
+                ].filter(Number.isFinite);
+                const totalScore = scoreValues.length
+                    ? Math.round(scoreValues.reduce((total, score) => total + score, 0) / scoreValues.length)
+                    : 0;
+
+                return {
+                    id: report._id,
+                    expertName: report.expertId?.userId?.name || "Unknown Expert",
+                    candidateName: report.candidateId?.name || "Unknown Candidate",
+                    date: report.sessionId?.startTime || report.createdAt,
+                    status: report.status,
+                    scores: { total: totalScore },
+                    category: report.sessionId?.categoryId?.name
+                        || report.sessionId?.topics?.join(", ")
+                        || "Uncategorized",
+                    certificateId: report.generatedCertificateId || undefined
+                };
+            })
+        });
+    } catch (error) {
+        console.error("Error fetching reports for admin:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch reports" });
     }
 };
