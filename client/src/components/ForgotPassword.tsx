@@ -7,6 +7,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import AuthLayout from "./auth/AuthLayout";
 import MockeefyLogo from "./MockeefyLogo";
+import { useAuth } from "../context/AuthContext";
 
 const inputClass =
   "w-full h-11 px-5 rounded-full border border-slate-200 bg-slate-50/30 text-slate-900 placeholder:text-slate-400 focus:border-[#004fcb] focus:ring-1 focus:ring-[#004fcb]/10 focus:bg-white outline-none transition-all text-sm";
@@ -26,6 +27,7 @@ export default function ForgotPassword() {
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { setAuthSession } = useAuth();
 
   const startCountdown = () => {
     setCountdown(30);
@@ -63,8 +65,11 @@ export default function ForgotPassword() {
       const res = await axios.post("/api/auth/verify-otp", { email, otp });
       return res.data;
     },
-    onSuccess: (data: { success: boolean }) => {
+    onSuccess: (data: { success: boolean; resetToken?: string }) => {
       if (data?.success) {
+        if (data.resetToken) {
+          setResetToken(data.resetToken);
+        }
         setStep(3);
         setError("");
         toast.success("Code verified");
@@ -82,13 +87,26 @@ export default function ForgotPassword() {
       const res = await axios.post("/api/auth/reset-password", {
         email,
         otp,
+        resetToken,
         newPassword: password,
       });
       return res.data;
     },
-    onSuccess: () => {
-      toast.success("Password reset! Redirecting to sign in...");
-      setTimeout(() => navigate("/signin"), 1500);
+    onSuccess: (data: any) => {
+      toast.success("Password reset successfully!");
+      if (data?.accessToken && data?.user) {
+        const loggedInUser = setAuthSession(data.accessToken, data.user);
+        const role = (loggedInUser.userType || loggedInUser.role)?.toLowerCase();
+        if (role === "expert") {
+          navigate("/dashboard", { replace: true });
+        } else if (role === "admin") {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/", { replace: true });
+        }
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     },
     onError: (err: AxiosError<{ message?: string }>) => {
       setError(err.response?.data?.message || "Failed to reset password");

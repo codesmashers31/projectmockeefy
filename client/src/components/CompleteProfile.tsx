@@ -6,10 +6,11 @@ import AuthLayout from "./auth/AuthLayout";
 import MockeefyLogo from "./MockeefyLogo";
 
 interface LocationState {
-  email: string;
+  email?: string;
   userType?: string;
   googleId?: string;
   name?: string;
+  isExisting?: boolean;
 }
 
 const userTypeOptions = [
@@ -25,33 +26,41 @@ const btnPrimary =
 
 export default function CompleteProfile() {
   const roleMenuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, register } = useAuth();
+  const state = (location.state || {}) as LocationState;
+
+  const effectiveEmail = state?.email || user?.email || "";
+  const effectiveName = state?.name || user?.name || "";
+  const effectiveUserType = state?.userType || user?.userType || (user as any)?.role || "";
+  const effectiveGoogleId = state?.googleId;
+  const isExisting = Boolean(state?.isExisting || user?.email);
+
   const [formData, setFormData] = useState({
-    name: "",
+    name: effectiveName,
     password: "",
     confirmPassword: "",
-    userType: "",
+    userType: effectiveUserType,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isRoleOpen, setIsRoleOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { register } = useAuth();
-  const state = location.state as LocationState;
 
   useEffect(() => {
-    if (!state?.email) {
-      navigate("/signup");
+    if (!effectiveEmail) {
+      navigate("/signup", { replace: true });
+      return;
     }
-    if (state?.userType) {
-      setFormData((prev) => ({ ...prev, userType: state.userType! }));
+    if (effectiveUserType) {
+      setFormData((prev) => ({ ...prev, userType: prev.userType || effectiveUserType }));
     }
-    if (state?.name) {
-      setFormData((prev) => ({ ...prev, name: state.name }));
+    if (effectiveName) {
+      setFormData((prev) => ({ ...prev, name: prev.name || effectiveName }));
     }
-  }, [state, navigate]);
+  }, [effectiveEmail, effectiveName, effectiveUserType, navigate]);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -69,14 +78,6 @@ export default function CompleteProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
     if (!formData.name.trim()) {
       setError("Please enter your name");
       return;
@@ -85,15 +86,38 @@ export default function CompleteProfile() {
       setError("Please select whether you're a Candidate or Expert");
       return;
     }
+
+    if (!isExisting) {
+      if (!formData.password || formData.password.length < 6) {
+        setError("Password must be at least 6 characters long");
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match");
+        return;
+      }
+    } else {
+      if (formData.password) {
+        if (formData.password.length < 6) {
+          setError("Password must be at least 6 characters long");
+          return;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          setError("Passwords do not match");
+          return;
+        }
+      }
+    }
+
     setIsLoading(true);
     setError("");
     try {
       await register(
-        state.email,
-        formData.password,
+        effectiveEmail,
+        formData.password || "",
         formData.userType,
         formData.name.trim(),
-        state.googleId
+        effectiveGoogleId
       );
       if (formData.userType === "expert") {
         navigate("/dashboard", { replace: true });
@@ -101,13 +125,13 @@ export default function CompleteProfile() {
         navigate("/", { replace: true });
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : "Failed to complete profile");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!state?.email) return null;
+  if (!effectiveEmail) return null;
 
   return (
     <AuthLayout title="Complete profile">
@@ -118,7 +142,7 @@ export default function CompleteProfile() {
         </div>
 
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">Complete your profile</h2>
-        <p className="text-slate-500 text-sm mt-1">Add your details to get started</p>
+        <p className="text-slate-500 text-sm mt-1">{isExisting ? "Review and confirm your details to continue" : "Add your details to get started"}</p>
 
         {error && (
           <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
@@ -199,11 +223,11 @@ export default function CompleteProfile() {
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="At least 6 characters"
+                placeholder={isExisting ? "Set new password (optional)" : "At least 6 characters"}
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 className={`${inputClass} pr-11`}
-                required
+                required={!isExisting}
               />
               <button
                 type="button"
@@ -223,11 +247,11 @@ export default function CompleteProfile() {
               <input
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="Repeat password"
+                placeholder={isExisting ? "Repeat password if changing" : "Repeat password"}
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 className={`${inputClass} pr-11`}
-                required
+                required={!isExisting && Boolean(formData.password)}
               />
               <button
                 type="button"
@@ -240,7 +264,7 @@ export default function CompleteProfile() {
           </div>
 
           <button type="submit" disabled={isLoading} className={btnPrimary}>
-            {isLoading ? "Creating account..." : "Complete account"}
+            {isLoading ? (isExisting ? "Saving..." : "Creating account...") : (isExisting ? "Save & Continue" : "Complete account")}
           </button>
         </form>
 

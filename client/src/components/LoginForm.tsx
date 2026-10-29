@@ -63,8 +63,11 @@ export const LoginForm = () => {
     setError("");
     try {
       const result = await googleLogin(accessToken);
-      if (result?.success && result?.user) {
-        const role = result.user.userType?.toLowerCase();
+      const isExisting = Boolean(result?.exists);
+      const user = result?.user;
+
+      if (isExisting && user) {
+        const role = (user.userType || user.role)?.toLowerCase();
         if (from?.pathname) {
           navigate(from.pathname + (from.search || ""), { replace: true });
         } else if (role === "admin") {
@@ -74,11 +77,30 @@ export const LoginForm = () => {
         } else {
           navigate("/", { replace: true });
         }
-      } else {
-        setError("Account not found. Please create an account.");
+        return;
       }
-    } catch {
-      setError("Google sign-in failed.");
+
+      const email = result?.googleData?.email || user?.email;
+      const name = result?.googleData?.name || user?.name;
+      const googleId = result?.googleData?.googleId || user?.googleId;
+      const userType = user?.userType || user?.role;
+
+      if (email) {
+        navigate("/complete-profile", {
+          state: {
+            email,
+            name,
+            googleId,
+            userType,
+            isExisting: false,
+          },
+          replace: true,
+        });
+      } else {
+        setError("Failed to get Google account information.");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Google sign-in failed.");
     } finally {
       setIsLoading(false);
     }

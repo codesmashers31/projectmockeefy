@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import api from "../lib/axios";
 import { isAxiosError } from "axios";
 import AuthLayout from "./auth/AuthLayout";
+import { useAuth } from "../context/AuthContext";
 import { GoogleAuthButton } from "./auth/GoogleAuthButton";
 import MockeefyLogo from "./MockeefyLogo";
 
@@ -29,6 +30,7 @@ export const RegisterForm = () => {
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { googleLogin } = useAuth();
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -38,20 +40,44 @@ export const RegisterForm = () => {
     setError("");
     setIsLoading(true);
     try {
-      const response = await api.post("/api/auth/google-signup", { token: accessToken });
-      if (response.data.exists) {
-        setError("An account with this email already exists. Please sign in.");
+      const result = await googleLogin(accessToken);
+      const isExisting = Boolean(result?.exists);
+      const user = result?.user;
+
+      if (isExisting && user) {
+        // If already registered/logged-in user clicks Google on Create Account -> Navigate to dashboard
+        const role = (user.userType || user.role)?.toLowerCase();
+        if (role === "expert") {
+          navigate("/dashboard", { replace: true });
+        } else if (role === "admin") {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/", { replace: true });
+        }
         return;
       }
-      navigate("/complete-profile", {
-        state: {
-          email: response.data.googleData?.email,
-          googleId: response.data.googleData?.googleId,
-          name: response.data.googleData?.name,
-        },
-      });
-    } catch (err) {
-      setError("Google sign-up failed. Please try again.");
+
+      const email = result?.googleData?.email || user?.email;
+      const name = result?.googleData?.name || user?.name;
+      const googleId = result?.googleData?.googleId || user?.googleId;
+      const userType = user?.userType || user?.role;
+
+      if (email) {
+        navigate("/complete-profile", {
+          state: {
+            email,
+            googleId,
+            name,
+            userType,
+            isExisting: false,
+          },
+          replace: true,
+        });
+      } else {
+        setError("Failed to retrieve Google profile details.");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || "Google sign-up failed. Please try again.");
       console.error(err);
     } finally {
       setIsLoading(false);
