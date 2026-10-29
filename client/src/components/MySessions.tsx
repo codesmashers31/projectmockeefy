@@ -1072,7 +1072,10 @@ const MySessions = ({
 
         {/* Give Review Modal (candidate) — only after meeting ended; then they can view certificate */}
         {reviewModalSession && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setReviewModalSession(null)}
+          >
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="font-bold text-slate-900">Give your review</h3>
@@ -1105,11 +1108,22 @@ const MySessions = ({
 
         {/* View Certificate Modal — expert feedback (marks) and certificate details */}
         {certificateModalSession && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setCertificateModalSession(null)}
+          >
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award size={20} className="text-[#0755E8]" /> Certificate details</h3>
-                <button onClick={() => setCertificateModalSession(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"><X size={18} /></button>
+                <button
+                  type="button"
+                  onClick={() => setCertificateModalSession(null)}
+                  className="shrink-0 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-red-500/20 cursor-pointer"
+                  aria-label="Close certificate details modal"
+                >
+                  <X size={15} />
+                  <span>Close</span>
+                </button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
@@ -1173,7 +1187,13 @@ const MySessions = ({
                 )}
               </div>
               <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
-                <button onClick={() => setCertificateModalSession(null)} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 hover:text-rose-900 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer">Close</button>
+                <button
+                  type="button"
+                  onClick={() => setCertificateModalSession(null)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-red-500/20 cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
