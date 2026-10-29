@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "../lib/axios";
@@ -766,6 +767,19 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
     fetchSessions();
   }, [user]);
 
+  // Handle Escape key to close certificate modal
+  useEffect(() => {
+    if (!selectedSession && !isMasterSelected) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedSession(null);
+        setIsMasterSelected(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedSession, isMasterSelected]);
+
   if (showSkeletons || loading) {
     return <CertificatesSkeleton />;
   }
@@ -1213,13 +1227,25 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
           </div>
 
       {/* Certificate View Modal */}
-      {(selectedSession || isMasterSelected) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-gray-950/75 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto border border-slate-200/80">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-              <h3 className="font-black text-gray-900 flex items-center gap-2 text-base">
-                <Award className="text-[#0755E8]" />
-                {isMasterSelected ? "Master Certificate Preview" : "Verified Mockeefy Certificate of Completion"}
+      {(selectedSession || isMasterSelected) && typeof document !== "undefined" && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 pt-16 sm:pt-14 pb-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150"
+          onClick={() => {
+            setSelectedSession(null);
+            setIsMasterSelected(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border border-slate-200/80 max-h-[88vh] flex flex-col my-auto animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header — Always visible at the top inside viewport, completely clear of navbar */}
+            <div className="px-5 sm:px-7 py-4 sm:py-4.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 z-20">
+              <h3 className="font-black text-gray-900 flex items-center gap-2.5 text-sm sm:text-base truncate mr-3">
+                <Award className="text-[#0755E8] shrink-0 w-5 h-5 sm:w-6 sm:h-6" />
+                <span className="truncate">{isMasterSelected ? "Master Certificate Preview" : "Verified Mockeefy Certificate of Completion"}</span>
               </h3>
               <button
                 type="button"
@@ -1227,14 +1253,17 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                   setSelectedSession(null);
                   setIsMasterSelected(false);
                 }}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                className="shrink-0 px-4 sm:px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shadow-md shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 cursor-pointer"
+                aria-label="Close certificate modal"
               >
-                <X size={20} />
+                <X size={16} />
+                <span>Close</span>
               </button>
             </div>
             
-            <div className="p-3 sm:p-6 bg-slate-100/70 flex flex-col items-center gap-4 overflow-x-auto">
-              <div className="w-full max-w-[1000px] shadow-2xl rounded-xl overflow-hidden border border-slate-200 bg-white">
+            {/* Certificate Preview Body — Scrolls smoothly within modal */}
+            <div className="p-3 sm:p-6 bg-slate-100/70 flex flex-col items-center gap-4 overflow-y-auto overflow-x-auto flex-1 min-h-0">
+              <div className="w-full max-w-[1000px] shadow-2xl rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0">
                 <div className="w-full overflow-x-auto">
                   <CertificateTemplate
                     userName={user?.name || "Candidate"}
@@ -1256,7 +1285,8 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
               </div>
             </div>
             
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-white">
+            {/* Modal Footer — Download action only */}
+            <div className="px-5 sm:px-7 py-3.5 sm:py-4 border-t border-gray-100 flex items-center justify-between bg-white shrink-0 z-20">
               <button
                 type="button"
                 disabled={Boolean(downloading) || downloadingMaster}
@@ -1267,7 +1297,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                     await handleDownloadPDF(selectedSession);
                   }
                 }}
-                className="px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60"
+                className="px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60"
               >
                 {Boolean(downloading) || downloadingMaster ? (
                   <>
@@ -1281,20 +1311,10 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                   </>
                 )}
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSession(null);
-                  setIsMasterSelected(false);
-                }}
-                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Dedicated Off-Screen Capture Stage for Vector-Perfect A4 Landscape PDF */}
