@@ -69,6 +69,18 @@ const ExpertEducation = ({ onUpdate, isMissing }: ExpertEducationProps) => {
             return;
         }
 
+        for (let i = 0; i < profile.education.length; i++) {
+            const edu = profile.education[i];
+            if (!edu.degree || !String(edu.degree).trim()) {
+                toast.error(`Please enter Degree for education #${i + 1}`);
+                return;
+            }
+            if (!edu.institution || !String(edu.institution).trim()) {
+                toast.error(`Please enter College / Institution for education #${i + 1}`);
+                return;
+            }
+        }
+
         try {
             const response = await axios.put(
                 "/api/expert/education",
@@ -145,7 +157,7 @@ const ExpertEducation = ({ onUpdate, isMissing }: ExpertEducationProps) => {
 
                             <div className="space-y-3">
                                 <Input disabled={!isEditing} placeholder="Degree" value={edu.degree} onChange={(v) => updateEducation(i, "degree", v)} />
-                                <Input disabled={!isEditing} placeholder="Institution" value={edu.institution} onChange={(v) => updateEducation(i, "institution", v)} />
+                                <Input disabled={!isEditing} placeholder="College / Institution" value={edu.institution} onChange={(v) => updateEducation(i, "institution", v)} />
                                 <Input disabled={!isEditing} placeholder="Field of Study" value={edu.field} onChange={(v) => updateEducation(i, "field", v)} />
                                 <div className="grid grid-cols-2 gap-3">
                                     <Input disabled={!isEditing} placeholder="Start Year" type="number" value={edu.start} onChange={(v) => updateEducation(i, "start", v)} />

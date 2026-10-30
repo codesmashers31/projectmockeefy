@@ -36,7 +36,8 @@ import {
   verifyAadhaarOtpController,
   resetAadhaarVerification,
   getExpertAgreement,
-  saveExpertAgreement
+  saveExpertAgreement,
+  getCompanyDocument
 } from "../controllers/expertController.js";
 
 import { authenticateToken } from "../controllers/authController.js";
@@ -50,7 +51,8 @@ router.post('/search', searchExperts);
 router.get("/all-experts", getAllExperts);
 router.get("/verified", getVerifiedExperts);
 router.get("/verified-experts", getVerifiedExperts); // Alias for compatibility
-router.get("/public/profile/:id", getPublicExpertById); // Public Profile (PII stripped)
+router.get("/public/profile/:id", getPublicExpertById);
+router.get("/company-doc/:id", getCompanyDocument); // Public Profile (PII stripped)
 
 // Admin-Only Expert Verification & Status Management
 router.get("/pending", protect, admin, getPendingExperts);

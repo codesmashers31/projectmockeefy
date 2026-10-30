@@ -16,6 +16,8 @@ export const getDashboardStats = async (req, res) => {
             totalUsers,
             sessionsBooked,
             pendingExperts,
+            verifiedExperts,
+            rejectedExperts,
             activeSessions,
             revenueData,
             recentUsers,
@@ -29,6 +31,8 @@ export const getDashboardStats = async (req, res) => {
                 const pendings = await ExpertDetails.find({ status: "pending" }).populate("userId");
                 return pendings.filter(exp => exp.userId && isExpertProfileComplete(exp, exp.userId) && (exp.verificationRequested === true || exp.verificationRequested === undefined)).length;
             })(),
+            ExpertDetails.countDocuments({ status: { $in: ["Active", "approved"] } }),
+            ExpertDetails.countDocuments({ status: "rejected" }),
             Session.countDocuments({ status: "live" }), // or 'confirmed' depending on definition
 
             // 2. Revenue Aggregation (Total & Monthly)
@@ -100,6 +104,8 @@ export const getDashboardStats = async (req, res) => {
                 totalUsers,
                 sessionsBooked,
                 pendingExperts,
+            verifiedExperts,
+            rejectedExperts,
                 activeSessions,
                 totalRevenue: revenueData[0]?.totalRevenue || 0,
                 recentUsers,
@@ -208,5 +214,36 @@ export const getAdminReports = async (req, res) => {
     } catch (error) {
         console.error("Error fetching reports for admin:", error);
         res.status(500).json({ success: false, message: "Failed to fetch reports" });
+    }
+};
+
+// @desc    Get counts for expert verification statuses (Pending, Verified, Rejected)
+// @route   GET /api/admin/experts/counts
+// @access  Private/Admin
+export const getAdminExpertCounts = async (req, res) => {
+    try {
+        const [pendings, verifiedCount, rejectedCount] = await Promise.all([
+            ExpertDetails.find({ status: "pending" }).populate("userId"),
+            ExpertDetails.countDocuments({ status: { $in: ["Active", "approved"] } }),
+            ExpertDetails.countDocuments({ status: "rejected" })
+        ]);
+
+        const pendingCount = pendings.filter(exp => 
+            exp.userId && 
+            isExpertProfileComplete(exp, exp.userId) && 
+            (exp.verificationRequested === true || exp.verificationRequested === undefined)
+        ).length;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                pending: pendingCount,
+                verified: verifiedCount,
+                rejected: rejectedCount
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching admin expert counts:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 };

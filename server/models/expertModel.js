@@ -2,21 +2,19 @@ import mongoose from "mongoose";
 
 /* ----------------- Education Schema ------------------ */
 const educationSchema = new mongoose.Schema({
-  degree: { type: String, required: true, trim: true },
-  institution: { type: String, required: true, trim: true },
-  field: { type: String, trim: true },
+  degree: { type: String, trim: true, default: "" },
+  institution: { type: String, trim: true, default: "" },
+  field: { type: String, trim: true, default: "" },
   start: {
     type: Number,
-    required: true,
     min: 1900,
-    max: new Date().getFullYear(),
   },
   end: {
     type: Number,
-    required: true,
     min: 1900,
     validate: {
       validator: function (value) {
+        if (!value || !this.start) return true;
         return value >= this.start;
       },
       message: "End year must be greater than or equal to start year",

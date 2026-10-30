@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from '../lib/axios';
 import { useDataSync } from "../context/SocketContext";
-import { ChevronLeft, ChevronRight, Search, X, RefreshCw, Eye, CheckCircle, ShieldCheck, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, X, RefreshCw, Eye, CheckCircle, ShieldCheck, AlertTriangle, FileText, ExternalLink, Download } from "lucide-react";
 import { toast } from "sonner";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { API_BASE_URL } from "../config";
 
 interface PersonalInformation {
     userName: string;
@@ -76,6 +77,39 @@ interface Expert {
         _id: string;
     };
 }
+
+const getCompanyDocUrl = (
+    expert: Expert | null,
+    mode: 'view' | 'download' = 'view',
+    type: 'company' | 'agreement' = 'company'
+): string => {
+    if (!expert) return "";
+    if (type === 'agreement') {
+        const agr = expert.agreement as any;
+        const raw = agr?.agreementPdf?.url || (typeof agr?.agreementPdf === 'string' ? agr?.agreementPdf : '') ||
+                    agr?.signatureFile?.url || (typeof agr?.signatureFile === 'string' ? agr?.signatureFile : '');
+        if (!raw) return "";
+        return `${API_BASE_URL}/api/expert/company-doc/${expert._id}?type=agreement&mode=${mode}`;
+    }
+    const v = expert.verification as any;
+    if (!v) return "";
+    let raw = "";
+    if (typeof v.companyId === "string" && v.companyId.trim()) {
+        raw = v.companyId.trim();
+    } else if (v.companyId && typeof v.companyId.url === "string" && v.companyId.url.trim()) {
+        raw = v.companyId.url.trim();
+    } else if (typeof v.companyIdFile === "string" && v.companyIdFile.trim()) {
+        raw = v.companyIdFile.trim();
+    }
+    if (!raw) return "";
+    return `${API_BASE_URL}/api/expert/company-doc/${expert._id}?type=company&mode=${mode}`;
+};
+
+const getCompanyDocName = (expert: Expert | null): string => {
+    if (!expert || !expert.verification) return "Company_Letter";
+    const v = expert.verification as any;
+    return v.companyId?.name || "Company_Letter";
+};
 
 const PendingExpertsTable: React.FC = () => {
     const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
@@ -342,20 +376,6 @@ const PendingExpertsTable: React.FC = () => {
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                         <CheckCircle className="w-2.5 h-2.5 text-emerald-600" /> {exp.completion ?? 100}% Complete
                                                     </span>
-                                                    {exp.verification?.aadhar?.isVerified && (
-                                                        <span
-                                                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${exp.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED" || (exp.verification.aadhar.nameMatchScore && exp.verification.aadhar.nameMatchScore < 80)
-                                                                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                                                                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                                }`}
-                                                            title={`Name on Aadhaar: ${exp.verification.aadhar.nameOnAadhaar || exp.personalInformation.userName}`}
-                                                        >
-                                                            <ShieldCheck className="w-2.5 h-2.5" />
-                                                            {exp.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED"
-                                                                ? "Name Review"
-                                                                : "Aadhaar Match"}
-                                                        </span>
-                                                    )}
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-0.5">{exp.professionalDetails.title}</p>
                                             </div>
@@ -570,7 +590,7 @@ const PendingExpertsTable: React.FC = () => {
                             {/* Verification Links */}
                             <section className="pt-4 border-t border-gray-100">
                                 <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-4">Verification Documents</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {selectedExpert.verification?.linkedin ? (
                                         <a
                                             href={selectedExpert.verification.linkedin}
@@ -586,61 +606,29 @@ const PendingExpertsTable: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {selectedExpert.verification?.aadhar?.isVerified ? (
-                                        <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg space-y-1.5 text-left">
-                                            <div className="flex items-center justify-between">
-                                                <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-950">
-                                                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                                    Aadhaar e-KYC
-                                                </span>
-                                                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                                                    {selectedExpert.verification.aadhar.number || "Verified"}
-                                                </span>
-                                            </div>
-                                            <div className="text-xs">
-                                                <span className="text-[11px] font-medium text-gray-500 block">Name on Aadhaar:</span>
-                                                <span className="font-bold text-gray-900">
-                                                    {selectedExpert.verification.aadhar.nameOnAadhaar || selectedExpert.personalInformation.userName}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-200/60 text-[11px]">
-                                                {selectedExpert.verification.aadhar.nameMatchStatus === "REVIEW_NEEDED" || (selectedExpert.verification.aadhar.nameMatchScore && selectedExpert.verification.aadhar.nameMatchScore < 80) ? (
-                                                    <span className="text-amber-700 font-bold flex items-center gap-1">
-                                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                                                        Name Review Needed ({selectedExpert.verification.aadhar.nameMatchScore || 70}%)
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                                        Verified Name Match
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ) : selectedExpert.verification?.aadhar?.url ? (
-                                        <a
-                                            href={getProfileImageUrl(selectedExpert.verification.aadhar.url)}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors border border-amber-200"
-                                        >
-                                            View Govt ID (Aadhar)
-                                        </a>
-                                    ) : (
-                                        <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
-                                            Aadhaar Not Verified
-                                        </div>
-                                    )}
 
-                                    {selectedExpert.verification?.companyId?.url ? (
-                                        <a
-                                            href={getProfileImageUrl(selectedExpert.verification.companyId.url)}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex items-center justify-center gap-2 p-3 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors border border-purple-200"
-                                        >
-                                            View Company Letter
-                                        </a>
+                                    {Boolean(getCompanyDocUrl(selectedExpert, 'view', 'company')) ? (
+                                        <div className="flex items-center gap-2">
+                                            <a
+                                                href={getCompanyDocUrl(selectedExpert, 'view', 'company')}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex-1 flex items-center justify-center gap-2 p-3 bg-purple-50 text-purple-700 hover:text-purple-900 rounded-lg text-sm font-semibold hover:bg-purple-100 transition-colors border border-purple-200 cursor-pointer shadow-xs"
+                                                title="Open Company Letter PDF in new tab"
+                                            >
+                                                <FileText className="w-4 h-4 text-purple-600" />
+                                                <span>View Company Letter (PDF)</span>
+                                                <ExternalLink className="w-3.5 h-3.5 text-purple-500" />
+                                            </a>
+                                            <a
+                                                href={getCompanyDocUrl(selectedExpert, 'download', 'company')}
+                                                download
+                                                className="p-3 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg border border-purple-200 transition-colors flex items-center justify-center shadow-xs"
+                                                title="Download Company Letter as PDF"
+                                            >
+                                                <Download className="w-4 h-4 text-purple-700" />
+                                            </a>
+                                        </div>
                                     ) : (
                                         <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
                                             Company Doc Missing
@@ -648,17 +636,29 @@ const PendingExpertsTable: React.FC = () => {
                                     )}
 
                                     {selectedExpert.agreement?.isSigned ? (
-                                        <a
-                                            href={getProfileImageUrl(selectedExpert.agreement.agreementPdf?.url || selectedExpert.agreement.signatureFile?.url || '')}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex items-center justify-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition-colors border border-emerald-200 col-span-1 md:col-span-2"
-                                        >
-                                            <CheckCircle className="w-4 h-4 text-emerald-600" />
-                                            View Signed Agreement (Company Non-Conflict & Working Proof)
-                                        </a>
+                                        <div className="col-span-1 sm:col-span-2 flex items-center gap-2">
+                                            <a
+                                                href={getCompanyDocUrl(selectedExpert, 'view', 'agreement')}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex-1 flex items-center justify-center gap-2 p-3 bg-emerald-50 text-emerald-700 hover:text-emerald-900 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer shadow-xs"
+                                                title="Open Signed Agreement PDF in new tab"
+                                            >
+                                                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                                <span>View Signed Agreement (Company Non-Conflict & Working Proof)</span>
+                                                <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                                            </a>
+                                            <a
+                                                href={getCompanyDocUrl(selectedExpert, 'download', 'agreement')}
+                                                download
+                                                className="p-3 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-lg border border-emerald-200 transition-colors flex items-center justify-center shadow-xs"
+                                                title="Download Signed Agreement as PDF"
+                                            >
+                                                <Download className="w-4 h-4 text-emerald-700" />
+                                            </a>
+                                        </div>
                                     ) : (
-                                        <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100 col-span-1 md:col-span-2">
+                                        <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100 col-span-1 sm:col-span-2">
                                             Agreement Not Signed
                                         </div>
                                     )}

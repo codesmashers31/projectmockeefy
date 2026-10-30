@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard,
@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import MockeefyLogo from "./MockeefyLogo";
+import axios from "../lib/axios";
+import { useDataSync } from "../context/SocketContext";
 
 export type NavItem = {
     id: string;
@@ -26,11 +28,34 @@ export type NavItem = {
     to: string;
     icon: ReactNode;
     end?: boolean;
+    badge?: number;
+    badgeVariant?: "pending" | "verified" | "rejected" | "default";
 };
 
 export default function AdminSidebar() {
     const { logout } = useAuth();
     const navigate = useNavigate();
+    const [counts, setCounts] = useState<{ pending?: number; verified?: number; rejected?: number }>({});
+
+    const fetchCounts = useCallback(async () => {
+        try {
+            const res = await axios.get('/api/admin/experts/counts');
+            if (res.data?.success && res.data?.data) {
+                setCounts(res.data.data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch expert counts for sidebar:", err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchCounts();
+    }, [fetchCounts]);
+
+    // Real-time synchronization when any expert status updates
+    useDataSync(["STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "VERIFICATION_UPDATED", "PROFILE_UPDATED", "RECONNECTED"], () => {
+        fetchCounts();
+    });
 
     const handleSignOut = () => {
         logout();
@@ -40,16 +65,36 @@ export default function AdminSidebar() {
     const items: NavItem[] = [
         { id: "dashboard", label: "Dashboard", to: "/admin", icon: <LayoutDashboard size={20} />, end: true },
         { id: "sessions", label: "Session Management", to: "/admin/sessions", icon: <ListCheck size={20} /> },
-        { id: "pending-experts", label: "Pending Experts", to: "/admin/experts/pending", icon: <UserPlus size={20} /> },
-        { id: "verified-experts", label: "Verified Experts", to: "/admin/experts/verified", icon: <FileCheck size={20} /> },
-        { id: "rejected-experts", label: "Rejected Experts", to: "/admin/experts/rejected", icon: <Ban size={20} /> },
+        {
+            id: "pending-experts",
+            label: "Pending Experts",
+            to: "/admin/experts/pending",
+            icon: <UserPlus size={20} />,
+            badge: counts.pending,
+            badgeVariant: "pending"
+        },
+        {
+            id: "verified-experts",
+            label: "Verified Experts",
+            to: "/admin/experts/verified",
+            icon: <FileCheck size={20} />,
+            badge: counts.verified,
+            badgeVariant: "verified"
+        },
+        {
+            id: "rejected-experts",
+            label: "Rejected Experts",
+            to: "/admin/experts/rejected",
+            icon: <Ban size={20} />,
+            badge: counts.rejected,
+            badgeVariant: "rejected"
+        },
         { id: "expert-agreements", label: "Expert Agreements", to: "/admin/agreements", icon: <FileText size={20} /> },
 
-        { id: "job-board", label: "Job Board", to: "/admin/jobs", icon: <Briefcase size={20} /> }, // Added
+        { id: "job-board", label: "Job Board", to: "/admin/jobs", icon: <Briefcase size={20} /> },
 
-
-        { id: "users", label: "User Management", to: "/admin/users", icon: <Users size={20} /> }, // Added
-        { id: "skills", label: "Skill Management", to: "/admin/skills", icon: <Hexagon size={20} /> }, // New
+        { id: "users", label: "User Management", to: "/admin/users", icon: <Users size={20} /> },
+        { id: "skills", label: "Skill Management", to: "/admin/skills", icon: <Hexagon size={20} /> },
         { id: "certifications", label: "Certification Rules", to: "/admin/certifications", icon: <Award size={20} /> },
         { id: "pricing", label: "Pricing Rules", to: "/admin/pricing", icon: <CreditCard size={20} /> },
         { id: "payouts", label: "Payout Management", to: "/admin/payouts", icon: <DollarSign size={20} /> },
@@ -89,7 +134,26 @@ export default function AdminSidebar() {
                                 <span className={isActive ? "text-white" : "text-gray-400"}>
                                     {item.icon}
                                 </span>
-                                <span>{item.label}</span>
+                                <span className="flex-1 text-left truncate">{item.label}</span>
+                                {typeof item.badge === "number" && (
+                                    <span
+                                        className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                                            isActive
+                                                ? 'bg-white/20 text-white'
+                                                : item.badge === 0
+                                                ? 'bg-gray-100 text-gray-500'
+                                                : item.badgeVariant === 'pending'
+                                                ? 'bg-amber-100 text-amber-800'
+                                                : item.badgeVariant === 'verified'
+                                                ? 'bg-emerald-100 text-emerald-800'
+                                                : item.badgeVariant === 'rejected'
+                                                ? 'bg-rose-100 text-rose-700'
+                                                : 'bg-gray-100 text-gray-600'
+                                        }`}
+                                    >
+                                        {item.badge}
+                                    </span>
+                                )}
                             </>
                         )}
                     </NavLink>
