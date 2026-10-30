@@ -138,7 +138,9 @@ const expertSchema = new mongoose.Schema(
         name: { type: String, trim: true }
       },
       aadhar: {
-        number: { type: String, trim: true }, // Masked e.g. "•••• •••• 1234"
+        number: { type: String, trim: true }, // Formatted or masked e.g. "1234 5678 9012" or "•••• •••• 1234"
+        rawNumber: { type: String, trim: true }, // Raw 12-digit entered number
+        maskedNumber: { type: String, trim: true },
         hash: { type: String, trim: true, index: true }, // SHA-256 hash to prevent duplicate usage across accounts
         isVerified: { type: Boolean, default: false },
         verifiedAt: { type: Date },

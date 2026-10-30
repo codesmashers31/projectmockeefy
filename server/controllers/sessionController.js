@@ -256,19 +256,31 @@ export const getSession = async (req, res) => {
         const mongoose = (await import('mongoose')).default;
 
         let expert = null;
+        let expertUser = null;
         let candidate = null;
         const lookupId = session.expertId;
 
         try {
             if (mongoose.Types.ObjectId.isValid(lookupId)) {
                 const oid = new mongoose.Types.ObjectId(lookupId);
-                expert = await Expert.findOne({ userId: oid }).populate('userId');
-                if (!expert) expert = await Expert.findById(oid).populate('userId');
-            }
-            if (!expert && typeof lookupId === 'string' && lookupId.includes('@')) {
-                const userByEmail = await User.findOne({ email: lookupId.toLowerCase() });
+                expert = await Expert.findOne({ userId: oid }).populate('userId').lean();
+                if (!expert) expert = await Expert.findById(oid).populate('userId').lean();
+                if (!expert) expert = await Expert.findOne({ userId: lookupId.toString() }).populate('userId').lean();
+            } else if (typeof lookupId === 'string' && lookupId.includes('@')) {
+                const userByEmail = await User.findOne({ email: lookupId.toLowerCase() }).lean();
                 if (userByEmail) {
-                    expert = await Expert.findOne({ userId: userByEmail._id }).populate('userId');
+                    expert = await Expert.findOne({ userId: userByEmail._id }).populate('userId').lean();
+                }
+            }
+
+            if (expert && expert.userId && typeof expert.userId === 'object' && expert.userId.name) {
+                expertUser = expert.userId;
+            } else if (expert && expert.userId && mongoose.Types.ObjectId.isValid(expert.userId)) {
+                expertUser = await User.findById(expert.userId).lean();
+            } else if (mongoose.Types.ObjectId.isValid(lookupId)) {
+                expertUser = await User.findById(lookupId).lean();
+                if (expertUser && !expert) {
+                    expert = await Expert.findOne({ userId: expertUser._id }).lean();
                 }
             }
         } catch (e) {
@@ -278,62 +290,94 @@ export const getSession = async (req, res) => {
         // Candidate Lookup
         try {
             if (mongoose.Types.ObjectId.isValid(session.candidateId)) {
-                candidate = await User.findById(session.candidateId);
+                candidate = await User.findById(session.candidateId).lean();
             } else if (typeof session.candidateId === 'string' && session.candidateId.includes('@')) {
-                candidate = await User.findOne({ email: session.candidateId.toLowerCase() });
+                candidate = await User.findOne({ email: session.candidateId.toLowerCase() }).lean();
             }
         } catch (e) {
             console.error("Candidate lookup failed", e);
         }
 
-        // Details construction
         let expertName = 'Unknown Expert';
-        let expertRole = 'Expert';
-        let expertCompany = 'N/A';
-        let expertImage = null;
-
         if (expert) {
-            expertName = expert.personalInformation?.userName || expert.userId?.name || 'Expert';
-            expertRole = expert.professionalDetails?.title || 'Expert';
-            expertCompany = expert.professionalDetails?.company || 'N/A';
-            expertImage = expert.profileImage || expert.userId?.profileImage || null;
+            expertName = expert.personalInformation?.userName || expertUser?.name || 'Expert';
+        } else if (expertUser) {
+            expertName = expertUser.name || 'Expert';
+        } else if (typeof lookupId === 'string' && !mongoose.Types.ObjectId.isValid(lookupId)) {
+            expertName = lookupId;
         } else {
-            // Fallback to User if Expert Profile missing
-            try {
-                if (mongoose.Types.ObjectId.isValid(lookupId)) {
-                    const u = await User.findById(lookupId);
-                    if (u) {
-                        expertName = u.name;
-                        expertImage = u.profileImage;
-                    }
-                } else if (typeof lookupId === 'string') {
-                    expertName = lookupId;
-                }
-            } catch (e) { }
+            expertName = lookupId || 'Unknown Expert';
         }
 
         const isObjectId = (str) => /^[0-9a-fA-F]{24}$/.test(String(str));
         if (expertName === 'Unknown Expert' || isObjectId(expertName)) {
-            expertName = 'Expert';
+            expertName = expertUser?.name || 'Expert';
         }
 
         const candidateName = candidate?.name || (typeof session.candidateId === 'string' ? session.candidateId : 'Candidate');
-        const candidateImage = candidate?.profileImage || null;
-        const candidateEmail = candidate?.email || "";
 
+        const expertDetails = {
+            id: expert?._id ? expert._id.toString() : null,
+            userId: expertUser?._id ? expertUser._id.toString() : (session.expertId ? session.expertId.toString() : null),
+            name: expertName,
+            email: expertUser?.email || (typeof lookupId === 'string' && lookupId.includes('@') ? lookupId : null),
+            phone: expertUser?.personalInfo?.phone || expertUser?.phone || null,
+            profileImage: expert?.profileImage || expertUser?.profileImage || null,
+            title: expert?.professionalDetails?.title || expertUser?.experience?.[0]?.position || 'Domain Expert',
+            company: expert?.professionalDetails?.company || expertUser?.experience?.[0]?.company || 'Mockeefy Mentor',
+            category: expert?.personalInformation?.category || null,
+            level: expert?.professionalDetails?.level || session.level || 'Rising Mentor',
+            totalExperience: expert?.professionalDetails?.totalExperience ?? null,
+            domains: expert?.skillsAndExpertise?.domains || [],
+            tools: expert?.skillsAndExpertise?.tools || [],
+            languages: expert?.skillsAndExpertise?.languages || [],
+            linkedin: expert?.verification?.linkedin || null,
+            status: expert?.status || expertUser?.status || 'Active',
+            avgRating: expert?.metrics?.avgRating || null,
+            totalSessions: expert?.metrics?.totalSessions || 0,
+            city: expertUser?.personalInfo?.city || null,
+            state: expertUser?.personalInfo?.state || null,
+            country: expertUser?.personalInfo?.country || null,
+            bio: expertUser?.personalInfo?.bio || null,
+        };
+
+        const candidateDetails = candidate ? {
+            id: candidate._id ? candidate._id.toString() : (session.candidateId ? session.candidateId.toString() : null),
+            name: candidate.name || candidateName,
+            email: candidate.email || (typeof session.candidateId === 'string' && session.candidateId.includes('@') ? session.candidateId : null),
+            phone: candidate.personalInfo?.phone || candidate.phone || null,
+            profileImage: candidate.profileImage || null,
+            city: candidate.personalInfo?.city || null,
+            state: candidate.personalInfo?.state || null,
+            country: candidate.personalInfo?.country || null,
+            gender: candidate.personalInfo?.gender || null,
+            title: candidate.experience?.[0]?.position || null,
+            company: candidate.experience?.[0]?.company || null,
+            education: candidate.education?.[0]
+                ? `${candidate.education[0].degree || ''}${candidate.education[0].institution ? ' (' + candidate.education[0].institution + ')' : ''}`.trim()
+                : null,
+            experienceLevel: candidate.preferences?.preferences?.experienceLevel || candidate.preferences?.experienceLevel || null,
+            jobType: candidate.preferences?.jobType || null,
+            technicalSkills: candidate.skills?.technical || [],
+            userType: candidate.userType || 'candidate',
+            status: candidate.status || 'Active',
+            bio: candidate.personalInfo?.bio || null,
+        } : {
+            id: session.candidateId ? session.candidateId.toString() : null,
+            name: candidateName,
+            email: typeof session.candidateId === 'string' && session.candidateId.includes('@') ? session.candidateId : null,
+            phone: null,
+            profileImage: null,
+            status: 'Active'
+        };
+
+        const sessionObj = typeof session.toObject === 'function' ? session.toObject() : session;
         const enrichedSession = {
-            ...session.toObject(),
-            expertDetails: {
-                name: expertName,
-                role: expertRole,
-                company: expertCompany,
-                profileImage: expertImage
-            },
-            candidateDetails: {
-                name: candidateName,
-                email: candidateEmail,
-                profileImage: candidateImage
-            }
+            ...sessionObj,
+            expertName,
+            candidateName,
+            expertDetails,
+            candidateDetails
         };
         res.json(enrichedSession);
     } catch (error) {

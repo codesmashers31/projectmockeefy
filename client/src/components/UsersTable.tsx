@@ -125,13 +125,21 @@ const UsersTable = () => {
   };
 
   const SkeletonRow = () => (
-    <tr className="animate-pulse border-b border-gray-100/50">
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div><div className="h-3 bg-gray-100 rounded w-20 mt-2"></div></td>
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-48"></div></td>
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16 mx-auto text-center"></div></td>
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-      <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
-      <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-200 rounded w-20 ml-auto"></div></td>
+    <tr className="border-b border-slate-100/80">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-200/80 shimmer-shining shrink-0" />
+          <div className="space-y-1.5 min-w-0">
+            <div className="h-4 bg-slate-200/80 shimmer-shining rounded-md w-32" />
+            <div className="h-3 bg-slate-100 shimmer-shining rounded-md w-20" />
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4"><div className="h-4 bg-slate-100 shimmer-shining rounded-md w-48" /></td>
+      <td className="px-6 py-4"><div className="h-4 bg-slate-200/80 shimmer-shining rounded-md w-16 mx-auto" /></td>
+      <td className="px-6 py-4"><div className="h-4 bg-slate-100 shimmer-shining rounded-md w-24" /></td>
+      <td className="px-6 py-4"><div className="h-6 bg-[#EAF2FF] shimmer-shining rounded-full w-20" /></td>
+      <td className="px-6 py-4 text-right"><div className="h-8 bg-[#EAF2FF] shimmer-shining rounded-xl w-20 ml-auto" /></td>
     </tr>
   );
 

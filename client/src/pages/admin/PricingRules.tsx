@@ -93,6 +93,34 @@ export default function PricingRules() {
         fetchData(true);
     }, []);
 
+    // Calculate metrics
+    const metrics = useMemo(() => {
+        const totalCats = categories.length;
+        const totalLevels = LEVELS.length;
+        
+        let activeRulesCount = 0;
+        let sumPrice = 0;
+
+        categories.forEach(cat => {
+            LEVELS.forEach(level => {
+                const val = editedPrices[cat._id]?.[level];
+                if (val !== undefined && val > 0) {
+                    activeRulesCount++;
+                    sumPrice += val;
+                }
+            });
+        });
+
+        const avgPrice = activeRulesCount > 0 ? Math.round(sumPrice / activeRulesCount) : 0;
+
+        return {
+            totalCats,
+            totalLevels,
+            activeRulesCount,
+            avgPrice
+        };
+    }, [categories, editedPrices]);
+
     if (loading && !hasLoaded) {
         return <AdminPageSkeleton variant="pricing" rows={6} />;
     }
@@ -232,34 +260,6 @@ export default function PricingRules() {
             setResetting(false);
         }
     };
-
-    // Calculate metrics
-    const metrics = useMemo(() => {
-        const totalCats = categories.length;
-        const totalLevels = LEVELS.length;
-        
-        let activeRulesCount = 0;
-        let sumPrice = 0;
-
-        categories.forEach(cat => {
-            LEVELS.forEach(level => {
-                const val = editedPrices[cat._id]?.[level];
-                if (val !== undefined && val > 0) {
-                    activeRulesCount++;
-                    sumPrice += val;
-                }
-            });
-        });
-
-        const avgPrice = activeRulesCount > 0 ? Math.round(sumPrice / activeRulesCount) : 0;
-
-        return {
-            totalCats,
-            totalLevels,
-            activeRulesCount,
-            avgPrice
-        };
-    }, [categories, editedPrices]);
 
     // Filter categories by search
     const filteredCategories = categories.filter(cat =>

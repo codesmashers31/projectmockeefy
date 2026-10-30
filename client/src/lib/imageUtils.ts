@@ -32,6 +32,9 @@ export const getProfileImageUrl = (path?: string | null, seed?: string | null): 
     // Check if path is empty or a placeholder / text avatar generator
     const isPlaceholder =
         !path ||
+        !path.trim() ||
+        path === 'undefined' ||
+        path === 'null' ||
         path.includes('ui-avatars.com') ||
         path.includes('default-avatar.png') ||
         path.includes('blank.png') ||
@@ -53,33 +56,33 @@ export const getProfileImageUrl = (path?: string | null, seed?: string | null): 
         return path;
     }
 
+    // Normalize Windows backslashes
+    const cleanPath = path.replace(/\\/g, '/');
+
     // If it's already a full URL (Cloudinary or valid external image)
-    if (path.startsWith('http')) {
-        if (path.includes('cloudinary.com')) return path.replace(/^http:\/\//i, 'https://');
-        if (false) {
-            return path;
-        }
+    if (cleanPath.startsWith('http')) {
+        if (cleanPath.includes('cloudinary.com')) return cleanPath.replace(/^http:\/\//i, 'https://');
 
         // Legacy local uploads
-        if (path.includes('/uploads/')) {
-            const relativePath = path.substring(path.indexOf('/uploads/'));
+        if (cleanPath.includes('/uploads/')) {
+            const relativePath = cleanPath.substring(cleanPath.indexOf('/uploads/'));
             return `${API_BASE_URL}${relativePath}`;
         }
-        return path;
+        return cleanPath;
     }
 
     // If it's already pointing to a local public media path
-    if (path.startsWith('/media/') || path.startsWith('/images/')) {
-        return path;
+    if (cleanPath.startsWith('/media/') || cleanPath.startsWith('/images/')) {
+        return cleanPath;
     }
 
-    // If it's a relative path (starts with /), append to API_BASE_URL
-    if (path.startsWith('/')) {
-        return `${API_BASE_URL}${path}`;
+    // If it's a relative path starting with / or uploads/
+    if (cleanPath.startsWith('/')) {
+        return `${API_BASE_URL}${cleanPath}`;
     }
 
     // Fallback for unexpected formats, try to treat as relative path
-    return `${API_BASE_URL}/${path}`;
+    return `${API_BASE_URL}/${cleanPath}`;
 };
 
 /**

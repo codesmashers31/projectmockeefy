@@ -47,6 +47,14 @@ export default function SkillManagement() {
                 throw new Error('Invalid categories response');
             }
             setCategories(res.data);
+            if (res.data.length > 0) {
+                setSelectedCategory(prev => {
+                    const match = res.data.find((c: Category) => (c.id || c._id) === prev);
+                    if (match) return match.id || match._id!;
+                    const first = res.data[0];
+                    return first.id || first._id || '';
+                });
+            }
         } catch (error) {
             console.error("Error fetching categories", error);
             setCategoriesError("Categories could not be loaded. Check your connection and try again.");
@@ -59,6 +67,13 @@ export default function SkillManagement() {
     useEffect(() => {
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        if (categories.length > 0 && !selectedCategory) {
+            const first = categories[0];
+            setSelectedCategory(first.id || first._id || '');
+        }
+    }, [categories, selectedCategory]);
 
     useEffect(() => {
         if (!selectedCategory) {
@@ -179,7 +194,9 @@ export default function SkillManagement() {
                         )}
                         {categoriesLoading && categories.length === 0 ? (
                             <div className="space-y-2" aria-label="Loading categories">
-                                {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-11 animate-pulse rounded-xl bg-gray-200" />)}
+                                {Array.from({ length: 5 }, (_, index) => (
+                                    <div key={index} className="h-11 rounded-xl bg-slate-100 shimmer-shining" />
+                                ))}
                             </div>
                         ) : categories.map((cat, idx) => (
                             <button
@@ -204,7 +221,7 @@ export default function SkillManagement() {
                             <>
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-lg font-bold text-gray-900">
-                                        Skills for {categories.find(c => c.id === selectedCategory)?.name}
+                                        Skills for {categories.find(c => (c.id || c._id) === selectedCategory)?.name || 'Category'}
                                     </h2>
                                     <button
                                         onClick={() => { setShowForm(true); setEditingId(null); setFormData({ name: '', description: '', isActive: true }); }}
@@ -267,7 +284,9 @@ export default function SkillManagement() {
                                         )}
                                         {loading && skills.length === 0 ? (
                                             <div className="space-y-3" aria-label="Loading skills">
-                                                {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}
+                                                {Array.from({ length: 4 }, (_, index) => (
+                                                    <div key={index} className="h-20 rounded-xl bg-slate-100 shimmer-shining" />
+                                                ))}
                                             </div>
                                         ) : skillsError && skills.length === 0 ? (
                                             <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
