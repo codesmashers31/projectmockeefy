@@ -437,7 +437,14 @@ export const requestVerification = async (req, res) => {
     expert.verificationRequested = true;
     expert.verificationRequestedAt = new Date();
     expert.rejectionReason = "";
-    await expert.save();
+    if (Array.isArray(expert.education)) {
+      expert.education.forEach(edu => {
+        if (!edu.institution || !edu.institution.trim()) {
+          edu.institution = "College / Institution";
+        }
+      });
+    }
+    await expert.save({ validateModifiedOnly: true });
 
     syncDataChange({
       type: "STATUS_UPDATED",
@@ -521,7 +528,14 @@ export const resubmitProfile = async (req, res) => {
     expert.verificationRequested = true;
     expert.verificationRequestedAt = new Date();
     expert.rejectionReason = ""; // Clear reason on resubmit
-    await expert.save();
+    if (Array.isArray(expert.education)) {
+      expert.education.forEach(edu => {
+        if (!edu.institution || !edu.institution.trim()) {
+          edu.institution = "College / Institution";
+        }
+      });
+    }
+    await expert.save({ validateModifiedOnly: true });
 
     syncDataChange({
       type: "STATUS_UPDATED",
@@ -2792,5 +2806,125 @@ export const saveExpertAgreement = async (req, res) => {
   } catch (err) {
     console.error("saveExpertAgreement error:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to save agreement" });
+  }
+};
+
+/* -------------------- Get Company Document (PDF Streaming & Download) -------------------- */
+export const getCompanyDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mode = (req.query.mode || "view").toLowerCase();
+    const docType = (req.query.type || "company").toLowerCase();
+
+    let expert = null;
+    if (isValidObjectId(id)) {
+      expert = await ExpertDetails.findById(id).populate("userId");
+      if (!expert) {
+        expert = await ExpertDetails.findOne({ userId: id }).populate("userId");
+      }
+    }
+
+    if (!expert) {
+      return res.status(404).send("Expert not found");
+    }
+
+    const v = expert.verification || {};
+    let rawUrl = "";
+    let customName = "";
+
+    if (docType === "agreement") {
+      const agr = expert.agreement || {};
+      rawUrl = agr.agreementPdf?.url || (typeof agr.agreementPdf === "string" ? agr.agreementPdf : "") ||
+               agr.signatureFile?.url || (typeof agr.signatureFile === "string" ? agr.signatureFile : "");
+      customName = agr.agreementPdf?.name || agr.signatureFile?.name || "Expert_Agreement";
+    } else {
+      rawUrl = v.companyId?.url || (typeof v.companyId === "string" ? v.companyId : "") || v.companyIdFile || "";
+      customName = v.companyId?.name || "Company_Letter";
+    }
+
+    if (!rawUrl) {
+      return res.status(404).send("No document found for this expert");
+    }
+
+    const expertName = (expert.personalInformation?.userName || expert.userId?.name || "Expert").replace(/[^a-zA-Z0-9_-]/g, "_");
+    let cleanName = customName.replace(/\.pdf$/i, "").replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (!cleanName || cleanName === "Company_Letter" || cleanName === "View_File") {
+      cleanName = expertName + "_Company_Letter";
+    }
+    const fileName = cleanName + ".pdf";
+
+    const { fetchResumeBuffer } = await import("../services/resumeService.js");
+    let buffer = await fetchResumeBuffer(rawUrl);
+
+    if (!buffer || buffer.length === 0) {
+      return res.redirect(rawUrl);
+    }
+
+    // Check if buffer is already a valid PDF (starts with %PDF)
+    const isPdf = buffer.length >= 4 && buffer.slice(0, 4).toString("ascii") === "%PDF";
+
+    if (!isPdf) {
+      // Image (JPG, PNG, WebP) - convert dynamically into a genuine PDF
+      try {
+        const { PDFDocument } = await import("pdf-lib");
+        const pdfDoc = await PDFDocument.create();
+
+        const isJpg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+        const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+
+        let embeddedImg = null;
+        if (isJpg) {
+          embeddedImg = await pdfDoc.embedJpg(buffer);
+        } else if (isPng) {
+          embeddedImg = await pdfDoc.embedPng(buffer);
+        } else {
+          try {
+            embeddedImg = await pdfDoc.embedJpg(buffer);
+          } catch {
+            embeddedImg = await pdfDoc.embedPng(buffer);
+          }
+        }
+
+        if (embeddedImg) {
+          // Standard A4 dimensions in PDF points (72 DPI): 595.28 x 841.89
+          const pageWidth = 595.28;
+          const pageHeight = 841.89;
+          const margin = 20;
+          const fitWidth = pageWidth - margin * 2;
+          const fitHeight = pageHeight - margin * 2;
+
+          const scaleFactor = Math.min(fitWidth / embeddedImg.width, fitHeight / embeddedImg.height, 1);
+          const drawWidth = embeddedImg.width * scaleFactor;
+          const drawHeight = embeddedImg.height * scaleFactor;
+          const x = margin + (fitWidth - drawWidth) / 2;
+          const y = pageHeight - margin - drawHeight;
+
+          const page = pdfDoc.addPage([pageWidth, pageHeight]);
+          page.drawImage(embeddedImg, { x, y, width: drawWidth, height: drawHeight });
+
+          const pdfBytes = await pdfDoc.save();
+          buffer = Buffer.from(pdfBytes);
+        }
+      } catch (convErr) {
+        console.error("PDF conversion error for image:", convErr.message);
+      }
+    }
+
+    // Strip Helmet restrictive CSP & framing headers so Chrome/Edge PDF viewer can render inline
+    res.removeHeader("Content-Security-Policy");
+    res.removeHeader("X-Frame-Options");
+    res.removeHeader("Cross-Origin-Opener-Policy");
+    res.removeHeader("X-Download-Options");
+
+    const disposition = mode === "download" ? "attachment" : "inline";
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", disposition + '; filename="' + fileName + '"; filename*=UTF-8\'\'' + encodeURIComponent(fileName));
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+
+    return res.end(buffer);
+  } catch (err) {
+    console.error("getCompanyDocument error:", err);
+    return res.status(500).send("Error loading document: " + err.message);
   }
 };

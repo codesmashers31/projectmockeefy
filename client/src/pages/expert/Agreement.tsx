@@ -241,7 +241,15 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
         margin: [10, 10, 10, 10],
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          logging: false,
+          windowWidth: 700,
+          scrollX: 0,
+          scrollY: 0
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
@@ -672,41 +680,45 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
       {/* ========================================================================= */}
       {/* HIDDEN PRINTABLE AGREEMENT TEMPLATE CAPTURED BY HTML2PDF (Clean A4 layout) */}
       {/* ========================================================================= */}
-      <div className="overflow-hidden h-0 w-0">
+      <div style={{ position: 'fixed', left: '-9999px', top: '0', zIndex: -1000, pointerEvents: 'none' }}>
         <div
           id="printable-agreement-document"
           style={{
-            width: '780px',
-            padding: '36px 40px',
+            boxSizing: 'border-box',
+            width: '680px',
+            maxWidth: '680px',
+            padding: '28px 32px',
             backgroundColor: '#ffffff',
             color: '#1e293b',
             fontFamily: 'system-ui, -apple-system, sans-serif',
-            fontSize: '12px',
-            lineHeight: '1.5'
+            fontSize: '11px',
+            lineHeight: '1.45',
+            overflow: 'hidden',
+            wordWrap: 'break-word',
           }}
         >
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #004fcb', paddingBottom: '16px', marginBottom: '20px' }}>
-            <div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#004fcb', letterSpacing: '-0.5px' }}>Mockeefy</div>
-              <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Professional Interview Training Platform</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #004fcb', paddingBottom: '12px', marginBottom: '14px', boxSizing: 'border-box', width: '100%' }}>
+            <div style={{ maxWidth: '55%', minWidth: 0 }}>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#004fcb', letterSpacing: '-0.5px' }}>Mockeefy</div>
+              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 'bold' }}>Professional Interview Training Platform</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>EXPERT SERVICE & COMPLIANCE AGREEMENT</div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>Doc Ref: MCK-AGR-{Date.now().toString().slice(-8)}</div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>Date: {formattedSignedDate}</div>
+            <div style={{ textAlign: 'right', maxWidth: '45%', minWidth: 0 }}>
+              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a' }}>EXPERT SERVICE & COMPLIANCE AGREEMENT</div>
+              <div style={{ fontSize: '9px', color: '#64748b' }}>Doc Ref: MCK-AGR-{Date.now().toString().slice(-8)}</div>
+              <div style={{ fontSize: '9px', color: '#64748b' }}>Date: {formattedSignedDate}</div>
             </div>
           </div>
 
           {/* Parties */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '14px 18px', borderRadius: '8px', marginBottom: '18px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#004fcb', textTransform: 'uppercase', marginBottom: '6px' }}>Contracting Parties</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div>
+          <div style={{ backgroundColor: '#f8fafc', padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', border: '1px solid #e2e8f0', boxSizing: 'border-box', width: '100%' }}>
+            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#004fcb', textTransform: 'uppercase', marginBottom: '4px' }}>Contracting Parties</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', boxSizing: 'border-box' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <strong>Platform Operator:</strong> Mockeefy Technologies Inc.<br />
                 <strong>Role:</strong> Skill Assessment & Interview Training Platform
               </div>
-              <div>
+              <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
                 <strong>Expert Name:</strong> {expertDetails.name || 'Expert'}<br />
                 <strong>Current Employer:</strong> {companyName || 'Declared Employer'}<br />
                 <strong>Designation:</strong> {jobTitle || 'Expert Consultant'}
@@ -715,78 +727,78 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
           </div>
 
           {/* Legal Clauses */}
-          <div style={{ spaceY: '12px' }}>
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px' }}>1. Employer Non-Conflict & Moonlighting Warranty</div>
-              <div style={{ color: '#334155', textAlign: 'justify' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', boxSizing: 'border-box', width: '100%' }}>
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>1. Employer Non-Conflict & Moonlighting Warranty</div>
+              <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert explicitly declares, covenants, and warrants that their enrollment and delivery of advisory, mentoring, and mock interview services on the Mockeefy platform are performed strictly in an individual personal capacity during personal off-hours, and do NOT breach or conflict with any employment contract, company policy, non-compete covenant, or moonlighting restrictions enforced by their current employer (<strong>{companyName || 'Current Employer'}</strong>).
               </div>
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px' }}>2. Undertaking to Submit Proof of Employment</div>
-              <div style={{ color: '#334155', textAlign: 'justify' }}>
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>2. Undertaking to Submit Proof of Employment</div>
+              <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert hereby undertakes, covenants, and agrees to furnish authentic, verifiable proof of current or past employment (such as official employee photo ID card, offer letter, work email verification, or relevant professional documentation) whenever requested by Mockeefy's compliance, security, or audit team. The Expert agrees that falsifying employment affiliations constitutes grounds for immediate termination and permanent forfeiture of platform privileges.
               </div>
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px' }}>3. Confidentiality & Non-Disclosure of Proprietary Company Assets</div>
-              <div style={{ color: '#334155', textAlign: 'justify' }}>
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>3. Confidentiality & Non-Disclosure of Proprietary Company Assets</div>
+              <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert guarantees that under no circumstances will they share, reproduce, disclose, or utilize confidential intellectual property, proprietary code, live client questions, trade secrets, or internal non-public information belonging to their primary employer. All mock interview guidance shall strictly be restricted to industry-standard educational frameworks.
               </div>
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px' }}>4. Professional Code of Conduct & Candidate Welfare</div>
-              <div style={{ color: '#334155', textAlign: 'justify' }}>
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>4. Professional Code of Conduct & Candidate Welfare</div>
+              <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert agrees to maintain exemplary punctuality, respectful communication, unbiased feedback, and high pedagogical standards. Under no circumstances may an Expert solicit candidates for external private commercial arrangements or off-platform interactions.
               </div>
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px' }}>5. Independent Contractor Relationship & Compensation</div>
-              <div style={{ color: '#334155', textAlign: 'justify' }}>
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>5. Independent Contractor Relationship & Compensation</div>
+              <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert serves strictly as an independent contractor and not as an employee, partner, or agent of Mockeefy. Payouts are remitted in accordance with Mockeefy's pricing and payout schedules, subject to applicable platform fee deductions and statutory tax withholding.
               </div>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px' }}>6. Legal Validity of Digital Execution</div>
-              <div style={{ color: '#334155', textAlign: 'justify' }}>
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>6. Legal Validity of Digital Execution</div>
+              <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 This agreement has been electronically acknowledged and executed by the Expert through an authorized signature attachment, carrying full legal enforceability under applicable digital commerce and electronic record legislation.
               </div>
             </div>
           </div>
 
           {/* Signatures Footer */}
-          <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '16px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '12px', marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', boxSizing: 'border-box', width: '100%' }}>
             {/* Expert Signature */}
-            <div style={{ width: '45%' }}>
-              <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Expert Digital Signature</div>
-              <div style={{ height: '55px', borderBottom: '1px solid #cbd5e1', display: 'flex', alignItems: 'center' }}>
+            <div style={{ width: '48%', minWidth: 0 }}>
+              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Expert Digital Signature</div>
+              <div style={{ height: '48px', borderBottom: '1px solid #cbd5e1', display: 'flex', alignItems: 'center' }}>
                 {signatureImage ? (
-                  <img src={signatureImage} alt="Expert Signature" style={{ maxHeight: '50px', maxWidth: '180px', objectFit: 'contain' }} />
+                  <img src={signatureImage} alt="Expert Signature" style={{ maxHeight: '44px', maxWidth: '160px', objectFit: 'contain' }} />
                 ) : (
-                  <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>Signature Affixed</span>
+                  <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '10px' }}>Signature Affixed</span>
                 )}
               </div>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', marginTop: '4px' }}>{expertDetails.name || 'Expert'}</div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>Designation: {jobTitle || 'Expert Consultant'}</div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>Date: {formattedSignedDate}</div>
+              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', marginTop: '3px' }}>{expertDetails.name || 'Expert'}</div>
+              <div style={{ fontSize: '9.5px', color: '#64748b' }}>Designation: {jobTitle || 'Expert Consultant'}</div>
+              <div style={{ fontSize: '9.5px', color: '#64748b' }}>Date: {formattedSignedDate}</div>
             </div>
 
             {/* Mockeefy Seal */}
-            <div style={{ width: '45%', textAlign: 'right' }}>
-              <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Authorized Platform Seal</div>
-              <div style={{ height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <div style={{ border: '2px solid #004fcb', borderRadius: '50%', width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#004fcb', fontSize: '8px', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase' }}>
+            <div style={{ width: '48%', minWidth: 0, textAlign: 'right' }}>
+              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Authorized Platform Seal</div>
+              <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <div style={{ border: '2px solid #004fcb', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#004fcb', fontSize: '7.5px', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase' }}>
                   Mockeefy<br />Verified
                 </div>
               </div>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', marginTop: '4px' }}>Mockeefy Compliance Team</div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>Verified Digital Execution</div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>Valid Worldwide</div>
+              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', marginTop: '3px' }}>Mockeefy Compliance Team</div>
+              <div style={{ fontSize: '9.5px', color: '#64748b' }}>Verified Digital Execution</div>
+              <div style={{ fontSize: '9.5px', color: '#64748b' }}>Valid Worldwide</div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDashboardStats, getAdminExpertAgreements, getAdminReports } from '../controllers/adminController.js';
+import { getDashboardStats, getAdminExpertAgreements, getAdminReports, getAdminExpertCounts } from '../controllers/adminController.js';
 import { getActiveExperts } from '../controllers/expertController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -11,6 +11,7 @@ router.use(protect, admin);
 router.get('/stats', getDashboardStats);
 router.get('/agreements', getAdminExpertAgreements);
 router.get('/reports', getAdminReports);
+router.get('/experts/counts', getAdminExpertCounts);
 
 // Expert Management Routes
 router.get('/experts/active', getActiveExperts);

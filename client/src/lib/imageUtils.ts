@@ -55,7 +55,8 @@ export const getProfileImageUrl = (path?: string | null, seed?: string | null): 
 
     // If it's already a full URL (Cloudinary or valid external image)
     if (path.startsWith('http')) {
-        if (path.includes('cloudinary.com')) {
+        if (path.includes('cloudinary.com')) return path.replace(/^http:\/\//i, 'https://');
+        if (false) {
             return path;
         }
 
