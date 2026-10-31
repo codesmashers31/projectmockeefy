@@ -595,7 +595,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                     }}
                     className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
                   >
-                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
                       <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
                     </div>
                     <div className="text-left hidden lg:block leading-tight">
@@ -627,7 +627,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                   {isProfileMenuOpen && (
                     <div className="fixed right-3 sm:absolute sm:right-0 top-[68px] sm:top-full mt-0 sm:mt-2 w-[calc(100vw-24px)] sm:w-64 max-w-[280px] bg-white border border-slate-200/80 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shrink-0 shadow-2xs">
                           <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
                         </div>
                         <div className="overflow-hidden">
@@ -662,8 +662,9 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       <div className="border-t border-slate-100 mt-1 p-1">
                         <button
                           onClick={() => {
-                            logout();
                             closeAllDropdowns();
+                            logout();
+                            navigate("/signin", { replace: true });
                           }}
                           className="flex w-full items-center px-3.5 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                         >
@@ -802,8 +803,9 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                     </Link>
                     <button
                       onClick={() => {
-                        logout();
                         closeAllDropdowns();
+                        logout();
+                        navigate("/signin", { replace: true });
                       }}
                       className="flex w-full items-center gap-3 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl"
                     >

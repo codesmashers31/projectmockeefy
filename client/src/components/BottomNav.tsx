@@ -1,6 +1,6 @@
 import { User, Settings2, LogOut, BookOpen, HelpCircle, Briefcase, X, PlayCircle, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
@@ -10,6 +10,7 @@ const BottomNav = () => {
   const [showProfile, setShowProfile] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Hide bottom nav on authentication pages or if user is not a candidate
   const authPages = ['/signin', '/signup', '/forgot-password', '/complete-profile'];
@@ -174,8 +175,9 @@ const BottomNav = () => {
                   {/* Logout Button */}
                   <Button
                     onClick={() => {
-                      logout();
                       setShowProfile(false);
+                      logout();
+                      navigate("/signin", { replace: true });
                     }}
                     variant="outline"
                     className="w-full py-6 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center gap-2 group"

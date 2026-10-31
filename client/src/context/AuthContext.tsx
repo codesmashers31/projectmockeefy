@@ -243,11 +243,10 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
-    // Optional: Redirect to login or home if needed
-    window.location.href = '/signin';
+    setIsLoading(false);
   };
 
   const value: AuthContextType = { user, token, login, googleLogin, register, logout, isLoading, fetchProfile, updateUser, setAuthSession };

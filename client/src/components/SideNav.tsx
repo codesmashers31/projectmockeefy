@@ -34,6 +34,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
   const navigate = useNavigate();
 
   const handleSignOut = () => {
+    if (onClose) onClose();
     logout();
     navigate("/signin", { replace: true });
   };

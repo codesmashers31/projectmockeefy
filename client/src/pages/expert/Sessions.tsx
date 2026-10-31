@@ -28,7 +28,8 @@ import {
     Download,
     ExternalLink,
     FileText,
-    CalendarDays
+    CalendarDays,
+    Lock
 } from 'lucide-react';
 import {
     format,
@@ -197,7 +198,31 @@ export default function Sessions() {
     };
 
     const isSessionEnded = (session: Session) => {
-        return currentTime > new Date(session.endTime);
+        if (!session) return false;
+        if (session.status?.toLowerCase() === 'completed') return true;
+        if (Boolean((session as any).expertReview || (session as any).review?.reviewerRole === 'expert')) return true;
+        return currentTime >= new Date(session.endTime);
+    };
+
+    const isSessionReviewed = (session: Session | null | undefined): boolean => {
+        if (!session) return false;
+        return Boolean(
+            (session as any).expertReview ||
+            (session as any).review?.reviewerRole === 'expert' ||
+            (session.status?.toLowerCase() === 'completed' && session.payoutCredited)
+        );
+    };
+
+    const getSessionPayoutAmount = (session: Session | null | undefined): number => {
+        if (!session) return 0;
+        const directPayout = Number(session.payoutAmount || 0);
+        if (directPayout > 0) return Math.max(1, Math.round(directPayout * 100) / 100);
+        const price = Number(session.price || 0);
+        if (price > 0) {
+            const calculated = Math.round(price * 0.8 * 100) / 100;
+            return Math.max(1, calculated);
+        }
+        return 1;
     };
 
     const liveSessionsCount = allSessions.filter((s) => isSessionActive(s)).length;
@@ -329,6 +354,10 @@ export default function Sessions() {
     };
 
     const openReviewModal = (session: Session) => {
+        if (!isSessionEnded(session)) {
+            toast.info("Candidate evaluation unlocks after the meeting concludes.");
+            return;
+        }
         const rev = session.expertReview;
         setReviewForm({
             overallRating: rev?.overallRating || 5,
@@ -548,6 +577,15 @@ export default function Sessions() {
         const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
         return eachDayOfInterval({ start: startDate, end: endDate });
     }, [miniCalendarMonth]);
+
+    // --- MONTHLY VIEW DAYS (Synced with active calendar selectedDate) ---
+    const monthlyDays = useMemo(() => {
+        const monthStart = startOfMonth(selectedDate);
+        const monthEnd = endOfMonth(monthStart);
+        const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+        const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+        return eachDayOfInterval({ start: startDate, end: endDate });
+    }, [selectedDate]);
 
     // --- WEEKLY VIEW DAYS ---
     const weekDays = useMemo(() => {
@@ -782,7 +820,13 @@ export default function Sessions() {
                                     onClick={() => {
                                         if (calendarMode === 'daily') setSelectedDate(prev => subDays(prev, 1));
                                         else if (calendarMode === 'weekly') setSelectedDate(prev => subWeeks(prev, 1));
-                                        else setSelectedDate(prev => subMonths(prev, 1));
+                                        else {
+                                            setSelectedDate(prev => {
+                                                const next = subMonths(prev, 1);
+                                                setMiniCalendarMonth(next);
+                                                return next;
+                                            });
+                                        }
                                     }}
                                     className="p-1 rounded-lg hover:bg-white text-slate-600 transition-colors"
                                     title="Previous"
@@ -790,7 +834,11 @@ export default function Sessions() {
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => setSelectedDate(new Date())}
+                                    onClick={() => {
+                                        const now = new Date();
+                                        setSelectedDate(now);
+                                        setMiniCalendarMonth(now);
+                                    }}
                                     className="px-2.5 py-1 text-xs font-semibold hover:bg-white rounded-lg text-slate-700 transition-colors"
                                 >
                                     Today
@@ -799,7 +847,13 @@ export default function Sessions() {
                                     onClick={() => {
                                         if (calendarMode === 'daily') setSelectedDate(prev => addDays(prev, 1));
                                         else if (calendarMode === 'weekly') setSelectedDate(prev => addWeeks(prev, 1));
-                                        else setSelectedDate(prev => addMonths(prev, 1));
+                                        else {
+                                            setSelectedDate(prev => {
+                                                const next = addMonths(prev, 1);
+                                                setMiniCalendarMonth(next);
+                                                return next;
+                                            });
+                                        }
                                     }}
                                     className="p-1 rounded-lg hover:bg-white text-slate-600 transition-colors"
                                     title="Next"
@@ -917,7 +971,7 @@ export default function Sessions() {
                                                                         e.stopPropagation();
                                                                         setSelectedSessionModal(session);
                                                                     }}
-                                                                    className={`rounded-xl p-2.5 mb-1.5 transition-all shadow-xs cursor-pointer border ${isLive
+                                                                    className={`rounded-xl p-2 sm:p-2.5 mb-1.5 transition-all shadow-xs cursor-pointer border overflow-hidden ${isLive
                                                                         ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-500/20'
                                                                         : isCompleted
                                                                             ? 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
@@ -944,25 +998,44 @@ export default function Sessions() {
                                                                     </p>
 
                                                                     {/* Quick Action Badges */}
-                                                                    <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-slate-200/40">
+                                                                    <div className="flex items-center justify-between gap-1 mt-2 pt-1.5 border-t border-slate-200/40 min-w-0">
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 handleViewResume(session);
                                                                             }}
-                                                                            className={`text-[10px] font-semibold underline flex items-center gap-0.5 ${isLive ? 'text-white hover:text-blue-200' : 'text-blue-600 hover:text-blue-800'
+                                                                            className={`text-[10px] font-semibold underline flex items-center gap-0.5 shrink-0 ${isLive ? 'text-white hover:text-blue-200' : 'text-blue-600 hover:text-blue-800'
                                                                                 }`}
                                                                             title="View Resume in New Tab"
                                                                         >
                                                                             <FileText className="w-2.5 h-2.5" />
                                                                             <span>Resume</span>
                                                                         </button>
-                                                                        {isCompleted && !(session as any).expertReview && (
-                                                                            <span className="text-[10px] text-amber-600 font-bold ml-auto flex items-center gap-0.5">
-                                                                                <Star className="w-2.5 h-2.5 fill-amber-500" />
-                                                                                Review
-                                                                            </span>
-                                                                        )}
+                                                                        {isSessionReviewed(session) ? (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    openReviewModal(session);
+                                                                                }}
+                                                                                className="text-[9.5px] leading-tight font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0 max-w-[calc(100%-48px)]"
+                                                                                title={`Review completed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
+                                                                            >
+                                                                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                                                                <span className="truncate">Reviewed · ₹{getSessionPayoutAmount(session)}</span>
+                                                                            </button>
+                                                                        ) : isSessionEnded(session) ? (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    openReviewModal(session);
+                                                                                }}
+                                                                                className="text-[10px] leading-tight font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-2xs animate-pulse shrink-0"
+                                                                                title="Session ended! Review required to release payout. Click to review."
+                                                                            >
+                                                                                <AlertCircle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                                                                <span>Review</span>
+                                                                            </button>
+                                                                        ) : null}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -1105,24 +1178,25 @@ export default function Sessions() {
                                                             </button>
                                                         </div>
 
-                                                        {/* Post-Session Review for completed sessions */}
-                                                        {isCompleted && (
-                                                            (session as any).expertReview ? (
+                                                        {/* Post-Session Review for ended sessions */}
+                                                        {isSessionEnded(session) && (
+                                                            isSessionReviewed(session) ? (
                                                                 <button
                                                                     onClick={() => openReviewModal(session)}
                                                                     className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                                                                    title="Click to view/edit evaluation"
+                                                                    title={`Review completed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
                                                                 >
                                                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                                                    <span>Reviewed {(session as any).expertReview.hiringDecision ? `(${(session as any).expertReview.hiringDecision})` : ''}</span>
+                                                                    <span>Reviewed · ₹{getSessionPayoutAmount(session)} {(session as any).expertReview?.hiringDecision ? `(${(session as any).expertReview.hiringDecision})` : ''}</span>
                                                                 </button>
                                                             ) : (
                                                                 <button
                                                                     onClick={() => openReviewModal(session)}
-                                                                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1 shadow-2xs cursor-pointer"
+                                                                    className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center gap-1 border border-rose-200 shadow-2xs transition-all duration-200 cursor-pointer active:scale-95"
+                                                                    title="Give review to get your pay"
                                                                 >
-                                                                    <Star className="w-3.5 h-3.5 fill-current" />
-                                                                    <span>Write Review & Marks</span>
+                                                                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                                                    <span>Give review to get pay</span>
                                                                 </button>
                                                             )
                                                         )}
@@ -1164,11 +1238,14 @@ export default function Sessions() {
                                 <span>Sun</span>
                             </div>
 
-                            {/* Month Matrix */}
-                            <div className="flex-1 grid grid-cols-7 grid-rows-5 overflow-y-auto thin-scrollbar min-h-0 bg-slate-200 gap-px">
-                                {miniCalendarDays.map((day, idx) => {
+                            {/* Month Matrix: Dynamic row count so all 5 or 6 weeks fit precisely without leaking or overlapping */}
+                            <div
+                                className="flex-1 grid grid-cols-7 overflow-y-auto thin-scrollbar min-h-0 bg-slate-200 gap-px"
+                                style={{ gridTemplateRows: `repeat(${Math.ceil(monthlyDays.length / 7)}, minmax(90px, 1fr))` }}
+                            >
+                                {monthlyDays.map((day, idx) => {
                                     const daySessions = getSessionsForDate(day);
-                                    const isCurrentMonthDay = isSameMonth(day, miniCalendarMonth);
+                                    const isCurrentMonthDay = isSameMonth(day, selectedDate);
                                     const isSelected = isSameDay(day, selectedDate);
                                     const isTodayDate = isToday(day);
 
@@ -1181,22 +1258,25 @@ export default function Sessions() {
                                                     setCalendarMode('daily');
                                                 }
                                             }}
-                                            className={`bg-white p-2 min-h-[85px] flex flex-col justify-between transition-colors cursor-pointer ${!isCurrentMonthDay ? 'bg-slate-50/70 text-slate-400' : 'text-slate-800'
-                                                } ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50/20' : 'hover:bg-slate-50'}`}
+                                            className={`bg-white p-2 min-h-[90px] flex flex-col justify-between transition-colors cursor-pointer relative overflow-hidden ${
+                                                !isCurrentMonthDay ? 'bg-slate-50/70 text-slate-400' : 'text-slate-800'
+                                            } ${isSelected ? 'ring-2 ring-inset ring-blue-500 bg-blue-50/30' : 'hover:bg-slate-50'}`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${isTodayDate ? 'bg-blue-600 text-white font-bold' : ''
-                                                    }`}>
+                                                <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                                                    isTodayDate ? 'bg-blue-600 text-white font-bold shadow-2xs' : ''
+                                                }`}>
                                                     {format(day, 'd')}
                                                 </span>
                                                 {daySessions.length > 0 && (
-                                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded-md">
-                                                        {daySessions.length}
+                                                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                                        <span>{daySessions.length}</span>
                                                     </span>
                                                 )}
                                             </div>
 
-                                            <div className="space-y-1 mt-1 overflow-y-auto max-h-[60px] no-scrollbar">
+                                            <div className="space-y-1 mt-1 overflow-y-auto max-h-[55px] no-scrollbar">
                                                 {daySessions.slice(0, 2).map(session => (
                                                     <div
                                                         key={session._id}
@@ -1204,13 +1284,24 @@ export default function Sessions() {
                                                             e.stopPropagation();
                                                             setSelectedSessionModal(session);
                                                         }}
-                                                        className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-100 truncate font-semibold hover:bg-blue-100"
+                                                        className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 truncate font-semibold transition-colors flex items-center gap-1"
+                                                        title={`${format(new Date(session.startTime), 'HH:mm')} - ${session.candidateName || session.candidateDetails?.name || 'Candidate'}`}
                                                     >
-                                                        {format(new Date(session.startTime), 'HH:mm')} • {session.candidateName}
+                                                        <span className="font-bold shrink-0">{format(new Date(session.startTime), 'HH:mm')}</span>
+                                                        <span className="text-blue-300">•</span>
+                                                        <span className="truncate flex-1">{session.candidateName || session.candidateDetails?.name || session.topics?.[0] || '1:1 Session'}</span>
+                                                        {isSessionReviewed(session) ? (
+                                                            <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 shrink-0" title={`Reviewed · ₹${getSessionPayoutAmount(session)}`}>
+                                                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                                                <span>₹{getSessionPayoutAmount(session)}</span>
+                                                            </span>
+                                                        ) : isSessionEnded(session) ? (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Review pending" />
+                                                        ) : null}
                                                     </div>
                                                 ))}
                                                 {daySessions.length > 2 && (
-                                                    <span className="text-[10px] text-slate-400 block text-center">
+                                                    <span className="text-[10px] text-blue-600 font-bold block text-center">
                                                         +{daySessions.length - 2} more
                                                     </span>
                                                 )}
@@ -1260,13 +1351,44 @@ export default function Sessions() {
                                     ))}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs px-2.5 py-0.5 rounded-md border font-bold capitalize ${getStatusColor(selectedSessionModal.status)}`}>
+                                    {/* Review Message Pill: Left side of Confirmed badge (Post-meeting flow) */}
+                                    {isSessionReviewed(selectedSessionModal) ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => openReviewModal(selectedSessionModal)}
+                                            className="group/rev h-7 px-3 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-lg text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
+                                            title={`Review submitted and ₹${getSessionPayoutAmount(selectedSessionModal)} payout released. Click to view or edit evaluation.`}
+                                        >
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                            <span>Review given · Pay released (₹{getSessionPayoutAmount(selectedSessionModal)})</span>
+                                        </button>
+                                    ) : isSessionEnded(selectedSessionModal) ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => openReviewModal(selectedSessionModal)}
+                                            className="group/rev h-7 px-3 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
+                                            title="Session has concluded! Give candidate review & rubric marks to receive your payout."
+                                        >
+                                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                            <span>Give review to get your pay</span>
+                                        </button>
+                                    ) : (
+                                        <div
+                                            className="h-7 px-2.5 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 select-none"
+                                            title="Evaluation unlocks automatically after the meeting concludes"
+                                        >
+                                            <Lock className="w-3 h-3 text-slate-400" />
+                                            <span>Review unlocks post-meeting</span>
+                                        </div>
+                                    )}
+
+                                    <span className={`text-xs px-2.5 py-1 rounded-md border font-bold capitalize ${getStatusColor(selectedSessionModal.status)}`}>
                                         {selectedSessionModal.status}
                                     </span>
                                     {selectedSessionModal.status?.toLowerCase() === 'completed' && (
                                         selectedSessionModal.payoutCredited ? (
                                             <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700">
-                                                Wallet credited: ₹{Number(selectedSessionModal.payoutAmount ?? selectedSessionModal.price ?? 0)}
+                                                Wallet credited: ₹{getSessionPayoutAmount(selectedSessionModal)}
                                             </span>
                                         ) : (
                                             <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700">
@@ -1427,31 +1549,47 @@ export default function Sessions() {
                                 </div>
                             </div>
 
-                            {/* Structured Evaluation Rubric & Feedback Section */}
-                            <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-                                        Interview Evaluation & Rubric
-                                    </h4>
-                                    {(selectedSessionModal as any).expertReview && (
+                            {/* Structured Evaluation Rubric & Feedback Section (Dynamic Flow: Locked -> Red Alert -> Green Completed) */}
+                            {Boolean((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review?.reviewerRole === 'expert') ? (
+                                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 space-y-3 transition-all duration-300">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900 leading-tight">
+                                                    Interview Evaluation Completed
+                                                </h4>
+                                                <p className="text-[11px] text-emerald-700">Review submitted & wallet payout released</p>
+                                            </div>
+                                        </div>
                                         <button
+                                            type="button"
                                             onClick={() => openReviewModal(selectedSessionModal)}
-                                            className="text-xs font-semibold text-blue-600 hover:underline"
+                                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
                                         >
                                             Edit Evaluation
                                         </button>
-                                    )}
-                                </div>
+                                    </div>
 
-                                {(selectedSessionModal as any).expertReview ? (
-                                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+                                    {/* Green Review Summary Banner */}
+                                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs shadow-2xs">
+                                        <span className="font-semibold text-slate-700">Payout Status:</span>
+                                        <span className="font-bold text-emerald-700 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                            Wallet Credited ₹{getSessionPayoutAmount(selectedSessionModal)}
+                                        </span>
+                                    </div>
+
+                                    <div className="p-3.5 rounded-xl bg-white border border-emerald-200 space-y-3 text-xs shadow-2xs">
                                         {/* Decision Header */}
-                                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[11px] font-bold uppercase text-slate-500">Recommendation:</span>
                                                 {(() => {
-                                                    const dec = (selectedSessionModal as any).expertReview.hiringDecision || 'Hire';
+                                                    const reviewObj = (selectedSessionModal as any).expertReview || (selectedSessionModal as any).review || {};
+                                                    const dec = reviewObj.hiringDecision || reviewObj.recommendation || 'Hire';
                                                     if (dec === 'Strong Hire') {
                                                         return <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">🟢 Strong Hire</span>;
                                                     } else if (dec === 'Hire') {
@@ -1465,59 +1603,107 @@ export default function Sessions() {
                                             </div>
                                             <div className="flex items-center gap-1 text-amber-500 font-bold">
                                                 <Star className="w-4 h-4 fill-current" />
-                                                <span>{(selectedSessionModal as any).expertReview.overallRating || 5}/5 Overall</span>
+                                                <span>{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.overallRating || 5}/5 Overall</span>
                                             </div>
                                         </div>
 
                                         {/* Rubric Breakdown Grid */}
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                                            <div className="p-2 rounded-lg bg-white border border-slate-200">
+                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                                 <span className="text-slate-400 block text-[10px]">Technical / DSA</span>
-                                                <span className="font-bold text-slate-800">{(selectedSessionModal as any).expertReview.technicalRating || '-'}/5</span>
+                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.technicalRating || '-'}/5</span>
                                             </div>
-                                            <div className="p-2 rounded-lg bg-white border border-slate-200">
+                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                                 <span className="text-slate-400 block text-[10px]">System Design</span>
-                                                <span className="font-bold text-slate-800">{(selectedSessionModal as any).expertReview.designRating || '-'}/5</span>
+                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.designRating || '-'}/5</span>
                                             </div>
-                                            <div className="p-2 rounded-lg bg-white border border-slate-200">
+                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                                 <span className="text-slate-400 block text-[10px]">Problem Solving</span>
-                                                <span className="font-bold text-slate-800">{(selectedSessionModal as any).expertReview.problemSolvingRating || '-'}/5</span>
+                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.problemSolvingRating || '-'}/5</span>
                                             </div>
-                                            <div className="p-2 rounded-lg bg-white border border-slate-200">
+                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                                 <span className="text-slate-400 block text-[10px]">Communication</span>
-                                                <span className="font-bold text-slate-800">{(selectedSessionModal as any).expertReview.communicationRating || '-'}/5</span>
+                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.communicationRating || '-'}/5</span>
                                             </div>
-                                            <div className="p-2 rounded-lg bg-white border border-slate-200">
+                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                                 <span className="text-slate-400 block text-[10px]">Behavioral / Fit</span>
-                                                <span className="font-bold text-slate-800">{(selectedSessionModal as any).expertReview.behavioralRating || '-'}/5</span>
+                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.behavioralRating || '-'}/5</span>
                                             </div>
                                         </div>
 
                                         {/* Written Feedback Preview */}
-                                        {(selectedSessionModal as any).expertReview.feedback && (
-                                            <p className="text-slate-600 text-xs italic bg-white p-2.5 rounded-lg border border-slate-200">
-                                                "{(selectedSessionModal as any).expertReview.feedback}"
+                                        {((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.feedback && (
+                                            <p className="text-slate-600 text-xs italic bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                                                "{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review).feedback}"
                                             </p>
                                         )}
                                     </div>
-                                ) : (
+                                </div>
+                            ) : isSessionEnded(selectedSessionModal) ? (
+                                <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50/50 space-y-3 transition-all duration-300">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                                                <AlertCircle className="w-4 h-4 text-rose-600" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900 leading-tight">
+                                                    Interview Evaluation & Rubric
+                                                </h4>
+                                                <p className="text-[11px] text-rose-700">Give candidate review to get your pay released</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-200/80 text-rose-800 border border-rose-300">
+                                            Review Required
+                                        </span>
+                                    </div>
+
+                                    <p className="text-xs text-rose-800 leading-relaxed">
+                                        The session has concluded! Please provide rubric marks and candidate evaluation. Once submitted, your payout of <strong>₹{getSessionPayoutAmount(selectedSessionModal)}</strong> will be credited directly to your wallet.
+                                    </p>
+
                                     <button
-                                        onClick={() => {
-                                            if (isSessionEnded(selectedSessionModal)) {
-                                                openReviewModal(selectedSessionModal);
-                                            } else {
-                                                toast.error("Evaluation unlocks after the session concludes.");
-                                            }
-                                        }}
-                                        className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold border transition-all ${isSessionEnded(selectedSessionModal)
-                                            ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-2xs cursor-pointer'
-                                            : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                            }`}
+                                        type="button"
+                                        onClick={() => openReviewModal(selectedSessionModal)}
+                                        className="w-full py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white border-rose-600 shadow-2xs hover:shadow-md hover:shadow-rose-600/25 cursor-pointer active:scale-95 flex items-center justify-center gap-2 group/btm"
                                     >
-                                        {isSessionEnded(selectedSessionModal) ? 'Write Evaluation & Rubric Marks' : 'Locked Until Session Concludes'}
+                                        <Star className="w-3.5 h-3.5 fill-current shrink-0 text-white group-hover/btm:rotate-12 transition-transform duration-200" />
+                                        <span>Write Evaluation & Rubric Marks</span>
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            ) : (
+                                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3 transition-all duration-300">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                                <Lock className="w-4 h-4 text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 leading-tight">
+                                                    Interview Evaluation & Rubric
+                                                </h4>
+                                                <p className="text-[11px] text-slate-500">Unlocks automatically once the meeting concludes</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 border border-slate-300">
+                                            Locked
+                                        </span>
+                                    </div>
+
+                                    <p className="text-xs text-slate-500 leading-relaxed">
+                                        Candidate marks, rubric evaluation, and payout release will unlock immediately after this session concludes or the meeting call is finished.
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => toast.info("Evaluation unlocks after the session concludes.")}
+                                        className="w-full py-2.5 px-4 rounded-xl text-xs font-bold border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 cursor-pointer transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Evaluation Locked Until Meeting Concludes</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Modal Footer */}
