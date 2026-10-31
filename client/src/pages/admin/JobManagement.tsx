@@ -155,9 +155,25 @@ const JobManagement = () => {
             )}
 
             {loading && !hasLoaded ? (
-                <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+                            <div className="flex items-start justify-between">
+                                <div className="space-y-1.5 flex-1 min-w-0">
+                                    <div className="h-4 w-36 rounded bg-slate-200/80 shimmer-shining" />
+                                    <div className="h-3 w-24 rounded bg-slate-100 shimmer-shining" />
+                                </div>
+                                <div className="h-6 w-20 rounded-full bg-[#EAF2FF] shimmer-shining shrink-0" />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="h-3 w-full rounded bg-slate-100 shimmer-shining" />
+                                <div className="h-3 w-4/5 rounded bg-slate-100 shimmer-shining" />
+                            </div>
+                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                                <div className="h-3 w-28 rounded bg-slate-100 shimmer-shining" />
+                                <div className="h-8 w-20 rounded-lg bg-[#EAF2FF] shimmer-shining" />
+                            </div>
+                        </div>
                     ))}
                 </div>
             ) : loadError && !hasLoaded ? (

@@ -1,7 +1,14 @@
 import express from 'express';
-import { getDashboardStats, getAdminExpertAgreements, getAdminReports, getAdminExpertCounts } from '../controllers/adminController.js';
+import { 
+  getDashboardStats, 
+  getAdminExpertAgreements, 
+  getAdminReports, 
+  getAdminExpertCounts,
+  realignExpertAgreementPdf 
+} from '../controllers/adminController.js';
 import { getActiveExperts } from '../controllers/expertController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
+import { uploadVerification } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -10,6 +17,11 @@ router.use(protect, admin);
 
 router.get('/stats', getDashboardStats);
 router.get('/agreements', getAdminExpertAgreements);
+router.post(
+  '/agreements/:expertId/realign-pdf',
+  uploadVerification.fields([{ name: 'agreementPdf', maxCount: 1 }]),
+  realignExpertAgreementPdf
+);
 router.get('/reports', getAdminReports);
 router.get('/experts/counts', getAdminExpertCounts);
 

@@ -22,8 +22,8 @@ import {
   Eye,
   X
 } from 'lucide-react';
-// @ts-ignore
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas-pro';
+import { jsPDF } from 'jspdf';
 import { convertPdfPageToImage } from '../../lib/pdfSignatureHelper';
 import MockeefyLogo from '../../components/MockeefyLogo';
 import PdfViewer from '../../components/PdfViewer';
@@ -63,21 +63,24 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   const handleDownloadPdf = async () => {
-    if (!agreement.agreementPdf?.url) return;
     try {
-      const downloadUrl = getProfileImageUrl(agreement.agreementPdf.url);
+      const docId = expertDetails._id || expertDetails.id || agreement._id;
+      const downloadUrl = docId
+        ? `/api/expert/company-doc/${docId}?type=agreement&mode=download`
+        : (agreement.agreementPdf?.url ? getProfileImageUrl(agreement.agreementPdf.url) : '');
+      if (!downloadUrl) return;
       const res = await fetch(downloadUrl);
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = agreement.agreementPdf.name || `Mockeefy_Agreement_${expertDetails.name || 'Expert'}.pdf`;
+      link.download = agreement.agreementPdf?.name || `Mockeefy_Agreement_${expertDetails.name || 'Expert'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (e) {
-      window.open(agreement.agreementPdf.url, '_blank');
+      if (agreement.agreementPdf?.url) window.open(getProfileImageUrl(agreement.agreementPdf.url), '_blank');
     }
   };
 
@@ -108,6 +111,9 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
         setExpertDetails(det);
         setCompanyName(ag.companyName || det.company || '');
         setJobTitle(ag.jobTitle || det.title || '');
+        if (ag.signatureFile?.url) {
+          setSignatureImage(getProfileImageUrl(ag.signatureFile.url));
+        }
         if (ag.isSigned) {
           setAgreedTerms(true);
         }
@@ -210,26 +216,30 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
 
   // Compile and Generate Signed PDF
   const handleSignAndGeneratePdf = async () => {
-    if (!companyName.trim()) {
+    const finalCompanyName = companyName.trim() || agreement.companyName || expertDetails.company || '';
+    const finalJobTitle = jobTitle.trim() || agreement.jobTitle || expertDetails.title || '';
+    const finalSignature = signatureImage || (agreement.signatureFile?.url ? getProfileImageUrl(agreement.signatureFile.url) : null);
+
+    if (!finalCompanyName) {
       toast.error('Please enter your current working company name.');
       return;
     }
-    if (!jobTitle.trim()) {
+    if (!finalJobTitle) {
       toast.error('Please enter your current job title/designation.');
       return;
     }
-    if (!signatureImage) {
+    if (!finalSignature) {
       toast.error('Please provide your signature (upload PDF/image or draw).');
       return;
     }
-    if (!agreedTerms) {
+    if (!agreedTerms && !agreement.isSigned) {
       toast.error('Please accept the agreement terms and declarations.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      toast.info('Compiling your signed agreement PDF...');
+      toast.info('Compiling perfectly centered agreement PDF...');
 
       const element = document.getElementById('printable-agreement-document');
       if (!element) throw new Error('Agreement template not found in DOM');
@@ -237,46 +247,101 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
       const expertNameClean = (expertDetails.name || 'Expert').replace(/\s+/g, '_');
       const filename = `Mockeefy_Expert_Agreement_${expertNameClean}.pdf`;
 
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-          logging: false,
-          windowWidth: 700,
-          scrollX: 0,
-          scrollY: 0
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
+      // 1. Capture pristine, high-resolution canvas with exact dimensions
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: 740,
+        windowWidth: 740,
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('printable-agreement-document');
+          if (el) {
+            // Isolate el completely by clearing body
+            clonedDoc.body.innerHTML = '';
+            clonedDoc.body.style.margin = '0px';
+            clonedDoc.body.style.padding = '0px';
+            clonedDoc.body.style.backgroundColor = '#ffffff';
+            clonedDoc.body.style.width = '740px';
+            clonedDoc.body.style.minWidth = '740px';
+            clonedDoc.body.style.overflow = 'visible';
 
-      // 1. Generate PDF Worker
-      // @ts-ignore
-      const worker = html2pdf().from(element).set(opt);
+            clonedDoc.documentElement.style.margin = '0px';
+            clonedDoc.documentElement.style.padding = '0px';
+            clonedDoc.documentElement.style.width = '740px';
+            clonedDoc.documentElement.style.overflow = 'visible';
 
-      // Save PDF to user's device
-      await worker.save();
+            clonedDoc.body.appendChild(el);
+
+            el.style.position = 'static';
+            el.style.left = '0px';
+            el.style.top = '0px';
+            el.style.margin = '0px';
+            el.style.padding = '24px 28px';
+            el.style.boxSizing = 'border-box';
+            el.style.width = '740px';
+            el.style.maxWidth = '740px';
+            el.style.display = 'block';
+            el.style.visibility = 'visible';
+          }
+        }
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+      // 2. Build standard A4 Portrait PDF (210mm x 297mm) with mathematically centered margins
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10; // Exactly 10mm margins on all sides
+      const usableWidth = pageWidth - margin * 2; // Exactly 190mm
+      const usableHeight = pageHeight - margin * 2; // Exactly 277mm
+      const contentHeight = (canvas.height * usableWidth) / canvas.width;
+
+      if (contentHeight <= usableHeight) {
+        // Fits on single page - perfectly centered horizontally
+        const xOffset = (pageWidth - usableWidth) / 2; // Exactly 10mm
+        pdf.addImage(imgData, 'JPEG', xOffset, margin, usableWidth, contentHeight, undefined, 'FAST');
+      } else {
+        // If content height is slightly larger, scale down gracefully to fit onto 1 clean page
+        const scale = usableHeight / contentHeight;
+        const scaledWidth = usableWidth * scale;
+        const scaledHeight = contentHeight * scale;
+        const xOffset = (pageWidth - scaledWidth) / 2;
+        const yOffset = (pageHeight - scaledHeight) / 2;
+        pdf.addImage(imgData, 'JPEG', xOffset, yOffset, scaledWidth, scaledHeight, undefined, 'FAST');
+      }
+
+      // 3. Save locally to device
+      pdf.save(filename);
       toast.success('Signed agreement PDF downloaded!');
 
-      // Also get PDF as blob to save on the server
-      const pdfBlob: Blob = await worker.output('blob');
+      // 4. Also get PDF as blob to save on the server
+      const pdfBlob = pdf.output('blob');
       const generatedPdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
-      // 2. Upload to server
       const formData = new FormData();
-      formData.append('companyName', companyName);
-      formData.append('jobTitle', jobTitle);
+      formData.append('companyName', finalCompanyName);
+      formData.append('jobTitle', finalJobTitle);
       formData.append('signedBy', expertDetails.name || 'Expert');
       formData.append('agreedTerms', 'true');
       formData.append('agreementPdf', generatedPdfFile);
 
       if (signatureFile) {
         formData.append('signatureFile', signatureFile);
-      } else if (signatureImage) {
-        // Convert canvas dataUrl to file
+      } else if (signatureImage && signatureImage.startsWith('data:')) {
         const blob = await (await fetch(signatureImage)).blob();
         formData.append('signatureFile', new File([blob], 'signature.png', { type: 'image/png' }));
       }
@@ -678,47 +743,105 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
       )}
 
       {/* ========================================================================= */}
-      {/* HIDDEN PRINTABLE AGREEMENT TEMPLATE CAPTURED BY HTML2PDF (Clean A4 layout) */}
+      {/* HIDDEN PRINTABLE AGREEMENT TEMPLATE CAPTURED BY HTML2CANVAS & JSPDF */}
       {/* ========================================================================= */}
-      <div style={{ position: 'fixed', left: '-9999px', top: '0', zIndex: -1000, pointerEvents: 'none' }}>
+      <div
+        id="printable-agreement-wrapper"
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: '0',
+          width: '740px',
+          zIndex: -1000,
+          pointerEvents: 'none',
+        }}
+      >
         <div
           id="printable-agreement-document"
           style={{
             boxSizing: 'border-box',
-            width: '680px',
-            maxWidth: '680px',
-            padding: '28px 32px',
+            width: '740px',
+            maxWidth: '740px',
+            margin: '0',
+            padding: '24px 30px',
             backgroundColor: '#ffffff',
             color: '#1e293b',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             fontSize: '11px',
             lineHeight: '1.45',
-            overflow: 'hidden',
             wordWrap: 'break-word',
+            overflow: 'hidden',
           }}
         >
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #004fcb', paddingBottom: '12px', marginBottom: '14px', boxSizing: 'border-box', width: '100%' }}>
-            <div style={{ maxWidth: '55%', minWidth: 0 }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#004fcb', letterSpacing: '-0.5px' }}>Mockeefy</div>
-              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 'bold' }}>Professional Interview Training Platform</div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              borderBottom: '2px solid #004fcb',
+              paddingBottom: '12px',
+              marginBottom: '12px',
+              boxSizing: 'border-box',
+              width: '100%',
+            }}
+          >
+            <div style={{ width: '50%', minWidth: 0 }}>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#004fcb', letterSpacing: '-0.5px' }}>
+                Mockeefy
+              </div>
+              <div
+                style={{
+                  fontSize: '9px',
+                  color: '#64748b',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  fontWeight: 'bold',
+                }}
+              >
+                Professional Interview Training Platform
+              </div>
             </div>
-            <div style={{ textAlign: 'right', maxWidth: '45%', minWidth: 0 }}>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a' }}>EXPERT SERVICE & COMPLIANCE AGREEMENT</div>
-              <div style={{ fontSize: '9px', color: '#64748b' }}>Doc Ref: MCK-AGR-{Date.now().toString().slice(-8)}</div>
+            <div style={{ width: '50%', minWidth: 0, textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a' }}>
+                EXPERT SERVICE & COMPLIANCE AGREEMENT
+              </div>
+              <div style={{ fontSize: '9px', color: '#64748b' }}>
+                Doc Ref: MCK-AGR-{Date.now().toString().slice(-8)}
+              </div>
               <div style={{ fontSize: '9px', color: '#64748b' }}>Date: {formattedSignedDate}</div>
             </div>
           </div>
 
-          {/* Parties */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', border: '1px solid #e2e8f0', boxSizing: 'border-box', width: '100%' }}>
-            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#004fcb', textTransform: 'uppercase', marginBottom: '4px' }}>Contracting Parties</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', boxSizing: 'border-box' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Contracting Parties */}
+          <div
+            style={{
+              backgroundColor: '#f8fafc',
+              padding: '10px 14px',
+              borderRadius: '6px',
+              marginBottom: '12px',
+              border: '1px solid #e2e8f0',
+              boxSizing: 'border-box',
+              width: '100%',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: '#004fcb',
+                textTransform: 'uppercase',
+                marginBottom: '4px',
+              }}
+            >
+              Contracting Parties
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', boxSizing: 'border-box', width: '100%' }}>
+              <div style={{ width: '50%', minWidth: 0 }}>
                 <strong>Platform Operator:</strong> Mockeefy Technologies Inc.<br />
                 <strong>Role:</strong> Skill Assessment & Interview Training Platform
               </div>
-              <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+              <div style={{ width: '50%', minWidth: 0, textAlign: 'right' }}>
                 <strong>Expert Name:</strong> {expertDetails.name || 'Expert'}<br />
                 <strong>Current Employer:</strong> {companyName || 'Declared Employer'}<br />
                 <strong>Designation:</strong> {jobTitle || 'Expert Consultant'}
@@ -727,44 +850,56 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
           </div>
 
           {/* Legal Clauses */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', boxSizing: 'border-box', width: '100%' }}>
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>1. Employer Non-Conflict & Moonlighting Warranty</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', boxSizing: 'border-box', width: '100%' }}>
+            <div style={{ marginBottom: '5px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>
+                1. Employer Non-Conflict & Moonlighting Warranty
+              </div>
               <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert explicitly declares, covenants, and warrants that their enrollment and delivery of advisory, mentoring, and mock interview services on the Mockeefy platform are performed strictly in an individual personal capacity during personal off-hours, and do NOT breach or conflict with any employment contract, company policy, non-compete covenant, or moonlighting restrictions enforced by their current employer (<strong>{companyName || 'Current Employer'}</strong>).
               </div>
             </div>
 
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>2. Undertaking to Submit Proof of Employment</div>
+            <div style={{ marginBottom: '5px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>
+                2. Undertaking to Submit Proof of Employment
+              </div>
               <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert hereby undertakes, covenants, and agrees to furnish authentic, verifiable proof of current or past employment (such as official employee photo ID card, offer letter, work email verification, or relevant professional documentation) whenever requested by Mockeefy's compliance, security, or audit team. The Expert agrees that falsifying employment affiliations constitutes grounds for immediate termination and permanent forfeiture of platform privileges.
               </div>
             </div>
 
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>3. Confidentiality & Non-Disclosure of Proprietary Company Assets</div>
+            <div style={{ marginBottom: '5px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>
+                3. Confidentiality & Non-Disclosure of Proprietary Company Assets
+              </div>
               <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert guarantees that under no circumstances will they share, reproduce, disclose, or utilize confidential intellectual property, proprietary code, live client questions, trade secrets, or internal non-public information belonging to their primary employer. All mock interview guidance shall strictly be restricted to industry-standard educational frameworks.
               </div>
             </div>
 
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>4. Professional Code of Conduct & Candidate Welfare</div>
+            <div style={{ marginBottom: '5px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>
+                4. Professional Code of Conduct & Candidate Welfare
+              </div>
               <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert agrees to maintain exemplary punctuality, respectful communication, unbiased feedback, and high pedagogical standards. Under no circumstances may an Expert solicit candidates for external private commercial arrangements or off-platform interactions.
               </div>
             </div>
 
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>5. Independent Contractor Relationship & Compensation</div>
+            <div style={{ marginBottom: '5px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>
+                5. Independent Contractor Relationship & Compensation
+              </div>
               <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 The Expert serves strictly as an independent contractor and not as an employee, partner, or agent of Mockeefy. Payouts are remitted in accordance with Mockeefy's pricing and payout schedules, subject to applicable platform fee deductions and statutory tax withholding.
               </div>
             </div>
 
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>6. Legal Validity of Digital Execution</div>
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '2px', fontSize: '11px' }}>
+                6. Legal Validity of Digital Execution
+              </div>
               <div style={{ color: '#334155', textAlign: 'justify', fontSize: '10.5px', lineHeight: '1.4', wordBreak: 'break-word' }}>
                 This agreement has been electronically acknowledged and executed by the Expert through an authorized signature attachment, carrying full legal enforceability under applicable digital commerce and electronic record legislation.
               </div>
@@ -772,31 +907,70 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
           </div>
 
           {/* Signatures Footer */}
-          <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '12px', marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', boxSizing: 'border-box', width: '100%' }}>
+          <div
+            style={{
+              borderTop: '2px solid #e2e8f0',
+              paddingTop: '10px',
+              marginTop: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              boxSizing: 'border-box',
+              width: '100%',
+            }}
+          >
             {/* Expert Signature */}
             <div style={{ width: '48%', minWidth: 0 }}>
-              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Expert Digital Signature</div>
-              <div style={{ height: '48px', borderBottom: '1px solid #cbd5e1', display: 'flex', alignItems: 'center' }}>
+              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>
+                Expert Digital Signature
+              </div>
+              <div style={{ height: '46px', borderBottom: '1px solid #cbd5e1', display: 'flex', alignItems: 'center' }}>
                 {signatureImage ? (
-                  <img src={signatureImage} alt="Expert Signature" style={{ maxHeight: '44px', maxWidth: '160px', objectFit: 'contain' }} />
+                  <img
+                    src={signatureImage}
+                    alt="Expert Signature"
+                    crossOrigin="anonymous"
+                    style={{ maxHeight: '42px', maxWidth: '160px', objectFit: 'contain' }}
+                  />
                 ) : (
                   <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '10px' }}>Signature Affixed</span>
                 )}
               </div>
-              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', marginTop: '3px' }}>{expertDetails.name || 'Expert'}</div>
+              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', marginTop: '3px' }}>
+                {expertDetails.name || 'Expert'}
+              </div>
               <div style={{ fontSize: '9.5px', color: '#64748b' }}>Designation: {jobTitle || 'Expert Consultant'}</div>
               <div style={{ fontSize: '9.5px', color: '#64748b' }}>Date: {formattedSignedDate}</div>
             </div>
 
             {/* Mockeefy Seal */}
             <div style={{ width: '48%', minWidth: 0, textAlign: 'right' }}>
-              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Authorized Platform Seal</div>
-              <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <div style={{ border: '2px solid #004fcb', borderRadius: '50%', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#004fcb', fontSize: '7.5px', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '9.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>
+                Authorized Platform Seal
+              </div>
+              <div style={{ height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <div
+                  style={{
+                    border: '2px solid #004fcb',
+                    borderRadius: '50%',
+                    width: '44px',
+                    height: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#004fcb',
+                    fontSize: '7.5px',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   Mockeefy<br />Verified
                 </div>
               </div>
-              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', marginTop: '3px' }}>Mockeefy Compliance Team</div>
+              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', marginTop: '3px' }}>
+                Mockeefy Compliance Team
+              </div>
               <div style={{ fontSize: '9.5px', color: '#64748b' }}>Verified Digital Execution</div>
               <div style={{ fontSize: '9.5px', color: '#64748b' }}>Valid Worldwide</div>
             </div>
@@ -841,7 +1015,7 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
             {/* Modal Body / Dedicated PDF Viewer without auto-download */}
             <div className="flex-1 overflow-hidden relative bg-slate-100">
               <PdfViewer
-                url={getProfileImageUrl(agreement.agreementPdf.url)}
+                url={expertDetails._id || expertDetails.id || agreement._id ? `/api/expert/company-doc/${expertDetails._id || expertDetails.id || agreement._id}?type=agreement` : getProfileImageUrl(agreement.agreementPdf.url)}
                 fileName={agreement.agreementPdf.name || `Mockeefy_Agreement_${expertDetails.name || 'Expert'}.pdf`}
                 className="h-full border-0 rounded-none shadow-none"
               />

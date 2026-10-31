@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from '../lib/axios';
-import { ChevronLeft, ChevronRight, Search, X, RefreshCw, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, X, RefreshCw, AlertCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageError } from "./AdminPageSkeleton";
 
@@ -38,9 +38,21 @@ interface SkillsAndExpertise {
 }
 
 interface Verification {
-  aadharFile: string;
-  companyIdFile: string;
-  linkedin: string;
+  aadharFile?: string;
+  companyIdFile?: string;
+  linkedin?: string;
+  aadhar?: {
+    number?: string;
+    rawNumber?: string;
+    maskedNumber?: string;
+    url?: string;
+    name?: string;
+    isVerified?: boolean;
+    nameMatchStatus?: string;
+    nameMatchScore?: number;
+    nameOnAadhaar?: string;
+    verifiedAt?: string;
+  };
 }
 
 interface Expert {
@@ -179,11 +191,19 @@ const RejectedExpertsTable: React.FC = () => {
 
   // Skeleton Row for Flicker-Free Loading
   const SkeletonRow = () => (
-    <tr className="animate-pulse border-b border-gray-100/50">
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2"></div></td>
-      <td className="px-6 py-4"><div className="h-5 bg-gray-200 rounded-full w-24"></div></td>
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-48"></div></td>
-      <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-200 rounded w-24 ml-auto"></div></td>
+    <tr className="border-b border-slate-100/80">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-200/80 shimmer-shining shrink-0" />
+          <div className="space-y-1.5 min-w-0">
+            <div className="h-4 bg-slate-200/80 shimmer-shining rounded-md w-32" />
+            <div className="h-3 bg-slate-100 shimmer-shining rounded-md w-24" />
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4"><div className="h-6 bg-[#EAF2FF] shimmer-shining rounded-full w-24" /></td>
+      <td className="px-6 py-4"><div className="h-4 bg-slate-100 shimmer-shining rounded-md w-48" /></td>
+      <td className="px-6 py-4 text-right"><div className="h-8 bg-[#EAF2FF] shimmer-shining rounded-xl w-24 ml-auto" /></td>
     </tr>
   );
 
@@ -377,6 +397,16 @@ const RejectedExpertsTable: React.FC = () => {
                       <span className="text-sm text-gray-500">Location</span>
                       <span className="text-sm font-medium text-gray-900">{selectedExpert.personalInformation.city}, {selectedExpert.personalInformation.country}</span>
                     </div>
+                    {Boolean(selectedExpert.verification?.aadhar?.rawNumber || selectedExpert.verification?.aadhar?.number) && (
+                      <div className="flex justify-between py-2 border-b border-gray-50 items-center">
+                        <span className="text-sm text-gray-500">Aadhaar No.</span>
+                        <span className="text-sm font-bold text-amber-900 font-mono tracking-wider bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+                          {selectedExpert.verification?.aadhar?.rawNumber
+                            ? selectedExpert.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")
+                            : selectedExpert.verification?.aadhar?.number}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </section>
 

@@ -4,6 +4,8 @@ import Session from "../models/Session.js";
 import ExpertDetails from "../models/expertModel.js";
 import Report from "../models/Report.js";
 import { isExpertProfileComplete } from "./expertController.js";
+import { getFileUrl } from "../middleware/upload.js";
+import { syncDataChange } from "../services/socketService.js";
 
 // @desc    Get dashboard statistics
 // @route   GET /api/admin/stats
@@ -245,5 +247,54 @@ export const getAdminExpertCounts = async (req, res) => {
     } catch (error) {
         console.error("Error fetching admin expert counts:", error);
         res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+// @desc    Re-align & update an expert's agreement PDF (Admin action)
+// @route   POST /api/admin/agreements/:expertId/realign-pdf
+// @access  Private/Admin
+export const realignExpertAgreementPdf = async (req, res) => {
+    try {
+        const { expertId } = req.params;
+        let expert = await ExpertDetails.findById(expertId);
+        if (!expert) {
+            expert = await ExpertDetails.findOne({ userId: expertId });
+        }
+        if (!expert) {
+            return res.status(404).json({ success: false, message: "Expert not found" });
+        }
+
+        if (!expert.agreement) {
+            expert.agreement = {};
+        }
+
+        if (req.files && req.files.agreementPdf && req.files.agreementPdf[0]) {
+            expert.agreement.agreementPdf = {
+                url: getFileUrl(req, req.files.agreementPdf[0]),
+                name: req.files.agreementPdf[0].originalname
+            };
+        }
+
+        if (req.body.signedBy) expert.agreement.signedBy = req.body.signedBy;
+        if (req.body.companyName) expert.agreement.companyName = req.body.companyName;
+        if (req.body.jobTitle) expert.agreement.jobTitle = req.body.jobTitle;
+
+        await expert.save({ validateBeforeSave: false });
+
+        syncDataChange({
+            type: "AGREEMENT_UPDATED",
+            userId: expert.userId,
+            expertId: expert._id,
+            data: expert.agreement
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Agreement PDF re-aligned and updated successfully",
+            agreement: expert.agreement
+        });
+    } catch (error) {
+        console.error("Error updating expert agreement PDF:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to update agreement PDF" });
     }
 };

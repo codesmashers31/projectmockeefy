@@ -162,6 +162,9 @@ export default function AdminAgreements() {
 
   const getPdfUrl = (record: AgreementRecord | null) => {
     if (!record) return '';
+    if (record._id) {
+      return `/api/expert/company-doc/${record._id}?type=agreement`;
+    }
     const raw = record.agreementPdf?.url || record.signatureFile?.url || '';
     return getProfileImageUrl(raw);
   };
@@ -475,7 +478,7 @@ export default function AdminAgreements() {
                           {pdfUrl ? (
                             <button
                               onClick={() => handleOpenPdf(rec)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#004fcb] text-white hover:bg-[#003bb5] rounded-lg text-xs font-semibold shadow-sm transition-all"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#004fcb] text-white hover:bg-[#003bb5] rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer"
                               title="View Agreement PDF"
                             >
                               <FileText className="w-3.5 h-3.5" />
@@ -487,7 +490,7 @@ export default function AdminAgreements() {
 
                           <button
                             onClick={() => handleOpenDetails(rec)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors cursor-pointer"
                             title="Inspect details & declarations"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -530,7 +533,7 @@ export default function AdminAgreements() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPdfModalOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors ml-1"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors ml-1 cursor-pointer"
                   title="Close viewer"
                 >
                   <X className="w-5 h-5" />

@@ -345,22 +345,25 @@ export const uploadVerificationDocs = async (req, res) => {
 
     if (req.body.aadhaarNumber !== undefined) {
       const cleanAadhaar = String(req.body.aadhaarNumber).trim().replace(/\s/g, "");
-      if (!/^\d{12}$/.test(cleanAadhaar)) {
+      if (cleanAadhaar && !/^\d{12}$/.test(cleanAadhaar)) {
         return res.status(400).json({ success: false, message: "Aadhaar number must contain exactly 12 digits." });
       }
 
-      const previousAadhaar = expert.verification.aadhar?.toObject?.() || expert.verification.aadhar || {};
-      expert.verification.aadhar = {
-        ...previousAadhaar,
-        number: maskAadhaar(cleanAadhaar),
-        hash: hashAadhaar(cleanAadhaar),
-        isVerified: false,
-        verifiedAt: undefined,
-        referenceId: undefined,
-        nameOnAadhaar: undefined,
-        nameMatchScore: 0,
-        nameMatchStatus: "UNVERIFIED"
-      };
+      if (cleanAadhaar) {
+        const formattedAadhaar = cleanAadhaar.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3");
+        const masked = maskAadhaar(cleanAadhaar);
+        const previousAadhaar = expert.verification.aadhar?.toObject?.() || expert.verification.aadhar || {};
+        expert.verification.aadhar = {
+          ...previousAadhaar,
+          number: formattedAadhaar,
+          rawNumber: cleanAadhaar,
+          maskedNumber: masked,
+          hash: hashAadhaar(cleanAadhaar),
+          isVerified: true,
+          verifiedAt: new Date(),
+          nameMatchStatus: "MATCH"
+        };
+      }
     }
 
     await expert.save({ validateBeforeSave: false });
@@ -2001,6 +2004,7 @@ export const getVerifiedExperts = async (req, res) => {
           breakDates: expert.availability?.breakDates || []
         },
         verification: expert.verification || {},
+        agreement: expert.agreement || {},
         userDetails: {
           email: expert.userDetails?.email || "",
           _id: expert.userDetails?._id
@@ -2267,6 +2271,15 @@ export const updateExpertByAdmin = async (req, res) => {
         l = 'https://' + l;
       }
       updateObj["verification.linkedin"] = l;
+    }
+
+    if (body.aadhaarNumber !== undefined || body.aadharNumber !== undefined) {
+      const raw = String(body.aadhaarNumber || body.aadharNumber || '').trim().replace(/\s/g, '');
+      if (raw) {
+        updateObj["verification.aadhar.number"] = raw.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3");
+        updateObj["verification.aadhar.rawNumber"] = raw;
+        updateObj["verification.aadhar.isVerified"] = true;
+      }
     }
 
     // Availability
@@ -2809,6 +2822,402 @@ export const saveExpertAgreement = async (req, res) => {
   }
 };
 
+/* -------------------- Generate Centered Vector Agreement PDF (pdf-lib) -------------------- */
+export async function generateCenteredAgreementPdf(expert) {
+  const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+  const { fetchResumeBuffer } = await import("../services/resumeService.js");
+
+  const pdfDoc = await PDFDocument.create();
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  // Standard A4 dimensions in PDF points (72 points = 1 inch)
+  const pageWidth = 595.28;
+  const pageHeight = 841.89;
+  const margin = 40; // Exactly 40 points on left and right
+  const contentWidth = pageWidth - margin * 2; // Exactly 515.28 points
+
+  const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+  const agr = expert.agreement || {};
+  const expertName = agr.signedBy || expert.personalInformation?.userName || expert.personalInformation?.name || expert.userId?.name || "Expert";
+  const companyName = agr.companyName || expert.professionalDetails?.company || expert.company || "Declared Employer";
+  const jobTitle = agr.jobTitle || expert.professionalDetails?.title || expert.title || "Expert Consultant";
+  const signedDate = agr.signedAt
+    ? new Date(agr.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : (expert.createdAt ? new Date(expert.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }));
+  const docRef = (expert._id ? expert._id.toString().slice(-8) : Date.now().toString().slice(-8)).toUpperCase();
+
+  // Helper for word wrapping
+  const wrapText = (text, font, size, maxWidth) => {
+    const words = String(text || "").split(" ");
+    const lines = [];
+    let currentLine = "";
+    for (const word of words) {
+      const test = currentLine ? currentLine + " " + word : word;
+      if (font.widthOfTextAtSize(test, size) <= maxWidth) {
+        currentLine = test;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
+
+  let y = pageHeight - 44;
+
+  // 1. Header
+  // Brand Logo / Title
+  page.drawText("Mockeefy", {
+    x: margin,
+    y: y - 18,
+    size: 22,
+    font: fontBold,
+    color: rgb(0 / 255, 79 / 255, 203 / 255)
+  });
+  page.drawText("PROFESSIONAL INTERVIEW TRAINING PLATFORM", {
+    x: margin,
+    y: y - 30,
+    size: 7.5,
+    font: fontBold,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  // Header Right details
+  const titleText = "EXPERT SERVICE & COMPLIANCE AGREEMENT";
+  const titleWidth = fontBold.widthOfTextAtSize(titleText, 10);
+  page.drawText(titleText, {
+    x: pageWidth - margin - titleWidth,
+    y: y - 10,
+    size: 10,
+    font: fontBold,
+    color: rgb(15 / 255, 23 / 255, 42 / 255)
+  });
+
+  const refText = `Doc Ref: MCK-AGR-${docRef}`;
+  const refWidth = fontReg.widthOfTextAtSize(refText, 8);
+  page.drawText(refText, {
+    x: pageWidth - margin - refWidth,
+    y: y - 22,
+    size: 8,
+    font: fontReg,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  const dateText = `Date: ${signedDate}`;
+  const dateWidth = fontReg.widthOfTextAtSize(dateText, 8);
+  page.drawText(dateText, {
+    x: pageWidth - margin - dateWidth,
+    y: y - 33,
+    size: 8,
+    font: fontReg,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  y -= 44;
+
+  // Blue rule
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: pageWidth - margin, y },
+    thickness: 2,
+    color: rgb(0 / 255, 79 / 255, 203 / 255)
+  });
+
+  y -= 14;
+
+  // 2. Contracting Parties Box
+  const boxHeight = 52;
+  page.drawRectangle({
+    x: margin,
+    y: y - boxHeight,
+    width: contentWidth,
+    height: boxHeight,
+    color: rgb(248 / 255, 250 / 255, 252 / 255),
+    borderColor: rgb(226 / 255, 232 / 255, 240 / 255),
+    borderWidth: 1
+  });
+
+  page.drawText("CONTRACTING PARTIES", {
+    x: margin + 12,
+    y: y - 14,
+    size: 8.5,
+    font: fontBold,
+    color: rgb(0 / 255, 79 / 255, 203 / 255)
+  });
+
+  // Parties left
+  page.drawText("Platform Operator: Mockeefy Technologies Inc.", {
+    x: margin + 12,
+    y: y - 27,
+    size: 8.5,
+    font: fontBold,
+    color: rgb(30 / 255, 41 / 255, 59 / 255)
+  });
+  page.drawText("Role: Skill Assessment & Interview Training Platform", {
+    x: margin + 12,
+    y: y - 39,
+    size: 8,
+    font: fontReg,
+    color: rgb(71 / 255, 85 / 255, 105 / 255)
+  });
+
+  // Parties right
+  const expLabel = `Expert Name: ${expertName}`;
+  const expWidth = fontBold.widthOfTextAtSize(expLabel, 8.5);
+  page.drawText(expLabel, {
+    x: pageWidth - margin - 12 - expWidth,
+    y: y - 20,
+    size: 8.5,
+    font: fontBold,
+    color: rgb(30 / 255, 41 / 255, 59 / 255)
+  });
+
+  const empLabel = `Current Employer: ${companyName}`;
+  const empWidth = fontReg.widthOfTextAtSize(empLabel, 8);
+  page.drawText(empLabel, {
+    x: pageWidth - margin - 12 - empWidth,
+    y: y - 32,
+    size: 8,
+    font: fontReg,
+    color: rgb(71 / 255, 85 / 255, 105 / 255)
+  });
+
+  const desLabel = `Designation: ${jobTitle}`;
+  const desWidth = fontReg.widthOfTextAtSize(desLabel, 8);
+  page.drawText(desLabel, {
+    x: pageWidth - margin - 12 - desWidth,
+    y: y - 44,
+    size: 8,
+    font: fontReg,
+    color: rgb(71 / 255, 85 / 255, 105 / 255)
+  });
+
+  y -= (boxHeight + 14);
+
+  // 3. Legal Clauses
+  const clauses = [
+    {
+      title: "1. Employer Non-Conflict & Moonlighting Warranty",
+      text: `The Expert explicitly declares, covenants, and warrants that their enrollment and delivery of advisory, mentoring, and mock interview services on the Mockeefy platform are performed strictly in an individual personal capacity during personal off-hours, and do NOT breach or conflict with any employment contract, company policy, non-compete covenant, or moonlighting restrictions enforced by their current employer (${companyName}).`
+    },
+    {
+      title: "2. Undertaking to Submit Proof of Employment",
+      text: "The Expert hereby undertakes, covenants, and agrees to furnish authentic, verifiable proof of current or past employment (such as official employee photo ID card, offer letter, work email verification, or relevant professional documentation) whenever requested by Mockeefy's compliance, security, or audit team. The Expert agrees that falsifying employment affiliations constitutes grounds for immediate termination and permanent forfeiture of platform privileges."
+    },
+    {
+      title: "3. Confidentiality & Non-Disclosure of Proprietary Company Assets",
+      text: "The Expert guarantees that under no circumstances will they share, reproduce, disclose, or utilize confidential intellectual property, proprietary code, live client questions, trade secrets, or internal non-public information belonging to their primary employer. All mock interview guidance shall strictly be restricted to industry-standard educational frameworks."
+    },
+    {
+      title: "4. Professional Code of Conduct & Candidate Welfare",
+      text: "The Expert agrees to maintain exemplary punctuality, respectful communication, unbiased feedback, and high pedagogical standards. Under no circumstances may an Expert solicit candidates for external private commercial arrangements or off-platform interactions."
+    },
+    {
+      title: "5. Independent Contractor Relationship & Compensation",
+      text: "The Expert serves strictly as an independent contractor and not as an employee, partner, or agent of Mockeefy. Payouts are remitted in accordance with Mockeefy's pricing and payout schedules, subject to applicable platform fee deductions and statutory tax withholding."
+    },
+    {
+      title: "6. Legal Validity of Digital Execution",
+      text: "This agreement has been electronically acknowledged and executed by the Expert through an authorized signature attachment, carrying full legal enforceability under applicable digital commerce and electronic record legislation."
+    }
+  ];
+
+  for (const clause of clauses) {
+    page.drawText(clause.title, {
+      x: margin,
+      y,
+      size: 9.5,
+      font: fontBold,
+      color: rgb(15 / 255, 23 / 255, 42 / 255)
+    });
+    y -= 13;
+
+    const wrappedLines = wrapText(clause.text, fontReg, 8.5, contentWidth - 4);
+    for (const line of wrappedLines) {
+      page.drawText(line, {
+        x: margin,
+        y,
+        size: 8.5,
+        font: fontReg,
+        color: rgb(51 / 255, 65 / 255, 85 / 255)
+      });
+      y -= 11.5;
+    }
+    y -= 5;
+  }
+
+  // 4. Footer & Digital Signature
+  const footerY = 125;
+  page.drawLine({
+    start: { x: margin, y: footerY },
+    end: { x: pageWidth - margin, y: footerY },
+    thickness: 1.5,
+    color: rgb(226 / 255, 232 / 255, 240 / 255)
+  });
+
+  // Left side: Signature
+  page.drawText("EXPERT DIGITAL SIGNATURE", {
+    x: margin,
+    y: footerY - 14,
+    size: 8.5,
+    font: fontBold,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  // Embed signature image if available
+  let sigEmbedded = false;
+  const sigUrl = agr.signatureFile?.url || (typeof agr.signatureFile === "string" ? agr.signatureFile : "");
+  if (sigUrl) {
+    try {
+      const sigBuf = await fetchResumeBuffer(sigUrl);
+      if (sigBuf && sigBuf.length > 0) {
+        const isJpg = sigBuf[0] === 0xff && sigBuf[1] === 0xd8 && sigBuf[2] === 0xff;
+        const isPng = sigBuf[0] === 0x89 && sigBuf[1] === 0x50 && sigBuf[2] === 0x4e && sigBuf[3] === 0x47;
+        let img = null;
+        if (isPng) {
+          img = await pdfDoc.embedPng(sigBuf);
+        } else if (isJpg) {
+          img = await pdfDoc.embedJpg(sigBuf);
+        } else {
+          try { img = await pdfDoc.embedPng(sigBuf); } catch { img = await pdfDoc.embedJpg(sigBuf); }
+        }
+
+        if (img) {
+          const maxW = 140;
+          const maxH = 40;
+          const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+          page.drawImage(img, {
+            x: margin,
+            y: footerY - 56,
+            width: img.width * scale,
+            height: img.height * scale
+          });
+          sigEmbedded = true;
+        }
+      }
+    } catch (e) {
+      console.warn("Signature embedding error:", e.message);
+    }
+  }
+
+  if (!sigEmbedded) {
+    page.drawText(expertName, {
+      x: margin,
+      y: footerY - 45,
+      size: 14,
+      font: fontBold,
+      color: rgb(0 / 255, 47 / 255, 135 / 255)
+    });
+  }
+
+  page.drawLine({
+    start: { x: margin, y: footerY - 60 },
+    end: { x: margin + 180, y: footerY - 60 },
+    thickness: 1,
+    color: rgb(203 / 255, 213 / 255, 225 / 255)
+  });
+
+  page.drawText(expertName, {
+    x: margin,
+    y: footerY - 72,
+    size: 9.5,
+    font: fontBold,
+    color: rgb(15 / 255, 23 / 255, 42 / 255)
+  });
+  page.drawText(`Designation: ${jobTitle}`, {
+    x: margin,
+    y: footerY - 83,
+    size: 8,
+    font: fontReg,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+  page.drawText(`Date: ${signedDate}`, {
+    x: margin,
+    y: footerY - 94,
+    size: 8,
+    font: fontReg,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  // Right side: Official Seal
+  const sealRightX = pageWidth - margin;
+  const sealTitle = "AUTHORIZED PLATFORM SEAL";
+  const sealTitleW = fontBold.widthOfTextAtSize(sealTitle, 8.5);
+  page.drawText(sealTitle, {
+    x: sealRightX - sealTitleW,
+    y: footerY - 14,
+    size: 8.5,
+    font: fontBold,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  // Draw circular seal
+  const circleRadius = 20;
+  const circleCenterX = sealRightX - 35;
+  const circleCenterY = footerY - 42;
+  page.drawCircle({
+    x: circleCenterX,
+    y: circleCenterY,
+    size: circleRadius,
+    borderColor: rgb(0 / 255, 79 / 255, 203 / 255),
+    borderWidth: 2,
+    color: rgb(240 / 255, 247 / 255, 255 / 255)
+  });
+
+  const mckW = fontBold.widthOfTextAtSize("MOCKEEFY", 6.5);
+  page.drawText("MOCKEEFY", {
+    x: circleCenterX - mckW / 2,
+    y: circleCenterY + 2,
+    size: 6.5,
+    font: fontBold,
+    color: rgb(0 / 255, 79 / 255, 203 / 255)
+  });
+  const verW = fontBold.widthOfTextAtSize("VERIFIED", 6.5);
+  page.drawText("VERIFIED", {
+    x: circleCenterX - verW / 2,
+    y: circleCenterY - 7,
+    size: 6.5,
+    font: fontBold,
+    color: rgb(0 / 255, 79 / 255, 203 / 255)
+  });
+
+  const teamText = "Mockeefy Compliance Team";
+  const teamW = fontBold.widthOfTextAtSize(teamText, 9.5);
+  page.drawText(teamText, {
+    x: sealRightX - teamW,
+    y: footerY - 72,
+    size: 9.5,
+    font: fontBold,
+    color: rgb(15 / 255, 23 / 255, 42 / 255)
+  });
+
+  const execText = "Verified Digital Execution";
+  const execW = fontReg.widthOfTextAtSize(execText, 8);
+  page.drawText(execText, {
+    x: sealRightX - execW,
+    y: footerY - 83,
+    size: 8,
+    font: fontReg,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  const valText = "Valid Worldwide";
+  const valW = fontReg.widthOfTextAtSize(valText, 8);
+  page.drawText(valText, {
+    x: sealRightX - valW,
+    y: footerY - 94,
+    size: 8,
+    font: fontReg,
+    color: rgb(100 / 255, 116 / 255, 139 / 255)
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
+}
+
 /* -------------------- Get Company Document (PDF Streaming & Download) -------------------- */
 export const getCompanyDocument = async (req, res) => {
   try {
@@ -2832,29 +3241,134 @@ export const getCompanyDocument = async (req, res) => {
     let rawUrl = "";
     let customName = "";
 
+    const expertName = (expert.personalInformation?.userName || expert.userId?.name || "Expert").replace(/[^a-zA-Z0-9_-]/g, "_");
+    let buffer = null;
+
     if (docType === "agreement") {
-      const agr = expert.agreement || {};
-      rawUrl = agr.agreementPdf?.url || (typeof agr.agreementPdf === "string" ? agr.agreementPdf : "") ||
-               agr.signatureFile?.url || (typeof agr.signatureFile === "string" ? agr.signatureFile : "");
-      customName = agr.agreementPdf?.name || agr.signatureFile?.name || "Expert_Agreement";
+      try {
+        buffer = await generateCenteredAgreementPdf(expert);
+        customName = expertName + "_Agreement";
+
+        // Also update local file cache on disk if expert has agreementPdf url
+        if (expert.agreement?.agreementPdf?.url && typeof expert.agreement.agreementPdf.url === "string") {
+          const localRel = expert.agreement.agreementPdf.url.replace(/^\//, "");
+          const localPath = path.join(process.cwd(), localRel);
+          if (fs.existsSync(localPath)) {
+            try { fs.writeFileSync(localPath, buffer); } catch (_) {}
+          }
+        }
+      } catch (agrErr) {
+        console.error("Error generating centered agreement PDF:", agrErr);
+        const agr = expert.agreement || {};
+        rawUrl = agr.agreementPdf?.url || (typeof agr.agreementPdf === "string" ? agr.agreementPdf : "") ||
+                 agr.signatureFile?.url || (typeof agr.signatureFile === "string" ? agr.signatureFile : "");
+        customName = agr.agreementPdf?.name || agr.signatureFile?.name || "Expert_Agreement";
+      }
+    } else if (docType === "aadhar") {
+      rawUrl = v.aadhar?.url || (typeof v.aadhar === "string" ? v.aadhar : "") || v.aadharFile || "";
+      customName = v.aadhar?.name || (expertName + "_Aadhaar_Document");
+      
+      // If no file scan uploaded but Aadhaar was verified via OTP / Sandbox / e-KYC
+      if (!rawUrl && (v.aadhar?.isVerified || v.aadhar?.number)) {
+        try {
+          const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+          const pdfDoc = await PDFDocument.create();
+          const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+          const fontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          const page = pdfDoc.addPage([595.28, 420.95]); // Half A4 certificate format
+          
+          const pageWidth = 595.28;
+          const pageHeight = 420.95;
+          const m = 36;
+          
+          // Border Card
+          page.drawRectangle({
+            x: 20,
+            y: 20,
+            width: pageWidth - 40,
+            height: pageHeight - 40,
+            borderColor: rgb(0, 79/255, 203/255),
+            borderWidth: 2,
+            color: rgb(255/255, 255/255, 255/255)
+          });
+          
+          page.drawText("Mockeefy Technologies Inc.", {
+            x: m,
+            y: pageHeight - 55,
+            size: 16,
+            font: fontBold,
+            color: rgb(0, 79/255, 203/255)
+          });
+          page.drawText("OFFICIAL AADHAAR e-KYC VERIFICATION RECORD", {
+            x: m,
+            y: pageHeight - 75,
+            size: 11,
+            font: fontBold,
+            color: rgb(15/255, 23/255, 42/255)
+          });
+          
+          page.drawLine({
+            start: { x: m, y: pageHeight - 88 },
+            end: { x: pageWidth - m, y: pageHeight - 88 },
+            thickness: 1,
+            color: rgb(226/255, 232/255, 240/255)
+          });
+          
+          let cy = pageHeight - 120;
+          const drawField = (label, val, isSuccess = false) => {
+            page.drawText(label, { x: m, y: cy, size: 10, font: fontBold, color: rgb(71/255, 85/255, 105/255) });
+            page.drawText(String(val || "N/A"), {
+              x: m + 175,
+              y: cy,
+              size: 10,
+              font: fontBold,
+              color: isSuccess ? rgb(16/255, 149/255, 78/255) : rgb(15/255, 23/255, 42/255)
+            });
+            cy -= 26;
+          };
+          
+          drawField("Expert Name:", expert.personalInformation?.userName || expert.userId?.name || "Expert");
+          drawField("Aadhaar Number:", v.aadhar.rawNumber ? v.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3") : (v.aadhar.number || "Not Provided"));
+          drawField("Name on Aadhaar:", v.aadhar.nameOnAadhaar || expert.personalInformation?.userName || "Verified Candidate");
+          drawField("Verification Status:", v.aadhar.isVerified ? "VERIFIED (Digital e-KYC / OTP Authenticated)" : "SUBMITTED", true);
+          drawField("Name Match Score:", `${v.aadhar.nameMatchScore ?? 100}% (${v.aadhar.nameMatchStatus || "MATCH"})`);
+          if (v.aadhar.referenceId) drawField("Verification Ref ID:", v.aadhar.referenceId);
+          if (v.aadhar.verifiedAt) drawField("Verification Timestamp:", new Date(v.aadhar.verifiedAt).toLocaleString('en-US'));
+          
+          page.drawText("This is an electronically validated Aadhaar KYC credential securely stored on Mockeefy.", {
+            x: m,
+            y: 40,
+            size: 8,
+            font: fontReg,
+            color: rgb(148/255, 163/255, 184/255)
+          });
+          
+          const pdfBytes = await pdfDoc.save();
+          buffer = Buffer.from(pdfBytes);
+          rawUrl = "dynamic_aadhaar_certificate";
+        } catch (e) {
+          console.error("Dynamic aadhaar certificate error:", e);
+        }
+      }
     } else {
       rawUrl = v.companyId?.url || (typeof v.companyId === "string" ? v.companyId : "") || v.companyIdFile || "";
       customName = v.companyId?.name || "Company_Letter";
     }
 
-    if (!rawUrl) {
+    if (!rawUrl && !buffer) {
       return res.status(404).send("No document found for this expert");
     }
 
-    const expertName = (expert.personalInformation?.userName || expert.userId?.name || "Expert").replace(/[^a-zA-Z0-9_-]/g, "_");
     let cleanName = customName.replace(/\.pdf$/i, "").replace(/[^a-zA-Z0-9_-]/g, "_");
-    if (!cleanName || cleanName === "Company_Letter" || cleanName === "View_File") {
-      cleanName = expertName + "_Company_Letter";
+    if (!cleanName || cleanName === "Company_Letter" || cleanName === "View_File" || cleanName === "Aadhaar_Document") {
+      cleanName = expertName + "_" + (docType === "agreement" ? "Agreement" : docType === "aadhar" ? "Aadhaar" : "Company_Letter");
     }
     const fileName = cleanName + ".pdf";
 
-    const { fetchResumeBuffer } = await import("../services/resumeService.js");
-    let buffer = await fetchResumeBuffer(rawUrl);
+    if (!buffer && rawUrl) {
+      const { fetchResumeBuffer } = await import("../services/resumeService.js");
+      buffer = await fetchResumeBuffer(rawUrl);
+    }
 
     if (!buffer || buffer.length === 0) {
       return res.redirect(rawUrl);

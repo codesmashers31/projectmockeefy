@@ -7,7 +7,6 @@ import {
     FileCheck,
     ListCheck,
     Layers,
-    Award,
     CreditCard,
     DollarSign,
     Briefcase,
@@ -90,12 +89,8 @@ export default function AdminSidebar() {
             badgeVariant: "rejected"
         },
         { id: "expert-agreements", label: "Expert Agreements", to: "/admin/agreements", icon: <FileText size={20} /> },
-
-        { id: "job-board", label: "Job Board", to: "/admin/jobs", icon: <Briefcase size={20} /> },
-
         { id: "users", label: "User Management", to: "/admin/users", icon: <Users size={20} /> },
         { id: "skills", label: "Skill Management", to: "/admin/skills", icon: <Hexagon size={20} /> },
-        { id: "certifications", label: "Certification Rules", to: "/admin/certifications", icon: <Award size={20} /> },
         { id: "pricing", label: "Pricing Rules", to: "/admin/pricing", icon: <CreditCard size={20} /> },
         { id: "payouts", label: "Payout Management", to: "/admin/payouts", icon: <DollarSign size={20} /> },
         { id: "hr-contacts", label: "HR Contacts", to: "/admin/hr-contacts", icon: <Briefcase size={20} /> },

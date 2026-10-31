@@ -45,12 +45,16 @@ interface Verification {
         name?: string;
         isVerified?: boolean;
         number?: string;
+        rawNumber?: string;
+        maskedNumber?: string;
         nameOnAadhaar?: string;
         nameMatchScore?: number;
         nameMatchStatus?: "MATCH" | "REVIEW_NEEDED" | "MISMATCH" | "UNVERIFIED";
         verifiedAt?: string;
     };
+    aadharFile?: string;
     companyId?: { url?: string; name?: string };
+    companyIdFile?: string;
     linkedin?: string;
 }
 
@@ -81,7 +85,7 @@ interface Expert {
 const getCompanyDocUrl = (
     expert: Expert | null,
     mode: 'view' | 'download' = 'view',
-    type: 'company' | 'agreement' = 'company'
+    type: 'company' | 'agreement' | 'aadhar' = 'company'
 ): string => {
     if (!expert) return "";
     if (type === 'agreement') {
@@ -93,6 +97,11 @@ const getCompanyDocUrl = (
     }
     const v = expert.verification as any;
     if (!v) return "";
+    if (type === 'aadhar') {
+        const raw = v?.aadhar?.url || (typeof v?.aadhar === 'string' ? v?.aadhar : '') || v?.aadharFile || '';
+        if (!raw && !v?.aadhar?.isVerified && !v?.aadhar?.number && !v?.aadhar?.rawNumber) return "";
+        return `${API_BASE_URL}/api/expert/company-doc/${expert._id}?type=aadhar&mode=${mode}`;
+    }
     let raw = "";
     if (typeof v.companyId === "string" && v.companyId.trim()) {
         raw = v.companyId.trim();
@@ -292,12 +301,20 @@ const PendingExpertsTable: React.FC = () => {
 
     // Skeleton Row for Flicker-Free Loading
     const SkeletonRow = () => (
-        <tr className="animate-pulse border-b border-gray-100/50">
-            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2"></div></td>
-            <td className="px-6 py-4"><div className="h-5 bg-gray-200 rounded-full w-24"></div></td>
-            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
-            <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-200 rounded w-20 ml-auto"></div></td>
+        <tr className="border-b border-slate-100/80">
+            <td className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-200/80 shimmer-shining shrink-0" />
+                    <div className="space-y-1.5 min-w-0">
+                        <div className="h-4 bg-slate-200/80 shimmer-shining rounded-md w-32" />
+                        <div className="h-3 bg-slate-100 shimmer-shining rounded-md w-24" />
+                    </div>
+                </div>
+            </td>
+            <td className="px-6 py-4"><div className="h-6 bg-[#EAF2FF] shimmer-shining rounded-full w-24" /></td>
+            <td className="px-6 py-4"><div className="h-4 bg-slate-200/80 shimmer-shining rounded-md w-20" /></td>
+            <td className="px-6 py-4"><div className="h-4 bg-slate-100 shimmer-shining rounded-md w-28" /></td>
+            <td className="px-6 py-4 text-right"><div className="h-8 bg-[#EAF2FF] shimmer-shining rounded-xl w-24 ml-auto" /></td>
         </tr>
     );
 
@@ -378,6 +395,12 @@ const PendingExpertsTable: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-0.5">{exp.professionalDetails.title}</p>
+                                                {Boolean(exp.verification?.aadhar?.rawNumber || exp.verification?.aadhar?.number) && (
+                                                    <p className="text-[11px] font-mono text-amber-800 flex items-center gap-1 mt-0.5">
+                                                        <ShieldCheck className="w-3 h-3 text-amber-600" />
+                                                        <span>Aadhaar: {exp.verification?.aadhar?.rawNumber ? exp.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3") : exp.verification?.aadhar?.number}</span>
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </td>
@@ -501,6 +524,16 @@ const PendingExpertsTable: React.FC = () => {
                                             <span className="text-sm text-gray-500">Location</span>
                                             <span className="text-sm font-medium text-gray-900">{selectedExpert.personalInformation?.city || "N/A"}, {selectedExpert.personalInformation?.country || "N/A"}</span>
                                         </div>
+                                        {Boolean(selectedExpert.verification?.aadhar?.rawNumber || selectedExpert.verification?.aadhar?.number) && (
+                                            <div className="flex justify-between py-2 border-b border-gray-50 items-center">
+                                                <span className="text-sm text-gray-500">Aadhaar No.</span>
+                                                <span className="text-sm font-bold text-amber-900 font-mono tracking-wider bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+                                                    {selectedExpert.verification?.aadhar?.rawNumber
+                                                        ? selectedExpert.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")
+                                                        : selectedExpert.verification?.aadhar?.number}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </section>
 
@@ -589,7 +622,18 @@ const PendingExpertsTable: React.FC = () => {
 
                             {/* Verification Links */}
                             <section className="pt-4 border-t border-gray-100">
-                                <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-4">Verification Documents</h4>
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                    <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Verification Documents</h4>
+                                    {(selectedExpert.verification?.aadhar?.rawNumber || selectedExpert.verification?.aadhar?.number) && (
+                                        <span className="text-xs font-medium text-amber-900 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                                            Aadhaar No: <strong className="text-gray-900 font-mono">
+                                                {selectedExpert.verification?.aadhar?.rawNumber
+                                                    ? selectedExpert.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")
+                                                    : selectedExpert.verification?.aadhar?.number}
+                                            </strong>
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {selectedExpert.verification?.linkedin ? (
                                         <a
@@ -598,14 +642,14 @@ const PendingExpertsTable: React.FC = () => {
                                             rel="noreferrer"
                                             className="flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
                                         >
-                                            LinkedIn Profile
+                                            <span>LinkedIn Profile</span>
+                                            <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
                                         </a>
                                     ) : (
                                         <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
                                             No LinkedIn
                                         </div>
                                     )}
-
 
                                     {Boolean(getCompanyDocUrl(selectedExpert, 'view', 'company')) ? (
                                         <div className="flex items-center gap-2">

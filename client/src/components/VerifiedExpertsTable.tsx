@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from '../lib/axios';
 import { useDataSync } from "../context/SocketContext";
-import { ChevronLeft, ChevronRight, Search, RefreshCw, Eye, FileText, Edit2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, RefreshCw, Eye, FileText, Edit2, ExternalLink, Download, CheckCircle, ShieldCheck } from "lucide-react";
+import { API_BASE_URL } from "../config";
 import { toast } from "sonner";
 import { AdminPageError } from "./AdminPageSkeleton";
 
@@ -39,9 +40,22 @@ interface SkillsAndExpertise {
 }
 
 interface Verification {
-  aadharFile: string;
-  companyIdFile: string;
-  linkedin: string;
+  companyId?: { url?: string; name?: string };
+  companyIdFile?: string;
+  linkedin?: string;
+  aadhar?: {
+    number?: string;
+    rawNumber?: string;
+    maskedNumber?: string;
+    url?: string;
+    name?: string;
+    isVerified?: boolean;
+    nameMatchStatus?: string;
+    nameMatchScore?: number;
+    nameOnAadhaar?: string;
+    verifiedAt?: string;
+  };
+  aadharFile?: string;
 }
 
 interface Expert {
@@ -51,11 +65,52 @@ interface Expert {
   professionalDetails: ProfessionalDetails;
   skillsAndExpertise: SkillsAndExpertise;
   verification: Verification;
+  agreement?: {
+    isSigned?: boolean;
+    signedAt?: string;
+    companyName?: string;
+    jobTitle?: string;
+    agreementPdf?: { url: string; name: string };
+    signatureFile?: { url: string; name: string };
+    agreedTerms?: boolean;
+  };
   userDetails?: {
     email: string;
     _id: string;
   };
 }
+
+const getCompanyDocUrl = (
+  expert: Expert | null,
+  mode: 'view' | 'download' = 'view',
+  type: 'company' | 'agreement' | 'aadhar' = 'company'
+): string => {
+  if (!expert) return "";
+  if (type === 'agreement') {
+    const agr = expert.agreement as any;
+    const raw = agr?.agreementPdf?.url || (typeof agr?.agreementPdf === 'string' ? agr?.agreementPdf : '') ||
+                agr?.signatureFile?.url || (typeof agr?.signatureFile === 'string' ? agr?.signatureFile : '');
+    if (!raw) return "";
+    return `${API_BASE_URL}/api/expert/company-doc/${expert._id}?type=agreement&mode=${mode}`;
+  }
+  const v = expert.verification as any;
+  if (!v) return "";
+  if (type === 'aadhar') {
+    const raw = v?.aadhar?.url || (typeof v?.aadhar === 'string' ? v?.aadhar : '') || v?.aadharFile || '';
+    if (!raw && !v?.aadhar?.isVerified && !v?.aadhar?.number && !v?.aadhar?.rawNumber) return "";
+    return `${API_BASE_URL}/api/expert/company-doc/${expert._id}?type=aadhar&mode=${mode}`;
+  }
+  let raw = "";
+  if (typeof v.companyId === "string" && v.companyId.trim()) {
+    raw = v.companyId.trim();
+  } else if (v.companyId && typeof v.companyId.url === "string" && v.companyId.url.trim()) {
+    raw = v.companyId.url.trim();
+  } else if (typeof v.companyIdFile === "string" && v.companyIdFile.trim()) {
+    raw = v.companyIdFile.trim();
+  }
+  if (!raw) return "";
+  return `${API_BASE_URL}/api/expert/company-doc/${expert._id}?type=company&mode=${mode}`;
+};
 
 interface Session {
   _id: string;
@@ -189,14 +244,42 @@ const VerifiedExpertsTable = () => {
     setShowSessions(expert);
   };
 
-  const SkeletonRow = () => (
-    <tr className="animate-pulse border-b border-gray-100/50">
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2"></div></td>
-      <td className="px-6 py-4"><div className="h-5 bg-gray-200 rounded-full w-24"></div></td>
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
-      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-8 mx-auto"></div></td>
-      <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-200 rounded w-24 ml-auto"></div></td>
-    </tr>
+  const VerifiedExpertCardSkeleton = () => (
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] p-6 flex flex-col justify-between space-y-5">
+      <div>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-200/80 shimmer-shining shrink-0" />
+            <div className="min-w-0 space-y-1.5 flex-1">
+              <div className="h-4 w-32 rounded bg-slate-200/80 shimmer-shining" />
+              <div className="h-3 w-24 rounded bg-slate-100 shimmer-shining" />
+            </div>
+          </div>
+          <div className="h-6 w-20 rounded-full bg-[#EAF2FF] shimmer-shining shrink-0" />
+        </div>
+
+        <div className="space-y-2.5 mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shimmer-shining" />
+            <div className="h-3 w-32 rounded bg-slate-100 shimmer-shining" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shimmer-shining" />
+            <div className="h-3 w-24 rounded bg-slate-100 shimmer-shining" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shimmer-shining" />
+            <div className="h-3 w-28 rounded bg-slate-100 shimmer-shining" />
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2">
+        <div className="h-8 rounded-lg bg-slate-100 shimmer-shining" />
+        <div className="h-8 rounded-lg bg-[#EAF2FF] shimmer-shining" />
+        <div className="h-8 rounded-lg bg-slate-100 shimmer-shining" />
+      </div>
+    </div>
   );
 
   return (
@@ -242,7 +325,7 @@ const VerifiedExpertsTable = () => {
         {loading && !hasLoaded ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-xl h-48 animate-pulse shadow-sm border border-gray-100"></div>
+              <VerifiedExpertCardSkeleton key={i} />
             ))}
           </div>
         ) : loadError && !hasLoaded ? (
@@ -282,6 +365,12 @@ const VerifiedExpertsTable = () => {
                       <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
                       <span>{expert.personalInformation.city}, {expert.personalInformation.country}</span>
                     </div>
+                    {Boolean(expert.verification?.aadhar?.rawNumber || expert.verification?.aadhar?.number) && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50/80 border border-amber-200/80 px-2 py-1 rounded-md font-mono">
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Aadhaar: <strong>{expert.verification?.aadhar?.rawNumber ? expert.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3") : expert.verification?.aadhar?.number}</strong></span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -401,6 +490,16 @@ const VerifiedExpertsTable = () => {
                       <span className="text-sm text-gray-500">Location</span>
                       <span className="text-sm font-medium text-gray-900">{selectedExpert.personalInformation?.city || "N/A"}, {selectedExpert.personalInformation?.country || "N/A"}</span>
                     </div>
+                    {Boolean(selectedExpert.verification?.aadhar?.rawNumber || selectedExpert.verification?.aadhar?.number) && (
+                      <div className="flex justify-between py-2 border-b border-gray-50 items-center">
+                        <span className="text-sm text-gray-500">Aadhaar No.</span>
+                        <span className="text-sm font-bold text-amber-900 font-mono tracking-wider bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+                          {selectedExpert.verification?.aadhar?.rawNumber
+                            ? selectedExpert.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")
+                            : selectedExpert.verification?.aadhar?.number}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -478,29 +577,86 @@ const VerifiedExpertsTable = () => {
 
               {/* Verification Links */}
               <section className="pt-4 border-t border-gray-100">
-                <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-4">Verification Documents</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Verification Documents</h4>
+                  {(selectedExpert.verification?.aadhar?.rawNumber || selectedExpert.verification?.aadhar?.number) && (
+                    <span className="text-xs font-medium text-amber-900 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                      Aadhaar No: <strong className="text-gray-900 font-mono">
+                        {selectedExpert.verification?.aadhar?.rawNumber
+                          ? selectedExpert.verification.aadhar.rawNumber.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")
+                          : selectedExpert.verification?.aadhar?.number}
+                      </strong>
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {selectedExpert.verification?.linkedin ? (
                     <a
                       href={selectedExpert.verification.linkedin}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+                      className="flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
                     >
-                      LinkedIn Profile
+                      <span>LinkedIn Profile</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
                     </a>
                   ) : (
-                    <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic">
+                    <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
                       No LinkedIn provided
                     </div>
                   )}
-                  {/* Placeholder buttons for documents if URLs were available */}
-                  <button disabled className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed">
-                    Aadhar (Protected)
-                  </button>
-                  <button disabled className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed">
-                    Company ID (Protected)
-                  </button>
+
+                  {Boolean(getCompanyDocUrl(selectedExpert, 'view', 'company')) ? (
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={getCompanyDocUrl(selectedExpert, 'view', 'company')}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 flex items-center justify-center gap-2 p-3 bg-purple-50 text-purple-700 hover:text-purple-900 rounded-lg text-sm font-semibold hover:bg-purple-100 transition-colors border border-purple-200 cursor-pointer shadow-xs"
+                        title="Open Company Letter PDF in new tab"
+                      >
+                        <FileText className="w-4 h-4 text-purple-600" />
+                        <span>View Company Letter (PDF)</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-purple-500" />
+                      </a>
+                      <a
+                        href={getCompanyDocUrl(selectedExpert, 'download', 'company')}
+                        download
+                        className="p-3 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg border border-purple-200 transition-colors flex items-center justify-center shadow-xs"
+                        title="Download Company Letter as PDF"
+                      >
+                        <Download className="w-4 h-4 text-purple-700" />
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 text-gray-400 rounded-lg text-sm font-medium italic border border-gray-100">
+                      Company Doc Missing
+                    </div>
+                  )}
+
+                  {selectedExpert.agreement?.isSigned ? (
+                    <div className="col-span-1 sm:col-span-2 flex items-center gap-2">
+                      <a
+                        href={getCompanyDocUrl(selectedExpert, 'view', 'agreement')}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 flex items-center justify-center gap-2 p-3 bg-emerald-50 text-emerald-700 hover:text-emerald-900 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer shadow-xs"
+                        title="Open Signed Agreement PDF in new tab"
+                      >
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span>View Signed Agreement (Company Non-Conflict & Working Proof)</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                      </a>
+                      <a
+                        href={getCompanyDocUrl(selectedExpert, 'download', 'agreement')}
+                        download
+                        className="p-3 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-lg border border-emerald-200 transition-colors flex items-center justify-center shadow-xs"
+                        title="Download Signed Agreement as PDF"
+                      >
+                        <Download className="w-4 h-4 text-emerald-700" />
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </section>
             </div>
@@ -753,6 +909,16 @@ const VerifiedExpertsTable = () => {
                       defaultValue={editingExpert.verification?.linkedin || ''}
                       className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="e.g. www.linkedin.com/in/... or full URL"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Aadhaar Number (12 Digits)</label>
+                    <input 
+                      type="text" 
+                      name="aadhaarNumber" 
+                      defaultValue={editingExpert.verification?.aadhar?.rawNumber || editingExpert.verification?.aadhar?.number || ''}
+                      className="w-full p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                      placeholder="e.g. 1234 5678 9012"
                     />
                   </div>
                   <div className="md:col-span-2">
