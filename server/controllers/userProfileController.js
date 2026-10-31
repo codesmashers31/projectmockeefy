@@ -118,7 +118,7 @@ export const updatePersonalInfo = async (req, res) => {
         }
 
         // Update name if provided
-        if (name) user.name = name;
+        if (name && typeof name === "string" && name.trim()) user.name = name.trim();
 
         // Update personal info
         user.personalInfo = {

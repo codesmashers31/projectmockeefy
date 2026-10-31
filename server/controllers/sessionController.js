@@ -480,6 +480,8 @@ export const getSessionsByCandidate = async (req, res) => {
                         problemSolvingRating: expertReview.problemSolvingRating,
                         designRating: expertReview.designRating,
                         behavioralRating: expertReview.behavioralRating,
+                        hiringDecision: expertReview.hiringDecision || expertReview.recommendation || null,
+                        recommendation: expertReview.recommendation || expertReview.hiringDecision || null,
                         strengths: expertReview.strengths,
                         weaknesses: expertReview.weaknesses,
                         feedback: expertReview.feedback,
@@ -698,6 +700,17 @@ export const submitReview = async (req, res) => {
             return res.status(404).json({ success: false, message: "Session not found" });
         }
 
+        // Ensure session has concluded before evaluation/payout can be submitted
+        const now = new Date();
+        const isTimeConcluded = session.endTime && now >= new Date(session.endTime);
+        const isSessionFinished = session.status === 'completed' || isTimeConcluded;
+        if (!isSessionFinished && session.startTime && now < new Date(session.startTime)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "This session has not taken place yet. Evaluations unlock after the meeting concludes." 
+            });
+        }
+
         // Enforce review role authorization checks
         if (reviewerRole === 'expert') {
             const expertProfile = await ExpertDetails.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
@@ -765,7 +778,12 @@ export const submitReview = async (req, res) => {
 
             if (reviewerRole === 'expert') {
                 try {
-                    const payoutAmount = (Number(session.price) > 0 ? Number(session.price) : 1000) * 0.8; // Platform takes 20% fee, fallback to 1000 for test sessions
+                    let payoutAmount = Number(session.price || 0) * 0.8;
+                    if (payoutAmount <= 0) {
+                        payoutAmount = Number(session.payoutAmount || 0) || 500;
+                    }
+                    // Minimum ₹1 payout for nominal bookings, rounded cleanly to 2 decimal places
+                    payoutAmount = Math.max(1, Math.round(payoutAmount * 100) / 100);
                     if (!session.payoutCredited) {
                         const rawExpertId = session.expertId || expertId;
 
@@ -782,6 +800,10 @@ export const submitReview = async (req, res) => {
                                     }
                                 }
                             }
+                        }
+
+                        if (!expertUser && req.user?.userId) {
+                            expertUser = await User.findById(req.user.userId).catch(() => null);
                         }
 
                         if (expertUser) {

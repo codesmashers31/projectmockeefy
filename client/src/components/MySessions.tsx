@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Clock,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  BadgeCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
@@ -111,7 +112,7 @@ function SessionAvatar({
 
   if (imageError || !avatarUrl) {
     return (
-      <div className={`w-full h-full rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center font-black uppercase text-[10px] ${className || ""}`}>
+      <div className={`w-full h-full rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center font-black uppercase text-xs ${className || ""}`}>
         {initial}
       </div>
     );
@@ -121,7 +122,7 @@ function SessionAvatar({
     <img
       src={avatarUrl}
       alt={name}
-      className={`w-full h-full object-cover rounded-lg ${className || ""}`}
+      className={`w-full h-full object-cover object-top rounded-xl ${className || ""}`}
       onError={() => setImageError(true)}
     />
   );
@@ -251,48 +252,59 @@ const SessionCard: React.FC<{
   const displayStatus = getDisplayStatus(session);
   const { timeLabel, countdown, joinable } = getSessionTimeAndCountdown(session, now);
   const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const expertProfileUrl = session.expertId ? `/expert-profile/${session.expertId}` : `/book-session?expertId=${session.expertId || ""}`;
 
   return (
-    <article className="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-[#0755E8]/40 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_-6px_rgba(7,85,232,0.12)] transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border">
-      <div className="space-y-3 flex-1 flex flex-col">
+    <article className="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-[#0755E8]/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(7,85,232,0.14),0_4px_10px_-2px_rgba(7,85,232,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 p-4.5 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border">
+      <div className="space-y-3.5 flex-1 flex flex-col">
         {/* 1. Header: Avatar + Expert Name & Role/Company + Status Badge */}
-        <div className="flex items-start justify-between gap-2.5">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+            {/* Clickable Expert Avatar */}
+            <div
+              onClick={() => session.expertId && navigate(expertProfileUrl)}
+              className="w-11 h-11 min-w-[44px] min-h-[44px] sm:w-12 sm:h-12 sm:min-w-[48px] sm:min-h-[48px] rounded-xl bg-slate-100 border border-slate-200/70 group-hover:border-[#0755E8]/60 shadow-2xs overflow-hidden shrink-0 flex items-center justify-center cursor-pointer transition-colors"
+              title={`View ${session.expert}'s profile`}
+            >
               <SessionAvatar name={session.expert} profileImage={session.profileImage} />
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
-                <h3 className="font-black text-slate-900 text-sm sm:text-[15px] truncate group-hover:text-[#0755E8] transition-colors leading-tight">
+                <h3
+                  onClick={() => session.expertId && navigate(expertProfileUrl)}
+                  className="font-extrabold text-slate-900 text-[15px] sm:text-base truncate group-hover:text-[#0755E8] transition-colors leading-tight cursor-pointer"
+                  title={session.expert}
+                >
                   {session.expert}
                 </h3>
-                <CheckCircle2 className="w-4 h-4 fill-[#0755E8] text-white shrink-0" title="Verified Interview Expert" />
+                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
+                  <BadgeCheck className="w-4 h-4 text-[#0755E8] fill-[#0755E8]/15" />
+                </span>
               </div>
 
-              <p className="text-xs font-semibold text-slate-500 truncate mt-0.5 leading-tight">
-                {session.company ? (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium truncate mt-0.5">
+                {session.company && (
                   <>
-                    <span className="font-bold text-slate-800">{session.company}</span>
-                    <span className="text-slate-400 font-normal"> • {session.role || "Tech Expert"}</span>
+                    <span className="font-bold text-slate-800 shrink-0">{session.company}</span>
+                    <span className="text-slate-300">•</span>
                   </>
-                ) : (
-                  session.role || "Senior Tech Expert"
                 )}
-              </p>
+                <span className="truncate">{session.role || "Technical Expert"}</span>
+              </div>
             </div>
           </div>
 
           {/* Status or Countdown Badge (Top Right) */}
           <div className="shrink-0 pt-0.5">
             {joinable ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10.5px] font-black uppercase tracking-tight shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold tracking-tight shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                 <span>Live Now</span>
               </span>
             ) : countdown ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/70 text-[10.5px] font-black uppercase tracking-tight shadow-2xs">
-                <Clock className="w-3.5 h-3.5 text-[#0755E8] animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/70 text-xs font-bold tracking-tight shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-[#0755E8]" />
                 <span>{countdown}</span>
               </span>
             ) : (
@@ -302,36 +314,43 @@ const SessionCard: React.FC<{
         </div>
 
         {/* 2. Integrated Schedule & Session Details Box */}
-        <div className="bg-[#F8FAFC] group-hover:bg-[#F3F6FD]/70 border border-slate-200/70 group-hover:border-[#93B8FF]/40 rounded-2xl p-3 sm:p-3.5 space-y-2.5 mt-1 transition-colors duration-200">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 min-w-0">
-              <div className="flex items-center gap-1.5 text-slate-900 font-bold shrink-0">
+        <div className="bg-slate-50/80 group-hover:bg-[#F9FBFF]/80 border border-slate-200/70 group-hover:border-[#93B8FF]/40 rounded-2xl p-3.5 sm:p-4 space-y-3 mt-1 transition-colors duration-200">
+          {/* Date, Time & Domain Category */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-slate-200/80 text-slate-900 font-bold text-xs shadow-2xs">
                 <Calendar className="w-3.5 h-3.5 text-[#0755E8]" />
                 <span>{dateStr}</span>
               </div>
-              <span className="text-slate-300 shrink-0">•</span>
-              <div className="flex items-center gap-1.5 text-slate-600 truncate">
-                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-slate-200/80 text-slate-700 font-semibold text-xs shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
                 <span>{timeLabel}</span>
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white group-hover:bg-[#EAF2FF]/60 border border-slate-200/80 group-hover:border-[#93B8FF]/60 text-[#0755E8] text-[10.5px] font-black uppercase tracking-tight shadow-2xs shrink-0 transition-colors">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-[#0755E8] border border-blue-200/70 text-[11px] font-black uppercase tracking-wider">
               <Briefcase className="w-3 h-3 text-[#0755E8]" />
               <span>{session.category || "IT"}</span>
             </span>
           </div>
 
-          {/* Session Focus / Topic */}
-          <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/60 text-[9.5px] font-black uppercase tracking-wider shrink-0">
-              Topic
-            </span>
-            <span className="font-bold text-slate-800 text-xs truncate">
-              {session.topic && session.topic.trim().toLowerCase() !== (session.category || "").toLowerCase()
-                ? session.topic
-                : `${session.category || "Technical"} 1-on-1 Mock Interview & Live Review`}
-            </span>
+          {/* Session Topic */}
+          <div className="pt-2.5 border-t border-slate-200/60">
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-lg bg-blue-100/70 text-[#0755E8] flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-slate-900 truncate">
+                  {session.topic && session.topic.trim().toLowerCase() !== (session.category || "").toLowerCase()
+                    ? session.topic
+                    : `${session.category || "Technical"} 1-on-1 Mock Interview & Live Review`}
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                  1:1 Live Practice • Technical Problem Solving • Comprehensive Evaluation
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -340,33 +359,21 @@ const SessionCard: React.FC<{
       <div className="w-full pt-3.5 mt-3.5 border-t border-slate-100">
         {displayStatus === 'Completed' ? (
           <div className="space-y-2.5 w-full">
-            {/* Top Action Row: Review + Feedback / Certificate */}
-            <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-2 w-full flex-wrap sm:flex-nowrap">
               {!session.candidateReview ? (
                 <button
                   type="button"
                   onClick={() => setReviewModalSession(session)}
-                  className="group/rate flex-1 py-2.5 px-3 bg-amber-50 hover:bg-amber-100/90 active:bg-amber-200/70 text-amber-800 hover:text-amber-900 border border-amber-200/90 hover:border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:shadow-amber-500/10 active:scale-95 whitespace-nowrap cursor-pointer"
+                  className="group/rate flex-1 h-9 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
                 >
                   <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 group-hover/rate:scale-110 transition-transform shrink-0" />
                   <span>Rate Expert</span>
                 </button>
-              ) : session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3 ? (
+              ) : session.expertReview ? (
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="group/cert flex-1 py-2.5 px-3 bg-indigo-50/70 hover:bg-indigo-100 active:bg-indigo-200/70 text-indigo-700 hover:text-indigo-800 border border-indigo-200/80 hover:border-indigo-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 whitespace-nowrap"
-                >
-                  <Award className="w-3.5 h-3.5 text-indigo-600 group-hover/cert:scale-110 transition-transform shrink-0" />
-                  <span>Certificate</span>
-                </button>
-              ) : null}
-
-              {session.expertReview ? (
-                <button
-                  type="button"
-                  onClick={() => setCertificateModalSession(session)}
-                  className="group/view flex-1 py-2.5 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:shadow-[#0755E8]/10 active:scale-95 whitespace-nowrap cursor-pointer"
+                  className="group/view flex-1 h-9 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-[#0755E8] group-hover/view:scale-110 transition-transform shrink-0" />
                   <span>View Feedback</span>
@@ -374,7 +381,7 @@ const SessionCard: React.FC<{
               ) : session.feedbackRequested ? (
                 <button
                   disabled
-                  className="flex-1 py-2.5 px-3 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed whitespace-nowrap"
+                  className="flex-1 h-9 px-3 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed whitespace-nowrap"
                 >
                   <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>Report Requested</span>
@@ -383,43 +390,39 @@ const SessionCard: React.FC<{
                 <button
                   type="button"
                   onClick={() => handleRequestFeedback(session.sessionId)}
-                  className="group/req flex-1 py-2.5 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:shadow-[#0755E8]/10 active:scale-95 whitespace-nowrap cursor-pointer"
+                  className="group/req flex-1 h-9 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
                 >
-                  <Send className="w-3.5 h-3.5 text-[#0755E8] group-hover/req:translate-x-0.5 group-hover/req:-translate-y-0.5 transition-transform shrink-0" />
+                  <Send className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
                   <span>Request Report</span>
                 </button>
               )}
 
-              {/* If candidate already reviewed and no certificate button needed, put Book Again in this row */}
-              {session.candidateReview && !(session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3) && (
-                <button
-                  type="button"
-                  onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-                  className="group/book flex-1 py-2.5 px-3 bg-slate-50 hover:bg-[#EAF2FF] active:bg-[#D9E8FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF]/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
-                >
-                  <span>Book Again</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all stroke-[2.5]" />
-                </button>
-              )}
-            </div>
+              {/* Certificate CTA */}
+              <button
+                type="button"
+                onClick={() => navigate('/certificates')}
+                className="h-9 px-3.5 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
+                title="View your official completion certificate"
+              >
+                <Award className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span>Certificate</span>
+              </button>
 
-            {/* Bottom Row: Book with Expert Again (shown when Rate Expert is on top row) */}
-            {(!session.candidateReview || (session.expertReview && getCompletedCountForCategory(session.category || "IT") >= 3)) && (
+              {/* Book Again */}
               <button
                 type="button"
                 onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-                className="group/book w-full py-2.5 px-3 bg-slate-50/80 hover:bg-[#EAF2FF] active:bg-[#D9E8FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF]/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                className="group/book h-9 px-3.5 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
               >
-                <span>Book with {session.expert?.split(" ")[0] || "Expert"} Again</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all stroke-[2.5]" />
+                <span>Book Again</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all" />
               </button>
-            )}
+            </div>
 
-            {/* Candidate Review summary pill if already rated */}
             {session.candidateReview && (
               <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-slate-500 pt-0.5">
                 <span className="flex items-center gap-1">
-                  <Check className="w-3 h-3 text-emerald-600" /> Your feedback submitted
+                  <Check className="w-3 h-3 text-emerald-600" /> Feedback submitted
                 </span>
                 <span className="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
@@ -432,7 +435,7 @@ const SessionCard: React.FC<{
           <button
             type="button"
             onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-            className="w-full py-2.5 px-4 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            className="w-full h-9.5 px-4 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
           >
             <span>Book Another Interview Expert</span>
             <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -441,25 +444,28 @@ const SessionCard: React.FC<{
           <button
             type="button"
             onClick={() => handleJoin(session)}
-            className="w-full py-3 px-4 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-[#0755E8]/20 flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+            className="w-full h-11 px-5 bg-gradient-to-r from-[#0755E8] to-[#0645C7] hover:from-[#0645C7] hover:to-[#0538A8] text-white rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-[#0755E8]/20 flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
           >
             <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
             <span>Join Live Interview Meeting</span>
             <ChevronRight className="w-4 h-4 stroke-[3]" />
           </button>
         ) : countdown ? (
-          <div className="w-full flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+          <div className="w-full flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 min-w-0">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
               <span className="truncate">Meeting link activates at start time</span>
             </div>
             <button
               type="button"
-              onClick={() => session.expertId && navigate(`/book-session?expertId=${session.expertId}`)}
-              className="group/exp py-2 px-3.5 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+              onClick={() => session.expertId && navigate(expertProfileUrl)}
+              className="group/exp h-9 px-4 bg-[#EAF2FF] hover:bg-[#0755E8] active:bg-[#0645C7] text-[#0755E8] hover:text-white border border-[#93B8FF]/80 hover:border-[#0755E8] rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-[#0755E8]/25 active:scale-95 flex items-center gap-1.5"
             >
               <span>View Expert</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#0755E8] group-hover/exp:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-3.5 h-3.5 text-[#0755E8] group-hover/exp:text-white group-hover/exp:translate-x-1 transition-all duration-200 stroke-[2.5]" />
             </button>
           </div>
         ) : (
@@ -470,7 +476,7 @@ const SessionCard: React.FC<{
             <button
               type="button"
               onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-              className="py-2 px-3.5 bg-[#EAF2FF] hover:bg-[#D9E8FF] active:bg-[#C8DCFF] text-[#0755E8] hover:text-[#0645C7] border border-[#93B8FF]/70 hover:border-[#0755E8]/50 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="h-9 px-4 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
             >
               Book Again
             </button>

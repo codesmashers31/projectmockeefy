@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Upload,
@@ -20,6 +21,9 @@ import {
   ShieldCheck,
   Heart,
   Crop,
+  Pencil,
+  Mail,
+  Check,
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
@@ -42,7 +46,7 @@ interface ResumeItem {
 }
 
 export default function UserProfile() {
-  const { user, fetchProfile } = useAuth();
+  const { user, fetchProfile, updateUser } = useAuth();
   const userId = user?.id || user?._id || user?.userId;
 
   // Image Upload & Cropper States
@@ -54,6 +58,12 @@ export default function UserProfile() {
   const [cropperFileName, setCropperFileName] = useState("profile_photo.jpg");
   const [selectedOriginalFile, setSelectedOriginalFile] = useState<File | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit Profile Modal States
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Resume Management States
   const [resumes, setResumes] = useState<ResumeItem[]>([]);
@@ -207,6 +217,61 @@ export default function UserProfile() {
       toast.error("Error removing photo.");
     } finally {
       setIsDeletingImage(false);
+    }
+  };
+
+  // Handle Escape key to close Edit Profile modal
+  useEffect(() => {
+    if (!isEditProfileOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isSavingProfile && !isUploadingImage) {
+        setIsEditProfileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isEditProfileOpen, isSavingProfile, isUploadingImage]);
+
+  const openEditProfileModal = () => {
+    setEditName(user?.name || "");
+    setNameError(null);
+    setIsEditProfileOpen(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setNameError("Please enter your name");
+      return;
+    }
+    if (trimmed.length < 2) {
+      setNameError("Name must be at least 2 characters");
+      return;
+    }
+
+    try {
+      setIsSavingProfile(true);
+      setNameError(null);
+      const res = await axios.put(
+        "/api/user/profile/personal",
+        { name: trimmed },
+        { headers: userId ? { userid: String(userId) } : {} }
+      );
+
+      if (res.data?.success) {
+        updateUser({ name: trimmed });
+        await fetchProfile();
+        toast.success("Profile updated successfully!");
+        setIsEditProfileOpen(false);
+      } else {
+        toast.error(res.data?.message || "Failed to update profile");
+      }
+    } catch (err: any) {
+      console.error("Failed to update profile:", err);
+      toast.error(err.response?.data?.message || "Error updating profile. Please try again.");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -445,7 +510,7 @@ export default function UserProfile() {
             {/* Avatar & User Details */}
             <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
               <div className="relative group shrink-0">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border border-slate-200 overflow-hidden shadow-xs flex items-center justify-center shrink-0">
+                <div onClick={openEditProfileModal} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border border-slate-200 overflow-hidden shadow-xs flex items-center justify-center shrink-0 cursor-pointer hover:border-[#0755E8]/60 transition-all" title="Click to edit profile">
                   {hasPhoto ? (
                     <img
                       src={currentPhoto!}
@@ -468,16 +533,10 @@ export default function UserProfile() {
                 {/* Camera Quick Button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (hasPhoto) {
-                      handleAdjustCurrentPhoto();
-                    } else {
-                      imageInputRef.current?.click();
-                    }
-                  }}
+                  onClick={openEditProfileModal}
                   disabled={isUploadingImage}
                   className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center shadow-xs border-2 border-white transition-all active:scale-90 cursor-pointer"
-                  title={hasPhoto ? "Adjust or crop photo from original" : "Upload new photo"}
+                  title="Edit profile photo and name"
                 >
                   <Camera className="w-3 h-3" />
                 </button>
@@ -508,62 +567,17 @@ export default function UserProfile() {
               </div>
             </div>
 
-            {/* Photo Action Buttons */}
+            {/* Action Button: Edit Profile */}
             <div className="flex items-center gap-2 shrink-0 sm:self-center pt-1 sm:pt-0">
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp"
-                className="hidden"
-                onChange={handleImageFileChange}
-              />
               <button
                 type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="h-9 sm:h-9.5 px-3.5 sm:px-4 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap"
+                onClick={openEditProfileModal}
+                className="h-9 sm:h-9.5 px-4 sm:px-5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
+                title="Edit your display name and profile photo"
               >
-                {isUploadingImage ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Change Photo</span>
-                  </>
-                )}
+                <Pencil className="w-3.5 h-3.5" />
+                <span>Edit Profile</span>
               </button>
-
-              {hasPhoto && (
-                <button
-                  type="button"
-                  onClick={handleAdjustCurrentPhoto}
-                  disabled={isUploadingImage}
-                  className="h-9 sm:h-9.5 px-3 sm:px-3.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
-                  title="Adjust framing and re-crop from full original photo"
-                >
-                  <Crop className="w-3.5 h-3.5 text-[#0755E8]" />
-                  <span>Adjust & Crop</span>
-                </button>
-              )}
-
-              {hasPhoto && (
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  disabled={isDeletingImage || isUploadingImage}
-                  className="h-9 sm:h-9.5 px-3 sm:px-3.5 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 whitespace-nowrap"
-                >
-                  {isDeletingImage ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-3.5 h-3.5" />
-                  )}
-                  <span>Remove</span>
-                </button>
-              )}
             </div>
           </div>
         </section>
@@ -963,6 +977,249 @@ export default function UserProfile() {
         </section>
 
       </div>
+
+            {/* Hidden file input for photo selection */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        className="hidden"
+        onChange={handleImageFileChange}
+      />
+
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && typeof document !== "undefined" && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto"
+          onClick={() => {
+            if (!isSavingProfile && !isUploadingImage) setIsEditProfileOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#0755E8] flex items-center justify-center border border-blue-200/60 shadow-2xs">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Edit Profile</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Update your display name and profile photo
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditProfileOpen(false)}
+                disabled={isSavingProfile || isUploadingImage}
+                className="w-8 h-8 rounded-full hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Close edit profile modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveProfile} className="p-5 sm:p-6 space-y-5">
+              {/* Profile Photo Control Section */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                  Profile Photo
+                </label>
+                <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                  {/* Photo Preview Avatar */}
+                  <div className="relative shrink-0">
+                    <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs flex items-center justify-center">
+                      {hasPhoto ? (
+                        <img
+                          src={currentPhoto!}
+                          alt={user?.name || "Profile Photo"}
+                          className="w-full h-full object-cover object-top rounded-2xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#EAF2FF] text-[#0755E8] font-bold text-2xl flex items-center justify-center select-none">
+                          {initials}
+                        </div>
+                      )}
+
+                      {isUploadingImage && (
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-2xs flex items-center justify-center text-white rounded-2xl">
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Photo Action Buttons */}
+                  <div className="flex-1 text-center sm:text-left min-w-0 space-y-2">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={isUploadingImage || isSavingProfile}
+                        className="h-8.5 px-3.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {isUploadingImage ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-3 h-3" />
+                            <span>Change Photo</span>
+                          </>
+                        )}
+                      </button>
+
+                      {hasPhoto && (
+                        <button
+                          type="button"
+                          onClick={handleAdjustCurrentPhoto}
+                          disabled={isUploadingImage || isSavingProfile}
+                          className="h-8.5 px-3 bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+                          title="Adjust framing and re-crop"
+                        >
+                          <Crop className="w-3 h-3 text-[#0755E8]" />
+                          <span>Adjust &amp; Crop</span>
+                        </button>
+                      )}
+
+                      {hasPhoto && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          disabled={isDeletingImage || isUploadingImage || isSavingProfile}
+                          className="h-8.5 px-3 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {isDeletingImage ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-[11.5px] text-slate-400 font-medium leading-relaxed">
+                      Recommended: Square JPG, PNG or WEBP up to 15MB.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Name & Account Details */}
+              <div className="space-y-4">
+                {/* Full Name */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="edit-name-input" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Full Name <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-medium">Visible to experts &amp; certificates</span>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <UserIcon className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="edit-name-input"
+                      type="text"
+                      value={editName}
+                      onChange={(e) => {
+                        setEditName(e.target.value);
+                        if (nameError) setNameError(null);
+                      }}
+                      placeholder="Enter your full name"
+                      maxLength={70}
+                      className={`w-full h-11 pl-10 pr-4 rounded-xl border ${
+                        nameError
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                          : "border-slate-200 focus:border-[#0755E8] focus:ring-[#93B8FF]/40"
+                      } bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 outline-none text-sm font-medium transition-all`}
+                      disabled={isSavingProfile}
+                    />
+                  </div>
+                  {nameError ? (
+                    <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{nameError}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11.5px] text-slate-400 mt-1.5">
+                      Your full name will be shown on mock interview evaluations and issued completion certificates.
+                    </p>
+                  )}
+                </div>
+
+                {/* Email Address (Read-only) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Email Address
+                    </label>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Verified Account</span>
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="email"
+                      value={user?.email || ""}
+                      disabled
+                      className="w-full h-11 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium cursor-not-allowed select-none"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Linked to your login account. Contact support to update your registered email.
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  disabled={isSavingProfile}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile || isUploadingImage}
+                  className="px-5 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                >
+                  {isSavingProfile ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Image Cropper Modal */}
       <ImageCropperModal

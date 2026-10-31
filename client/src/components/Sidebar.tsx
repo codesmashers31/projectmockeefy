@@ -352,30 +352,40 @@ export default function Sidebar() {
             const subtitle = sessionDate
               ? `${sessionCategory} • ${sessionDate}`
               : sessionCategory;
+            const expertName =
+              currentSession.expertDetails?.name ||
+              currentSession.expertName ||
+              "Verified Expert";
+            const expertInitials = expertName
+              .trim()
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase();
+            const rawAvatar =
+              currentSession.expertDetails?.profileImage || currentSession.profileImage;
+            const avatarUrl = getProfileImageUrl(rawAvatar, expertName);
 
             return (
               <div
                 key={currentSession.sessionId || currentSession._id || activeIndex}
                 className="flex items-center gap-2.5 animate-session-fade"
               >
-                <div className="w-8 h-8 rounded-full bg-white border border-[#7FE3C3]/50 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                {/* Standardized Rounded-Square Avatar Container Matching Available Expert Page */}
+                <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
                   <img
-                    src={getProfileImageUrl(
-                      currentSession.expertDetails?.profileImage || currentSession.profileImage,
-                      currentSession.expertDetails?.name || currentSession.expertName || "Expert"
-                    )}
-                    alt={currentSession.expertDetails?.name || currentSession.expertName || "Expert"}
-                    className="w-full h-full object-cover"
+                    src={avatarUrl}
+                    alt={expertName}
+                    className="w-full h-full object-cover object-top rounded-xl"
                     onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = getProfileImageUrl(null, currentSession.expertDetails?.name || currentSession.expertName || "Expert");
+                      (e.currentTarget as HTMLImageElement).src = getProfileImageUrl(null, expertName);
                     }}
                   />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-bold text-slate-900 truncate leading-tight">
-                    {currentSession.expertDetails?.name ||
-                      currentSession.expertName ||
-                      "Verified Expert"}
+                    {expertName}
                   </p>
                   <p className="text-[11px] font-medium text-slate-500 truncate leading-tight mt-0.5">
                     {subtitle}
@@ -475,7 +485,7 @@ export default function Sidebar() {
       {user && (
         <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[#EAF2FF] border border-[#93B8FF] overflow-hidden flex items-center justify-center shrink-0 text-[#0755E8] font-bold text-[11px]">
+            <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-[#EAF2FF] border border-[#93B8FF] overflow-hidden flex items-center justify-center shrink-0 text-[#0755E8] font-bold text-xs shadow-2xs">
               {profileImg ? (
                 <img
                   src={getProfileImageUrl(profileImg)}
@@ -497,7 +507,7 @@ export default function Sidebar() {
           </div>
 
           <button
-            onClick={() => logout()}
+            onClick={() => { logout(); navigate("/signin", { replace: true }); }}
             title="Log out"
             aria-label="Log out"
             className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
@@ -561,7 +571,7 @@ export const SkeletonSidebar = () => (
       {/* Authenticated User Compact Placeholder */}
       <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="w-8 h-8 rounded-full bg-slate-100 shimmer-shining shrink-0" />
+          <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-slate-100 shimmer-shining shrink-0" />
           <div className="space-y-1 min-w-0 flex-1">
             <div className="h-3.5 w-24 rounded bg-slate-200/70 shimmer-shining" />
             <div className="h-2.5 w-32 rounded bg-slate-100 shimmer-shining" />

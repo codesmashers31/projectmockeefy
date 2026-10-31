@@ -127,6 +127,7 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
   };
 
   const handleSignOut = () => {
+    closeAllDropdowns();
     logout();
     navigate("/signin", { replace: true });
   };
@@ -312,7 +313,7 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
               </div>
 
               <div className="border-t border-slate-100 mt-1.5 px-1.5 py-1.5">
-                <button onClick={() => { handleSignOut(); closeAllDropdowns(); }} className="flex w-full items-center px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-medium transition-all">
+                <button onClick={handleSignOut} className="flex w-full items-center px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-medium transition-all">
                   <LogOut size={16} className="mr-3" /> Sign Out
                 </button>
               </div>

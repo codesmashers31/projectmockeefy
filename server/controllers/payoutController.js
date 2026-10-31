@@ -459,10 +459,28 @@ export const getUserEarningsSummary = async (req, res) => {
         
         // Find expert details to get the expert _id, since legacy sessions used expert._id instead of user._id
         const ExpertDetails = (await import('../models/expertModel.js')).default;
-        const expert = await ExpertDetails.findOne({ userId });
-        const expertIdCandidates = [userId];
+        const mongoose = (await import('mongoose')).default;
+        
+        let expert = null;
+        if (mongoose.Types.ObjectId.isValid(userId)) {
+            const oid = new mongoose.Types.ObjectId(userId);
+            expert = await ExpertDetails.findOne({ $or: [{ userId: oid }, { userId: userId }, { _id: oid }] });
+        } else {
+            expert = await ExpertDetails.findOne({ userId });
+        }
+
+        const expertIdCandidates = [];
+        if (userId) {
+            expertIdCandidates.push(userId, userId.toString());
+            if (mongoose.Types.ObjectId.isValid(userId)) {
+                expertIdCandidates.push(new mongoose.Types.ObjectId(userId));
+            }
+        }
         if (expert && expert._id) {
-            expertIdCandidates.push(expert._id.toString());
+            expertIdCandidates.push(expert._id, expert._id.toString());
+        }
+        if (expert && expert.userId) {
+            expertIdCandidates.push(expert.userId, expert.userId.toString());
         }
 
         // Include all completed sessions (legacy used price, new use payoutCredited + payoutAmount)

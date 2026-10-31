@@ -243,7 +243,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   const zoomPercent = Math.round((scale / (coverScale || 1)) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
       <div
         className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
