@@ -9,6 +9,9 @@ async function connectDB() {
 
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 50,
+      minPoolSize: 5,
     });
     console.log("✅ MongoDB connected (mockeefy)");
 

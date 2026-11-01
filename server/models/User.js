@@ -160,4 +160,8 @@ const userSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Performance Indexes (Phase C)
+userSchema.index({ userType: 1, createdAt: -1 });
+userSchema.index({ isPremium: 1 });
+
 export default mongoose.model("User", userSchema);
