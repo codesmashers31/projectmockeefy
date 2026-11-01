@@ -26,7 +26,7 @@ export const ProUpgradeCard = ({ compact = false }: ProUpgradeCardProps) => {
                     <h4 className="text-sm font-bold text-slate-900 mb-1 mt-2">Free Sessions Left</h4>
                     <div className="flex items-end gap-1.5 mb-2">
                         <span className="text-2xl font-black text-[#004fcb]">{user?.freeInterviewsCount || 0}</span>
-                        <span className="text-[10px] text-slate-500 font-bold mb-1 uppercase">/ 3 Remaining</span>
+                        <span className="text-[10px] text-slate-500 font-bold mb-1 uppercase">Remaining</span>
                     </div>
                     <p className="text-[10px] text-slate-500 font-medium leading-tight mb-0">Use these credits to book any expert for free.</p>
                 </div>
@@ -41,19 +41,19 @@ export const ProUpgradeCard = ({ compact = false }: ProUpgradeCardProps) => {
                 <div className="relative z-10 flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
                         <Crown className="w-3.5 h-3.5 text-[#004fcb] fill-current" />
-                        <span className="font-extrabold text-[10px] tracking-widest uppercase text-blue-700">Premium</span>
+                        <span className="font-extrabold text-[10px] tracking-widest uppercase text-blue-700">Plans</span>
                     </div>
-                    <span className="text-[10px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">₹159/mo</span>
+                    <span className="text-[10px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">From ₹219</span>
                 </div>
-                <h3 className="relative z-10 font-extrabold text-gray-900 text-[13.5px] leading-tight mb-1.5">3 free mocks + certification</h3>
+                <h3 className="relative z-10 font-extrabold text-gray-900 text-[13.5px] leading-tight mb-1.5">3-6 free mocks + certs</h3>
                 <p className="relative z-10 text-[11px] text-gray-500 font-medium leading-relaxed mb-3.5">
-                    Unlock verified badges and priority matching.
+                    Unlock verified badges, job referrals, and HR connect.
                 </p>
                 <Button
-                    onClick={() => navigate('/payment', { state: { upgradeType: 'premium' } })}
+                    onClick={() => navigate('/plans')}
                     className="relative z-10 w-full bg-[#004fcb] text-white hover:bg-blue-700 border-0 font-bold text-xs h-9 shadow-sm transition-all rounded-xl"
                 >
-                    Upgrade Now
+                    View Plans
                 </Button>
             </div>
         );
@@ -76,21 +76,22 @@ export const ProUpgradeCard = ({ compact = false }: ProUpgradeCardProps) => {
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-1.5">
                         <Crown className="w-4 h-4 text-[#004fcb] fill-current" />
-                        <span className="font-extrabold text-[11px] tracking-widest uppercase text-blue-700">Premium</span>
+                        <span className="font-extrabold text-[11px] tracking-widest uppercase text-blue-700">Membership</span>
                     </div>
-                    <span className="text-[11px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">₹159/mo</span>
+                    <span className="text-[11px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">From ₹219/mo</span>
                 </div>
 
-                <h3 className="font-extrabold text-gray-900 text-[15px] leading-tight mb-2">Monthly Pack</h3>
+                <h3 className="font-extrabold text-gray-900 text-[15px] leading-tight mb-2">Pro & Ultimate Plans</h3>
                 <p className="text-xs text-gray-500 font-medium leading-relaxed mb-4">
-                    Unlock exclusive interviews, expert feedback, and verified badges.
+                    Unlock mock interviews, verified certificates, and direct job referral support.
                 </p>
 
                 <ul className="space-y-2 mb-5">
                     {[
-                        "3 Free Mock Interviews",
+                        "3 to 6 Free Mock Interviews",
                         "Verified Certifications",
-                        "Priority Matching"
+                        "Job Referral Pipeline",
+                        "30m HR Real Connect"
                     ].map((feature, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs font-semibold text-gray-700">
                             <Check className="w-3.5 h-3.5 text-[#004fcb] mt-0.5 shrink-0" strokeWidth={3} />
@@ -100,12 +101,14 @@ export const ProUpgradeCard = ({ compact = false }: ProUpgradeCardProps) => {
                 </ul>
 
                 <Button
-                    onClick={() => navigate('/payment', { state: { upgradeType: 'premium' } })}
+                    onClick={() => navigate('/plans')}
                     className="w-full bg-[#004fcb] text-white hover:bg-blue-700 border-0 font-bold text-xs h-10 shadow-sm transition-all rounded-xl"
                 >
-                    Upgrade Now
+                    View Plans
                 </Button>
             </div>
         </div>
     );
 };
+
+export default ProUpgradeCard;

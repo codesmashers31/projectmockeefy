@@ -12,19 +12,19 @@ export const PremiumBanner = () => {
     }
 
     const features = [
-        "3 Free Mock Interviews",
+        "3 to 6 Free Mock Interviews",
         "Verified Certifications",
-        "Priority Matching",
-        "Expert Resume Edits"
+        "Job Referral Access",
+        "HR Real Connect (30 min)"
     ];
 
     return (
         <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-4 sm:p-5 shadow-sm mb-6 flex flex-col md:flex-row items-center gap-4 sm:gap-6 w-full">
             
-            {/* Top Right Badge ("Just launched" style) */}
+            {/* Top Right Badge */}
             <div className="absolute top-4 right-4 hidden md:block">
                 <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100">
-                    ₹159 / Month
+                    From ₹219 / Month
                 </span>
             </div>
 
@@ -43,15 +43,15 @@ export const PremiumBanner = () => {
             <div className="flex-1 min-w-0 flex flex-col justify-center text-center md:text-left pr-0 md:pr-40">
                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1 md:hidden">
                     <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-100">
-                        ₹159 / Month
+                        From ₹219 / Month
                     </span>
                 </div>
                 
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight mb-1">
-                    Introducing Premium Monthly Pack
+                    Supercharge Your Career with Pro Plans
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-                    Unlock exclusive interviews, expert feedback, and verified certification badges.
+                    Get up to 6 free mock interviews, verified certificates, job referrals, and 1-on-1 HR connect.
                 </p>
 
                 {/* Pill Tags below text */}
@@ -71,10 +71,10 @@ export const PremiumBanner = () => {
             {/* Right Action Button */}
             <div className="md:absolute md:right-5 md:top-1/2 md:-translate-y-1/2 mt-4 md:mt-0 w-full md:w-auto mt-2 md:mt-4">
                 <Button
-                    onClick={() => navigate('/payment', { state: { upgradeType: 'premium' } })}
+                    onClick={() => navigate('/plans')}
                     className="w-full md:w-auto px-6 py-2.5 bg-[#004fcb] text-white hover:bg-blue-700 border-0 font-bold text-sm h-11 rounded-xl shadow-md transition-all"
                 >
-                    Upgrade now
+                    View Plans
                 </Button>
             </div>
         </div>

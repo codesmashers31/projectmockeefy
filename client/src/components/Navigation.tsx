@@ -444,6 +444,34 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
             {/* Authenticated User Controls */}
             {user ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Plan Highlight Badge */}
+                {user.isPremium ? (
+                  <Link
+                    to="/plans"
+                    className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all shadow-2xs hover:opacity-90 ${
+                      user.premiumPlan === 'ultimate-419'
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white'
+                        : 'bg-gradient-to-r from-[#0755E8] to-blue-600 text-white'
+                    }`}
+                    title="Active Membership - View Details"
+                  >
+                    <Crown size={12} className="fill-current shrink-0" />
+                    <span>{user.premiumPlan === 'ultimate-419' ? 'Ultimate' : 'Pro'}</span>
+                    <span className="bg-black/20 text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
+                      {user.freeInterviewsCount ?? 0} mocks
+                    </span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/plans"
+                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/60 hover:bg-[#D5E5FF] transition-all"
+                    title="View & Upgrade Plans"
+                  >
+                    <Sparkles size={12} className="shrink-0" />
+                    <span>Plans</span>
+                  </Link>
+                )}
+
                 {/* Notifications Bell */}
                 <div className="relative" ref={notificationRef}>
                   <button
@@ -602,8 +630,17 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       <p className="text-[13px] font-semibold text-slate-900 leading-tight truncate max-w-[110px]">
                         {user.name?.split(" ")[0] || "User"}
                       </p>
-                      <p className="text-[10.5px] font-medium text-slate-500 leading-none">
-                        {user.isPremium ? "Premium" : "Member"}
+                      <p className="text-[10.5px] font-bold leading-none mt-0.5">
+                        {user.isPremium ? (
+                          <span className={`inline-flex items-center gap-1 ${
+                            user.premiumPlan === 'ultimate-419' ? 'text-amber-600' : 'text-[#0755E8]'
+                          }`}>
+                            <Crown size={10} className="fill-current inline" />
+                            {user.premiumPlan === 'ultimate-419' ? 'Ultimate' : 'Pro'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">Free Tier</span>
+                        )}
                       </p>
                     </div>
                     <ChevronDown
@@ -643,6 +680,26 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                             {user.email}
                           </p>
                         </div>
+                      </div>
+
+                      {/* Plan Summary Card inside dropdown */}
+                      <div className="mx-2 my-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Current Plan</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Crown size={12} className={user.isPremium ? (user.premiumPlan === 'ultimate-419' ? 'text-amber-500 fill-amber-500' : 'text-[#0755E8] fill-[#0755E8]') : 'text-slate-400'} />
+                            <p className="text-xs font-bold text-slate-800">
+                              {user.isPremium ? (user.premiumPlan === 'ultimate-419' ? 'Ultimate Career' : 'Pro Plan') : 'Free Plan'}
+                            </p>
+                          </div>
+                        </div>
+                        <Link
+                          to="/plans"
+                          onClick={closeAllDropdowns}
+                          className="text-[11px] font-bold text-[#0755E8] hover:underline"
+                        >
+                          {user.isPremium ? `${user.freeInterviewsCount || 0} mocks` : 'Upgrade →'}
+                        </Link>
                       </div>
 
                       <div className="p-1 space-y-0.5">
@@ -793,6 +850,19 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
               <div className="border-t border-slate-100 pt-3">
                 {user ? (
                   <div className="space-y-2">
+                    <Link
+                      to="/plans"
+                      className="flex items-center justify-between px-3.5 py-2.5 bg-blue-50/70 border border-blue-100 text-xs font-semibold text-[#0755E8] rounded-xl"
+                      onClick={closeAllDropdowns}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Crown size={14} className="fill-current text-[#0755E8]" />
+                        <span>{user.isPremium ? `${user.premiumPlan === 'ultimate-419' ? 'Ultimate' : 'Pro'} Member` : 'Upgrade Plan'}</span>
+                      </div>
+                      <span className="text-[10px] bg-white px-2 py-0.5 rounded-full font-bold border border-blue-200">
+                        {user.isPremium ? `${user.freeInterviewsCount || 0} mocks left` : 'View'}
+                      </span>
+                    </Link>
                     <Link
                       to="/profile"
                       className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl"

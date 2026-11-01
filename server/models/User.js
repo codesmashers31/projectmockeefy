@@ -136,6 +136,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  premiumPlan: {
+    type: String,
+    enum: ['free', 'pro-219', 'ultimate-419'],
+    default: 'free'
+  },
   premiumExpiry: {
     type: Date
   },

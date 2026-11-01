@@ -149,7 +149,8 @@ app.use(express.json());
 
 // Security Hardening (Phase 2 & 5.2)
 app.use(helmet({
-  crossOriginResourcePolicy: false, // allow images to load across domains
+  crossOriginResourcePolicy: false,
+  frameguard: { action: "sameorigin" }, // allow images to load across domains
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -174,6 +175,18 @@ const globalLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api", globalLimiter);
+
+// Specific Auth Brute-Force Protection
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 15 : 100,
+  message: { success: false, message: 'Too many authentication attempts. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/send-otp', authLimiter);
 // serve uploaded images (dev)
 app.use("/uploads/profileImages", express.static(path.join(process.cwd(), "uploads/profileImages")));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
