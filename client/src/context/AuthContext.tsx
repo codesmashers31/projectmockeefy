@@ -21,6 +21,8 @@ export interface User {
   };
   role?: string;
   isPremium?: boolean;
+  premiumPlan?: string;
+  premiumExpiry?: string;
   freeInterviewsCount?: number;
 }
 
@@ -47,9 +49,23 @@ export const useAuth = () => {
 interface Props { children: ReactNode; }
 
 export const AuthProvider: React.FC<Props> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  // Hydrate immediately from cache to completely eliminate UI flicker on refresh
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('mockeefy_user_cache');
+      if (cached && localStorage.getItem('token')) {
+        return JSON.parse(cached);
+      }
+    } catch (_) {}
+    return null;
+  });
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const hasToken = !!localStorage.getItem('token');
+    const hasCache = !!localStorage.getItem('mockeefy_user_cache');
+    // If cached profile exists, start with false so UI renders immediately without flashing
+    return hasToken && !hasCache;
+  });
 
   // Initialize auth state
   useEffect(() => {
@@ -98,14 +114,16 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         freeInterviewsCount: userData.freeInterviewsCount ?? (userData as any).freeInterviewsCount ?? 0,
       };
 
+      try {
+        localStorage.setItem('mockeefy_user_cache', JSON.stringify(normalizedUser));
+      } catch (_) {}
       setUser(normalizedUser);
       return normalizedUser;
     } catch (error: any) {
       console.error('Failed to fetch profile', error);
       const status = error.response?.status;
       if (status === 401 || status === 403) {
-        // Axios interceptor will handle the refresh and redirect if it fails.
-        // We just need to make sure state is consistent.
+        localStorage.removeItem('mockeefy_user_cache');
         setUser(null);
       }
       return null;
@@ -237,12 +255,16 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
       profileImage: (userData as any).profileImage ?? userData.profileImage,
     };
 
+    try {
+      localStorage.setItem('mockeefy_user_cache', JSON.stringify(normalizedUser));
+    } catch (_) {}
     setUser(normalizedUser);
     return normalizedUser;
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('mockeefy_user_cache');
     delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);

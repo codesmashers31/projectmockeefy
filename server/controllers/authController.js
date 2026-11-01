@@ -375,6 +375,7 @@ export const loginUser = async (req, res) => {
         personalInfo: user.personalInfo,
         profileImage: user.profileImage,
         isPremium: user.isPremium || false,
+        premiumPlan: user.premiumPlan || (user.isPremium ? 'pro-219' : 'free'),
         freeInterviewsCount: user.freeInterviewsCount || 0
       }
     });
@@ -460,6 +461,7 @@ export const getProfile = async (req, res) => {
         password: undefined, // Strip password hash
         googleId: undefined, // Strip internal identifiers
         isPremium: user.isPremium || false,
+        premiumPlan: user.premiumPlan || (user.isPremium ? 'pro-219' : 'free'),
         freeInterviewsCount: user.freeInterviewsCount || 0
       }
     });

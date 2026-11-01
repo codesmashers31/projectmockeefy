@@ -48,6 +48,7 @@ export const createOrder = async (req, res) => {
 import * as sessionService from '../services/sessionService.js';
 import ExpertDetails from '../models/expertModel.js';
 import User from '../models/User.js';
+import PaymentRecord from '../models/PaymentRecord.js';
 import Session from '../models/Session.js';
 import { createNotification } from './notificationController.js';
 import {
@@ -206,18 +207,46 @@ export const verifyPayment = async (req, res) => {
             isVerified = true;
         }
 
+        // Security Hardening: Anti-Replay Attack Check
+        const existingPayment = await PaymentRecord.findOne({ paymentId: razorpay_payment_id });
+        if (existingPayment) {
+            console.warn(`[Payment Security] Blocked replayed payment attempt: ${razorpay_payment_id}`);
+            return res.status(400).json({
+                success: false,
+                message: "Security Alert: This payment transaction has already been verified and processed."
+            });
+        }
+
         if (isVerified) {
             // Handle Subscription Type
             if (req.body.paymentType === 'subscription') {
+                const planId = req.body.planId;
+                const freeCount = (planId === 'ultimate-419' || planId === '419' || req.body.freeInterviews === 6 || (req.body.price === 419 || req.body.price === 2)) ? 6 : 3;
                 const updatedUser = await User.findByIdAndUpdate(
                     user?.id || user?.userId,
                     {
                         isPremium: true,
-                        freeInterviewsCount: 3,
+                        freeInterviewsCount: freeCount,
+                        premiumPlan: planId || (freeCount === 6 ? 'ultimate-419' : 'pro-219'),
                         premiumExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
                     },
                     { new: true }
                 );
+                // Record transaction to prevent replay
+                try {
+                    await PaymentRecord.create({
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id,
+                        userId: user?.id || user?.userId || updatedUser._id,
+                        paymentType: 'subscription',
+                        planId: planId || (freeCount === 6 ? 'ultimate-419' : 'pro-219'),
+                        amount: req.body.price || (freeCount === 6 ? 2 : 1),
+                        status: 'verified'
+                    });
+                } catch (recErr) {
+                    console.warn("[PaymentRecord] Failed to record subscription payment:", recErr.message);
+                }
+
                 return res.status(200).json({
                     success: true,
                     message: 'Subscription successful! You are now a Premium Member.',
@@ -349,6 +378,8 @@ export const usePremiumCredit = async (req, res) => {
         // Use pessimistic locking to prevent race conditions during concurrent clicks
         const user = await User.findById(userId).session(session);
         if (!user || !user.isPremium || user.freeInterviewsCount <= 0) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({
                 success: false,
                 message: 'Insufficient free credits or not a premium member.'
@@ -593,16 +624,19 @@ export const createFreeBooking = async (req, res) => {
  */
 export const createFreeSubscription = async (req, res) => {
     try {
-        const { userId } = req.body;
+        const { userId, planId, freeInterviews } = req.body;
         if (!userId) {
             return res.status(400).json({ success: false, message: 'User ID is required' });
         }
+
+        const freeCount = (planId === 'ultimate-419' || planId === '419' || freeInterviews === 6) ? 6 : 3;
 
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             {
                 isPremium: true,
-                freeInterviewsCount: 3,
+                freeInterviewsCount: freeCount,
+                premiumPlan: planId || (freeCount === 6 ? 'ultimate-419' : 'pro-219'),
                 premiumExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
             },
             { new: true }

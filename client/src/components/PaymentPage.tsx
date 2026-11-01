@@ -21,6 +21,19 @@ const PaymentPage: React.FC = () => {
   const { user, fetchProfile } = useAuth();
   const bookingDetails = location.state?.bookingDetails;
   const upgradeType = location.state?.upgradeType;
+  const searchParams = new URLSearchParams(location.search);
+  const planQuery = searchParams.get('plan');
+
+  const isSubscription = upgradeType === 'premium' || Boolean(planQuery);
+  const planId = location.state?.planId || planQuery || (isSubscription ? 'pro-219' : null);
+  const isUltimate = planId === 'ultimate-419' || planId === '419' || location.state?.price === 419 || location.state?.price === 2;
+
+  const planCredits = isUltimate ? 6 : 3;
+  const planPrice = isUltimate ? 2 : 1;
+  const planName = isUltimate ? "Ultimate Career Plan" : "Pro Starter Plan";
+  const planSubtitle = isUltimate
+    ? "6 Free Interviews + 2 Certificates + HR Connect (30m) + Job Support"
+    : "3 Free Interviews + 1 Certificate + Job Referral";
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
@@ -40,9 +53,9 @@ const PaymentPage: React.FC = () => {
     return 0;
   };
 
-  // Set base price to 159 INR for premium upgrade, or use the actual bookingDetails price
-  const basePrice = upgradeType === 'premium' 
-    ? 159 
+  // Base price dynamically resolved from plan or booking details
+  const basePrice = isSubscription 
+    ? (location.state?.price || planPrice)
     : (bookingDetails?.price ? parsePrice(bookingDetails.price) : 3);
 
   const gstAmount = 0; // Temporarily removed GST for testing
@@ -53,11 +66,11 @@ const PaymentPage: React.FC = () => {
       : 0;
 
   const orderSummary = {
-    productName: upgradeType === 'premium' 
-      ? "Premium Membership" 
+    productName: isSubscription 
+      ? planName 
       : (bookingDetails ? `${bookingDetails.category || bookingDetails.skill} Mock Interview` : "Premium Subscription"),
-    plan: upgradeType === 'premium'
-      ? "LIFETIME - 3 Free Interviews"
+    plan: isSubscription
+      ? planSubtitle
       : (bookingDetails ? `${bookingDetails.duration} Min Session with ${bookingDetails.expertName}` : "Annual Plan"),
     basePrice: basePrice,
     discount: discountAmount,
@@ -122,9 +135,12 @@ const PaymentPage: React.FC = () => {
         razorpay_order_id: response.razorpay_order_id,
         razorpay_payment_id: response.razorpay_payment_id,
         razorpay_signature: response.razorpay_signature,
-        paymentType: upgradeType === 'premium' ? 'subscription' : 'booking',
+        paymentType: isSubscription ? 'subscription' : 'booking',
+        planId: isSubscription ? (isUltimate ? 'ultimate-419' : 'pro-219') : undefined,
+        freeInterviews: isSubscription ? planCredits : undefined,
+        price: orderSummary.total,
         user: user,
-        bookingDetails: upgradeType === 'premium' ? null : {
+        bookingDetails: isSubscription ? null : {
           expertId: bookingDetails?.expertId,
           expertName: bookingDetails?.expertName,
           expertEmail: bookingDetails?.expertEmail,
@@ -145,13 +161,16 @@ const PaymentPage: React.FC = () => {
       });
 
       const showScheduledSuccessAlert = () => {
-        if (upgradeType === 'premium') {
+        if (isSubscription) {
           Swal.fire({
-            title: "Welcome to Premium! 🎉",
+            title: isUltimate ? "Welcome to Ultimate Career! 🎉" : "Welcome to Pro! 🎉",
             html: `
               <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
-                <p style="margin-bottom: 8px;">Your Mockeefy Premium Membership is now active.</p>
-                <p style="color: #059669; font-weight: 500;">✓ You have 3 credits to book sessions for free!</p>
+                <p style="margin-bottom: 8px;">Your Mockeefy <strong>${planName}</strong> is now active.</p>
+                <p style="color: #059669; font-weight: 600;">✓ You have ${planCredits} credits to book sessions for free!</p>
+                <p style="color: #059669; font-weight: 500;">✓ ${isUltimate ? '2 Certificates free' : '1 Certificate free'}</p>
+                <p style="color: #059669; font-weight: 500;">✓ Job referral assistance included</p>
+                ${isUltimate ? '<p style="color: #059669; font-weight: 500;">✓ 30-min HR real connect & job support</p>' : ''}
               </div>
             `,
             icon: "success",
@@ -162,12 +181,8 @@ const PaymentPage: React.FC = () => {
             customClass: {
               container: "swal-top-container",
             },
-          }).then((result) => {
-            if (result.isConfirmed) {
-              navigate("/my-sessions");
-            } else {
-              navigate("/my-sessions");
-            }
+          }).then(() => {
+            navigate("/my-sessions");
           });
         } else {
           const formattedDate = bookingDetails?.date
@@ -329,20 +344,25 @@ const PaymentPage: React.FC = () => {
     if (orderSummary.total > 0) return;
     setIsProcessing(true);
     try {
-      if (upgradeType === 'premium') {
+      if (isSubscription) {
         const res = await axios.post("/api/payment/create-free-subscription", {
-          userId: user?.id || user?.userId || (user as any)?._id
+          userId: user?.id || user?.userId || (user as any)?._id,
+          planId: isUltimate ? 'ultimate-419' : 'pro-219',
+          freeInterviews: planCredits
         });
         if (res.data?.success) {
           if (fetchProfile) await fetchProfile();
           setPaymentStatus("success");
           setTransactionId("FREE-PREMIUM-" + Date.now());
           Swal.fire({
-            title: "Welcome to Premium! 🎉",
+            title: isUltimate ? "Welcome to Ultimate Career! 🎉" : "Welcome to Pro! 🎉",
             html: `
               <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #334155;">
-                <p style="margin-bottom: 8px;">Your Mockeefy Premium Membership is now active.</p>
-                <p style="color: #059669; font-weight: 500;">✓ You have 3 credits to book sessions for free!</p>
+                <p style="margin-bottom: 8px;">Your Mockeefy <strong>${planName}</strong> is now active.</p>
+                <p style="color: #059669; font-weight: 600;">✓ You have ${planCredits} credits to book sessions for free!</p>
+                <p style="color: #059669; font-weight: 500;">✓ ${isUltimate ? '2 Certificates free' : '1 Certificate free'}</p>
+                <p style="color: #059669; font-weight: 500;">✓ Job referral assistance included</p>
+                ${isUltimate ? '<p style="color: #059669; font-weight: 500;">✓ 30-min HR real connect & job support</p>' : ''}
               </div>
             `,
             icon: "success",
@@ -353,12 +373,8 @@ const PaymentPage: React.FC = () => {
             customClass: {
               container: "swal-top-container",
             },
-          }).then((result) => {
-            if (result.isConfirmed) {
-              navigate("/my-sessions");
-            } else {
-              navigate("/my-sessions");
-            }
+          }).then(() => {
+            navigate("/my-sessions");
           });
         } else {
           throw new Error(res.data?.message || "Free subscription failed");
@@ -537,36 +553,52 @@ const PaymentPage: React.FC = () => {
           {/* Detailed Summary Section */}
           <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-gray-900/5 border border-gray-100 h-fit sticky top-8">
             <h3 className="text-lg font-bold text-gray-900 mb-6">
-              {upgradeType === 'premium' ? "Plan Details" : "Booking Details"}
+              {isSubscription ? "Plan Details" : "Booking Details"}
             </h3>
             
-            {upgradeType === 'premium' ? (
+            {isSubscription ? (
               <div className="space-y-4 mb-8">
                 <div className="flex flex-col p-5 bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100 rounded-2xl relative overflow-hidden">
                   <Sparkles className="w-24 h-24 text-blue-500/10 absolute -right-6 -bottom-6" />
                   <div className="flex items-center gap-3 mb-3 relative z-10">
-                    <div className="w-10 h-10 bg-[#004fcb] rounded-xl flex items-center justify-center shadow-sm">
-                      <Sparkles className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 bg-[#004fcb] rounded-xl flex items-center justify-center shadow-sm text-white">
+                      {isUltimate ? <Sparkles className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
                     </div>
                     <div>
-                      <h4 className="text-gray-900 font-bold leading-tight">Lifetime Membership</h4>
-                      <p className="text-[10px] uppercase font-bold text-[#004fcb] tracking-wider">Premium Access</p>
+                      <h4 className="text-gray-900 font-bold leading-tight">{planName}</h4>
+                      <p className="text-[10px] uppercase font-bold text-[#004fcb] tracking-wider">₹{orderSummary.total} / month</p>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed mb-4 relative z-10">Unlock all Mockeefy advanced features and fast-track your interview preparation with priority options.</p>
+                  <p className="text-xs text-gray-600 leading-relaxed mb-4 relative z-10">
+                    {isUltimate 
+                      ? "Complete career booster with 6 mock interviews, 2 certificates, HR real connect, and job placement support."
+                      : "Accelerate your interview preparation with 3 free mentor bookings, certificate, and job referrals."}
+                  </p>
                   <ul className="space-y-2.5 relative z-10">
                     <li className="flex items-start text-xs text-gray-700 font-medium">
-                      <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0" /> 
-                      <span><strong>3 Free Integrations</strong> — Use to book any Mock Interview session for free.</span>
+                      <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0 mt-0.5" /> 
+                      <span><strong>{planCredits} Free Mock Interviews</strong> — Book with any verified mentor.</span>
                     </li>
                     <li className="flex items-start text-xs text-gray-700 font-medium">
-                      <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0" /> 
-                      <span><strong>Verified Certificates</strong> — Share authentic interview badges directly to your LinkedIn.</span>
+                      <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0 mt-0.5" /> 
+                      <span><strong>{isUltimate ? "2 Free Certificates" : "1 Free Certificate"}</strong> — Showcase your interview credentials.</span>
                     </li>
                     <li className="flex items-start text-xs text-gray-700 font-medium">
-                      <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0" /> 
-                      <span><strong>Priority Matching</strong> — Get matched with top 1% industry experts faster.</span>
+                      <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0 mt-0.5" /> 
+                      <span><strong>Job Referral Assistance</strong> — Direct visibility with hiring partners.</span>
                     </li>
+                    {isUltimate && (
+                      <>
+                        <li className="flex items-start text-xs text-gray-700 font-medium">
+                          <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0 mt-0.5" /> 
+                          <span><strong>30-Min HR Real Connect</strong> — 1-on-1 strategy with an active hiring recruiter.</span>
+                        </li>
+                        <li className="flex items-start text-xs text-gray-700 font-medium">
+                          <CheckCircle className="w-4 h-4 text-[#004fcb] mr-2 shrink-0 mt-0.5" /> 
+                          <span><strong>Dedicated Job Support</strong> — Resume review & placement guidance.</span>
+                        </li>
+                      </>
+                    )}
                   </ul>
                 </div>
               </div>
@@ -676,11 +708,11 @@ const PaymentPage: React.FC = () => {
               <CheckCircle className="w-12 h-12 text-green-600" />
             </div>
             <h2 className="text-3xl font-black text-gray-900 mb-2">
-              {upgradeType === 'premium' ? "Welcome to Premium!" : "Booking Success!"}
+              {isSubscription ? `Welcome to ${planName}! 🎉` : "Booking Success!"}
             </h2>
             <p className="text-gray-500 mb-2 leading-relaxed">
-              {upgradeType === 'premium' 
-                ? "Your Mockeefy Premium Membership is now active. You have 3 credits to book sessions for free!" 
+              {isSubscription 
+                ? `Your Mockeefy ${planName} is now active. You have ${planCredits} credits to book sessions for free!` 
                 : "Your session has been successfully scheduled. Check your email for details."}
             </p>
             {transactionId && (
@@ -689,7 +721,7 @@ const PaymentPage: React.FC = () => {
               </p>
             )}
             <div className="w-full space-y-3">
-              {upgradeType !== 'premium' && (
+              {!isSubscription && (
                 <button
                   onClick={() => navigate("/my-sessions")}
                   className="w-full bg-[#004fcb] text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
@@ -698,10 +730,10 @@ const PaymentPage: React.FC = () => {
                 </button>
               )}
               <button
-                onClick={() => navigate(upgradeType === 'premium' ? "/dashboard" : "/")}
+                onClick={() => navigate(isSubscription ? "/dashboard" : "/")}
                 className="w-full bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 hover:text-rose-900 border border-rose-200/90 py-3.5 rounded-2xl font-bold transition-all shadow-2xs cursor-pointer"
               >
-                {upgradeType === 'premium' ? "Go to Dashboard" : "Close"}
+                {isSubscription ? "Go to Dashboard" : "Close"}
               </button>
             </div>
           </div>
