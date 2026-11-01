@@ -11,7 +11,6 @@ import mongoSanitize from "express-mongo-sanitize";
 import rateLimit from "express-rate-limit";
 
 // Dev Server
-import { seedTestSession } from "./services/sessionService.js";
 import { initScheduler } from "./services/schedulerService.js";
 import { initSocket } from "./services/socketService.js";
 import { initReconciliationJob } from "./jobs/reconciliationJob.js";
@@ -51,8 +50,6 @@ import walletRoutes from "./routes/walletRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 
 await connectDB();
-// Seeding on startup
-await seedTestSession();
 initScheduler();
 initReconciliationJob();
 verifyEmailConnection().catch((err) => console.warn("[EmailService] Verification warning:", err.message));
