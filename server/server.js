@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import compression from "compression";
+import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
@@ -11,7 +13,6 @@ import mongoSanitize from "express-mongo-sanitize";
 import rateLimit from "express-rate-limit";
 
 // Dev Server
-import { seedTestSession } from "./services/sessionService.js";
 import { initScheduler } from "./services/schedulerService.js";
 import { initSocket } from "./services/socketService.js";
 import { initReconciliationJob } from "./jobs/reconciliationJob.js";
@@ -51,8 +52,6 @@ import walletRoutes from "./routes/walletRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 
 await connectDB();
-// Seeding on startup
-await seedTestSession();
 initScheduler();
 initReconciliationJob();
 verifyEmailConnection().catch((err) => console.warn("[EmailService] Verification warning:", err.message));
@@ -107,6 +106,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(cookieParser());
+app.use(compression({ threshold: 1024 }));
 
 // Security headers for Google Auth (COOP/COEP) - REMOVED to fix net::ERR_FAILED
 // app.use((req, res, next) => {
@@ -119,8 +119,12 @@ app.use(cookieParser());
 // Enable trust proxy for Render/Heroku (required for secure cookies)
 app.set('trust proxy', 1);
 
+const sessionSecret = process.env.SESSION_SECRET || (
+  isDev ? 'mockeefy_dev_secret_key_session' : crypto.randomBytes(32).toString('hex')
+);
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback_session_secret',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -144,8 +148,8 @@ const io = initSocket(httpServer, {
 
 attachSignaling(io);
 
-// Middleware
-app.use(express.json());
+// Middleware - preserve raw buffer for signature verification (Phase A)
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Security Hardening (Phase 2 & 5.2)
 app.use(helmet({
@@ -195,7 +199,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.all("/api/debug-log", (req, res) => {
   const logEntry = `[${new Date().toISOString()}] DEBUG LOG: ${JSON.stringify(req.body || req.query)}\n`;
   console.log(logEntry);
-  fs.appendFileSync(path.join(process.cwd(), "debug_events.log"), logEntry, "utf8");
+  fs.promises.appendFile(path.join(process.cwd(), "debug_events.log"), logEntry, "utf8").catch(() => {});
   res.json({ success: true });
 });
 
@@ -203,7 +207,7 @@ app.all("/api/debug-log", (req, res) => {
 app.use("/api/user/resumes", (req, res, next) => {
   const logEntry = `[${new Date().toISOString()}] RESUMES REQ: ${req.method} ${req.url} - Auth: ${!!req.headers.authorization} - UserId: ${req.headers.userid} - CT: ${req.headers['content-type']}\n`;
   console.log(logEntry);
-  fs.appendFileSync(path.join(process.cwd(), "debug_events.log"), logEntry, "utf8");
+  fs.promises.appendFile(path.join(process.cwd(), "debug_events.log"), logEntry, "utf8").catch(() => {});
   next();
 });
 
@@ -266,5 +270,24 @@ const PORT = process.env.PORT || 5000;
 // }
 
 httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Graceful process shutdown handling (Phase C)
+const handleShutdown = async (signal) => {
+  console.log(`[Server] ${signal} received. Closing HTTP server and database pool safely...`);
+  httpServer.close(async () => {
+    try {
+      await mongoose.connection.close(false);
+      console.log('[Server] MongoDB connection closed safely.');
+    } catch (_) {}
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('[Server] Forceful shutdown initiated after timeout.');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
 // Reload trigger
 

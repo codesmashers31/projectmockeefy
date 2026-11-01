@@ -15,7 +15,11 @@ const cleanVal = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, '') 
 /**
  * Dynamically build the transporter using current environment configuration.
  */
+let cachedTransporter = null;
+
 export const getTransporter = () => {
+    if (cachedTransporter) return cachedTransporter;
+
     const host = cleanVal(process.env.SMTP_HOST) || "smtpout.secureserver.net";
     const port = Number(cleanVal(process.env.SMTP_PORT)) || 465;
     const secure = process.env.SMTP_SECURE !== undefined
@@ -26,13 +30,14 @@ export const getTransporter = () => {
     const service = cleanVal(process.env.EMAIL_SERVICE);
 
     const transportOptions = {
-        pool: false,
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
+        rateDelta: 1000,
+        rateLimit: 10,
         auth: {
             user,
             pass,
-        },
-        tls: {
-            rejectUnauthorized: false
         },
         connectionTimeout: 30000,
         greetingTimeout: 30000,
@@ -47,7 +52,8 @@ export const getTransporter = () => {
         transportOptions.secure = secure;
     }
 
-    return nodemailer.createTransport(transportOptions);
+    cachedTransporter = nodemailer.createTransport(transportOptions);
+    return cachedTransporter;
 };
 
 /**
