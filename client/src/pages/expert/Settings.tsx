@@ -83,9 +83,14 @@ export default function Settings() {
     }
 
     return (
-        <div className="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center shrink-0 bg-white z-10">
+        <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-8 animate-in fade-in duration-200">
+            {/* Decorative ambient blue lighting */}
+            <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
+            <div className="relative z-10 space-y-8">
+              {/* Header */}
+              <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900">Settings</h1>
                     <p className="text-sm text-gray-500">Manage your preferences and account settings</p>
@@ -102,10 +107,10 @@ export default function Settings() {
                     )}
                     Save Changes
                 </button>
-            </div>
+              </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+              {/* Content */}
+              <div>
                 <div className="max-w-3xl mx-auto space-y-8">
 
                     {/* Notifications Section */}
@@ -205,6 +210,7 @@ export default function Settings() {
                     </section>
 
                 </div>
+            </div>
             </div>
         </div>
     );

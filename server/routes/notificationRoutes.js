@@ -8,5 +8,10 @@ router.use(authenticateToken); // Protect all routes
 
 router.get('/', getNotifications);
 router.put('/read', markAsRead);
+router.post('/read', markAsRead);
+router.post('/mark-all-read', markAsRead);
+router.put('/mark-all-read', markAsRead);
+router.post('/:id/read', markAsRead);
+router.put('/:id/read', markAsRead);
 
 export default router;

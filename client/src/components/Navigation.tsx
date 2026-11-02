@@ -276,10 +276,9 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
   ];
 
   const moreItems = [
-    { name: "Saved Interview Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
-    { name: "Subscription Plans", href: "/plans", icon: <CreditCard size={16} /> },
-    { name: "Tips & Guidance", href: "/tips", icon: <Sparkles size={16} /> },
-    { name: "Help & Support", href: "/help", icon: <HelpCircle size={16} /> },
+    { name: "Saved Interview Experts", href: "/saved-experts", icon: <Bookmark size={15} /> },
+    { name: "Subscription Plans", href: "/plans", icon: <CreditCard size={15} /> },
+    { name: "Help & Support", href: "/help", icon: <HelpCircle size={15} /> },
   ];
 
   const profileMenuItems = [
@@ -371,10 +370,10 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                     setIsProfileMenuOpen(false);
                     setIsNotificationOpen(false);
                   }}
-                  className={`flex items-center gap-1 text-[14px] lg:text-[14.5px] transition-colors cursor-pointer focus-visible:outline-none ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[14px] lg:text-[14.5px] transition-all cursor-pointer focus-visible:outline-none ${
                     isMoreOpen
-                      ? "text-[#0755E8] font-bold"
-                      : "text-slate-600 hover:text-[#0755E8] font-medium"
+                      ? "text-[#0755E8] bg-blue-50/70 font-bold"
+                      : "text-slate-600 hover:text-[#0755E8] hover:bg-slate-50 font-medium"
                   }`}
                 >
                   <span>More</span>
@@ -387,19 +386,30 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                 </button>
 
                 {isMoreOpen && (
-                  <div className="absolute left-0 top-[calc(100%-4px)] w-60 bg-white border border-slate-200/80 rounded-2xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="p-1 space-y-0.5">
+                  <div className="absolute left-0 top-[calc(100%+6px)] w-64 bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.14)] p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Explore More
+                    </div>
+                    <div className="space-y-0.5">
                       {moreItems.map((item) => (
                         <Link
                           key={item.name}
                           to={item.href}
-                          className="flex items-center px-3.5 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] text-[13.5px] font-medium transition-colors"
+                          className="group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF] transition-all"
                           onClick={closeAllDropdowns}
                         >
-                          <span className="mr-3 text-slate-400 group-hover:text-[#0755E8]">
-                            {item.icon}
-                          </span>
-                          <span>{item.name}</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 group-hover:bg-[#EAF2FF] group-hover:border-[#93B8FF]/40 text-slate-400 group-hover:text-[#0755E8] flex items-center justify-center transition-all shrink-0">
+                              {item.icon}
+                            </span>
+                            <span className="text-[13px] font-semibold text-slate-700 group-hover:text-[#0755E8] transition-colors">
+                              {item.name}
+                            </span>
+                          </div>
+                          <ChevronRight
+                            size={13}
+                            className="text-slate-300 group-hover:text-[#0755E8] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
+                          />
                         </Link>
                       ))}
                     </div>
@@ -510,7 +520,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
 
                   {/* Notifications Popover */}
                   {isNotificationOpen && (
-                    <div className="fixed inset-x-3 sm:inset-x-auto sm:absolute top-[68px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-[380px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="fixed inset-x-3 sm:inset-x-auto sm:absolute top-[68px] sm:top-full sm:right-0 sm:-translate-x-3 sm:mt-2.5 w-auto sm:w-[380px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">
@@ -589,7 +599,20 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                                 </p>
                               </div>
                               {!notification.isRead && (
-                                <span className="w-2 h-2 rounded-full bg-[#0755E8] shrink-0 mt-2 self-start ring-4 ring-[#0755E8]/10" />
+                                <div className="flex items-center gap-1.5 shrink-0 mt-1 self-start">
+                                  <button
+                                    type="button"
+                                    title="Mark as read"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markAsRead(notification._id);
+                                    }}
+                                    className="p-1 rounded-full text-slate-400 hover:text-[#0755E8] hover:bg-blue-50 transition-colors cursor-pointer"
+                                  >
+                                    <CheckCheck size={13} />
+                                  </button>
+                                  <span className="w-2 h-2 rounded-full bg-[#0755E8] ring-4 ring-[#0755E8]/10" />
+                                </div>
                               )}
                             </div>
                           ))
@@ -837,11 +860,13 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                   <Link
                     key={item.name}
                     to={item.href}
-                    className="flex items-center gap-3 px-3.5 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl"
+                    className="flex items-center gap-3 px-3.5 py-2 text-xs font-medium text-slate-600 hover:text-[#0755E8] hover:bg-slate-50 rounded-xl transition-colors"
                     onClick={closeAllDropdowns}
                   >
-                    <span className="text-slate-400">{item.icon}</span>
-                    <span>{item.name}</span>
+                    <span className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                      {item.icon}
+                    </span>
+                    <span className="font-semibold text-slate-700">{item.name}</span>
                   </Link>
                 ))}
               </div>

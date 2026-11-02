@@ -80,7 +80,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   return (
     <div className="min-h-screen bg-[#F5F8FF] flex flex-col font-sans text-slate-900 antialiased selection:bg-[#EAF2FF] selection:text-[#0755E8]">
       {/* Top Navigation - Sticky */}
-      <header className="sticky top-0 z-40 bg-white">
+      <header className="sticky top-0 z-50 bg-white">
         <Navigation showSkeletons={showSkeletons} />
       </header>
 

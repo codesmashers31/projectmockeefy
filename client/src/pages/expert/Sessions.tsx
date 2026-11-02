@@ -609,7 +609,12 @@ export default function Sessions() {
     if (!user) return <div className="p-8 text-center text-slate-500 font-medium">Please log in to view sessions.</div>;
 
     return (
-        <div className="h-[calc(100vh-6.5rem)] lg:h-[calc(100vh-7.5rem)] flex flex-col min-h-0 overflow-hidden font-sans">
+        <div className="sidebar-main-card relative w-full h-[calc(100vh-6.5rem)] lg:h-[calc(100vh-7.5rem)] rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 flex flex-col min-h-0 overflow-hidden font-sans text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] animate-in fade-in duration-200">
+            {/* Decorative ambient blue lighting */}
+            <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col min-h-0 flex-1">
             {/* Top Page Header (Reference Style) */}
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 shrink-0">
                 <div>
@@ -2123,6 +2128,7 @@ export default function Sessions() {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }

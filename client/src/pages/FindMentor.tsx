@@ -33,6 +33,14 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 
+const SORT_OPTIONS = [
+  { value: "recommended", label: "Relevance" },
+  { value: "rating", label: "Rating (High to Low)" },
+  { value: "experience", label: "Experience (High to Low)" },
+  { value: "price-low", label: "Price (Low to High)" },
+  { value: "price-high", label: "Price (High to Low)" },
+];
+
 const ITEMS_PER_PAGE = 8;
 const INITIAL_FILTER_ITEMS_LIMIT = 5;
 
@@ -258,6 +266,37 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("All");
   const [sortBy, setSortBy] = useState("recommended");
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsSortOpen(false);
+      }
+    };
+    const handleScrollOrResize = () => {
+      setIsSortOpen(false);
+    };
+
+    if (isSortOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("scroll", handleScrollOrResize, { passive: true, capture: true });
+      window.addEventListener("resize", handleScrollOrResize, { passive: true });
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScrollOrResize, { capture: true });
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [isSortOpen]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
@@ -1216,26 +1255,72 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                   )}
                 </button>
 
-                {/* Compact Sort Control: Assigned at Right */}
+                {/* Compact Custom Sort Dropdown: Assigned at Right */}
                 <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
                   <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 select-none whitespace-nowrap">
                     <ArrowUpDown size={11} className="text-slate-400" />
                     <span>Sort by:</span>
                   </span>
-                  <div className="relative">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      aria-label="Sort by relevance"
-                      className="appearance-none bg-white border border-slate-200/90 text-slate-800 text-xs font-semibold rounded-xl py-1.5 pl-2.5 pr-7 shadow-2xs hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#0755E8]/10 cursor-pointer transition-all"
+                  <div className="relative" ref={sortMenuRef}>
+                    <button
+                      type="button"
+                      aria-haspopup="listbox"
+                      aria-expanded={isSortOpen}
+                      onClick={() => setIsSortOpen((prev) => !prev)}
+                      className={`inline-flex items-center gap-2 bg-white border text-xs font-semibold rounded-full py-1.5 pl-3 pr-2.5 shadow-2xs transition-all cursor-pointer select-none ${
+                        isSortOpen
+                          ? "border-[#0755E8] text-[#0755E8] ring-2 ring-[#0755E8]/15"
+                          : "border-slate-200/90 text-slate-800 hover:border-slate-300 hover:bg-slate-50/50"
+                      }`}
                     >
-                      <option value="recommended">Relevance</option>
-                      <option value="rating">Rating (High to Low)</option>
-                      <option value="experience">Experience (High to Low)</option>
-                      <option value="price-low">Price (Low to High)</option>
-                      <option value="price-high">Price (High to Low)</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                      <span>
+                        {SORT_OPTIONS.find((o) => o.value === sortBy)?.label || "Relevance"}
+                      </span>
+                      <ChevronDown
+                        size={13}
+                        className={`transition-transform duration-200 ${
+                          isSortOpen ? "rotate-180 text-[#0755E8]" : "text-slate-400"
+                        }`}
+                      />
+                    </button>
+
+                    {isSortOpen && (
+                      <div
+                        role="listbox"
+                        className="absolute right-0 top-[calc(100%+6px)] w-56 bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.14)] p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/5"
+                      >
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Sort Options
+                        </div>
+                        <div className="space-y-0.5">
+                          {SORT_OPTIONS.map((opt) => {
+                            const isSelected = sortBy === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                  setSortBy(opt.value);
+                                  setIsSortOpen(false);
+                                }}
+                                className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                                  isSelected
+                                    ? "bg-[#EAF2FF] text-[#0755E8]"
+                                    : "text-slate-700 hover:text-[#0755E8] hover:bg-[#F5F8FF]"
+                                }`}
+                              >
+                                <span>{opt.label}</span>
+                                {isSelected && (
+                                  <Check size={14} className="text-[#0755E8] shrink-0 stroke-[2.5]" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

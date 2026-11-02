@@ -177,7 +177,10 @@ export default function ProfilePage() {
 
   return (
     <div className="h-full">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden">
+      <div className="sidebar-main-card relative rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] h-full flex flex-col overflow-hidden animate-in fade-in duration-200">
+        {/* Decorative ambient blue lighting */}
+        <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
         <div className="flex-1 flex min-h-0">
           {/* LEFT SIDEBAR - Fixed Width on Desktop, Hidden on Mobile */}

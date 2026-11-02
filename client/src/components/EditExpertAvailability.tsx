@@ -902,30 +902,33 @@ const EditExpertAvailability = () => {
   if (loading) return <ExpertPageSkeleton variant="availability" />;
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-8 animate-in fade-in duration-200">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-white z-10">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Availability & Scheduling</h1>
-          <p className="text-sm text-gray-500 mt-1">Configure your weekly hours and session preferences.</p>
+      <div className="relative z-10 space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Availability &amp; Scheduling</h1>
+            <p className="text-sm sm:text-base text-slate-500 font-medium mt-1">Configure your weekly hours and session preferences.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard/availability')}
+              className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              Cancel
+            </button>
+            <PrimaryButton onClick={saveAvailability}>
+              <CheckCircle2 size={18} className="mr-2" />
+              Save Changes
+            </PrimaryButton>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard/availability')}
-            className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            Cancel
-          </button>
-          <PrimaryButton onClick={saveAvailability}>
-            <CheckCircle2 size={18} className="mr-2" />
-            Save Changes
-          </PrimaryButton>
-        </div>
-      </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        {/* Content */}
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
 
           {/* Left Column: Settings & Blocked Dates */}

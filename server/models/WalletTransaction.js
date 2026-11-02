@@ -46,4 +46,8 @@ const walletTransactionSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Performance Indexes (Phase C)
+walletTransactionSchema.index({ userId: 1, createdAt: -1 });
+walletTransactionSchema.index({ status: 1 });
+
 export default mongoose.model("WalletTransaction", walletTransactionSchema);
