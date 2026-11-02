@@ -16,17 +16,26 @@ const razorpay = new Razorpay({
 
 export const createOrder = async (req, res) => {
     try {
-        const { amount, currency = 'INR', receipt } = req.body;
+        const { amount, currency = 'INR', receipt, planId } = req.body;
 
-        if (!amount) {
-            return res.status(400).json({ success: false, message: 'Amount is required' });
+        const numAmount = Number(amount);
+        if (!amount || isNaN(numAmount) || numAmount <= 0) {
+            return res.status(400).json({ success: false, message: 'A valid positive amount is required' });
         }
 
+        // Authoritative validation for subscription plans (supports test prices 1 & 2 and standard 219 & 419)
+        const targetPlan = planId || (receipt && receipt.includes('pro-219') ? 'pro-219' : (receipt && receipt.includes('ultimate-419') ? 'ultimate-419' : null));
+        if (targetPlan === 'pro-219' && ![1, 219].includes(numAmount)) {
+            return res.status(400).json({ success: false, message: 'Invalid price for Pro plan' });
+        }
+        if (targetPlan === 'ultimate-419' && ![2, 419].includes(numAmount)) {
+            return res.status(400).json({ success: false, message: 'Invalid price for Ultimate plan' });
+        }
 
         const options = {
-            amount: amount * 100, // Razorpay works in paise
+            amount: Math.round(numAmount * 100), // Razorpay works in paise
             currency,
-            receipt,
+            receipt: receipt || `rcpt_${Date.now()}`,
         };
 
         const order = await razorpay.orders.create(options);
@@ -335,6 +344,21 @@ export const verifyPayment = async (req, res) => {
                 }).catch((emailErr) => {
                     console.error("[BookingPayment] Error in asynchronous triggerBookingEmails:", emailErr);
                 });
+
+                // Record booking payment to permanently prevent replay attacks
+                try {
+                    await PaymentRecord.create({
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id,
+                        userId: bookingDetails.candidateId || user?.id || user?.userId,
+                        paymentType: 'booking',
+                        amount: Number(bookingDetails.price) || 0,
+                        sessionId: session.sessionId,
+                        status: 'verified'
+                    });
+                } catch (recErr) {
+                    console.warn("[PaymentRecord] Failed to record booking payment:", recErr.message);
+                }
 
                 return res.status(200).json({
                     success: true,
