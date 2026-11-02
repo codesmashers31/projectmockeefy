@@ -1406,7 +1406,12 @@ export const updateAvailability = async (req, res) => {
         for (let i = 0; i < sortedSlots.length; i++) {
           const slot = sortedSlots[i];
           const start = timeToMinutes(slot.from);
-          const end = timeToMinutes(slot.to);
+          let end = timeToMinutes(slot.to);
+          if (end === 0 && start > 0) {
+            end = 24 * 60; // 1440 (midnight)
+          } else if (end < start) {
+            end += 24 * 60;
+          }
 
           if (start >= end) {
             return res.status(400).json({
@@ -1424,7 +1429,12 @@ export const updateAvailability = async (req, res) => {
 
           if (i > 0) {
             const prevSlot = sortedSlots[i - 1];
-            const prevEnd = timeToMinutes(prevSlot.to);
+            let prevEnd = timeToMinutes(prevSlot.to);
+            if (prevEnd === 0 && timeToMinutes(prevSlot.from) > 0) {
+              prevEnd = 24 * 60;
+            } else if (prevEnd < timeToMinutes(prevSlot.from)) {
+              prevEnd += 24 * 60;
+            }
             if (start < prevEnd) {
               return res.status(400).json({
                 success: false,

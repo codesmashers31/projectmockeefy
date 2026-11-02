@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import {
   getKolkataToday,
   getKolkataTimeParts,
+  isTodayBookingCutoffReached,
   getKolkataDateString,
   getInitialKolkataMonth,
   generateAvailableSlotsForDate,
@@ -239,6 +240,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
+
+  const cutoffAlertShownDateRef = useRef<string | null>(null);
+  const [currentTick, setCurrentTick] = useState<number>(() => Date.now());
+
+  // Periodically update current tick to ensure real-time cutoff tracking across 12:00 PM boundary
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
+  // When 12:00 PM cutoff is reached today, inform the user once per calendar date transition
+  useEffect(() => {
+    if (!isOpen) return;
+    const now = new Date();
+    const todayStr = getKolkataDateString(now);
+    if (isTodayBookingCutoffReached(now)) {
+      if (cutoffAlertShownDateRef.current !== todayStr) {
+        cutoffAlertShownDateRef.current = todayStr;
+        toast.info("Today's booking window has closed. We've moved you to tomorrow's available slots.", {
+          id: "today-cutoff-alert",
+          duration: 4500,
+        });
+      }
+    }
+  }, [isOpen, currentTick]);
 
   // Reset booking flow state to selecting whenever modal opens
   useEffect(() => {
@@ -780,12 +809,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const dates = useMemo(() => {
     if (!activeAvailability) return [];
 
+    const now = new Date();
     const parts = getKolkataTimeParts(currentMonth);
     const year = parts.year;
     const month = parts.month;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const allDates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
-    const todayDateStr = getKolkataDateString(new Date());
+    const todayDateStr = getKolkataDateString(now);
 
     return allDates.filter(date => {
       const dateStr = getKolkataDateString(date);
@@ -793,10 +823,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (dateStr < todayDateStr) return false;
 
       // Only show dates where the expert has scheduled timings with remaining available slots
-      const slots = generateAvailableSlotsForDate(date, activeAvailability, sessionDuration, bookedSessions);
+      const slots = generateAvailableSlotsForDate(date, activeAvailability, sessionDuration, bookedSessions, now);
       return slots.length > 0;
     });
-  }, [currentMonth, activeAvailability, sessionDuration, bookedSessions]);
+  }, [currentMonth, activeAvailability, sessionDuration, bookedSessions, currentTick]);
 
   // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
   const activeDate = useMemo(() => {
@@ -862,8 +892,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Generate Available Slots for Selected Date
   const currentSlots = useMemo(() => {
     if (!activeAvailability || !activeDate) return [];
-    return generateAvailableSlotsForDate(activeDate, activeAvailability, sessionDuration, bookedSessions);
-  }, [activeDate, activeAvailability, sessionDuration, bookedSessions]);
+    return generateAvailableSlotsForDate(activeDate, activeAvailability, sessionDuration, bookedSessions, new Date());
+  }, [activeDate, activeAvailability, sessionDuration, bookedSessions, currentTick]);
 
   // Auto-deselect if the selected slot becomes unavailable or was booked
   useEffect(() => {

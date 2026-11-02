@@ -43,7 +43,7 @@ const displayTime = (time24: string) => {
   const period = h >= 12 ? "PM" : "AM";
   let hour = h % 12;
   if (hour === 0) hour = 12;
-  return `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${period}`;
+  return `${hour.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')} ${period}`;
 };
 
 const ViewExpertAvailability = () => {

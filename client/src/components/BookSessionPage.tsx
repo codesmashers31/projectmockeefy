@@ -17,6 +17,7 @@ import {
   Profile,
   getKolkataToday,
   getKolkataTimeParts,
+  isTodayBookingCutoffReached,
   getKolkataDateString,
   getInitialKolkataMonth,
   generateAvailableSlotsForDate,
@@ -391,6 +392,32 @@ export default function BookSessionPage() {
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
 
+  const cutoffAlertShownDateRef = useRef<string | null>(null);
+  const [currentTick, setCurrentTick] = useState<number>(() => Date.now());
+
+  // Periodically update current tick to ensure real-time cutoff tracking across 12:00 PM boundary
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // When 12:00 PM cutoff is reached today, inform the user once per calendar date transition
+  useEffect(() => {
+    const now = new Date();
+    const todayStr = getKolkataDateString(now);
+    if (isTodayBookingCutoffReached(now)) {
+      if (cutoffAlertShownDateRef.current !== todayStr) {
+        cutoffAlertShownDateRef.current = todayStr;
+        toast.info("Today's booking window has closed. We've moved you to tomorrow's available slots.", {
+          id: "today-cutoff-alert",
+          duration: 4500,
+        });
+      }
+    }
+  }, [currentTick]);
+
   const [canScrollCarouselLeft, setCanScrollCarouselLeft] = useState(false);
   const [canScrollCarouselRight, setCanScrollCarouselRight] = useState(false);
 
@@ -532,12 +559,13 @@ export default function BookSessionPage() {
   const dates = useMemo(() => {
     if (!profile?.availability) return [];
 
+    const now = new Date();
     const parts = getKolkataTimeParts(currentMonth);
     const year = parts.year;
     const month = parts.month;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const allDates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
-    const todayDateStr = getKolkataDateString(new Date());
+    const todayDateStr = getKolkataDateString(now);
 
     return allDates.filter(date => {
       const dateStr = getKolkataDateString(date);
@@ -545,10 +573,10 @@ export default function BookSessionPage() {
       if (dateStr < todayDateStr) return false;
 
       // Only show dates where the expert has scheduled timings with remaining available slots
-      const slots = generateAvailableSlotsForDate(date, profile.availability, sessionDuration, bookedSessions);
+      const slots = generateAvailableSlotsForDate(date, profile.availability, sessionDuration, bookedSessions, now);
       return slots.length > 0;
     });
-  }, [currentMonth, profile?.availability, sessionDuration, bookedSessions]);
+  }, [currentMonth, profile?.availability, sessionDuration, bookedSessions, currentTick]);
 
   // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
   const activeDate = useMemo(() => {
@@ -612,8 +640,8 @@ export default function BookSessionPage() {
   // Generate slots for selected date
   const currentSlots = useMemo(() => {
     if (!profile?.availability || !activeDate) return [];
-    return generateAvailableSlotsForDate(activeDate, profile.availability, sessionDuration, bookedSessions);
-  }, [activeDate, profile?.availability, sessionDuration, bookedSessions]);
+    return generateAvailableSlotsForDate(activeDate, profile.availability, sessionDuration, bookedSessions, new Date());
+  }, [activeDate, profile?.availability, sessionDuration, bookedSessions, currentTick]);
 
   // Auto-deselect if the selected slot becomes unavailable or was booked
   useEffect(() => {
