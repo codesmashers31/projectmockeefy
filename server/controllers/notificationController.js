@@ -35,23 +35,35 @@ export const markAsRead = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ message: "Unauthorized: User ID not found" });
         }
-        const { notificationIds } = req.body; // Array of IDs, single ID string, or 'all'
+        const { notificationIds } = req.body || {};
 
         let ids = notificationIds;
-        if (typeof ids === 'string' && ids !== 'all') {
+        if (req.params?.id) {
+            ids = [req.params.id];
+        } else if (req.path?.includes('mark-all-read') || req.originalUrl?.includes('mark-all-read')) {
+            ids = 'all';
+        } else if (typeof ids === 'string' && ids !== 'all') {
             ids = [ids];
-        } else if (!ids && req.body.notificationId) {
+        } else if (!ids && req.body?.notificationId) {
             ids = [req.body.notificationId];
         }
 
+        // Build user query supporting both ObjectId and string representation
+        const userQuery = {
+            $or: [
+                { userId: userId },
+                { userId: userId.toString() }
+            ]
+        };
+
         if (ids === 'all') {
             await Notification.updateMany(
-                { userId, isRead: false },
+                { ...userQuery, isRead: false },
                 { isRead: true }
             );
         } else if (Array.isArray(ids) && ids.length > 0) {
             await Notification.updateMany(
-                { userId, _id: { $in: ids } },
+                { ...userQuery, _id: { $in: ids } },
                 { isRead: true }
             );
         }
@@ -63,7 +75,9 @@ export const markAsRead = async (req, res) => {
             data: { notificationIds: ids }
         });
 
-        res.json({ success: true });
+        const unreadCount = await Notification.countDocuments({ ...userQuery, isRead: false });
+
+        res.json({ success: true, unreadCount });
     } catch (error) {
         console.error("Mark Read Error:", error);
         res.status(500).json({ message: "Failed to update notifications" });

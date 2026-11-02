@@ -132,9 +132,14 @@ export default function ExpertSkillManager() {
     if (profileLoading) return <ExpertPageSkeleton variant="skills" />;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden">
+        <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-8 animate-in fade-in duration-200">
+            {/* Decorative ambient blue lighting */}
+            <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
             {/* Header */}
-            <div className="p-6 border-b border-gray-100 bg-white shrink-0">
+            <div className="relative z-10 space-y-8">
+            {/* Header */}
+            <div>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Skills & Expertise</h1>
@@ -158,7 +163,7 @@ export default function ExpertSkillManager() {
             </div>
 
             {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+            <div>
                 <div className="space-y-8 max-w-5xl mx-auto">
                     {/* Selection Area */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -272,6 +277,7 @@ export default function ExpertSkillManager() {
                         )}
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

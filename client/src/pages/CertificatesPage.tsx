@@ -1171,7 +1171,12 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   }
 
   return (
-    <div className="w-full font-sans text-left selection:bg-[#EAF2FF] selection:text-[#0755E8]">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left selection:bg-[#EAF2FF] selection:text-[#0755E8] animate-in fade-in duration-200">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
+      <div className="relative z-10">
       <div className="w-full space-y-6 sm:space-y-8">
         {/* ================================================================== */}
         {/* 1. Header: My Certificates Title Row                               */}
@@ -2170,6 +2175,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
               isMaster={downloadTarget.isMaster}
             />
           )}
+        </div>
         </div>
       </div>
     </div>
