@@ -129,9 +129,14 @@ export default function ExpertReports() {
     if (loading) return <ExpertPageSkeleton variant="reports" />;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col overflow-hidden">
+        <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-8 animate-in fade-in duration-200">
+            {/* Decorative ambient blue lighting */}
+            <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
             {/* Header */}
-            <div className="p-6 border-b border-gray-100 bg-white shrink-0">
+            <div className="relative z-10 space-y-8">
+            {/* Header */}
+            <div>
                 <h3 className="text-xl font-bold text-gray-900">Interview Reports</h3>
                 <p className="text-sm text-gray-500 mt-1">Submit feedback for completed sessions and view history.</p>
 
@@ -152,7 +157,7 @@ export default function ExpertReports() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+            <div>
                 {activeTab === 'pending' ? (
                     <div className="space-y-4">
                         {sessions.length === 0 && !loading && (
@@ -290,6 +295,7 @@ export default function ExpertReports() {
                     </div>
                 </div>
             )}
+        </div>
         </div>
     );
 }

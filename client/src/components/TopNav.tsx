@@ -44,14 +44,21 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const profileRef = useRef<HTMLDivElement | null>(null);
 
-  const unreadCount = notifications.filter((n) => n.read === false || n.isRead === false).length;
+  const unreadCount = notifications.filter((n) => !n.isRead && !n.read).length;
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
     try {
       setLoadingNotifications(true);
       const res = await axios.get(`/api/notifications`);
-      setNotifications(res.data.notifications || []);
+      const raw = res.data.notifications || [];
+      const formatted = raw.map((n: any) => ({
+        ...n,
+        id: n._id || n.id,
+        isRead: Boolean(n.isRead ?? n.read),
+        read: Boolean(n.isRead ?? n.read),
+      }));
+      setNotifications(formatted);
     } catch (err) {
       console.error("Failed to fetch notifications", err);
     } finally {
@@ -106,20 +113,22 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
     };
   }, []);
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      await axios.post(`/api/notifications/${id}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id || n._id === id ? { ...n, read: true, isRead: true } : n))
+      );
+      await axios.put('/api/notifications/read', { notificationIds: [id] });
     } catch (err) {
       console.error("Failed to mark notification read", err);
-      fetchNotifications();
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      await axios.post(`/api/notifications/mark-all-read`);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, isRead: true })));
+      await axios.put('/api/notifications/read', { notificationIds: 'all' });
     } catch (err) {
       console.error("Failed to mark all read", err);
       fetchNotifications();
@@ -177,7 +186,7 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
           )}
 
           {isNotificationsOpen && (
-             <div className="fixed inset-x-3 sm:inset-x-auto top-[72px] sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-[360px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+             <div className="fixed inset-x-3 sm:inset-x-auto sm:absolute top-[72px] sm:top-full sm:right-0 sm:-translate-x-3 sm:mt-2.5 w-auto sm:w-[360px] max-w-sm mx-auto sm:max-w-none bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">Notifications</h3>
@@ -215,20 +224,40 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
                         <p className="text-slate-400 text-[11px] mt-0.5">No new notifications</p>
                       </div>
                     ) : (
-                      notifications.map(n => (
-                         <div key={n.id} onClick={() => markAsRead(n.id)} className={`px-4 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors flex items-start gap-3 relative ${!n.read ? "bg-[#F5F8FF]/80" : ""}`}>
-                            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0 mt-0.5 text-[#0755E8]">
-                               <Bell size={15} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                               <p className={`text-xs truncate ${!n.read ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>{n.title}</p>
-                               <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
-                            </div>
-                            {!n.read && (
-                               <span className="w-2 h-2 rounded-full bg-[#0755E8] shrink-0 mt-2 self-start ring-4 ring-[#0755E8]/10" />
-                            )}
-                         </div>
-                      ))
+                      notifications.map(n => {
+                         const isItemUnread = !n.isRead && !n.read;
+                         const notifId = n.id || n._id || '';
+                         return (
+                           <div
+                             key={notifId}
+                             onClick={() => {
+                               if (isItemUnread) markAsRead(notifId);
+                             }}
+                             className={`px-4 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors flex items-start gap-3 relative group ${isItemUnread ? "bg-[#F5F8FF]/80" : ""}`}
+                           >
+                              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0 mt-0.5 text-[#0755E8]">
+                                 <Bell size={15} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                 <p className={`text-xs truncate ${isItemUnread ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>{n.title}</p>
+                                 <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                              </div>
+                              {isItemUnread && (
+                                 <div className="flex items-center gap-1.5 shrink-0 mt-1 self-start">
+                                   <button
+                                     type="button"
+                                     title="Mark as read"
+                                     onClick={(e) => markAsRead(notifId, e)}
+                                     className="p-1 rounded-full text-slate-400 hover:text-[#0755E8] hover:bg-blue-50 transition-colors cursor-pointer"
+                                   >
+                                     <CheckCheck size={13} />
+                                   </button>
+                                   <span className="w-2 h-2 rounded-full bg-[#0755E8] ring-4 ring-[#0755E8]/10" />
+                                 </div>
+                              )}
+                           </div>
+                         );
+                      })
                     )}
                 </div>
              </div>
