@@ -559,29 +559,145 @@ const EditExpertAvailability = () => {
     return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   }
 
+  const getSlotRangeMinutes = (slot: Slot) => {
+    const start = timeToMinutes(slot.from);
+    let end = timeToMinutes(slot.to);
+    if (end === 0 && start > 0) {
+      end = 24 * 60; // 1440 (midnight at end of day)
+    } else if (end < start) {
+      end += 24 * 60;
+    }
+    return { start, end };
+  };
+
+  const minutesToHHMM = (totalMinutes: number): string => {
+    const adjusted = ((totalMinutes % 1440) + 1440) % 1440;
+    const hours = Math.floor(adjusted / 60);
+    const minutes = adjusted % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  const getNextDay = (currentDay: string): string => {
+    const idx = days.indexOf(currentDay);
+    return days[(idx + 1) % days.length];
+  };
+
+  const getNextSlotForDay = (
+    day: string,
+    weekly: Record<string, Slot[]>,
+    duration: number = 30
+  ): { targetDay: string; slot: Slot; crossedMidnight: boolean } | null => {
+    const currentSlots = weekly[day] || [];
+    
+    // If the day is currently empty, begin with standard 09:00 AM slot
+    if (currentSlots.length === 0) {
+      const startMin = 9 * 60; // 09:00 AM
+      const endMin = startMin + duration;
+      return {
+        targetDay: day,
+        slot: {
+          from: minutesToHHMM(startMin),
+          to: minutesToHHMM(endMin),
+        },
+        crossedMidnight: false,
+      };
+    }
+
+    // Sort existing slots by start time
+    const sortedSlots = [...currentSlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
+    const lastSlot = sortedSlots[sortedSlots.length - 1];
+    const lastRange = getSlotRangeMinutes(lastSlot);
+
+    let candStart = lastRange.end;
+    let targetDay = day;
+    let crossedMidnight = false;
+
+    // If latest slot ends at or crosses midnight (1440 min = 12:00 AM)
+    if (candStart >= 1440) {
+      targetDay = getNextDay(day);
+      candStart = candStart - 1440;
+      crossedMidnight = true;
+    }
+
+    let candEnd = candStart + duration;
+    const maxSearchSteps = 48; // up to 24 hours of 30-min steps
+    let steps = 0;
+
+    while (steps < maxSearchSteps) {
+      if (candStart >= 1440) {
+        targetDay = getNextDay(targetDay);
+        candStart = candStart - 1440;
+        candEnd = candStart + duration;
+        crossedMidnight = true;
+      }
+
+      const targetSlots = weekly[targetDay] || [];
+      const overlaps = targetSlots.some(s => {
+        const r = getSlotRangeMinutes(s);
+        return candStart < r.end && candEnd > r.start;
+      });
+
+      if (!overlaps) {
+        return {
+          targetDay,
+          slot: {
+            from: minutesToHHMM(candStart),
+            to: minutesToHHMM(candEnd),
+          },
+          crossedMidnight,
+        };
+      }
+
+      const overlappingSlot = targetSlots.find(s => {
+        const r = getSlotRangeMinutes(s);
+        return candStart < r.end && candEnd > r.start;
+      });
+
+      if (overlappingSlot) {
+        const r = getSlotRangeMinutes(overlappingSlot);
+        candStart = Math.max(candStart + duration, r.end);
+      } else {
+        candStart += duration;
+      }
+      candEnd = candStart + duration;
+      steps++;
+    }
+
+    return null;
+  };
+
   const addSlotForDay = (day: string) => {
-    const currentSlots = profile.availability.weekly[day] || [];
+    const result = getNextSlotForDay(
+      day,
+      profile.availability.weekly,
+      profile.availability.sessionDuration
+    );
+
+    if (!result) {
+      toast.error("Could not find an available continuous slot.");
+      return;
+    }
+
+    const { targetDay, slot, crossedMidnight } = result;
+    const targetSlots = profile.availability.weekly[targetDay] || [];
     const maxPerDay = profile.availability.maxPerDay || 4;
 
-    if (currentSlots.length >= maxPerDay) {
-      toast.error(`Daily limit reached (${maxPerDay} sessions).`);
+    if (targetSlots.length >= maxPerDay) {
+      toast.error(`Daily limit reached on ${dayLabel[targetDay]} (${maxPerDay} sessions).`);
       return;
     }
 
     setProfile((p) => {
       const weekly = { ...p.availability.weekly };
-      const daySlots = [...(weekly[day] || [])].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
-      let defaultStart = "09:00";
-      if (daySlots.length > 0) {
-        const lastSlot = daySlots[daySlots.length - 1];
-        if (lastSlot.to) {
-          defaultStart = lastSlot.to;
-        }
-      }
-      const defaultEnd = calculateEndTime(defaultStart, p.availability.sessionDuration);
-      weekly[day] = [...daySlots, { from: defaultStart, to: defaultEnd }];
+      const currentTargetSlots = [...(weekly[targetDay] || [])];
+      const newSlots = [...currentTargetSlots, slot].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
+      weekly[targetDay] = newSlots;
       return { ...p, availability: { ...p.availability, weekly } };
     });
+
+    if (crossedMidnight) {
+      toast.info(`Slot reached midnight. Added ${displayTime(slot.from)} - ${displayTime(slot.to)} to ${dayLabel[targetDay]}.`);
+    }
   };
 
   const updateSlotForDay = (day: string, idx: number, newStartTime: string) => {
@@ -725,7 +841,12 @@ const EditExpertAvailability = () => {
         for (let i = 0; i < sortedSlots.length; i++) {
           const slot = sortedSlots[i];
           const start = timeToMinutes(slot.from);
-          const end = timeToMinutes(slot.to);
+          let end = timeToMinutes(slot.to);
+          if (end === 0 && start > 0) {
+            end = 24 * 60; // 1440 (midnight)
+          } else if (end < start) {
+            end += 24 * 60;
+          }
 
           if (start >= end) {
             toast.error(`Invalid slot on ${label}: ${displayTime(slot.from)} - ${displayTime(slot.to)} cannot end before it starts.`);
@@ -739,7 +860,12 @@ const EditExpertAvailability = () => {
 
           if (i > 0) {
             const prevSlot = sortedSlots[i - 1];
-            const prevEnd = timeToMinutes(prevSlot.to);
+            let prevEnd = timeToMinutes(prevSlot.to);
+            if (prevEnd === 0 && timeToMinutes(prevSlot.from) > 0) {
+              prevEnd = 24 * 60;
+            } else if (prevEnd < timeToMinutes(prevSlot.from)) {
+              prevEnd += 24 * 60;
+            }
             if (start < prevEnd) {
               toast.error(`Slot overlap on ${label}: The slot ${displayTime(slot.from)} - ${displayTime(slot.to)} overlaps with ${displayTime(prevSlot.from)} - ${displayTime(prevSlot.to)}.`);
               return;

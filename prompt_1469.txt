@@ -1,0 +1,825 @@
+<USER_REQUEST>
+# MOCKEEFY CERTIFICATE PAGE — COMPLETE UI REBUILD
+## TARGET: SECOND SCREEN RECORDING
+
+You are working on the existing Mockeefy application.
+
+I need you to completely rebuild the **Certificate Page presentation/layout** so that it matches the **SECOND SCREEN RECORDING** exactly.
+
+The current Certificate Page is NOT the desired design.
+
+The current page looks like:
+
+- "My Certificate" centered at the top
+- "Your verified Mockeefy career credential"
+- horizontal session/date pills
+- one extremely large certificate
+- certificate preview taking most of the page
+
+That entire main Certificate Page layout must be removed.
+
+The **SECOND SCREEN RECORDING is the visual and structural source of truth.**
+
+Do NOT patch the current layout.
+
+Do NOT just resize the existing certificate.
+
+Do NOT keep the current "My Certificate" + session pills + giant certificate structure.
+
+Instead, rebuild the Certificate Page layout from scratch while preserving the existing working certificate rendering, authentication, dynamic data, preview, and PDF functionality.
+
+---
+
+# 1. KEEP THE EXISTING GLOBAL APP SHELL
+
+Do NOT redesign the entire application.
+
+Keep the existing:
+
+- Mockeefy top navigation/header
+- Mockeefy logo
+- My Sessions navigation
+- Certificates active navigation state
+- More menu
+- Search interview experts
+- Plans button
+- notification icon
+- logged-in user/profile area
+- left navigation sidebar
+- Interview Experts
+- Saved Interview Experts
+- My Sessions
+- Certificates
+- Profile & Settings
+- Upcoming Session card
+- logged-in user card
+
+The **Certificate Page content area** is what must be rebuilt.
+
+Do not unnecessarily modify unrelated pages.
+
+---
+
+# 2. REMOVE THE CURRENT CERTIFICATE PAGE HERO
+
+Completely remove the current structure:
+
+```text
+My Certificate
+
+Your verified Mockeefy career credential
+
+[ IT Session (date) ]
+[ IT Session (date) ]
+[ IT Session (date) ]
+[ IT Session (date) ]
+
+[ HUGE CERTIFICATE ]
+```
+
+This is NOT the target.
+
+Do not keep:
+
+- centered "My Certificate"
+- centered subtitle
+- session/date pill row
+- giant certificate occupying the majority of the screen
+
+Replace it with the target structure described below.
+
+---
+
+# 3. TARGET PAGE STRUCTURE
+
+The final Certificate Page should follow this hierarchy:
+
+```text
+GLOBAL HEADER
+────────────────────────────────────────────────────
+
+LEFT SIDEBAR        MAIN CERTIFICATE CONTENT
+                    │
+                    ├── MASTER CREDENTIAL SUMMARY CARD
+                    │
+                    ├── CERTIFICATE FILTER TABS
+                    │
+                    └── CERTIFICATE GRID
+                         ├── Certificate Card
+                         ├── Certificate Card
+                         ├── Certificate Card
+                         └── ...
+```
+
+This should visually match the SECOND SCREEN RECORDING.
+
+---
+
+# 4. MASTER CREDENTIAL SUMMARY CARD
+
+At the top of the main content area, create a large horizontal credential summary card.
+
+This is the most important new section.
+
+The card should visually resemble the large light-blue/white card shown at the top of the SECOND SCREEN RECORDING.
+
+Use:
+
+- very light blue/white background
+- subtle blue gradient/glow
+- thin light-blue border
+- large rounded corners
+- spacious internal padding
+- subtle decorative background curves/dots
+- professional Mockeefy visual language
+
+Do NOT make it excessively tall.
+
+It should be a horizontal landscape card.
+
+---
+
+# 5. LEFT SIDE OF MASTER CREDENTIAL CARD
+
+Inside the summary card, create the left content area.
+
+At the top:
+
+### Credential badge
+
+Display a pill such as:
+
+`MASTER CREDENTIAL CONFERRED`
+
+Use:
+
+- light blue background
+- blue border
+- blue text
+- small blue status dot
+- rounded pill shape
+
+Below that display the credential ID.
+
+Example:
+
+`ID: MCFY-MST-A163AA-2026`
+
+IMPORTANT:
+
+Do NOT hardcode this exact ID.
+
+Use the application's real credential/certificate ID if available.
+
+If the current backend already provides a credential ID, use it.
+
+Do not create fake IDs.
+
+---
+
+# 6. MASTER CREDENTIAL TITLE
+
+Below the ID, display:
+
+`Mockeefy Master Interview`
+`Excellence Credential`
+
+This should be a strong dark-navy heading.
+
+Use approximately 2 lines as shown in the target.
+
+Typography should be:
+
+- bold
+- professional
+- dark navy
+- clearly larger than the supporting description
+- NOT oversized
+
+---
+
+# 7. MASTER CREDENTIAL DESCRIPTION
+
+Below the title, display a short description similar to:
+
+`Conferred for completing 19 sessions across multiple domains. Demonstrates comprehensive interview mastery.`
+
+However:
+
+DO NOT hardcode "19" if the application already knows the actual number.
+
+Calculate/display the real number of completed qualifying sessions.
+
+The text should dynamically reflect the logged-in user's actual credential progress.
+
+Example structure:
+
+`Conferred for completing {completedSessions} sessions across multiple domains. Demonstrates comprehensive interview mastery.`
+
+If the master credential has not yet been earned, use the application's actual state and appropriate wording.
+
+Do not create fake completion data.
+
+---
+
+# 8. RIGHT SIDE OF MASTER CREDENTIAL CARD
+
+On the right side of the summary card, create:
+
+### Small certificate thumbnail
+
+Show a small preview of the actual Mockeefy certificate.
+
+Important:
+
+This is a THUMBNAIL only.
+
+It must NOT become another huge certificate.
+
+Use the existing approved certificate renderer/artwork.
+
+Maintain the certificate's exact aspect ratio.
+
+The thumbnail should look approximately like the small certificate shown in the SECOND SCREEN RECORDING.
+
+---
+
+# 9. PREVIEW BUTTON
+
+Next to the certificate thumbnail, show a compact:
+
+`Preview`
+
+button.
+
+Style:
+
+- white background
+- subtle border
+- dark navy text
+- rounded pill/button
+- professional
+
+It must open the existing certificate preview functionality.
+
+Do not create a new fake preview system.
+
+Reuse the existing preview/modal functionality.
+
+---
+
+# 10. DOWNLOAD MASTER PDF BUTTON
+
+Next to Preview, show a primary blue button:
+
+`Download Master PDF`
+
+Use the existing PDF generation/download functionality if the master credential PDF already exists.
+
+If the application has a different existing action/name, preserve its actual functionality but follow the target UI styling.
+
+Do not create fake downloads.
+
+The button should be:
+
+- blue
+- white text
+- rounded
+- visually prominent
+- with the existing download icon
+
+---
+
+# 11. CREDENTIAL SUMMARY CARD LAYOUT
+
+The final horizontal card should approximately follow this structure:
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│  [ MASTER CREDENTIAL CONFERRED ]                         [certificate]       │
+│  ID: MCFY-MST-XXXX-2026                                  [ Preview ]         │
+│                                                           [Download Master]  │
+│  Mockeefy Master Interview                                                     │
+│  Excellence Credential                                                       │
+│                                                                              │
+│  Conferred for completing X sessions across                                  │
+│  multiple domains. Demonstrates comprehensive                               │
+│  interview mastery.                                                         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+Do not literally draw this ASCII structure.
+
+Use it only as the layout hierarchy.
+
+---
+
+# 12. CERTIFICATE FILTER TABS
+
+Immediately below the Master Credential summary card, add the filter controls shown in the SECOND SCREEN RECORDING.
+
+There should be:
+
+### Active tab
+
+`All Certificates`
+
+with the count.
+
+Example:
+
+`All Certificates 19`
+
+### Category tab
+
+`IT`
+
+with its count.
+
+Example:
+
+`IT 19`
+
+Use real dynamic counts.
+
+Do NOT hardcode `19`.
+
+If other certificate categories exist in the application, generate the filters dynamically from the actual data.
+
+The active tab should use the Mockeefy blue treatment.
+
+Inactive tabs should be white/light with subtle borders.
+
+---
+
+# 13. CERTIFICATE GRID
+
+Below the filter tabs, create the main certificate collection.
+
+This is one of the biggest differences from the current UI.
+
+The current page shows one huge certificate.
+
+The target page shows a **grid of certificate cards**.
+
+Implement a responsive grid.
+
+Desktop:
+
+```text
+┌─────────────────────┐   ┌─────────────────────┐
+│                     │   │                     │
+│   CERTIFICATE       │   │   CERTIFICATE       │
+│   PREVIEW           │   │   PREVIEW           │
+│                     │   │                     │
+└─────────────────────┘   └─────────────────────┘
+```
+
+At least two certificate cards should fit comfortably across the main content area on desktop, matching the SECOND SCREEN RECORDING.
+
+---
+
+# 14. CERTIFICATE CARD
+
+Each certificate card should be a clean white/light card.
+
+Use:
+
+- white background
+- subtle border
+- rounded corners
+- subtle shadow
+- comfortable padding
+- professional spacing
+
+Inside each card:
+
+### Certificate preview
+
+Show the actual certificate artwork as a proportional image/renderer.
+
+IMPORTANT:
+
+Do NOT redesign the certificate artwork.
+
+Use the already-approved Mockeefy certificate.
+
+Maintain the correct aspect ratio.
+
+The certificate should fit naturally inside the card.
+
+---
+
+# 15. CERTIFICATE CARD DATA
+
+Each certificate card should dynamically represent a real completed mock interview/certificate.
+
+Display the actual available data, such as:
+
+- domain
+- session type
+- issued date
+- candidate
+- certificate status
+- certificate ID if applicable
+
+Do not create fake certificates.
+
+Do not hardcode:
+
+`Darwin`
+
+`Joel A`
+
+`Oct 26, 2026`
+
+unless those values actually belong to the logged-in user/data.
+
+Use the existing backend/API/database data.
+
+---
+
+# 16. CERTIFICATE CARD ACTIONS
+
+Each certificate card should have a clean action area.
+
+For example:
+
+`Preview`
+
+and/or
+
+`Download`
+
+depending on what functionality already exists.
+
+Reuse the existing preview and PDF generation functionality.
+
+Do not create fake buttons that do nothing.
+
+---
+
+# 17. DO NOT DISPLAY A GIANT CERTIFICATE
+
+This is critical.
+
+The target page is a **certificate collection/gallery**, not a single full-screen certificate viewer.
+
+Therefore:
+
+DO NOT:
+
+- display one huge certificate immediately under the page heading
+- stretch a certificate across the entire main content
+- use the certificate as the entire page
+- create a giant modal-like certificate as the default page content
+
+Instead:
+
+**MASTER CREDENTIAL SUMMARY**
+↓
+**FILTER TABS**
+↓
+**CERTIFICATE GRID**
+
+That is the desired hierarchy.
+
+---
+
+# 18. REMOVE SESSION DATE PILLS
+
+Remove the current row:
+
+`IT Session (Oct 27, 2026)`
+`IT Session (Oct 27, 2026)`
+`IT Session (Oct 29, 2026)`
+etc.
+
+These pills are NOT part of the desired Certificate Page design.
+
+They should be replaced by the certificate category filter:
+
+`All Certificates`
+`IT`
+
+and dynamically generated categories if required.
+
+---
+
+# 19. PAGE WIDTH
+
+Do NOT make the main page excessively wide.
+
+The target second recording uses:
+
+- persistent sidebar
+- controlled main content area
+- horizontal credential summary card
+- certificate grid
+
+The main content should use the available space intelligently.
+
+Do not make the certificate grid unnecessarily narrow.
+
+Do not make the entire page full-bleed.
+
+Use a professional content width and spacing matching the second recording.
+
+---
+
+# 20. RESPONSIVE GRID
+
+Desktop:
+
+```text
+2 certificate cards per row
+```
+
+Large desktop:
+
+```text
+2–3 cards per row depending on available width
+```
+
+Tablet:
+
+```text
+2 cards per row if space permits
+```
+
+Mobile:
+
+```text
+1 card per row
+```
+
+The certificate artwork must always maintain its aspect ratio.
+
+Never stretch or squash the certificate.
+
+---
+
+# 21. CERTIFICATE ARTWORK MUST NOT CHANGE
+
+This is extremely important.
+
+The certificate design itself is already approved.
+
+Do NOT modify:
+
+- Mockeefy logo
+- gold frame
+- navy corners
+- blue corner artwork
+- gold ribbon
+- credential badge
+- laurels
+- certificate title
+- session plaque
+- recipient name typography
+- gold divider
+- medallion
+- signature
+- issued date
+- certificate background
+- certificate colors
+- certificate proportions
+
+The existing certificate renderer is the source of truth.
+
+Only change how the certificate is presented on the Certificate Page.
+
+---
+
+# 22. DATA ARCHITECTURE
+
+Before implementing the UI, inspect the existing codebase.
+
+Find:
+
+- Certificate Page component
+- certificate API
+- certificate data model
+- completed sessions
+- master credential data
+- certificate preview component
+- certificate PDF generator
+- authentication/user context
+- certificate category/domain information
+
+Reuse the existing data.
+
+Do NOT create mock data.
+
+Do NOT create fake certificate records.
+
+Do NOT hardcode certificate counts.
+
+Do NOT hardcode user names.
+
+Do NOT hardcode dates.
+
+Do NOT change database architecture unnecessarily.
+
+---
+
+# 23. MASTER CREDENTIAL STATE
+
+The Master Credential summary should reflect the real user's state.
+
+If the user has earned the Master Credential:
+
+Show:
+
+`MASTER CREDENTIAL CONFERRED`
+
+and the real credential information.
+
+If the user has not earned it yet:
+
+Use an appropriate state such as:
+
+`MASTER CREDENTIAL TRACK`
+
+and show the actual progress.
+
+Do not falsely display "Conferred" for an unearned credential.
+
+---
+
+# 24. IMPORTANT DIFFERENCE FROM CURRENT UI
+
+CURRENT:
+
+```text
+My Certificate
+Your verified Mockeefy career credential
+
+[session pills]
+
+[ONE HUGE CERTIFICATE]
+```
+
+TARGET:
+
+```text
+[ MASTER CREDENTIAL SUMMARY CARD ]
+
+[ All Certificates 19 ] [ IT 19 ]
+
+[ CERTIFICATE CARD ]   [ CERTIFICATE CARD ]
+[ CERTIFICATE CARD ]   [ CERTIFICATE CARD ]
+[ CERTIFICATE CARD ]   [ CERTIFICATE CARD ]
+```
+
+This structural difference is mandatory.
+
+---
+
+# 25. VISUAL STYLE
+
+Follow the existing Mockeefy design system.
+
+Use:
+
+- professional blue
+- dark navy typography
+- white cards
+- very light blue page background
+- subtle borders
+- subtle shadows
+- rounded corners
+- clean spacing
+- modern SaaS dashboard styling
+
+Avoid:
+
+- gradients everywhere
+- excessive shadows
+- excessive rounded containers
+- oversized headings
+- unnecessary decorative elements
+- AI-looking UI
+- random colors
+
+The design should feel like a polished professional SaaS credential platform.
+
+---
+
+# 26. IMPLEMENTATION PROCESS
+
+Follow this exact workflow.
+
+### STEP 1 — INSPECT
+
+Inspect the existing Certificate Page and identify all current components.
+
+### STEP 2 — IDENTIFY
+
+Find the existing:
+
+- certificate renderer
+- certificate data
+- master credential data
+- preview logic
+- PDF logic
+
+### STEP 3 — REMOVE OLD PAGE STRUCTURE
+
+Remove:
+
+- My Certificate centered hero
+- subtitle
+- session/date pills
+- giant certificate layout
+- duplicate preview layout
+
+### STEP 4 — BUILD NEW STRUCTURE
+
+Implement:
+
+1. Master Credential Summary
+2. Certificate Filters
+3. Certificate Grid
+4. Certificate Cards
+
+### STEP 5 — CONNECT REAL DATA
+
+Use existing backend/API/authenticated user data.
+
+### STEP 6 — REUSE CERTIFICATE ENGINE
+
+Place the existing approved certificate renderer inside each certificate card.
+
+### STEP 7 — CONNECT ACTIONS
+
+Preview and Download must use the existing working functionality.
+
+### STEP 8 — RESPONSIVE TEST
+
+Verify desktop, tablet and mobile.
+
+### STEP 9 — BUILD/VERIFY
+
+Run the production build and fix any errors.
+
+---
+
+# 27. FINAL ACCEPTANCE CRITERIA
+
+The implementation is correct ONLY if all of these are true:
+
+- The page visually follows the SECOND SCREEN RECORDING.
+- The existing top navbar remains intact.
+- The existing left sidebar remains intact.
+- "My Certificate" centered hero is removed.
+- Session/date pills are removed.
+- A horizontal Master Credential summary card appears at the top.
+- The summary card contains credential status, ID, title, description, certificate thumbnail, Preview and Download action.
+- Certificate filters appear below the summary.
+- "All Certificates" and category filters work dynamically.
+- Certificates appear in a responsive grid.
+- Multiple certificate cards can be displayed.
+- Each certificate card uses the existing approved certificate artwork.
+- Certificate aspect ratio is preserved.
+- No fake certificate data exists.
+- No hardcoded user data exists.
+- No duplicate giant certificate appears.
+- No "Sample Template" section appears.
+- No "How to Earn Your Certificate" section appears.
+- No "Official Credential Features" marketing section appears.
+- No repeated certificate metadata card is placed unnecessarily.
+- Existing Preview functionality still works.
+- Existing PDF/download functionality still works.
+- Real authenticated user data is preserved.
+- Master credential status is based on real application data.
+- Desktop layout matches the structure of the SECOND SCREEN RECORDING.
+- Mobile layout remains usable.
+- No horizontal overflow occurs.
+- No unrelated pages are changed.
+
+## FINAL INSTRUCTION
+
+Do not make small CSS patches to the existing Certificate Page.
+
+**REBUILD THE CERTIFICATE PAGE CONTENT STRUCTURE.**
+
+The desired structure is:
+
+**GLOBAL MOCKEEFY SHELL**
+→ **MASTER CREDENTIAL SUMMARY**
+→ **CERTIFICATE FILTERS**
+→ **CERTIFICATE GRID**
+→ **REAL USER CERTIFICATE CARDS**
+
+The **SECOND SCREEN RECORDING is the exact visual/structural reference** for this page.
+
+The certificate artwork already works correctly. **Do not redesign the certificate. Redesign only the Certificate Page around it.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-02T17:50:35+05:30.
+</ADDITIONAL_METADATA>
+
+[file "C:/Users/ASUS/.gemini/antigravity/brain/fa4cc859-e99d-440e-a4b9-ef64c859d17c/.user_uploaded/media_1793622034107_79ba088b.mp4" (uploaded as "WhatsApp_Video_2026-11-02_at_5.35.25_PM.mp4") was omitted because its type "application/octet-stream" is unsupported by the model; read it from that path if needed]

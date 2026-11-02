@@ -52,7 +52,8 @@ export const getKolkataTimeParts = (d: Date = new Date()) => {
         hour: 'numeric',
         minute: 'numeric',
         second: 'numeric',
-        hour12: false
+        hour12: false,
+        hourCycle: 'h23'
     });
     const parts = formatter.formatToParts(d);
     const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
@@ -60,7 +61,7 @@ export const getKolkataTimeParts = (d: Date = new Date()) => {
         year: getPart('year'),
         month: getPart('month') - 1, // 0-indexed
         day: getPart('day'),
-        hours: getPart('hour'),
+        hours: getPart('hour') % 24,
         minutes: getPart('minute'),
         seconds: getPart('second')
     };
@@ -90,9 +91,65 @@ export const getKolkataToday = () => {
     return new Date(parts.year, parts.month, parts.day);
 };
 
+export const getKolkataTomorrow = (now: Date = new Date()) => {
+    const parts = getKolkataTimeParts(now);
+    return new Date(parts.year, parts.month, parts.day + 1);
+};
+
+/**
+ * Returns true if the current time in Asia/Kolkata is at or after 12:00:00 PM (12:00 PM cutoff).
+ * When true, today's booking window is closed, and bookings must automatically switch to tomorrow.
+ */
+export const isTodayBookingCutoffReached = (now: Date = new Date()): boolean => {
+    const parts = getKolkataTimeParts(now);
+    // Exact 12:00 PM cutoff: hour >= 12 in 24-hr format
+    return parts.hours >= 12;
+};
+
+export const getEarliestBookableDate = (now: Date = new Date()): Date => {
+    if (isTodayBookingCutoffReached(now)) {
+        return getKolkataTomorrow(now);
+    }
+    return getKolkataToday();
+};
+
+export const getEarliestBookableDateString = (now: Date = new Date()): string => {
+    return getKolkataDateString(getEarliestBookableDate(now));
+};
+
 export const getInitialKolkataMonth = () => {
     const parts = getKolkataTimeParts();
     return new Date(parts.year, parts.month, 1);
+};
+
+export const parseTimeToMinutes = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    const match = timeStr.trim().match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (!match) {
+        const parts = timeStr.split(":");
+        if (parts.length < 2) return 0;
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10) || 0;
+    const period = (match[3] || "").toUpperCase();
+    if (period === "PM" && h < 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+};
+
+export const formatMinutesToTime = (totalMinutes: number): string => {
+    const adjusted = totalMinutes % (24 * 60);
+    const hours = Math.floor(adjusted / 60);
+    const minutes = adjusted % 60;
+    const period = hours >= 12 ? "PM" : "AM";
+    const displayHours = hours % 12 || 12;
+    return String(displayHours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + " " + period;
+};
+
+export const formatMinutesToHHMM = (totalMinutes: number): string => {
+    const adjusted = totalMinutes % (24 * 60);
+    return String(Math.floor(adjusted / 60)).padStart(2, "0") + ":" + String(adjusted % 60).padStart(2, "0");
 };
 
 export interface AvailableSlot {
@@ -108,12 +165,13 @@ export const generateAvailableSlotsForDate = (
     date: Date,
     availability: any,
     sessionDuration: number = 30,
-    bookedSessions: any[] = []
+    bookedSessions: any[] = [],
+    now: Date = new Date()
 ): AvailableSlot[] => {
     if (!availability || !date) return [];
 
     const kolkataDateStr = getKolkataDateString(date);
-    const todayDateStr = getKolkataDateString(new Date());
+    const todayDateStr = getKolkataDateString(now);
     // Past dates cannot have available slots
     if (kolkataDateStr < todayDateStr) return [];
 
@@ -138,28 +196,17 @@ export const generateAvailableSlotsForDate = (
         return k === dayShort || k === dayLong;
     });
 
+    const nowKolkata = getKolkataTimeParts(now);
+    const isToday = kolkataDateStr === todayDateStr;
+
+    // Rule 2, 3, 4: 12:00 PM is the exact daily booking cutoff.
+    // If date is TODAY and current Kolkata time >= 12:00 PM, today's booking window is closed.
+    if (isToday && nowKolkata.hours >= 12) {
+        return [];
+    }
+
     const weeklyRanges = availableKey ? weekly[availableKey] : [];
     if (!Array.isArray(weeklyRanges) || weeklyRanges.length === 0) return [];
-
-    const parseTimeToMinutes = (timeStr: string) => {
-        const parts = (timeStr || "").split(":");
-        if (parts.length < 2) return 0;
-        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    };
-
-    const formatMinutesToTime = (totalMinutes: number) => {
-        const adjusted = totalMinutes % (24 * 60);
-        const hours = Math.floor(adjusted / 60);
-        const minutes = adjusted % 60;
-        const period = hours >= 12 ? "PM" : "AM";
-        const displayHours = hours % 12 || 12;
-        return `${displayHours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} ${period}`;
-    };
-
-    const formatMinutesToHHMM = (totalMinutes: number) => {
-        const adjusted = totalMinutes % (24 * 60);
-        return `${Math.floor(adjusted / 60).toString().padStart(2, "0")}:${(adjusted % 60).toString().padStart(2, "0")}`;
-    };
 
     const generatedSlots: AvailableSlot[] = [];
     const duration = Number(sessionDuration) || 30;
@@ -180,8 +227,6 @@ export const generateAvailableSlotsForDate = (
         }
 
         while (currentMinutes + duration <= endMinutes) {
-            const nowKolkata = getKolkataTimeParts();
-            const isToday = kolkataDateStr === todayDateStr;
             const currentTimeMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
 
             // Do not display past times today (if start time has passed)
@@ -216,7 +261,10 @@ export const generateAvailableSlotsForDate = (
                 const endMatches = getKolkataDateString(sEnd) === kolkataDateStr;
                 if (!startMatches && !endMatches) return false;
 
-                return slotDate.getTime() < sEnd.getTime() && slotEndDate.getTime() > sStart.getTime();
+                // Two adjacent 30-minute slots (e.g. 11:30-12:00 and 12:00-12:30) must be treated independently.
+                // A slot overlaps with a booked session ONLY if slot starts before session ends (by at least 1s)
+                // and slot ends after session starts (by at least 1s).
+                return slotDate.getTime() < (sEnd.getTime() - 1000) && slotEndDate.getTime() > (sStart.getTime() + 1000);
             });
 
             // If the slot is already booked, omit it completely so it is not shown as available
