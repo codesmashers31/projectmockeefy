@@ -714,8 +714,6 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   }
 
   return (
-    <div className="w-full font-sans text-left selection:bg-[#EAF2FF] selection:text-[#0755E8]">
-      <div className="w-full space-y-6">
     <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left selection:bg-[#EAF2FF] selection:text-[#0755E8] animate-in fade-in duration-200">
       {/* Decorative ambient blue lighting */}
       <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
@@ -751,64 +749,138 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
             </div>
           </div>
         </div>
-
-                {/* ================================================================== */}
-        {/* MASTER CREDENTIAL SUMMARY CARD (CLEAN WHITE SAAS CARD)            */}
+{/* ================================================================== */}
+        {/* MASTER CREDENTIAL BANNER (CLEAN REBUILD: COMPACT HORIZONTAL CARD)  */}
         {/* ================================================================== */}
-        <div className="bg-white rounded-[22px] border border-[#E2E8F0] shadow-[0_2px_14px_rgba(23,43,77,0.05)] p-5 sm:p-6 transition-all hover:border-[#93B8FF] hover:shadow-[0_6px_22px_rgba(7,85,232,0.08)]">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <section
+          aria-label="Master Credential Announcement"
+          className="relative w-full rounded-[28px] overflow-hidden transition-all duration-200 border border-[#BFDBFE] shadow-[0_8px_25px_rgba(37,99,235,0.08),0_1px_3px_rgba(37,99,235,0.04)] px-6 sm:px-8 lg:px-9 py-5 sm:py-6 flex items-center box-border"
+          style={{
+            background:
+              "radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08), transparent 35%), radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08), transparent 35%), linear-gradient(135deg, #F4F8FE 0%, #FFFFFF 40%, #EFF6FF 100%)",
+          }}
+        >
+          {/* Top-Left Pure Vector Decorative Ribbon (Zero Ghost Text, Pure SVG) */}
+          <svg
+            className="absolute top-0 left-0 w-[180px] sm:w-[210px] h-[75px] sm:h-[88px] pointer-events-none select-none z-0"
+            viewBox="0 0 240 95"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="tlGradMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0B3080" />
+                <stop offset="50%" stopColor="#0755E8" />
+                <stop offset="100%" stopColor="#3B82F6" />
+              </linearGradient>
+              <linearGradient id="tlGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#061A48" />
+                <stop offset="100%" stopColor="#0B3080" />
+              </linearGradient>
+              <linearGradient id="tlGradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#D97706" />
+                <stop offset="50%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#FDE68A" />
+              </linearGradient>
+            </defs>
+            <path d="M 0 0 L 140 0 C 110 32, 55 65, 0 76 Z" fill="url(#tlGradDark)" />
+            <path d="M 0 0 L 190 0 C 150 40, 80 78, 0 92 Z" fill="url(#tlGradMain)" opacity="0.95" />
+            <path d="M 0 76 C 55 65, 110 32, 140 0" stroke="url(#tlGradGold)" strokeWidth="3.5" fill="none" />
+            <path d="M 0 92 C 80 78, 150 40, 190 0" stroke="#60A5FA" strokeWidth="2" strokeOpacity="0.75" fill="none" />
+          </svg>
+
+          {/* Bottom-Right Pure Vector Decorative Ribbon (Zero Ghost Text, Pure SVG) */}
+          <svg
+            className="absolute bottom-0 right-0 w-[180px] sm:w-[210px] h-[80px] sm:h-[95px] pointer-events-none select-none z-0"
+            viewBox="0 0 240 105"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="brGradMain" x1="100%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stopColor="#0B3080" />
+                <stop offset="50%" stopColor="#0755E8" />
+                <stop offset="100%" stopColor="#38BDF8" />
+              </linearGradient>
+              <linearGradient id="brGradDark" x1="100%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stopColor="#061A48" />
+                <stop offset="100%" stopColor="#0B3080" />
+              </linearGradient>
+              <linearGradient id="brGradGold" x1="100%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stopColor="#D97706" />
+                <stop offset="50%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#FDE68A" />
+              </linearGradient>
+            </defs>
+            <path d="M 100 105 C 145 72, 190 40, 240 25 L 240 105 Z" fill="url(#brGradDark)" />
+            <path d="M 50 105 C 105 68, 165 32, 240 12 L 240 105 Z" fill="url(#brGradMain)" opacity="0.95" />
+            <path d="M 100 105 C 145 72, 190 40, 240 25" stroke="url(#brGradGold)" strokeWidth="3.5" fill="none" />
+            <path d="M 50 105 C 105 68, 165 32, 240 12" stroke="#60A5FA" strokeWidth="2" strokeOpacity="0.75" fill="none" />
+          </svg>
+
+          {/* Decorative Dot Matrix & Subtle Ambient Waves */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none select-none z-0"
+            preserveAspectRatio="none"
+            viewBox="0 0 1000 240"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+
+            {/* Ambient Flowing Wave Curves */}
+            <path
+              d="M 90 230 C 350 195, 620 245, 870 160"
+              stroke="#0755E8"
+              strokeWidth="1.2"
+              strokeOpacity="0.10"
+              fill="none"
+            />
+            <path
+              d="M 50 240 C 310 210, 660 255, 930 170"
+              stroke="#93B8FF"
+              strokeWidth="0.8"
+              strokeOpacity="0.22"
+              fill="none"
+            />
+          </svg>
+
+          {/* Grid Layout: Left Content (minmax(0, 1fr)) + Right Content (auto) */}
+          <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-center gap-6 lg:gap-8">
             {/* Left Content Area */}
-            <div className="flex-1 min-w-0 space-y-2.5">
-              {/* Status pill & ID */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/50 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
-                  {isMasterUnlocked ? "MASTER CREDENTIAL CONFERRED" : "MASTER CREDENTIAL TRACK"}
+            <div className="min-w-0 space-y-2.5 sm:space-y-3 max-w-full lg:max-w-[94%]">
+              {/* 1. Status Badge & Credential ID on the SAME horizontal row */}
+              <div className="flex items-center gap-3 sm:gap-4 flex-nowrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold tracking-[0.05em] uppercase bg-[#EBF3FF] text-[#0755E8] border border-[#BFDBFE] shadow-2xs whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] animate-pulse" />
+                  MASTER CREDENTIAL CONFERRED
                 </span>
-                <span className="text-xs text-[#64748B] font-mono font-medium">
+                <span className="text-xs sm:text-sm text-[#64748B] font-mono font-medium tracking-wide whitespace-nowrap">
                   ID: {masterCertId}
                 </span>
               </div>
 
-              {/* Title */}
-              <h2 className="text-lg sm:text-xl font-bold text-[#172B4D] tracking-tight leading-snug">
+              {/* 2. Main Title (24-26px desktop, Deep Navy #0F172A, bold modern sans-serif) */}
+              <h2 className="text-xl sm:text-2xl lg:text-[25px] font-bold text-[#0F172A] tracking-tight leading-tight">
                 Mockeefy Master Interview Excellence Credential
               </h2>
 
-              {/* Description */}
-              <p className="text-xs sm:text-sm text-[#64748B] font-normal leading-relaxed max-w-xl">
-                {isMasterUnlocked
+              {/* 3. Description (14-15px, line-height 1.55, color #475569) */}
+              <p className="text-xs sm:text-sm text-[#475569] font-normal leading-relaxed max-w-xl">
+                {completedSessions.length > 0
                   ? `Conferred for completing ${completedSessions.length} sessions across multiple domains. Demonstrates comprehensive interview mastery.`
-                  : `Complete 3 mock interview sessions to unlock the prestigious Mockeefy Master Interview Certificate (${completedSessions.length}/3 completed).`}
+                  : "Conferred for demonstrating comprehensive interview mastery across multiple domains, interview readiness, and elite communication."}
               </p>
-
-              {!isMasterUnlocked && (
-                <div className="pt-1 w-full max-w-xs space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-[#64748B]">Milestone Track</span>
-                    <span className="text-[#172B4D] font-bold">
-                      {Math.min(100, Math.round((completedSessions.length / 3) * 100))}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-[#E2E8F0] rounded-full h-2 overflow-hidden">
-                    <div
-                      className="h-full bg-[#0755E8] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (completedSessions.length / 3) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Right Side: Landscape Thumbnail + Buttons Underneath */}
-            <div className="flex flex-col items-start sm:items-end gap-3 shrink-0 self-start lg:self-center">
-              {/* Landscape Thumbnail */}
+            {/* Right Section: Certificate Thumbnail + Action Buttons Directly Underneath */}
+            <div className="flex flex-col items-center lg:items-end gap-2.5 shrink-0 self-center">
+              {/* Certificate Thumbnail (width: 220-235px, aspect-ratio: 1536/1024) */}
               <div
                 onClick={() => {
                   setSelectedSession(null);
                   setIsMasterSelected(true);
                 }}
-                className="w-[220px] sm:w-[240px] md:w-[250px] aspect-[1536/1024] rounded-lg overflow-hidden border border-[#E2E8F0] shadow-sm shrink-0 cursor-pointer hover:border-[#0755E8] transition-all hover:scale-[1.01] bg-[#FFFEFA]"
+                className="w-[210px] sm:w-[225px] md:w-[235px] aspect-[1536/1024] rounded-lg overflow-hidden border border-[#93C5FD] shadow-xs hover:border-[#0755E8] hover:shadow-md transition-all cursor-pointer bg-[#FFFEFA]"
                 title="Click to preview Master Certificate"
               >
                 <CertificateThumbnail
@@ -821,32 +893,33 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                 />
               </div>
 
-              {/* Action Buttons directly below thumbnail */}
-              <div className="flex items-center gap-2 justify-end w-full">
+              {/* Action Buttons: Unified horizontal row directly underneath the certificate */}
+              <div className="flex items-center gap-2.5 w-full justify-center lg:justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedSession(null);
                     setIsMasterSelected(true);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#172B4D] bg-white hover:bg-[#F5F8FF] border border-[#CBD5E1] hover:border-[#93B8FF] transition-all cursor-pointer shadow-xs whitespace-nowrap active:scale-98"
+                  className="h-9 px-4 sm:px-5 rounded-full text-xs sm:text-sm font-semibold text-[#1E293B] bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#94A3B8] shadow-2xs transition-all cursor-pointer whitespace-nowrap active:scale-98 flex items-center justify-center gap-1.5"
                 >
-                  Preview
+                  <Eye size={14} className="text-[#0755E8]" />
+                  <span>Preview</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleDownloadMasterPDF}
                   disabled={downloadingMaster}
-                  className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 whitespace-nowrap active:scale-98"
+                  className="h-9 px-4 sm:px-5 rounded-full text-xs sm:text-sm font-bold text-white bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] shadow-sm shadow-blue-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 whitespace-nowrap active:scale-98"
                 >
                   {downloadingMaster ? (
                     <>
-                      <Loader2 size={13} className="animate-spin text-white" />
+                      <Loader2 size={14} className="animate-spin text-white" />
                       <span>Downloading...</span>
                     </>
                   ) : (
                     <>
-                      <Download size={13} strokeWidth={2.2} />
+                      <Download size={14} strokeWidth={2.4} />
                       <span>Download Master PDF</span>
                     </>
                   )}
@@ -854,10 +927,9 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-
-{/* ================================================================== */}
+        {/* ================================================================== */}
         {/* 3. OPTIONAL ADDITIONAL CERTIFICATES (Compact Clean Grid)           */}
         {/* ================================================================== */}
         {completedSessions.length > 0 && (
