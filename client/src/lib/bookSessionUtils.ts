@@ -221,11 +221,6 @@ export const generateAvailableSlotsForDate = (
         let endMinutes = parseTimeToMinutes(range.to);
         if (endMinutes < currentMinutes) endMinutes += 24 * 60;
 
-        // Snap start time to solid 30-minute block boundaries
-        if (currentMinutes % 30 !== 0) {
-            currentMinutes = Math.ceil(currentMinutes / 30) * 30;
-        }
-
         while (currentMinutes + duration <= endMinutes) {
             const currentTimeMinutes = nowKolkata.hours * 60 + nowKolkata.minutes;
 
@@ -245,9 +240,8 @@ export const generateAvailableSlotsForDate = (
             }
 
             const slotStartStr = formatMinutesToHHMM(currentMinutes);
-            const slotEndStr = formatMinutesToHHMM(currentMinutes + duration);
             const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
-            const slotEndDate = new Date(`${kolkataDateStr}T${slotEndStr}:00+05:30`);
+            const slotEndDate = new Date(slotDate.getTime() + duration * 60 * 1000);
 
             const isBooked = (bookedSessions || []).some((session: any) => {
                 const status = (session.status || "").toLowerCase();

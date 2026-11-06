@@ -1500,8 +1500,8 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
             />
           )}
         </div>
-        </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

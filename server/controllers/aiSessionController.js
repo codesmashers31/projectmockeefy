@@ -1,18 +1,38 @@
+import mongoose from 'mongoose';
 import AiSession from '../models/AiSession.js';
 import { getNextQuestionForSession, getQuestionsForField } from '../data/interviewQuestions.js';
+
+const getUserId = (req) => {
+    return req.user?.userId || req.user?.id || req.user?._id;
+};
 
 // Create a new session
 export const createSession = async (req, res) => {
     try {
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
         const { config } = req.body;
 
         if (!config || !config.role) {
-            return res.status(400).json({ success: false, message: 'Invalid configuration' });
+            return res.status(400).json({ success: false, message: 'Invalid configuration: role is required' });
         }
 
+        const safeConfig = {
+            goal: config.goal || 'Practice general interview skills',
+            role: config.role,
+            experience: config.experience || 'Mid-level',
+            skills: Array.isArray(config.skills) ? config.skills : [],
+            difficulty: config.difficulty || 'medium',
+            tone: config.tone || 'professional',
+            depth: config.depth || 'scenario'
+        };
+
         const newSession = new AiSession({
-            userId: req.user.userId, // Assumes auth middleware populates req.user
-            config,
+            userId,
+            config: safeConfig,
             status: 'live'
         });
 
@@ -24,25 +44,32 @@ export const createSession = async (req, res) => {
         });
     } catch (error) {
         console.error('Create Session Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
 // Update session (add transcript or update status)
 export const updateSession = async (req, res) => {
     try {
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
         const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid session ID' });
+        }
+
         const { transcript, status, duration } = req.body;
 
-        const session = await AiSession.findOne({ _id: id, userId: req.user.userId });
+        const session = await AiSession.findOne({ _id: id, userId });
 
         if (!session) {
             return res.status(404).json({ success: false, message: 'Session not found' });
         }
 
         if (transcript) {
-            // Append new messages to transcript
-            // Expecting transcript to be an array of new messages or a single message object
             if (Array.isArray(transcript)) {
                 session.transcript.push(...transcript);
             } else {
@@ -58,17 +85,26 @@ export const updateSession = async (req, res) => {
         res.json({ success: true, data: session });
     } catch (error) {
         console.error('Update Session Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
 // End session
 export const endSession = async (req, res) => {
     try {
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
         const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid session ID' });
+        }
+
         const { duration, feedback } = req.body;
 
-        const session = await AiSession.findOne({ _id: id, userId: req.user.userId });
+        const session = await AiSession.findOne({ _id: id, userId });
 
         if (!session) {
             return res.status(404).json({ success: false, message: 'Session not found' });
@@ -84,34 +120,49 @@ export const endSession = async (req, res) => {
         res.json({ success: true, data: session });
     } catch (error) {
         console.error('End Session Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
 // Get User Sessions
 export const getUserSessions = async (req, res) => {
     try {
-        const sessions = await AiSession.find({ userId: req.user.userId })
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
+        const sessions = await AiSession.find({ userId })
             .sort({ createdAt: -1 });
 
         res.json({ success: true, data: sessions });
     } catch (error) {
         console.error('Get User Sessions Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
 // Get Single Session
 export const getSession = async (req, res) => {
     try {
-        const session = await AiSession.findOne({ _id: req.params.id, userId: req.user.userId });
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid session ID' });
+        }
+
+        const session = await AiSession.findOne({ _id: id, userId });
         if (!session) {
             return res.status(404).json({ success: false, message: 'Session not found' });
         }
         res.json({ success: true, data: session });
     } catch (error) {
         console.error('Get Session Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
@@ -127,7 +178,17 @@ const ACKNOWLEDGMENTS = [
 // Get next interview question; returns "reply" = full text for AI to speak (acknowledgment + next question)
 export const getNextQuestion = async (req, res) => {
     try {
-        const session = await AiSession.findOne({ _id: req.params.id, userId: req.user.userId });
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid session ID' });
+        }
+
+        const session = await AiSession.findOne({ _id: id, userId });
         if (!session) {
             return res.status(404).json({ success: false, message: 'Session not found' });
         }
@@ -151,7 +212,7 @@ export const getNextQuestion = async (req, res) => {
         });
     } catch (error) {
         console.error('Get Next Question Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
@@ -208,7 +269,17 @@ function buildEvaluationReport(transcript, config) {
 
 export const generateReport = async (req, res) => {
     try {
-        const session = await AiSession.findOne({ _id: req.params.id, userId: req.user.userId });
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: User ID not found' });
+        }
+
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid session ID' });
+        }
+
+        const session = await AiSession.findOne({ _id: id, userId });
         if (!session) {
             return res.status(404).json({ success: false, message: 'Session not found' });
         }
@@ -218,6 +289,6 @@ export const generateReport = async (req, res) => {
         res.json({ success: true, data: report });
     } catch (error) {
         console.error('Generate Report Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };

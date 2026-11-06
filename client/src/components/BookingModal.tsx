@@ -651,16 +651,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  // Allowed duration options (matches user image: 30 Min & 60 Min)
+  // Allowed duration options: mentor offers exactly ONE duration (30 Min or 60 Min)
   const durationOptions = useMemo<number[]>(() => {
     const prof = profile || initialProfile;
     const allowed = (prof as any)?.availability?.allowedDurations;
-    if (Array.isArray(allowed) && allowed.length > 0) {
-      const filtered = allowed.filter((d: number) => d === 30 || d === 60);
-      if (filtered.length > 0) return filtered.sort((a: number, b: number) => a - b);
+    if (Array.isArray(allowed) && allowed.length === 1) {
+      const dur = Number(allowed[0]);
+      if (dur === 30 || dur === 60) return [dur];
     }
-    return [30, 60];
+    // If legacy expert has multiple or none, prefer their existing default slot length
+    const singleDur = (prof as any)?.availability?.sessionDuration || (prof as any)?.sessionDuration || 30;
+    return [singleDur === 60 ? 60 : 30];
   }, [profile, initialProfile]);
+
+  useEffect(() => {
+    if (durationOptions.length > 0 && !durationOptions.includes(sessionDuration)) {
+      setSessionDuration(durationOptions[0]);
+    }
+  }, [durationOptions, sessionDuration]);
 
   // Only the levels supported by this specific mentor (from profile.levels or profile.level)
   const expertLevels = useMemo<string[]>(() => {
@@ -967,8 +975,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return `${h.toString().padStart(2, "0")}:${m}`;
     };
 
-    const startTime = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`).toISOString();
-    const endTime = new Date(`${kolkataDateStr}T${parseToHHMM(endRaw)}:00+05:30`).toISOString();
+    const startDate = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`);
+    const durationMin = Number(sessionDuration) || 30;
+    const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
+    const startTime = startDate.toISOString();
+    const endTime = endDate.toISOString();
 
     const candidateId = user?.id || user?.userId || (user as any)?._id;
 

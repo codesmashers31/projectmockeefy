@@ -405,10 +405,9 @@ const parseTime24 = (time24: string) => {
   const period = (h || 0) >= 12 ? "PM" : "AM";
   let hour = (h || 0) % 12;
   if (hour === 0) hour = 12;
-  const snappedMinute = (m >= 15 && m < 45) ? "30" : "00";
   return {
     hour: hour.toString().padStart(2, '0'),
-    minute: snappedMinute,
+    minute: (m || 0).toString().padStart(2, '0'),
     period
   };
 };
@@ -418,8 +417,8 @@ const formatTime24 = (hour: string, minute: string, period: string) => {
   let h = parseInt(hour, 10);
   if (period === "PM" && h !== 12) h += 12;
   if (period === "AM" && h === 12) h = 0;
-  const m = minute === "30" ? "30" : "00";
-  return `${h.toString().padStart(2, '0')}:${m}`;
+  const m = parseInt(minute, 10) || 0;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
 // Display "14:30" as "02:30 PM"
@@ -432,58 +431,365 @@ const displayTime = (time24: string) => {
   return `${hour.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')} ${period}`;
 };
 
-const TimeSelect = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
-  const [localState, setLocalState] = useState(parseTime24(value));
+// Robust parser that analyzes user-typed time string:
+// Supports: "10:20", "10.20", "10 20", "1020", "930", "10", "9", "10:20 AM", "10:20pm", "1020pm", "14:30"
+const parseTypedTime = (input: string, fallbackPeriod?: 'AM' | 'PM'): { time24: string; period: 'AM' | 'PM' } | null => {
+  if (!input) return null;
+  const raw = input.trim().toLowerCase();
 
+  // 1. Try separated format: "10:20", "10.20", "10 20", with optional am/pm
+  const sepRegex = /^(\d{1,2})[:.\s](\d{1,2})\s*(am|pm)?$/i;
+  // 2. Try unseparated 3 or 4 digits: "1020", "0930", "930", "815", with optional am/pm
+  const compactRegex = /^(\d{1,2})(\d{2})\s*(am|pm)?$/i;
+  // 3. Try plain hour: "10", "9", "2", with optional am/pm
+  const hourRegex = /^(\d{1,2})\s*(am|pm)?$/i;
+
+  let hours = 0;
+  let minutes = 0;
+  let period: string | null = null;
+
+  const matchSep = raw.match(sepRegex);
+  if (matchSep) {
+    hours = parseInt(matchSep[1], 10);
+    minutes = parseInt(matchSep[2], 10);
+    period = matchSep[3] ? matchSep[3].toLowerCase() : (fallbackPeriod ? fallbackPeriod.toLowerCase() : null);
+  } else {
+    const rawNoSep = raw.replace(/\s+/g, '');
+    const matchCompact = rawNoSep.match(compactRegex);
+    if (matchCompact && rawNoSep.length <= 6) {
+      hours = parseInt(matchCompact[1], 10);
+      minutes = parseInt(matchCompact[2], 10);
+      period = matchCompact[3] ? matchCompact[3].toLowerCase() : (fallbackPeriod ? fallbackPeriod.toLowerCase() : null);
+    } else {
+      const matchHour = raw.match(hourRegex);
+      if (matchHour) {
+        hours = parseInt(matchHour[1], 10);
+        minutes = 0;
+        period = matchHour[2] ? matchHour[2].toLowerCase() : (fallbackPeriod ? fallbackPeriod.toLowerCase() : null);
+      } else {
+        return null;
+      }
+    }
+  }
+
+  // Validate minutes (0 to 59)
+  if (minutes < 0 || minutes > 59) return null;
+
+  let resolvedPeriod: 'AM' | 'PM' = 'AM';
+
+  if (period) {
+    if (hours < 1 || hours > 12) return null;
+    resolvedPeriod = period === 'pm' ? 'PM' : 'AM';
+    if (period === 'pm' && hours !== 12) hours += 12;
+    if (period === 'am' && hours === 12) hours = 0;
+  } else {
+    // 24-hour detection or smart fallback
+    if (hours >= 13 && hours <= 23) {
+      resolvedPeriod = 'PM';
+    } else if (hours === 0 || hours === 24) {
+      hours = 0;
+      resolvedPeriod = 'AM';
+    } else if (hours === 12) {
+      hours = 12;
+      resolvedPeriod = 'PM';
+    } else if (hours >= 1 && hours <= 11) {
+      resolvedPeriod = fallbackPeriod || 'AM';
+      if (resolvedPeriod === 'PM' && hours !== 12) hours += 12;
+      if (resolvedPeriod === 'AM' && hours === 12) hours = 0;
+    } else {
+      return null;
+    }
+  }
+
+  const time24 = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  return { time24, period: resolvedPeriod };
+};
+
+const getTimeParts = (time24: string): { hour12: string; minute: string; period: 'AM' | 'PM' } => {
+  if (!time24) return { hour12: "09", minute: "00", period: "AM" };
+  const [h, m] = time24.split(':').map(Number);
+  const period: 'AM' | 'PM' = (h || 0) >= 12 ? 'PM' : 'AM';
+  let h12 = (h || 0) % 12;
+  if (h12 === 0) h12 = 12;
+  const hour12 = h12.toString().padStart(2, '0');
+  const minute = (m || 0).toString().padStart(2, '0');
+  return { hour12, minute, period };
+};
+
+const parseAndFormatTime = (
+  input: string,
+  currentPeriod: 'AM' | 'PM'
+): { formatted12: string; time24: string; hours: number; minutes: number } | null => {
+  if (!input) return null;
+  const raw = input.trim();
+
+  // Strip all spaces and convert dot/dash to colon
+  const clean = raw.replace(/\s+/g, '').replace(/[.-]/g, ':').replace(/[^0-9:]/g, '');
+  if (!clean) return null;
+
+  let hours = -1;
+  let minutes = 0;
+
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
+    if (parts[0] !== '') hours = parseInt(parts[0], 10);
+    if (parts[1] && parts[1] !== '') {
+      minutes = parseInt(parts[1].slice(0, 2), 10);
+    } else {
+      minutes = 0;
+    }
+  } else {
+    if (clean.length === 4) {
+      hours = parseInt(clean.slice(0, 2), 10);
+      minutes = parseInt(clean.slice(2, 4), 10);
+    } else if (clean.length === 3) {
+      const firstTwo = parseInt(clean.slice(0, 2), 10);
+      if (firstTwo >= 10 && firstTwo <= 12) {
+        hours = firstTwo;
+        minutes = parseInt(clean.slice(2), 10);
+      } else {
+        hours = parseInt(clean.slice(0, 1), 10);
+        minutes = parseInt(clean.slice(1, 3), 10);
+      }
+    } else if (clean.length >= 1 && clean.length <= 2) {
+      hours = parseInt(clean, 10);
+      minutes = 0;
+    }
+  }
+
+  if (isNaN(hours) || hours < 1 || hours > 12) return null;
+  if (isNaN(minutes) || minutes < 0 || minutes > 59) return null;
+
+  const formatted12 = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+  let h24 = hours;
+  if (currentPeriod === 'PM' && hours !== 12) h24 += 12;
+  if (currentPeriod === 'AM' && hours === 12) h24 = 0;
+  const time24 = `${h24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+  return { formatted12, time24, hours, minutes };
+};
+
+// Automatically and seamlessly formats user input with a colon (e.g. "1130" -> "11:30", "11." -> "11:", "130" -> "1:30")
+// Strips extra spaces, prevents accidental digit doubling, and preserves smooth backspacing.
+const formatTimeInput = (input: string, isDeleting = false): string => {
+  if (!input) return '';
+
+  // Strip all whitespace immediately - prevents awkward "01 : 30"
+  let raw = input.replace(/\s+/g, '');
+
+  if (isDeleting) {
+    return raw.replace(/[^0-9:]/g, '').slice(0, 5);
+  }
+
+  // Convert dot, dash to colon
+  let clean = raw.replace(/[.-]/g, ':').replace(/[^0-9:]/g, '').slice(0, 5);
+
+  // If already contains a colon
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
+    let h = parts[0].slice(0, 2);
+    let m = parts.slice(1).join('').replace(/:/g, '').slice(0, 2);
+
+    let hNum = parseInt(h, 10);
+    if (!isNaN(hNum) && hNum > 12) {
+      h = '12';
+    }
+
+    return m.length > 0 ? `${h}:${m}` : `${h}:`;
+  }
+
+  // Digits only without colon:
+  // If 4 digits (e.g. "1130" -> "11:30", "0930" -> "09:30", "1020" -> "10:20")
+  if (clean.length === 4) {
+    let h = clean.slice(0, 2);
+    let m = clean.slice(2, 4);
+    let hNum = parseInt(h, 10);
+    if (!isNaN(hNum) && hNum > 12) h = '12';
+    return `${h}:${m}`;
+  }
+
+  // If 3 digits (e.g. "113" -> "11:3", "130" -> "1:30", "930" -> "9:30")
+  if (clean.length === 3) {
+    const firstTwo = parseInt(clean.slice(0, 2), 10);
+    if (firstTwo >= 10 && firstTwo <= 12) {
+      return `${clean.slice(0, 2)}:${clean.slice(2)}`;
+    } else {
+      return `${clean.slice(0, 1)}:${clean.slice(1)}`;
+    }
+  }
+
+  // If 2 digits (e.g. "11" -> "11:", "10" -> "10:", "12" -> "12:", "09" -> "09:")
+  if (clean.length === 2) {
+    const num = parseInt(clean, 10);
+    if (num >= 10 && num <= 12) {
+      return `${clean}:`;
+    } else if (clean === '00') {
+      return '12:';
+    } else if (clean[0] === '0') {
+      return `${clean}:`;
+    } else if (num > 12) {
+      // User typed e.g. "13" (meaning 1:3) or "25" (meaning 2:5)
+      return `${clean[0]}:${clean[1]}`;
+    }
+  }
+
+  return clean;
+};
+
+const TimeInputWithPeriod = ({
+  value,
+  onChange,
+  placeholder = "09:00",
+  className = "",
+}: {
+  value: string;
+  onChange: (val: string, showToast?: boolean) => boolean | void;
+  placeholder?: string;
+  className?: string;
+}) => {
+  const parts = getTimeParts(value);
+  const [typedText, setTypedText] = useState(`${parts.hour12}:${parts.minute}`);
+  const [period, setPeriod] = useState<'AM' | 'PM'>(parts.period);
+  const [isFocused, setIsFocused] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isDeletingRef = useRef(false);
+
+  // Sync from outside ONLY when the user is not actively typing
   useEffect(() => {
-    setLocalState(parseTime24(value));
-  }, [value]);
+    if (!isFocused) {
+      const p = getTimeParts(value);
+      setTypedText(`${p.hour12}:${p.minute}`);
+      setPeriod(p.period);
+      setHasError(false);
+    }
+  }, [value, isFocused]);
 
-  const handleChange = (field: 'hour' | 'minute' | 'period', newVal: string) => {
-    const newState = { ...localState, [field]: newVal };
-    setLocalState(newState);
-    onChange(formatTime24(newState.hour, newState.minute, newState.period));
+  const commitTime = (rawText: string, currentPeriod: 'AM' | 'PM') => {
+    const parsed = parseAndFormatTime(rawText, currentPeriod);
+    if (!parsed) {
+      // Revert to valid current state
+      const p = getTimeParts(value);
+      setTypedText(`${p.hour12}:${p.minute}`);
+      setHasError(false);
+      return;
+    }
+
+    setTypedText(parsed.formatted12);
+    if (parsed.time24 !== value) {
+      const ok = onChange(parsed.time24, true);
+      if (ok === false) {
+        // Validation failed (e.g. past 11:30 PM cutoff or overlap):
+        // Keep the input text visible so expert can easily correct it, but flag error!
+        setHasError(true);
+        return;
+      }
+    }
+    setHasError(false);
   };
 
-  const hourOptions = Array.from({ length: 12 }, (_, i) => {
-    const val = (i + 1).toString().padStart(2, '0');
-    return { value: val, label: val };
-  });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    const formatted = formatTimeInput(rawVal, isDeletingRef.current);
+    isDeletingRef.current = false;
 
-  const minuteOptions = ["00", "30"].map((m) => ({
-    value: m,
-    label: m,
-  }));
+    setTypedText(formatted);
+    setHasError(false);
 
-  const periodOptions = [
-    { value: "AM", label: "AM" },
-    { value: "PM", label: "PM" },
-  ];
+    // Live sync when complete time is typed (e.g. "11:30", "10:20", "01:30", "1:30")
+    if (formatted.includes(':')) {
+      const [h, m] = formatted.split(':');
+      if (h.length >= 1 && m && m.length === 2) {
+        const parsed = parseAndFormatTime(formatted, period);
+        if (parsed) {
+          onChange(parsed.time24, false);
+        }
+      }
+    }
+  };
+
+  const handlePeriodToggle = (newPeriod: 'AM' | 'PM') => {
+    if (newPeriod === period) return;
+    setPeriod(newPeriod);
+    commitTime(typedText, newPeriod);
+  };
 
   return (
-    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1.5">
-      <CustomSelect
-        value={localState.hour}
-        options={hourOptions}
-        onChange={(val) => handleChange('hour', val)}
-        className="w-16"
-      />
-      <span className="text-slate-400 font-extrabold">:</span>
-      <CustomSelect
-        value={localState.minute}
-        options={minuteOptions}
-        onChange={(val) => handleChange('minute', val)}
-        className="w-16"
-      />
-      <CustomSelect
-        value={localState.period}
-        options={periodOptions}
-        onChange={(val) => handleChange('period', val)}
-        className="w-20"
-      />
+    <div className={`inline-flex items-center gap-1.5 ${className}`}>
+      <div className={`flex items-center gap-1.5 bg-white border rounded-xl px-2.5 py-1.5 shadow-2xs transition-all ${
+        hasError
+          ? "border-red-500 ring-2 ring-red-200"
+          : "border-slate-200 hover:border-[#0755E8]/60 focus-within:border-[#0755E8] focus-within:ring-2 focus-within:ring-[#0755E8]/15"
+      }`}>
+        <Clock size={14} className={hasError ? "text-red-500 shrink-0" : "text-slate-400 shrink-0"} />
+        <input
+          ref={inputRef}
+          type="text"
+          value={typedText}
+          onChange={handleInputChange}
+          maxLength={5}
+          autoComplete="off"
+          spellCheck={false}
+          onFocus={() => {
+            setIsFocused(true);
+            setTimeout(() => inputRef.current?.select(), 20);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            commitTime(typedText, period);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+              isDeletingRef.current = true;
+            } else {
+              isDeletingRef.current = false;
+            }
+            if (e.key === "Enter") {
+              commitTime(typedText, period);
+              inputRef.current?.blur();
+            }
+          }}
+          placeholder={placeholder}
+          className={`w-14 sm:w-16 text-center text-xs sm:text-sm font-bold bg-transparent outline-none tracking-tight select-all placeholder:text-slate-400 ${
+            hasError ? "text-red-600 font-extrabold" : "text-slate-800"
+          }`}
+        />
+      </div>
+
+      <div className="inline-flex items-center rounded-xl bg-slate-100 p-0.5 border border-slate-200/90 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => handlePeriodToggle('AM')}
+          className={`px-2 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+            period === 'AM'
+              ? "bg-[#0755E8] text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+          title="Morning (AM)"
+        >
+          AM
+        </button>
+        <button
+          type="button"
+          onClick={() => handlePeriodToggle('PM')}
+          className={`px-2 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+            period === 'PM'
+              ? "bg-[#0755E8] text-white shadow-xs"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+          title="Evening (PM)"
+        >
+          PM
+        </button>
+      </div>
     </div>
   );
 };
+
+const ManualTimeInput = TimeInputWithPeriod;
+const TypeableTimeInput = TimeInputWithPeriod;
+const TimeSelect = TimeInputWithPeriod;
 
 
 const EditExpertAvailability = () => {
@@ -500,6 +806,7 @@ const EditExpertAvailability = () => {
   });
 
   const [selectedBlockDate, setSelectedBlockDate] = useState<string>("");
+  const [highlightedDay, setHighlightedDay] = useState<string | null>(null);
 
   const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const dayLabel: Record<string, string> = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
@@ -514,27 +821,31 @@ const EditExpertAvailability = () => {
       const data = res.data.data;
       const weekly = data.weekly || {};
 
-      // Ensure structure and snap to 30-min intervals
+      // Ensure structure and preserve custom to time if present
       const duration = data.sessionDuration || 30;
       Object.keys(weekly).forEach(day => {
         if (Array.isArray(weekly[day])) {
           weekly[day] = weekly[day].map((slot: any) => {
-            const parsed = parseTime24(slot.from);
-            const snappedFrom = formatTime24(parsed.hour, parsed.minute, parsed.period);
-            const snappedTo = calculateEndTime(snappedFrom, duration);
-            return { from: snappedFrom, to: snappedTo };
+            const from = slot.from || "09:00";
+            let to = slot.to || "";
+            const startMin = timeToMinutes(from);
+            let endMin = timeToMinutes(to);
+            if (endMin === 0 && startMin > 0) endMin = 1440;
+            if (!to || endMin <= startMin) {
+              to = calculateEndTime(from, duration);
+            }
+            return { from, to };
           }).sort((a: any, b: any) => timeToMinutes(a.from) - timeToMinutes(b.from));
         }
       });
 
-      const allowed = Array.isArray(data.allowedDurations) && data.allowedDurations.length > 0
-        ? data.allowedDurations.filter((d: number) => d === 30 || d === 60)
-        : (data.sessionDuration === 30 || data.sessionDuration === 60 ? [data.sessionDuration] : [30]);
+      // Normalize to single duration (prefer sessionDuration if legacy data had both)
+      const singleDuration = Number(data.sessionDuration) === 60 ? 60 : 30;
       setProfile((p) => ({
         ...p,
         availability: {
-          sessionDuration: data.sessionDuration || 30,
-          allowedDurations: allowed,
+          sessionDuration: singleDuration,
+          allowedDurations: [singleDuration],
           defaultMeetingLink: data.defaultMeetingLink || null,
           maxPerDay: data.maxPerDay || 4,
           weekly: weekly,
@@ -582,135 +893,353 @@ const EditExpertAvailability = () => {
     return days[(idx + 1) % days.length];
   };
 
-  const getNextSlotForDay = (
-    day: string,
-    weekly: Record<string, Slot[]>,
-    duration: number = 30
-  ): { targetDay: string; slot: Slot; crossedMidnight: boolean } | null => {
-    const currentSlots = weekly[day] || [];
-    
-    // If the day is currently empty, begin with standard 09:00 AM slot
+  const addSlotForDay = (day: string) => {
+    const duration = Number(profile.availability.sessionDuration) === 60 ? 60 : 30;
+    const currentSlots = profile.availability.weekly[day] || [];
+    const maxPerDay = profile.availability.maxPerDay || 4;
+    const maxStartMin = 1440 - duration;
+    const lastSlotLabel = duration === 60 ? "11:00 PM – 12:00 AM" : "11:30 PM – 12:00 AM";
+
+    // 1. If day currently has no slots, cleanly start at standard 09:00 AM
     if (currentSlots.length === 0) {
-      const startMin = 9 * 60; // 09:00 AM
-      const endMin = startMin + duration;
-      return {
-        targetDay: day,
-        slot: {
-          from: minutesToHHMM(startMin),
-          to: minutesToHHMM(endMin),
-        },
-        crossedMidnight: false,
-      };
+      const from = "09:00";
+      const to = calculateEndTime(from, duration);
+      setProfile((p) => {
+        const weekly = { ...p.availability.weekly };
+        weekly[day] = [{ from, to }];
+        return { ...p, availability: { ...p.availability, weekly } };
+      });
+      return;
     }
 
     // Sort existing slots by start time
-    const sortedSlots = [...currentSlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
-    const lastSlot = sortedSlots[sortedSlots.length - 1];
-    const lastRange = getSlotRangeMinutes(lastSlot);
+    const sorted = [...currentSlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
+    const lastSlot = sorted[sorted.length - 1];
+    let lastStartMin = timeToMinutes(lastSlot.from);
+    let lastEndMin = timeToMinutes(lastSlot.to);
+    if (lastEndMin === 0 && lastStartMin > 0) lastEndMin = 1440;
 
-    let candStart = lastRange.end;
-    let targetDay = day;
-    let crossedMidnight = false;
+    // 2. CHECK IF CURRENT DAY HAS REACHED THE FINAL PERMITTED SLOT (e.g. 11:30 PM – 12:00 AM)
+    // OR CANNOT ACCOMMODATE ANOTHER SLOT BEFORE MIDNIGHT
+    const isAtOrPastMidnightCutoff = lastStartMin >= maxStartMin || lastEndMin >= 1440;
 
-    // If latest slot ends at or crosses midnight (1440 min = 12:00 AM)
-    if (candStart >= 1440) {
-      targetDay = getNextDay(day);
-      candStart = candStart - 1440;
-      crossedMidnight = true;
-    }
+    if (isAtOrPastMidnightCutoff) {
+      // --- AUTOMATIC NEXT-DAY SCHEDULING ---
+      const nextDay = getNextDay(day);
+      const nextDayLabel = dayLabel[nextDay] || nextDay;
+      const nextDaySlots = profile.availability.weekly[nextDay] || [];
 
-    let candEnd = candStart + duration;
-    const maxSearchSteps = 48; // up to 24 hours of 30-min steps
-    let steps = 0;
-
-    while (steps < maxSearchSteps) {
-      if (candStart >= 1440) {
-        targetDay = getNextDay(targetDay);
-        candStart = candStart - 1440;
-        candEnd = candStart + duration;
-        crossedMidnight = true;
+      // Check maxPerDay on next day
+      if (nextDaySlots.length >= maxPerDay) {
+        toast.error(`The last slot for ${dayLabel[day]} is ${lastSlotLabel}. Cannot add slot to ${nextDayLabel}: daily limit reached (${maxPerDay} sessions).`);
+        return;
       }
 
-      const targetSlots = weekly[targetDay] || [];
-      const overlaps = targetSlots.some(s => {
-        const r = getSlotRangeMinutes(s);
-        return candStart < r.end && candEnd > r.start;
-      });
+      let newSlotForNextDay: Slot | null = null;
+      const BREAK_DURATION = 30;
+      const sortedNext = [...nextDaySlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
 
-      if (!overlaps) {
-        return {
-          targetDay,
-          slot: {
+      // Continuous availability sequence starting at 12:30 AM (30 min after midnight) with 30-min break intervals
+      for (let candStart = BREAK_DURATION; candStart + duration <= 1440; candStart += (duration + BREAK_DURATION)) {
+        const candEnd = candStart + duration;
+
+        const overlaps = sortedNext.some((s) => {
+          const r = getSlotRangeMinutes(s);
+          return candStart < r.end && candEnd > r.start;
+        });
+
+        if (!overlaps) {
+          newSlotForNextDay = {
             from: minutesToHHMM(candStart),
-            to: minutesToHHMM(candEnd),
-          },
-          crossedMidnight,
-        };
+            to: minutesToHHMM(candEnd)
+          };
+          break;
+        }
       }
 
-      const overlappingSlot = targetSlots.find(s => {
-        const r = getSlotRangeMinutes(s);
-        return candStart < r.end && candEnd > r.start;
+      if (!newSlotForNextDay) {
+        toast.error(`The last slot for ${dayLabel[day]} is ${lastSlotLabel}. Cannot add slot to ${nextDayLabel}: no available time slots remaining.`);
+        return;
+      }
+
+      // Add to next day while preserving all existing slots
+      setProfile((p) => {
+        const weekly = { ...p.availability.weekly };
+        const updatedNextDaySlots = [...(weekly[nextDay] || []), newSlotForNextDay!].sort(
+          (a, b) => timeToMinutes(a.from) - timeToMinutes(b.from)
+        );
+        weekly[nextDay] = updatedNextDaySlots;
+        return { ...p, availability: { ...p.availability, weekly } };
       });
 
-      if (overlappingSlot) {
-        const r = getSlotRangeMinutes(overlappingSlot);
-        candStart = Math.max(candStart + duration, r.end);
-      } else {
-        candStart += duration;
-      }
-      candEnd = candStart + duration;
-      steps++;
-    }
+      // Display clear informational notification as required by business rule
+      toast.info(`The last slot for this day is ${lastSlotLabel}. Your next slot has been added to the following day.`);
 
-    return null;
-  };
+      // Visually highlight destination day row and scroll into view
+      setHighlightedDay(nextDay);
+      setTimeout(() => {
+        setHighlightedDay((prev) => (prev === nextDay ? null : prev));
+      }, 2500);
 
-  const addSlotForDay = (day: string) => {
-    const result = getNextSlotForDay(
-      day,
-      profile.availability.weekly,
-      profile.availability.sessionDuration
-    );
+      setTimeout(() => {
+        const el = document.getElementById(`day-row-${nextDay}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
 
-    if (!result) {
-      toast.error("Could not find an available continuous slot.");
       return;
     }
 
-    const { targetDay, slot, crossedMidnight } = result;
-    const targetSlots = profile.availability.weekly[targetDay] || [];
-    const maxPerDay = profile.availability.maxPerDay || 4;
+    // --- NORMAL SAME-DAY SLOT ADDITION ---
+    // Check if current day reached daily capacity
+    if (currentSlots.length >= maxPerDay) {
+      toast.error(`Daily limit reached on ${dayLabel[day]} (${maxPerDay} sessions).`);
+      return;
+    }
 
-    if (targetSlots.length >= maxPerDay) {
-      toast.error(`Daily limit reached on ${dayLabel[targetDay]} (${maxPerDay} sessions).`);
+    const BREAK_DURATION = 30;
+    let candStart = lastEndMin + BREAK_DURATION;
+    let candEnd = candStart + duration;
+
+    let newSlot: Slot | null = null;
+    if (candEnd <= 1440) {
+      const overlaps = sorted.some((s) => {
+        const r = getSlotRangeMinutes(s);
+        return candStart < r.end && candEnd > r.start;
+      });
+      if (!overlaps) {
+        newSlot = {
+          from: minutesToHHMM(candStart),
+          to: minutesToHHMM(candEnd)
+        };
+      }
+    }
+
+    if (!newSlot) {
+      // Find earlier gap on current day with 30-min break
+      for (let min = BREAK_DURATION; min + duration <= 1440; min += (duration + BREAK_DURATION)) {
+        const cStart = min;
+        const cEnd = min + duration;
+        const overlaps = sorted.some((s) => {
+          const r = getSlotRangeMinutes(s);
+          return cStart < r.end && cEnd > r.start;
+        });
+        if (!overlaps) {
+          newSlot = {
+            from: minutesToHHMM(cStart),
+            to: minutesToHHMM(cEnd)
+          };
+          break;
+        }
+      }
+    }
+
+    if (!newSlot) {
+      toast.error(`No more available slots can be added on ${dayLabel[day]}.`);
       return;
     }
 
     setProfile((p) => {
       const weekly = { ...p.availability.weekly };
-      const currentTargetSlots = [...(weekly[targetDay] || [])];
-      const newSlots = [...currentTargetSlots, slot].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
-      weekly[targetDay] = newSlots;
+      const newSlots = [...(weekly[day] || []), newSlot!].sort(
+        (a, b) => timeToMinutes(a.from) - timeToMinutes(b.from)
+      );
+      weekly[day] = newSlots;
       return { ...p, availability: { ...p.availability, weekly } };
     });
+  };
 
-    if (crossedMidnight) {
-      toast.info(`Slot reached midnight. Added ${displayTime(slot.from)} - ${displayTime(slot.to)} to ${dayLabel[targetDay]}.`);
+  const toggleDay = (day: string) => {
+    const slots = profile.availability.weekly[day] || [];
+    if (slots.length > 0) {
+      // Currently active -> Clear this day
+      clearDay(day);
+    } else {
+      // Currently off -> Turn ON and cleanly initialize with 09:00 AM
+      const duration = Number(profile.availability.sessionDuration) === 60 ? 60 : 30;
+      const from = "09:00";
+      const to = calculateEndTime(from, duration);
+      setProfile((p) => {
+        const weekly = { ...p.availability.weekly };
+        weekly[day] = [{ from, to }];
+        return { ...p, availability: { ...p.availability, weekly } };
+      });
     }
   };
 
-  const updateSlotForDay = (day: string, idx: number, newStartTime: string) => {
+  const updateSlotStartTimeForDay = (day: string, idx: number, newStartTime: string, showToast = true): boolean => {
+    const slots = profile.availability.weekly[day] || [];
+    const currentSlot = slots[idx];
+    if (!currentSlot) return false;
+
+    // Automatically compute end time based on the interval the expert selected (30m or 60m)
+    const duration = Number(profile.availability.sessionDuration) === 60 ? 60 : 30;
+    const startMin = timeToMinutes(newStartTime);
+    const maxStartMin = 1440 - duration;
+    const lastSlotLabel = duration === 60 ? "11:00 PM – 12:00 AM" : "11:30 PM – 12:00 AM";
+
+    // Strict daily cutoff: Reject any slot starting after 11:30 PM (or 11:00 PM for 60m)
+    if (startMin > maxStartMin) {
+      if (showToast) {
+        toast.error(`${lastSlotLabel} is the last available slot of the day. You cannot add another slot after this time. Please select a slot on the next day.`);
+      }
+      return false;
+    }
+
+    const newEndTime = calculateEndTime(newStartTime, duration);
+    let endMin = timeToMinutes(newEndTime);
+    if (endMin === 0 && startMin > 0) endMin = 1440;
+
+    // Strict daily cutoff: Slot cannot cross midnight into the next day
+    if (endMin > 1440) {
+      if (showToast) {
+        toast.error(`${lastSlotLabel} is the last available slot of the day. You cannot add another slot after this time. Please select a slot on the next day.`);
+      }
+      return false;
+    }
+
+    // Check overlap with other slots on this day
+    const otherSlots = slots.filter((_, i) => i !== idx);
+    const hasOverlap = otherSlots.some((s) => {
+      const r = getSlotRangeMinutes(s);
+      return startMin < r.end && endMin > r.start;
+    });
+
+    if (hasOverlap) {
+      if (showToast) {
+        toast.error(`Slot ${displayTime(newStartTime)} - ${displayTime(newEndTime)} overlaps with another slot on ${dayLabel[day] || day}`);
+      }
+      return false;
+    }
+
+    setProfile((p) => {
+      const weekly = { ...p.availability.weekly };
+      const currentSlots = [...(weekly[day] || [])];
+      currentSlots[idx] = { from: newStartTime, to: newEndTime };
+      weekly[day] = currentSlots;
+      return { ...p, availability: { ...p.availability, weekly } };
+    });
+    return true;
+  };
+
+  const updateSlotEndTimeForDay = (day: string, idx: number, newEndTime: string): boolean => {
+    const slots = profile.availability.weekly[day] || [];
+    const currentSlot = slots[idx];
+    if (!currentSlot) return false;
+
+    const startMin = timeToMinutes(currentSlot.from);
+    let endMin = timeToMinutes(newEndTime);
+    if (endMin === 0 && startMin > 0) endMin = 1440;
+
+    if (endMin <= startMin) {
+      toast.error(`End time (${displayTime(newEndTime)}) must be after start time (${displayTime(currentSlot.from)})`);
+      return false;
+    }
+
+    // Check overlap with other slots on this day
+    const otherSlots = slots.filter((_, i) => i !== idx);
+    const hasOverlap = otherSlots.some((s) => {
+      const r = getSlotRangeMinutes(s);
+      return startMin < r.end && endMin > r.start;
+    });
+
+    if (hasOverlap) {
+      toast.error(`Slot ${displayTime(currentSlot.from)} - ${displayTime(newEndTime)} overlaps with another slot on ${dayLabel[day] || day}`);
+      return false;
+    }
+
+    setProfile((p) => {
+      const weekly = { ...p.availability.weekly };
+      const currentSlots = [...(weekly[day] || [])];
+      currentSlots[idx] = { from: currentSlot.from, to: newEndTime };
+      weekly[day] = currentSlots;
+      return { ...p, availability: { ...p.availability, weekly } };
+    });
+    return true;
+  };
+
+  const updateSlotRangeForDay = (day: string, idx: number, newStartTime: string, newEndTime: string): boolean => {
+    const slots = profile.availability.weekly[day] || [];
+    const currentSlot = slots[idx];
+    if (!currentSlot) return false;
+
+    const startMin = timeToMinutes(newStartTime);
+    let endMin = timeToMinutes(newEndTime);
+    if (endMin === 0 && startMin > 0) endMin = 1440;
+
+    if (endMin <= startMin) {
+      toast.error(`End time (${displayTime(newEndTime)}) must be after start time (${displayTime(newStartTime)})`);
+      return false;
+    }
+
+    // Check overlap with other slots on this day
+    const otherSlots = slots.filter((_, i) => i !== idx);
+    const hasOverlap = otherSlots.some((s) => {
+      const r = getSlotRangeMinutes(s);
+      return startMin < r.end && endMin > r.start;
+    });
+
+    if (hasOverlap) {
+      toast.error(`Slot ${displayTime(newStartTime)} - ${displayTime(newEndTime)} overlaps with another slot on ${dayLabel[day] || day}`);
+      return false;
+    }
+
+    setProfile((p) => {
+      const weekly = { ...p.availability.weekly };
+      const currentSlots = [...(weekly[day] || [])];
+      currentSlots[idx] = { from: newStartTime, to: newEndTime };
+      weekly[day] = currentSlots;
+      return { ...p, availability: { ...p.availability, weekly } };
+    });
+    return true;
+  };
+
+  const updateSlotDurationForDay = (day: string, idx: number, newDuration: 30 | 60) => {
     setProfile((p) => {
       const weekly = { ...p.availability.weekly };
       const slots = [...(weekly[day] || [])];
-      const endTime = calculateEndTime(newStartTime, p.availability.sessionDuration);
-      slots[idx] = { ...slots[idx], from: newStartTime, to: endTime };
+      const currentSlot = slots[idx];
+      if (!currentSlot) return p;
+
+      const newEndTime = calculateEndTime(currentSlot.from, newDuration);
+      const startMin = timeToMinutes(currentSlot.from);
+      let endMin = timeToMinutes(newEndTime);
+      if (endMin === 0 && startMin > 0) endMin = 1440;
+
+      // Check overlap with other slots on this day
+      const otherSlots = slots.filter((_, i) => i !== idx);
+      const hasOverlap = otherSlots.some((s) => {
+        const r = getSlotRangeMinutes(s);
+        return startMin < r.end && endMin > r.start;
+      });
+
+      if (hasOverlap) {
+        toast.error(`Changing this slot to ${newDuration} mins overlaps with another slot on ${dayLabel[day] || day}`);
+        return p;
+      }
+
+      slots[idx] = { from: currentSlot.from, to: newEndTime };
       slots.sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
       weekly[day] = slots;
       return { ...p, availability: { ...p.availability, weekly } };
     });
   };
+
+  // Single-selection session duration handler: strictly synchronizes offered duration and default slot length
+  const handleSelectDuration = (newDur: 30 | 60) => {
+    setProfile(p => ({
+      ...p,
+      availability: {
+        ...p.availability,
+        sessionDuration: newDur,
+        allowedDurations: [newDur],
+      }
+    }));
+  };
+
+  // Alias for backward compatibility
+  const updateSlotForDay = updateSlotStartTimeForDay;
 
   const removeSlotForDay = (day: string, idx: number) => {
     setProfile((p) => {
@@ -830,11 +1359,20 @@ const EditExpertAvailability = () => {
         return;
       }
 
-      // Validate slots overlap and solid 30-minute intervals
+      const duration = Number(profile.availability.sessionDuration) === 60 ? 60 : 30;
+      const maxStartMin = 1440 - duration;
+      const lastSlotLabel = duration === 60 ? "11:00 PM – 12:00 AM" : "11:30 PM – 12:00 AM";
+
+      // Validate slots overlap, strict midnight cutoff, and session duration limits
       for (const day of Object.keys(profile.availability.weekly)) {
         const daySlots = profile.availability.weekly[day] || [];
         const label = dayLabel[day] || day;
-        
+
+        if (daySlots.length > maxSessions) {
+          toast.error(`Daily limit exceeded on ${label}: max ${maxSessions} sessions allowed.`);
+          return;
+        }
+
         // First sort slots by start time to make validation/checking super clean
         const sortedSlots = [...daySlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
 
@@ -843,9 +1381,19 @@ const EditExpertAvailability = () => {
           const start = timeToMinutes(slot.from);
           let end = timeToMinutes(slot.to);
           if (end === 0 && start > 0) {
-            end = 24 * 60; // 1440 (midnight)
-          } else if (end < start) {
-            end += 24 * 60;
+            end = 1440; // 12:00 AM (midnight)
+          }
+
+          // Strict daily cutoff check
+          if (start > maxStartMin) {
+            toast.error(`${lastSlotLabel} is the last available slot of the day. Slot ${displayTime(slot.from)} on ${label} begins after this time. Please select a slot on the next day.`);
+            return;
+          }
+
+          // Strict midnight boundary: cannot cross midnight into next day
+          if (end > 1440) {
+            toast.error(`Slot ${displayTime(slot.from)} - ${displayTime(slot.to)} on ${label} cannot cross midnight into the next day.`);
+            return;
           }
 
           if (start >= end) {
@@ -853,18 +1401,11 @@ const EditExpertAvailability = () => {
             return;
           }
 
-          if (start % 30 !== 0) {
-            toast.error(`Invalid slot on ${label}: Start time must be on a solid 30-minute interval (e.g. 03:00 or 03:30).`);
-            return;
-          }
-
           if (i > 0) {
             const prevSlot = sortedSlots[i - 1];
             let prevEnd = timeToMinutes(prevSlot.to);
             if (prevEnd === 0 && timeToMinutes(prevSlot.from) > 0) {
-              prevEnd = 24 * 60;
-            } else if (prevEnd < timeToMinutes(prevSlot.from)) {
-              prevEnd += 24 * 60;
+              prevEnd = 1440;
             }
             if (start < prevEnd) {
               toast.error(`Slot overlap on ${label}: The slot ${displayTime(slot.from)} - ${displayTime(slot.to)} overlaps with ${displayTime(prevSlot.from)} - ${displayTime(prevSlot.to)}.`);
@@ -943,38 +1484,69 @@ const EditExpertAvailability = () => {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Durations you offer (candidates see only these)</label>
-                  <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Durations you offer (candidates see only this)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-w-sm">
+                    <label
+                      onClick={() => handleSelectDuration(30)}
+                      className={`flex items-center gap-2 py-2 px-2.5 sm:px-3 rounded-xl border transition-all cursor-pointer ${
+                        profile.availability.sessionDuration === 30
+                          ? "border-[#0755E8] bg-blue-50/80 shadow-2xs"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                      }`}
+                    >
                       <input
-                        type="checkbox"
-                        checked={(profile.availability.allowedDurations || [profile.availability.sessionDuration]).includes(30)}
-                        onChange={(e) => {
-                          const current = profile.availability.allowedDurations || [profile.availability.sessionDuration];
-                          const next = e.target.checked ? [...current.filter((d: number) => d !== 30), 30] : current.filter((d: number) => d !== 30);
-                          if (next.length === 0) return;
-                          setProfile(p => ({ ...p, availability: { ...p.availability, allowedDurations: next.sort((a: number, b: number) => a - b) } }));
-                        }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        type="radio"
+                        name="sessionDurationRadio"
+                        value="30"
+                        checked={profile.availability.sessionDuration === 30}
+                        onChange={() => handleSelectDuration(30)}
+                        className="w-3.5 h-3.5 text-[#0755E8] border-slate-300 focus:ring-[#0755E8] cursor-pointer shrink-0"
                       />
-                      <span className="text-sm font-medium text-gray-700">30 min</span>
+                      <div className="min-w-0">
+                        <span className={`text-xs sm:text-sm font-bold block leading-tight whitespace-nowrap ${
+                          profile.availability.sessionDuration === 30 ? "text-[#0755E8]" : "text-slate-800"
+                        }`}>
+                          30 min
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium block leading-tight whitespace-nowrap">
+                          Half Hour
+                        </span>
+                      </div>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+
+                    <label
+                      onClick={() => handleSelectDuration(60)}
+                      className={`flex items-center gap-2 py-2 px-2.5 sm:px-3 rounded-xl border transition-all cursor-pointer ${
+                        profile.availability.sessionDuration === 60
+                          ? "border-[#0755E8] bg-blue-50/80 shadow-2xs"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                      }`}
+                    >
                       <input
-                        type="checkbox"
-                        checked={(profile.availability.allowedDurations || [profile.availability.sessionDuration]).includes(60)}
-                        onChange={(e) => {
-                          const current = profile.availability.allowedDurations || [profile.availability.sessionDuration];
-                          const next = e.target.checked ? [...current.filter((d: number) => d !== 60), 60] : current.filter((d: number) => d !== 60);
-                          if (next.length === 0) return;
-                          setProfile(p => ({ ...p, availability: { ...p.availability, allowedDurations: next.sort((a: number, b: number) => a - b) } }));
-                        }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        type="radio"
+                        name="sessionDurationRadio"
+                        value="60"
+                        checked={profile.availability.sessionDuration === 60}
+                        onChange={() => handleSelectDuration(60)}
+                        className="w-3.5 h-3.5 text-[#0755E8] border-slate-300 focus:ring-[#0755E8] cursor-pointer shrink-0"
                       />
-                      <span className="text-sm font-medium text-gray-700">60 min</span>
+                      <div className="min-w-0">
+                        <span className={`text-xs sm:text-sm font-bold block leading-tight whitespace-nowrap ${
+                          profile.availability.sessionDuration === 60 ? "text-[#0755E8]" : "text-slate-800"
+                        }`}>
+                          60 min
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium block leading-tight whitespace-nowrap">
+                          One Hour
+                        </span>
+                      </div>
                     </label>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">At least one must be selected. Candidates will only see the options you enable.</p>
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    Select exactly one duration. Candidates booking your sessions will only see this duration.
+                  </p>
                 </div>
 
                 <div>
@@ -999,31 +1571,15 @@ const EditExpertAvailability = () => {
                   <CustomSelect
                     value={String(profile.availability.sessionDuration)}
                     options={[
-                      { value: "30", label: "30 Minutes" },
-                      { value: "60", label: "60 Minutes" },
+                      { value: "30", label: "30 Minutes (Half Hour)" },
+                      { value: "60", label: "60 Minutes (One Hour)" },
                     ]}
                     onChange={(val) => {
-                      const newDur = Number(val);
-                      setProfile(p => {
-                        const newWeekly = { ...p.availability.weekly };
-                        Object.keys(newWeekly).forEach(d => {
-                          newWeekly[d] = (newWeekly[d] || []).map(s => ({
-                            from: s.from,
-                            to: calculateEndTime(s.from, newDur)
-                          }));
-                        });
-                        return {
-                          ...p,
-                          availability: {
-                            ...p.availability,
-                            sessionDuration: newDur,
-                            weekly: newWeekly
-                          }
-                        };
-                      });
+                      const newDur = Number(val) === 60 ? 60 : 30;
+                      handleSelectDuration(newDur);
                     }}
                   />
-                  <p className="text-xs text-gray-400 mt-1">Used when generating time slots below.</p>
+                  <p className="text-xs text-gray-400 mt-1">Synchronized with your offered duration. Used when generating new time slots.</p>
                 </div>
 
                 <div>
@@ -1116,7 +1672,17 @@ const EditExpertAvailability = () => {
                   const isAvailable = slots.length > 0;
 
                   return (
-                    <div key={day} className={`p-4 md:p-5 transition-colors ${isAvailable ? 'bg-white' : 'bg-gray-50/50'}`}>
+                    <div
+                      key={day}
+                      id={`day-row-${day}`}
+                      className={`p-4 md:p-5 transition-all duration-500 rounded-xl ${
+                        highlightedDay === day
+                          ? 'ring-2 ring-blue-500 bg-blue-50/80 shadow-md'
+                          : isAvailable
+                          ? 'bg-white'
+                          : 'bg-gray-50/50'
+                      }`}
+                    >
                       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
 
                         {/* Day Label & Toggle */}
@@ -1127,7 +1693,7 @@ const EditExpertAvailability = () => {
                                 type="checkbox"
                                 className="sr-only peer"
                                 checked={isAvailable}
-                                onChange={() => isAvailable ? clearDay(day) : addSlotForDay(day)}
+                                onChange={() => toggleDay(day)}
                               />
                               <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
@@ -1144,22 +1710,32 @@ const EditExpertAvailability = () => {
                           ) : (
                             <div className="space-y-3">
                               {slots.map((slot, idx) => (
-                                <div key={idx} className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                                <div key={`${day}-${idx}`} className="flex flex-wrap items-center gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                    {/* 1. Start Time Input with nearby AM/PM toggle */}
+                                    <TimeInputWithPeriod
+                                      value={slot.from}
+                                      onChange={(newTime, showToast) => updateSlotStartTimeForDay(day, idx, newTime, showToast)}
+                                      placeholder="09:00"
+                                    />
 
-                                  <TimeSelect
-                                    value={slot.from}
-                                    onChange={(newTime) => updateSlotForDay(day, idx, newTime)}
-                                  />
+                                    <span className="text-slate-400 font-bold px-0.5 select-none">-</span>
 
-                                  <span className="text-gray-300">-</span>
-
-                                  <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1 text-sm text-gray-500 font-medium w-24 text-center">
-                                    {displayTime(slot.to)}
+                                    {/* 2. End Time (Read-only / Fixed by the selected interval) */}
+                                    <div
+                                      className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-600 select-none shadow-2xs"
+                                      title={`Fixed end time (${Number(profile.availability.sessionDuration) === 60 ? "60" : "30"} mins interval)`}
+                                    >
+                                      <Clock size={14} className="text-slate-400 shrink-0" />
+                                      <span className="tracking-tight">{displayTime(slot.to)}</span>
+                                    </div>
                                   </div>
 
+                                  {/* 3. Remove Slot */}
                                   <button
+                                    type="button"
                                     onClick={() => removeSlotForDay(day, idx)}
-                                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors ml-auto sm:ml-0"
+                                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-auto sm:ml-0 cursor-pointer"
                                     title="Remove Slot"
                                   >
                                     <X size={16} />
