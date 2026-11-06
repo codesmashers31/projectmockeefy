@@ -27,6 +27,8 @@ import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { MentorJobCard } from "./MentorJobCard";
 import MySessionsSkeleton, { SessionCardSkeleton } from "./MySessionsSkeleton";
+import { IdentityConfirmationModal } from "./IdentityConfirmationModal";
+import { useCertificateVerification } from "../hooks/useCertificateVerification";
 
 // --- Types ---
 type ReviewInfo = {
@@ -68,6 +70,14 @@ type Session = {
 
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
+  if (s === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10.5px] font-bold tracking-tight shadow-2xs shrink-0">
+        <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+        <span>Pending Mentor Confirmation</span>
+      </span>
+    );
+  }
   if (s === "completed") {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10.5px] font-bold tracking-tight shadow-2xs shrink-0">
@@ -203,6 +213,7 @@ function canJoinSession(session: Session): boolean {
 
 /** Expired only after endTime (e.g. 2:00–2:30 → Expired only after 2:30). */
 function getDisplayStatus(session: Session): string {
+  if (session.status?.toLowerCase() === 'pending') return 'Pending';
   if (session.status === 'Completed' || session.status === 'Cancelled') return session.status;
   const now = new Date();
   const end = session.endTime ? new Date(session.endTime) : null;
@@ -539,6 +550,9 @@ const MySessions = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const location = useLocation();
+  const { data: verificationData, confirmIdentity: confirmIdentityApi, refreshVerification } = useCertificateVerification();
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [pendingJoinSession, setPendingJoinSession] = useState<Session | null>(null);
   const searchParams = new URLSearchParams(location.search);
   const initialView = (initialViewOverride || (searchParams.get('view') as any) || 'overview') as any;
 
@@ -816,7 +830,23 @@ const MySessions = ({
   }, [user?.id, user?._id, activeView]);
 
   const handleJoin = (session: Session) => {
+    // Intercept if approaching third qualifying interview and recipient name confirmation is required
+    if (verificationData?.confirmationRequired) {
+      setPendingJoinSession(session);
+      setShowIdentityModal(true);
+      return;
+    }
     navigate(`/live-meeting/${session.sessionId}`, { state: { session } });
+  };
+
+  const handleIdentityConfirmed = async () => {
+    setShowIdentityModal(false);
+    await refreshVerification();
+    if (pendingJoinSession) {
+      const sessionToJoin = pendingJoinSession;
+      setPendingJoinSession(null);
+      navigate(`/live-meeting/${sessionToJoin.sessionId}`, { state: { session: sessionToJoin } });
+    }
   };
 
   const handleRequestFeedback = async (sessionId: string) => {
@@ -942,6 +972,32 @@ const MySessions = ({
                 </span>
               </div>
             </div>
+
+            {/* Identity Verification Alert Banner before 3rd Qualifying Interview */}
+            {verificationData?.confirmationRequired && (
+              <div className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#EBF3FF] via-indigo-50/50 to-white border border-[#93B8FF]/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0 border border-[#93B8FF]/60 shadow-2xs">
+                    <Award className="w-5 h-5 text-[#0755E8]" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-[#0755E8] uppercase tracking-wider">
+                      Verify Your Certificate Name
+                    </div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800">
+                      Your certificate will be issued using the name on file (<span className="text-[#0755E8] font-bold">{verificationData.profileName}</span>). Please confirm before proceeding with your qualifying interview.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowIdentityModal(true)}
+                  className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#053BA8] text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs active:scale-98 whitespace-nowrap"
+                >
+                  Verify Name
+                </button>
+              </div>
+            )}
 
             {/* Status Filter Tabs - Modern Segmented Control */}
             <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
@@ -1355,6 +1411,18 @@ const MySessions = ({
           </div>,
           document.body
         )}
+
+        {/* Certificate Recipient Identity Confirmation Modal before 3rd Qualifying Interview */}
+        <IdentityConfirmationModal
+          isOpen={showIdentityModal}
+          onClose={() => {
+            setShowIdentityModal(false);
+            setPendingJoinSession(null);
+          }}
+          onConfirmed={handleIdentityConfirmed}
+          candidateName={verificationData?.profileName || user?.name || "Candidate"}
+          onConfirmApi={confirmIdentityApi}
+        />
 
         {/* View Certificate Modal — expert feedback (marks) and certificate details - Rendered via React Portal */}
         {certificateModalSession && typeof document !== "undefined" && createPortal(

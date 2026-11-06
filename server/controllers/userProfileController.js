@@ -118,7 +118,18 @@ export const updatePersonalInfo = async (req, res) => {
         }
 
         // Update name if provided
-        if (name && typeof name === "string" && name.trim()) user.name = name.trim();
+        if (name && typeof name === "string" && name.trim()) {
+            const trimmedName = name.trim();
+            if (user.name !== trimmedName) {
+                user.name = trimmedName;
+                // Invalidate pending confirmation for unissued certificates so reconfirmation is required
+                if (user.certificateIdentityConfirmation) {
+                    user.certificateIdentityConfirmation.confirmedName = null;
+                    user.certificateIdentityConfirmation.confirmedAt = null;
+                    user.certificateIdentityConfirmation.confirmationReference = null;
+                }
+            }
+        }
 
         // Update personal info
         user.personalInfo = {

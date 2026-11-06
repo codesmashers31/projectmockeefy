@@ -87,6 +87,15 @@ export const markAsRead = async (req, res) => {
 // Helper to create notification (internal use)
 export const createNotification = async ({ userId, type, title, message, metadata }) => {
     try {
+        if (type === 'product_update' || type === 'marketing') {
+            const ExpertDetails = (await import('../models/expertModel.js')).default;
+            const expert = await ExpertDetails.findOne({ userId }).lean();
+            if (expert && expert.settings?.marketingEmails === false) {
+                console.log(`[Notification] 🔕 Expert ${userId} has disabled product updates. Suppressing notification.`);
+                return null;
+            }
+        }
+
         const notification = new Notification({
             userId,
             type: type || 'system',

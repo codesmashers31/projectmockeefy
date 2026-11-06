@@ -5,6 +5,8 @@ import { useSearchParams, useNavigate, useLocation, useParams } from 'react-rout
 import { Clock, Copy, ExternalLink, HelpCircle, LogOut, PhoneOff, CheckCircle2, AlertTriangle, Star, X, User, Briefcase, CalendarDays, Timer, ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { IdentityConfirmationModal } from '../components/IdentityConfirmationModal';
+import { useCertificateVerification } from '../hooks/useCertificateVerification';
 import axios from '../lib/axios';
 import MockeefyLogo from '../components/MockeefyLogo';
 
@@ -676,6 +678,14 @@ export default function LiveMeetingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { data: verificationData, confirmIdentity: confirmIdentityApi, refreshVerification } = useCertificateVerification();
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+
+  useEffect(() => {
+    if (role !== 'expert' && verificationData?.confirmationRequired) {
+      setShowIdentityModal(true);
+    }
+  }, [role, verificationData?.confirmationRequired]);
 
   const sessionFromState = (location.state as any)?.session;
   const meetingId = sessionIdParam || searchParams.get('meetingId') || sessionFromState?.sessionId || null;
@@ -747,12 +757,24 @@ export default function LiveMeetingPage() {
   }
 
   return (
-    <GoogleMeetOnlyMeeting
+    <>
+      <IdentityConfirmationModal
+        isOpen={showIdentityModal}
+        onClose={() => navigate('/my-sessions')}
+        onConfirmed={async () => {
+          setShowIdentityModal(false);
+          await refreshVerification();
+        }}
+        candidateName={verificationData?.profileName || user?.name || "Candidate"}
+        onConfirmApi={confirmIdentityApi}
+      />
+      <GoogleMeetOnlyMeeting
       meetingId={meetingId}
       role={role}
       onLeave={() => navigate(role === 'expert' ? '/dashboard/sessions' : '/my-sessions')}
       sessionData={location.state}
       currentUserId={(user as any)?.id || (user as any)?._id || ''}
-    />
+      />
+    </>
   );
 }

@@ -223,6 +223,23 @@ const expertSchema = new mongoose.Schema(
       trim: true
     },
 
+    /* ----------------- Expert Account & Application Settings ------------------ */
+    settings: {
+      // Notifications
+      emailAlerts: { type: Boolean, default: true },
+      smsAlerts: { type: Boolean, default: false },
+      marketingEmails: { type: Boolean, default: false },
+
+      // Privacy & Visibility
+      publicProfile: { type: Boolean, default: true },
+      showOnlineStatus: { type: Boolean, default: true },
+      allowSearchEngines: { type: Boolean, default: true },
+
+      // Session Preferences
+      autoAccept: { type: Boolean, default: false },
+      allowRescheduling: { type: Boolean, default: true }
+    },
+
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

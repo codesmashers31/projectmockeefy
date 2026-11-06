@@ -45,6 +45,9 @@ type Session = {
   status: string;
   expertReview?: ReviewInfo | null;
   candidateReview?: ReviewInfo | null;
+  candidateNameSnapshot?: string | null;
+  certificateId?: string | null;
+  identityConfirmedAt?: string | null;
 };
 
 // Helper to calculate responsive font size for recipient name based on character count
@@ -439,6 +442,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isMasterSelected, setIsMasterSelected] = useState(false);
+  const [masterCert, setMasterCert] = useState<any | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadingMaster, setDownloadingMaster] = useState(false);
   const pdfRenderRef = useRef<HTMLDivElement>(null);
@@ -456,16 +460,49 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
     return `${month} ${day}, ${year}`;
   };
 
-  const candidateName = useMemo(() => {
-    const rawName = user?.name || (user as any)?.personalInfo?.name || "";
-    return formatCertificateName(rawName);
-  }, [user]);
-
   const completedSessions = useMemo(() => {
     return sessions
       .filter((s) => (s.status || "").toLowerCase() === "completed")
       .sort((a, b) => new Date(b.startTime || 0).getTime() - new Date(a.startTime || 0).getTime());
   }, [sessions]);
+
+  // Master credential candidate name snapshot
+  const masterCandidateName = useMemo(() => {
+    if (masterCert?.candidateNameSnapshot) {
+      return formatCertificateName(masterCert.candidateNameSnapshot);
+    }
+    const snap = completedSessions.find((s) => s.candidateNameSnapshot)?.candidateNameSnapshot;
+    if (snap) {
+      return formatCertificateName(snap);
+    }
+    const rawName = user?.name || (user as any)?.personalInfo?.name || "";
+    return formatCertificateName(rawName);
+  }, [masterCert, completedSessions, user]);
+
+  // Individual session candidate name snapshot resolver
+  const getSessionCandidateName = (session?: Session | null) => {
+    if (session?.candidateNameSnapshot) {
+      return formatCertificateName(session.candidateNameSnapshot);
+    }
+    if (masterCert?.candidateNameSnapshot) {
+      return formatCertificateName(masterCert.candidateNameSnapshot);
+    }
+    const rawName = user?.name || (user as any)?.personalInfo?.name || "";
+    return formatCertificateName(rawName);
+  };
+
+  // Active preview certificate recipient name
+  const activeCertificateName = useMemo(() => {
+    if (isMasterSelected) {
+      return masterCandidateName;
+    }
+    if (selectedSession) {
+      return getSessionCandidateName(selectedSession);
+    }
+    return masterCandidateName;
+  }, [isMasterSelected, selectedSession, masterCandidateName]);
+
+  const candidateName = masterCandidateName;
 
   const masterCertId = useMemo(() => {
     const userId = (user as any)?.id || (user as any)?._id || "USR";
@@ -705,7 +742,8 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
       const target = pdfRenderRef.current?.firstElementChild as HTMLElement | null;
       if (!target) throw new Error("Unable to locate certificate template");
 
-      const name = candidateName.replace(/\s+/g, "_");
+      const recipientSnapshot = getSessionCandidateName(sessionObj);
+      const name = recipientSnapshot.replace(/\s+/g, "_");
       const filename = `${name}_${sessionObj.category || "Interview"}_Certificate.pdf`;
       await downloadElementAsPDF(target, filename);
       toast.success("Certificate downloaded successfully!");
@@ -728,7 +766,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
       const target = pdfRenderRef.current?.firstElementChild as HTMLElement | null;
       if (!target) throw new Error("Unable to locate master certificate template");
 
-      const name = candidateName.replace(/\s+/g, "_");
+      const name = masterCandidateName.replace(/\s+/g, "_");
       const filename = `${name}_Master_Interview_Certificate.pdf`;
       await downloadElementAsPDF(target, filename);
       toast.success("Master Certificate downloaded successfully!");
@@ -771,8 +809,21 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
           status: (s.status || "").charAt(0).toUpperCase() + (s.status || "").slice(1),
           expertReview: s.expertReview || null,
           candidateReview: s.candidateReview || null,
+          candidateNameSnapshot: s.candidateNameSnapshot || null,
+          certificateId: s.certificateId || null,
+          identityConfirmedAt: s.identityConfirmedAt || null,
         }));
         setSessions(mapped);
+
+        // Fetch master credential record
+        try {
+          const masterRes = await axios.get(`/api/certifications/master/${userId}`);
+          if (masterRes.data?.success && masterRes.data?.data) {
+            setMasterCert(masterRes.data.data);
+          }
+        } catch (_) {
+          setMasterCert(null);
+        }
       } catch (e) {
         console.error(e);
         setSessions([]);
@@ -930,7 +981,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                   MASTER CREDENTIAL CONFERRED
                 </span>
                 <span className="text-xs sm:text-sm text-[#64748B] font-mono font-medium tracking-wide whitespace-nowrap">
-                  ID: {masterCertId}
+                  ID: {masterCert?.certificateId || masterCertId}
                 </span>
               </div>
 
@@ -959,11 +1010,15 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                 title="Click to preview Master Certificate"
               >
                 <CertificateThumbnail
-                  userName={candidateName}
+                  userName={masterCandidateName}
                   domain="Master"
                   expertName="Mockeefy Board of Directors"
-                  issueDateStr={new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  certId={masterCertId}
+                  issueDateStr={
+                    masterCert?.issueDate
+                      ? new Date(masterCert.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                  }
+                  certId={masterCert?.certificateId || masterCertId}
                   isMaster={true}
                 />
               </div>
@@ -1052,7 +1107,8 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                 {pagedCertificates.map((session) => {
                   const isDownloading = downloading === session.id;
                   const formattedIssueDate = getFormattedIssueDate(session);
-                  const certIdString = `MCFY-${(session.id || "CERT").slice(-8).toUpperCase()}`;
+                  const certIdString = session.certificateId || `MCFY-${(session.id || "CERT").slice(-8).toUpperCase()}`;
+                  const sessionRecipientName = getSessionCandidateName(session);
                   const cardDomId = session.sessionId || session.id;
                   const isHighlighted = highlightedSessionId === cardDomId;
 
@@ -1078,7 +1134,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                             title="Click to view full certificate preview"
                           >
                             <CertificateThumbnail
-                              userName={candidateName}
+                              userName={sessionRecipientName}
                               domain={session.category || "IT"}
                               expertName={session.expert}
                               issueDateStr={formattedIssueDate}
@@ -1110,7 +1166,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                               <p className="text-xs font-medium text-[#64748B] truncate mt-0.5 leading-tight flex items-center gap-1.5">
                                 <span>Certificate of Completion</span>
                                 <span className="text-[#94A3B8]">•</span>
-                                <span className="text-[#334155] font-semibold">{candidateName}</span>
+                                <span className="text-[#334155] font-semibold">{sessionRecipientName}</span>
                               </p>
                             </div>
                           </div>
@@ -1330,7 +1386,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
             {/* Certificate Area: Scaled proportionally inside container */}
             <CertificateModalPreview>
               <CertificateTemplate
-                userName={candidateName}
+                userName={activeCertificateName}
                 domain={isMasterSelected ? "Master" : (selectedSession?.category || "IT")}
                 expertName={
                   isMasterSelected
@@ -1339,13 +1395,15 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                 }
                 issueDateStr={
                   isMasterSelected
-                    ? new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    ? (masterCert?.issueDate
+                        ? new Date(masterCert.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))
                     : (selectedSession ? getFormattedIssueDate(selectedSession) : "Nov 1, 2026")
                 }
                 certId={
                   isMasterSelected
-                    ? masterCertId
-                    : `MCFY-${(selectedSession?.id || "CERT").slice(-8).toUpperCase()}`
+                    ? (masterCert?.certificateId || masterCertId)
+                    : (selectedSession?.certificateId || `MCFY-${(selectedSession?.id || "CERT").slice(-8).toUpperCase()}`)
                 }
                 isMaster={isMasterSelected}
               />
@@ -1415,7 +1473,11 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
         <div ref={pdfRenderRef} id="pdf-capture-stage" style={{ width: "1536px", height: "1024px" }}>
           {downloadTarget && (
             <CertificateTemplate
-              userName={candidateName}
+              userName={
+                downloadTarget.isMaster
+                  ? masterCandidateName
+                  : getSessionCandidateName(downloadTarget.session)
+              }
               domain={downloadTarget.isMaster ? "Master" : (downloadTarget.session?.category || "IT")}
               expertName={
                 downloadTarget.isMaster
@@ -1424,13 +1486,15 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
               }
               issueDateStr={
                 downloadTarget.isMaster
-                  ? new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                  ? (masterCert?.issueDate
+                      ? new Date(masterCert.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))
                   : (downloadTarget.session ? getFormattedIssueDate(downloadTarget.session) : "Nov 1, 2026")
               }
               certId={
                 downloadTarget.isMaster
-                  ? masterCertId
-                  : `MCFY-${(downloadTarget.session?.id || "").slice(-8).toUpperCase()}`
+                  ? (masterCert?.certificateId || masterCertId)
+                  : (downloadTarget.session?.certificateId || `MCFY-${(downloadTarget.session?.id || "").slice(-8).toUpperCase()}`)
               }
               isMaster={downloadTarget.isMaster}
             />
