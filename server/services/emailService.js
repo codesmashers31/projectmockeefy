@@ -189,6 +189,7 @@ export const formatSessionDateTime = (startTime, endTime) => {
  * Send Professional Email Directly to Interview Expert when a Candidate Books & Pays for a Session
  */
 export const sendBookingNotificationToExpert = async ({
+    expertId,
     expertEmail,
     expertName,
     candidateName,
@@ -214,6 +215,28 @@ export const sendBookingNotificationToExpert = async ({
     if (!expertEmail) {
         console.warn("[EmailService] No expert email provided for booking notification.");
         return false;
+    }
+
+    // Check expert's emailAlerts notification preference
+    try {
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
+        const User = (await import('../models/User.js')).default;
+        let expert = null;
+        if (expertId) {
+            expert = await ExpertDetails.findOne({ $or: [{ _id: expertId }, { userId: expertId }] }).lean();
+        }
+        if (!expert && expertEmail) {
+            const u = await User.findOne({ email: expertEmail.toLowerCase() }).lean();
+            if (u) {
+                expert = await ExpertDetails.findOne({ userId: u._id }).lean();
+            }
+        }
+        if (expert && expert.settings && expert.settings.emailAlerts === false) {
+            console.log(`[EmailService] 🔕 Expert ${expertEmail} has disabled optional email notifications. Suppressing booking notification email.`);
+            return { success: true, suppressed: true };
+        }
+    } catch (prefErr) {
+        console.warn("[EmailService] Error verifying expert email alert preference:", prefErr.message);
     }
 
     // Format Date & Time if not pre-formatted
@@ -593,4 +616,55 @@ export const notifyReviewReceived = async (expertName, candidateEmail, sessionTo
         subject: `New Feedback from ${expertName} - Mockeefy`,
         html,
     });
+};
+
+
+/**
+ * Send optional product announcements & feature updates to experts.
+ * Strictly respects the expert's marketingEmails preference.
+ */
+export const sendProductUpdateEmail = async ({ expertId, expertEmail, expertName, subject, announcementTitle, announcementContent }) => {
+    try {
+        if (!expertEmail) return { success: false, message: "No email provided" };
+
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
+        const User = (await import('../models/User.js')).default;
+        let expert = null;
+        if (expertId) {
+            expert = await ExpertDetails.findOne({ $or: [{ _id: expertId }, { userId: expertId }] }).lean();
+        }
+        if (!expert && expertEmail) {
+            const u = await User.findOne({ email: expertEmail.toLowerCase() }).lean();
+            if (u) {
+                expert = await ExpertDetails.findOne({ userId: u._id }).lean();
+            }
+        }
+        if (expert && expert.settings && expert.settings.marketingEmails === false) {
+            console.log(`[EmailService] 🔕 Expert ${expertEmail} has opted out of product updates/promotional emails. Suppressing.`);
+            return { success: true, suppressed: true };
+        }
+
+        const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+        const emailSubject = subject || `📢 What's New on Mockeefy: ${announcementTitle || "Product Updates"}`;
+        const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; border: 1px solid #e2e8f0;">
+    <h2 style="color: #0755E8; margin-top: 0;">${announcementTitle || "Product Update"}</h2>
+    <p>Hello ${expertName || "Expert"},</p>
+    <div style="color: #334155; line-height: 1.6;">${announcementContent || "Check out the latest features and updates designed to elevate your mentoring experience on Mockeefy."}</div>
+    <div style="margin-top: 24px; text-align: center;">
+      <a href="${clientUrl}/expert/dashboard" style="background: #0755E8; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Open Expert Dashboard</a>
+    </div>
+    <p style="margin-top: 32px; font-size: 11px; color: #94a3b8; text-align: center;">You received this because Product Updates is enabled in your Expert Settings. You can update your preferences anytime in Settings.</p>
+  </div>
+</body>
+</html>`;
+
+        return await sendEmail({ to: expertEmail, subject: emailSubject, html });
+    } catch (err) {
+        console.error("[EmailService] Error sending product update email:", err);
+        return { success: false, error: err.message };
+    }
 };

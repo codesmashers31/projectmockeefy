@@ -8,11 +8,12 @@ import ExpertDetails from "../models/expertModel.js"; // adjust if file name dif
 import Session from "../models/Session.js";
 import Review from "../models/reviewModel.js";
 import PricingRule from "../models/PricingRule.js"; // Added
-import Category from "../models/Category.js"; // Added
+import Category from "../models/Category.js";
+import Skill from "../models/Skill.js"; // Added
 import User from "../models/User.js";
 import { sendAadhaarOtp, verifyAadhaarOtp, maskAadhaar, checkAadhaarRateLimit, recordAadhaarOtpSend, validateAadhaarFormat } from "../services/sandboxAadhaarService.js";
 import { compareNames, hashAadhaar, normalizeName } from "../utils/nameMatcher.js";
-import { syncDataChange, emitToUser, emitToAdmin } from "../services/socketService.js";
+import { syncDataChange, emitToUser, emitToAdmin, isUserOnline } from "../services/socketService.js";
 
 /* -------------------- Helpers -------------------- */
 const resolveUserIdFromReq = (req) => {
@@ -671,11 +672,31 @@ export const getExpertById = async (req, res) => {
 
     if (!expert) return res.status(404).json({ success: false, message: "Expert not found" });
 
+    // Privacy check: If publicProfile is disabled, only owner or admin can view
+    if (expert.settings?.publicProfile === false) {
+      const reqUserId = req.user?._id || req.user?.id || req.user?.userId;
+      const isOwner = reqUserId && String(reqUserId) === String(expert.userId);
+      const isAdmin = req.user?.role === "admin" || req.user?.role === "superadmin";
+      if (!isOwner && !isAdmin) {
+        return res.status(404).json({ success: false, message: "Expert profile is private or not found" });
+      }
+    }
+
     // Populate user details (Crucial for Identity)
     const user = await User.findById(expert.userId).lean();
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Expert identity not found" });
+    }
+
+    // Privacy Setting: Public Profile check
+    if (expert.settings && expert.settings.publicProfile === false) {
+      const requestingUserId = resolveUserIdFromReq(req);
+      const isOwner = requestingUserId && (String(requestingUserId) === String(expert.userId) || String(requestingUserId) === String(expert._id));
+      const isAdmin = req.user?.userType === 'admin' || req.user?.role === 'admin';
+      if (!isOwner && !isAdmin) {
+        return res.status(404).json({ success: false, message: "Expert profile is private or not available" });
+      }
     }
 
     const profile = {
@@ -755,6 +776,16 @@ export const getPublicExpertById = async (req, res) => {
     }
 
     if (!expert) return res.status(404).json({ success: false, message: "Expert not found" });
+
+    // Privacy check: If publicProfile is disabled, only owner or admin can view
+    if (expert.settings?.publicProfile === false) {
+      const reqUserId = req.user?._id || req.user?.id || req.user?.userId;
+      const isOwner = reqUserId && String(reqUserId) === String(expert.userId);
+      const isAdmin = req.user?.role === "admin" || req.user?.role === "superadmin" || req.user?.userType === "admin";
+      if (!isOwner && !isAdmin) {
+        return res.status(404).json({ success: false, message: "Expert profile is private or not found" });
+      }
+    }
 
     // Populate user details (Crucial for Identity)
     const user = await User.findById(expert.userId).lean();
@@ -856,6 +887,13 @@ export const getPublicExpertById = async (req, res) => {
       },
       education: expert.education || [],
       status: expert.status || "pending",
+      isOnline: Boolean(isUserOnline(expert.userId) && expert.settings?.showOnlineStatus !== false),
+      allowSearchEngines: expert.settings?.allowSearchEngines !== false,
+      settings: {
+        publicProfile: expert.settings?.publicProfile !== false,
+        showOnlineStatus: expert.settings?.showOnlineStatus !== false,
+        allowSearchEngines: expert.settings?.allowSearchEngines !== false,
+      },
     };
 
     return res.json({ success: true, profile });
@@ -1807,7 +1845,7 @@ export const getVerifiedExperts = async (req, res) => {
     }
 
     const pipeline = [
-      { $match: { status: "Active" } }
+      { $match: { status: "Active", "settings.publicProfile": { $ne: false } } }
     ];
 
     if (category && category !== "all") {
@@ -2036,7 +2074,7 @@ export const getVerifiedExperts = async (req, res) => {
 /* -------------------- getAllExperts (Public Listing) -------------------- */
 export const getAllExperts = async (req, res) => {
   try {
-    const experts = await ExpertDetails.find().populate('userId').lean();
+    const experts = await ExpertDetails.find({ status: "Active", "settings.publicProfile": { $ne: false } }).populate('userId').lean();
 
     const formatted = await Promise.all(experts.map(async expert => {
       let price = 0;
@@ -2375,8 +2413,8 @@ export const searchExperts = async (req, res) => {
   try {
     const { category, skillId, level, duration } = req.body;
 
-    // Base Query: Active experts only
-    const query = { status: "Active" };
+    // Base Query: Active public experts only
+    const query = { status: "Active", "settings.publicProfile": { $ne: false } };
 
     // 1. Filter by Category
     if (category) {
@@ -3450,5 +3488,113 @@ export const getCompanyDocument = async (req, res) => {
   } catch (err) {
     console.error("getCompanyDocument error:", err);
     return res.status(500).send("Error loading document: " + err.message);
+  }
+};
+
+
+/* -------------------- Expert Application Settings Management -------------------- */
+
+export const DEFAULT_EXPERT_SETTINGS = {
+  emailAlerts: true,
+  smsAlerts: false,
+  marketingEmails: false,
+  publicProfile: true,
+  showOnlineStatus: true,
+  allowSearchEngines: true,
+  autoAccept: false,
+  allowRescheduling: true
+};
+
+export const getExpertSettings = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    let expert = await ExpertDetails.findOne({ userId: queryUserId });
+    if (!expert) {
+      expert = new ExpertDetails({
+        userId: queryUserId,
+        status: "pending",
+        settings: DEFAULT_EXPERT_SETTINGS
+      });
+      await expert.save({ validateBeforeSave: false });
+    }
+
+    const currentSettings = {
+      ...DEFAULT_EXPERT_SETTINGS,
+      ...(expert.settings ? (expert.settings.toObject ? expert.settings.toObject() : expert.settings) : {})
+    };
+
+    return res.json({
+      success: true,
+      settings: currentSettings
+    });
+  } catch (err) {
+    console.error("getExpertSettings error:", err);
+    return res.status(500).json({ success: false, message: "Server error fetching settings: " + err.message });
+  }
+};
+
+export const updateExpertSettings = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
+
+    const queryUserId = toObjectId(userIdRaw);
+    let expert = await ExpertDetails.findOne({ userId: queryUserId });
+    if (!expert) {
+      expert = new ExpertDetails({
+        userId: queryUserId,
+        status: "pending",
+        settings: DEFAULT_EXPERT_SETTINGS
+      });
+    }
+
+    const incoming = req.body || {};
+    const sanitizedSettings = {
+      ...DEFAULT_EXPERT_SETTINGS,
+      ...(expert.settings ? (expert.settings.toObject ? expert.settings.toObject() : expert.settings) : {})
+    };
+
+    const allowedKeys = [
+      'emailAlerts',
+      'smsAlerts',
+      'marketingEmails',
+      'publicProfile',
+      'showOnlineStatus',
+      'allowSearchEngines',
+      'autoAccept',
+      'allowRescheduling'
+    ];
+
+    allowedKeys.forEach((key) => {
+      if (key in incoming) {
+        sanitizedSettings[key] = Boolean(incoming[key]);
+      }
+    });
+
+    expert.settings = sanitizedSettings;
+    await expert.save({ validateBeforeSave: false });
+
+    // Invalidate verified experts cache if public profile changed
+    clearVerifiedExpertsCache();
+
+    // Broadcast sync event to user tabs
+    syncDataChange({
+      type: "EXPERT_SETTINGS_UPDATED",
+      userId: queryUserId,
+      expertId: expert._id,
+      data: sanitizedSettings
+    });
+
+    return res.json({
+      success: true,
+      settings: sanitizedSettings,
+      message: "Settings saved successfully"
+    });
+  } catch (err) {
+    console.error("updateExpertSettings error:", err);
+    return res.status(500).json({ success: false, message: "Server error updating settings: " + err.message });
   }
 };

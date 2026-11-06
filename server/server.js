@@ -237,6 +237,34 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/hr-contacts', hrContactRoutes);
 app.use('/api/certification-rules', certificationRuleRoutes);
 
+// Dynamic Sitemap for Search Engine Crawlers (Respects allowSearchEngines & publicProfile)
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const ExpertDetails = (await import('./models/expertModel.js')).default;
+    const experts = await ExpertDetails.find({
+      status: 'Active',
+      'settings.publicProfile': { $ne: false },
+      'settings.allowSearchEngines': { $ne: false }
+    }).select('_id updatedAt').lean();
+
+    const clientUrl = process.env.CLIENT_URL || 'https://mockeefy.com';
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+    xml += `  <url><loc>${clientUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n`;
+    xml += `  <url><loc>${clientUrl}/find-mentor</loc><changefreq>daily</changefreq><priority>0.8</priority></url>\n`;
+    for (const exp of experts) {
+      const lastMod = exp.updatedAt ? new Date(exp.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      xml += `  <url><loc>${clientUrl}/expert-profile/${exp._id}</loc><lastmod>${lastMod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>\n`;
+    }
+    xml += '</urlset>';
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (err) {
+    console.error("Sitemap error:", err);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+
 // Global error handling middleware (catches Multer and other uncaught route errors)
 app.use((err, req, res, next) => {
   console.error("[Server Error]", err?.message || err);

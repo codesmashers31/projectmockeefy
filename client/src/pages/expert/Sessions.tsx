@@ -112,6 +112,7 @@ export default function Sessions() {
     const [reviewSession, setReviewSession] = useState<Session | null>(null);
     const [submittingReview, setSubmittingReview] = useState(false);
     const [copiedSessionId, setCopiedSessionId] = useState(false);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     // Review Form State
     const [reviewForm, setReviewForm] = useState({
@@ -353,6 +354,37 @@ export default function Sessions() {
         }
     };
 
+    const handleAcceptSession = async (session: Session) => {
+        try {
+            setActionLoading(session.sessionId);
+            const res = await axios.patch(`/api/sessions/${session.sessionId}/accept`);
+            if (res.data?.success) {
+                toast.success("Booking request accepted! Session is now confirmed.");
+                fetchSessions();
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to accept session");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleRejectSession = async (session: Session) => {
+        if (!window.confirm("Are you sure you want to decline this booking request?")) return;
+        try {
+            setActionLoading(session.sessionId);
+            const res = await axios.patch(`/api/sessions/${session.sessionId}/reject`);
+            if (res.data?.success) {
+                toast.info("Booking request declined.");
+                fetchSessions();
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to decline session");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     const openReviewModal = (session: Session) => {
         if (!isSessionEnded(session)) {
             toast.info("Candidate evaluation unlocks after the meeting concludes.");
@@ -522,6 +554,7 @@ export default function Sessions() {
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
+            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
             case 'confirmed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             case 'completed': return 'bg-slate-100 text-slate-700 border-slate-200';
             case 'cancelled': return 'bg-rose-50 text-rose-700 border-rose-200';
@@ -779,6 +812,7 @@ export default function Sessions() {
                         <div className="space-y-1.5 pt-1">
                             {[
                                 { id: 'all', label: 'All Sessions', count: allSessions.length, color: 'bg-blue-600' },
+                                { id: 'pending', label: 'Pending Requests', count: allSessions.filter(s => s.status.toLowerCase() === 'pending').length, color: 'bg-amber-500' },
                                 { id: 'confirmed', label: 'Confirmed / Upcoming', count: upcomingSessionsCount, color: 'bg-emerald-500' },
                                 { id: 'completed', label: 'Completed (Reviewed)', count: completedSessionsCount, color: 'bg-slate-400' },
                                 { id: 'cancelled', label: 'Cancelled', count: allSessions.filter(s => s.status.toLowerCase() === 'cancelled').length, color: 'bg-rose-500' }
@@ -1142,6 +1176,28 @@ export default function Sessions() {
                                                                 <span>Session Details</span>
                                                                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                                                             </button>
+                                                        )}
+
+                                                        {/* Pending Booking Accept/Decline Actions */}
+                                                        {session.status.toLowerCase() === 'pending' && (
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    onClick={() => handleAcceptSession(session)}
+                                                                    disabled={actionLoading === session.sessionId}
+                                                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1 shadow-sm transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50"
+                                                                >
+                                                                    <Check className="w-3.5 h-3.5" />
+                                                                    <span>Accept</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleRejectSession(session)}
+                                                                    disabled={actionLoading === session.sessionId}
+                                                                    className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs flex items-center gap-1 transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                    <span>Decline</span>
+                                                                </button>
+                                                            </div>
                                                         )}
 
                                                         {/* Candidate Resume & Calendar Sync Actions */}

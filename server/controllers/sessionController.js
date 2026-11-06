@@ -1,4 +1,5 @@
 import * as sessionService from '../services/sessionService.js';
+import Session from '../models/Session.js';
 import * as meetingService from '../services/meetingService.js';
 import PricingRule from '../models/PricingRule.js';
 import ExpertDetails from '../models/expertModel.js';
@@ -57,6 +58,10 @@ export const createSession = async (req, res) => {
             });
         }
 
+        // Enforce expert's autoAccept setting
+        const autoAccept = expert?.settings?.autoAccept === true;
+        const initialStatus = autoAccept ? (status || 'confirmed') : 'pending';
+
         const sessionData = {
             sessionId,
             expertId,
@@ -65,8 +70,8 @@ export const createSession = async (req, res) => {
             endTime: end,
             topics: topics || [],
             price: finalPrice, // ALWAYS use server-calculated price
-            status: status || 'confirmed',
-            meetingLink: expert?.availability?.defaultMeetingLink || null,
+            status: initialStatus,
+            meetingLink: autoAccept ? (expert?.availability?.defaultMeetingLink || null) : null,
         };
 
         const session = await sessionService.createSession(sessionData);
@@ -75,24 +80,44 @@ export const createSession = async (req, res) => {
         const { createNotification } = await import('./notificationController.js');
         const dt = formatSessionDateTime(start, end);
 
-        // Notify User
-        await createNotification({
-            userId: finalCandidateId,
-            type: 'booking_confirmed',
-            title: 'Meeting Scheduled Successfully! 🎉',
-            message: `Your meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-            metadata: { sessionId: session.sessionId, link: '/my-sessions' }
-        });
-
-        // Notify Expert
         const expertUserId = expert.userId || expertId;
-        await createNotification({
-            userId: expertUserId,
-            type: 'booking_confirmed',
-            title: 'New Session Booked & Payment Received! 🎉',
-            message: `A candidate has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-            metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
-        });
+        if (autoAccept) {
+            // Notify User
+            await createNotification({
+                userId: finalCandidateId,
+                type: 'booking_confirmed',
+                title: 'Meeting Scheduled Successfully! 🎉',
+                message: `Your meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+            });
+
+            // Notify Expert
+            await createNotification({
+                userId: expertUserId,
+                type: 'booking_confirmed',
+                title: 'New Session Booked & Payment Received! 🎉',
+                message: `A candidate has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
+            });
+        } else {
+            // Notify User: Request Pending Mentor Review
+            await createNotification({
+                userId: finalCandidateId,
+                type: 'booking_pending',
+                title: 'Booking Request Submitted! ⏳',
+                message: `Your booking request for ${dt.dateStr} at ${dt.timeSlotStr} has been submitted. Awaiting mentor confirmation.`,
+                metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+            });
+
+            // Notify Expert: Review Required
+            await createNotification({
+                userId: expertUserId,
+                type: 'booking_request',
+                title: 'New Booking Request Pending Review! 🔔',
+                message: `A candidate has requested a session on ${dt.dateStr} at ${dt.timeSlotStr}. Please review and accept or decline.`,
+                metadata: { sessionId: session.sessionId, link: '/expert/sessions' }
+            });
+        }
 
         // Send email notification to Interview Expert
         await triggerBookingEmails({
@@ -206,6 +231,47 @@ export const completeSession = async (req, res) => {
         try {
             await meetingService.updateMeetingStatus(sessionId, 'finished');
         } catch (_) { /* meeting may not exist */ }
+
+        // Snapshot candidate identity on session and check master certificate issuance
+        try {
+            const User = (await import('../models/User.js')).default;
+            const SessionModel = (await import('../models/Session.js')).default;
+            const candidateUser = await User.findById(session.candidateId);
+            if (candidateUser) {
+                const isConfirmed = Boolean(
+                    candidateUser.certificateIdentityConfirmation?.confirmedName &&
+                    candidateUser.certificateIdentityConfirmation.confirmedName.trim().toLowerCase() === candidateUser.name.trim().toLowerCase()
+                );
+                const snapshotName = isConfirmed
+                    ? candidateUser.certificateIdentityConfirmation.confirmedName.trim()
+                    : null;
+
+                await SessionModel.findOneAndUpdate(
+                    { sessionId: session.sessionId },
+                    {
+                        $set: {
+                            candidateNameSnapshot: snapshotName,
+                            identityConfirmedAt: candidateUser.certificateIdentityConfirmation?.confirmedAt || new Date(),
+                            certificateIssued: true,
+                            certificateId: `MCFY-${(session._id || session.sessionId).toString().slice(-8).toUpperCase()}`
+                        }
+                    }
+                );
+
+                // Auto-provision master credential if >= 3 completed sessions
+                const completedCount = await SessionModel.countDocuments({
+                    candidateId: candidateUser._id,
+                    status: 'completed'
+                });
+
+                if (completedCount >= 3) {
+                    const { ensureMasterCertification } = await import('./certificationController.js');
+                    await ensureMasterCertification(candidateUser._id, candidateUser);
+                }
+            }
+        } catch (snapErr) {
+            console.error("[completeSession] Error recording candidate identity snapshot:", snapErr);
+        }
 
         syncDataChange({
             type: "SESSION_UPDATED",
@@ -432,6 +498,8 @@ export const getSessionsByCandidate = async (req, res) => {
         const User = (await import('../models/User.js')).default;
         const mongoose = (await import('mongoose')).default;
 
+        const candidateUser = await User.findById(candidateId).lean();
+
         // Enrichment
         const enrichedSessions = await Promise.all(
             sessions.map(async (session) => {
@@ -515,8 +583,30 @@ export const getSessionsByCandidate = async (req, res) => {
                     ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'candidate' })
                 ]);
 
+                const isCompleted = (session.status || '').toLowerCase() === 'completed';
+                const candidateSnapshot = session.candidateNameSnapshot || 
+                    candidateUser?.certificateIdentityConfirmation?.confirmedName || 
+                    candidateUser?.name || 
+                    'Candidate';
+
+                // Asynchronously backfill legacy completed sessions without snapshot
+                if (isCompleted && !session.candidateNameSnapshot) {
+                    const SessionModel = (await import('../models/Session.js')).default;
+                    SessionModel.updateOne(
+                        { _id: session._id },
+                        {
+                            $set: {
+                                candidateNameSnapshot: candidateSnapshot,
+                                certificateIssued: true,
+                                certificateId: `MCFY-${(session._id || session.sessionId).toString().slice(-8).toUpperCase()}`
+                            }
+                        }
+                    ).exec().catch(() => {});
+                }
+
                 return {
                     ...session.toObject(),
+                    candidateNameSnapshot: candidateSnapshot,
                     expertReview: expertReview ? {
                         overallRating: expertReview.overallRating,
                         technicalRating: expertReview.technicalRating,
@@ -1219,3 +1309,246 @@ export const getCandidateResume = async (req, res) => {
     }
 };
 
+
+
+/* -------------------- Expert Session Approval & Rescheduling Endpoints -------------------- */
+
+export const acceptSession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const requesterId = req.user.userId;
+        const isAdmin = req.user.userType === 'admin';
+
+        const mongoose = (await import('mongoose')).default;
+        const sessionQuery = mongoose.Types.ObjectId.isValid(sessionId)
+            ? { $or: [{ sessionId }, { _id: sessionId }] }
+            : { sessionId };
+        const session = await Session.findOne(sessionQuery);
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        const expertDoc = await ExpertDetails.findOne({
+            $or: [{ _id: session.expertId }, { userId: session.expertId }]
+        });
+        const isAuthorizedExpert = expertDoc && (expertDoc.userId.toString() === requesterId || expertDoc._id.toString() === requesterId);
+
+        if (!isAuthorizedExpert && !isAdmin) {
+            return res.status(403).json({ success: false, message: "Unauthorized: Only the assigned expert can accept this session" });
+        }
+
+        if (session.status !== 'pending') {
+            return res.status(400).json({ success: false, message: `Cannot accept session with status '${session.status}'` });
+        }
+
+        session.status = 'confirmed';
+        if (!session.meetingLink && expertDoc?.availability?.defaultMeetingLink) {
+            session.meetingLink = expertDoc.availability.defaultMeetingLink;
+        }
+        await session.save();
+
+        const { formatSessionDateTime } = await import('../services/emailService.js');
+        const { createNotification } = await import('./notificationController.js');
+        const dt = formatSessionDateTime(session.startTime, session.endTime);
+
+        await createNotification({
+            userId: session.candidateId,
+            type: 'booking_confirmed',
+            title: 'Booking Request Confirmed! 🎉',
+            message: `Your interview session on ${dt.dateStr} at ${dt.timeSlotStr} has been accepted by the mentor.`,
+            metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+        });
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            expertId: expertDoc?._id,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+
+        return res.json({ success: true, message: "Session accepted successfully", session });
+    } catch (err) {
+        console.error("acceptSession error:", err);
+        return res.status(500).json({ success: false, message: "Error accepting session: " + err.message });
+    }
+};
+
+export const rejectSession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const requesterId = req.user.userId;
+        const isAdmin = req.user.userType === 'admin';
+        const { reason } = req.body || {};
+
+        const mongoose = (await import('mongoose')).default;
+        const sessionQuery = mongoose.Types.ObjectId.isValid(sessionId)
+            ? { $or: [{ sessionId }, { _id: sessionId }] }
+            : { sessionId };
+        const session = await Session.findOne(sessionQuery);
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        const expertDoc = await ExpertDetails.findOne({
+            $or: [{ _id: session.expertId }, { userId: session.expertId }]
+        });
+        const isAuthorizedExpert = expertDoc && (expertDoc.userId.toString() === requesterId || expertDoc._id.toString() === requesterId);
+
+        if (!isAuthorizedExpert && !isAdmin) {
+            return res.status(403).json({ success: false, message: "Unauthorized: Only the assigned expert can decline this session" });
+        }
+
+        if (session.status === 'completed' || session.status === 'cancelled') {
+            return res.status(400).json({ success: false, message: `Cannot decline session with status '${session.status}'` });
+        }
+
+        session.status = 'cancelled';
+        await session.save();
+
+        // Restore free credit if this was a free credit booking
+        if (session.notes?.includes("Premium Free Credit Used")) {
+            const User = (await import('../models/User.js')).default;
+            await User.findByIdAndUpdate(session.candidateId, { $inc: { freeInterviewsCount: 1 } });
+        }
+
+        const { formatSessionDateTime } = await import('../services/emailService.js');
+        const { createNotification } = await import('./notificationController.js');
+        const dt = formatSessionDateTime(session.startTime, session.endTime);
+
+        await createNotification({
+            userId: session.candidateId,
+            type: 'booking_declined',
+            title: 'Booking Request Declined',
+            message: `Your booking request for ${dt.dateStr} at ${dt.timeSlotStr} was declined.${reason ? ' Reason: ' + reason : ''}`,
+            metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+        });
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            expertId: expertDoc?._id,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+
+        return res.json({ success: true, message: "Session declined successfully", session });
+    } catch (err) {
+        console.error("rejectSession error:", err);
+        return res.status(500).json({ success: false, message: "Error declining session: " + err.message });
+    }
+};
+
+export const rescheduleSession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const { newStartTime, newEndTime } = req.body;
+        const requesterId = req.user.userId;
+        const isAdmin = req.user.userType === 'admin';
+
+        if (!newStartTime || !newEndTime) {
+            return res.status(400).json({ success: false, message: "New start time and end time are required" });
+        }
+
+        const newStart = new Date(newStartTime);
+        const newEnd = new Date(newEndTime);
+
+        if (isNaN(newStart.getTime()) || isNaN(newEnd.getTime()) || newEnd <= newStart) {
+            return res.status(400).json({ success: false, message: "Invalid session start or end time" });
+        }
+
+        const mongoose = (await import('mongoose')).default;
+        const sessionQuery = mongoose.Types.ObjectId.isValid(sessionId)
+            ? { $or: [{ sessionId }, { _id: sessionId }] }
+            : { sessionId };
+        const session = await Session.findOne(sessionQuery);
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (session.status === 'completed' || session.status === 'cancelled') {
+            return res.status(400).json({ success: false, message: `Cannot reschedule a ${session.status} session` });
+        }
+
+        const isCandidate = session.candidateId.toString() === requesterId;
+        const expertDoc = await ExpertDetails.findOne({
+            $or: [{ _id: session.expertId }, { userId: session.expertId }]
+        });
+        const isExpert = expertDoc && (expertDoc.userId.toString() === requesterId || expertDoc._id.toString() === requesterId);
+
+        if (!isCandidate && !isExpert && !isAdmin) {
+            return res.status(403).json({ success: false, message: "Unauthorized to reschedule this session" });
+        }
+
+        // ENFORCE EXPERT PREFERENCE: Allow Rescheduling
+        if (isCandidate && !isAdmin) {
+            if (expertDoc && expertDoc.settings?.allowRescheduling === false) {
+                return res.status(403).json({
+                    success: false,
+                    message: "This expert does not allow session rescheduling. Please contact support or book a new session."
+                });
+            }
+        }
+
+        // Check for conflicting session for candidate or expert
+        const conflict = await Session.findOne({
+            _id: { $ne: session._id },
+            status: { $in: ['confirmed', 'Upcoming', 'live', 'pending'] },
+            $or: [
+                { expertId: session.expertId },
+                { candidateId: session.candidateId }
+            ],
+            startTime: { $lt: newEnd },
+            endTime: { $gt: newStart }
+        });
+
+        if (conflict) {
+            return res.status(409).json({ success: false, message: "The selected time slot conflicts with an existing booking" });
+        }
+
+        session.startTime = newStart;
+        session.endTime = newEnd;
+        await session.save();
+
+        const { formatSessionDateTime } = await import('../services/emailService.js');
+        const { createNotification } = await import('./notificationController.js');
+        const dt = formatSessionDateTime(newStart, newEnd);
+
+        // Notify both parties
+        await createNotification({
+            userId: session.candidateId,
+            type: 'session_rescheduled',
+            title: 'Session Rescheduled Successfully',
+            message: `Your session has been rescheduled to ${dt.dateStr} at ${dt.timeSlotStr}.`,
+            metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+        });
+
+        const expertUserId = expertDoc?.userId || session.expertId;
+        await createNotification({
+            userId: expertUserId,
+            type: 'session_rescheduled',
+            title: 'Session Rescheduled',
+            message: `Session has been moved to ${dt.dateStr} at ${dt.timeSlotStr}.`,
+            metadata: { sessionId: session.sessionId, link: '/expert/sessions' }
+        });
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            expertId: expertDoc?._id,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+
+        return res.json({ success: true, message: "Session rescheduled successfully", session });
+    } catch (err) {
+        console.error("rescheduleSession error:", err);
+        return res.status(500).json({ success: false, message: "Error rescheduling session: " + err.message });
+    }
+};

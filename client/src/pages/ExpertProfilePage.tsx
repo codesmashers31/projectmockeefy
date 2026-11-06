@@ -181,8 +181,12 @@ export default function ExpertProfilePage() {
           if (res.data?.success && res.data?.profile) {
             fetchedData = res.data.profile;
           }
-        } catch {
-          // Fallback to verified list if public profile endpoint fails
+        } catch (apiErr: any) {
+          if (apiErr.response?.status === 404) {
+            // Private or non-existent profile - strictly honor privacy setting
+            setError(apiErr.response?.data?.message || "This expert profile is private or not available.");
+            return;
+          }
         }
 
         // 2. Fallback to /api/expert/verified list
@@ -213,6 +217,37 @@ export default function ExpertProfilePage() {
     };
 
     fetchExpert();
+
+    // Manage search engine indexing meta tag
+    return () => {};
+  }, [expertId]);
+
+  // Search Engine Indexing (robots meta tag management)
+  useEffect(() => {
+    if (!rawExpert) return;
+    const isIndexed = rawExpert.allowSearchEngines !== false && rawExpert.settings?.allowSearchEngines !== false;
+
+    let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    const wasCreated = !meta;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "robots";
+      document.head.appendChild(meta);
+    }
+    meta.content = isIndexed ? "index, follow" : "noindex, nofollow";
+
+    return () => {
+      if (wasCreated && meta && meta.parentNode) {
+        meta.parentNode.removeChild(meta);
+      } else if (meta) {
+        meta.content = "index, follow";
+      }
+    };
+  }, [rawExpert]);
+
+  useEffect(() => {
+    if (!expertId) return;
+    let isMounted = true;
 
     // Fetch reviews
     const fetchReviews = async () => {

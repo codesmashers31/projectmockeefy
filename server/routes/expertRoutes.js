@@ -37,12 +37,14 @@ import {
   resetAadhaarVerification,
   getExpertAgreement,
   saveExpertAgreement,
-  getCompanyDocument
+  getCompanyDocument,
+  getExpertSettings,
+  updateExpertSettings
 } from "../controllers/expertController.js";
 
 import { authenticateToken } from "../controllers/authController.js";
 import { uploadProfile, uploadVerification } from "../middleware/upload.js";
-import { protect, admin } from "../middleware/authMiddleware.js";
+import { protect, admin, optionalProtect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -51,7 +53,7 @@ router.post('/search', searchExperts);
 router.get("/all-experts", getAllExperts);
 router.get("/verified", getVerifiedExperts);
 router.get("/verified-experts", getVerifiedExperts); // Alias for compatibility
-router.get("/public/profile/:id", getPublicExpertById);
+router.get("/public/profile/:id", optionalProtect, getPublicExpertById);
 router.get("/company-doc/:id", getCompanyDocument); // Public Profile (PII stripped)
 
 // Admin-Only Expert Verification & Status Management
@@ -63,6 +65,10 @@ router.put("/admin/update/:id", protect, admin, updateExpertByAdmin); // Admin e
 
 // Protect all expert routes
 router.use(authenticateToken);
+
+// Settings
+router.get("/settings", getExpertSettings);
+router.put("/settings", updateExpertSettings);
 
 // Profile
 router.get("/profile", getExpertProfile);

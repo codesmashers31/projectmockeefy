@@ -22,6 +22,11 @@ const sessionSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'completed', 'cancelled', 'Upcoming', 'no-show', 'live'],
     default: 'confirmed'
   },
+  // Permanent immutable candidate identity snapshot for the session certificate
+  candidateNameSnapshot: { type: String, trim: true, default: null },
+  identityConfirmedAt: { type: Date, default: null },
+  certificateIssued: { type: Boolean, default: false },
+  certificateId: { type: String, trim: true, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 

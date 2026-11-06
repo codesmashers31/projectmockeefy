@@ -270,6 +270,18 @@ export const verifyPayment = async (req, res) => {
 
                 const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+                let expertDoc = null;
+                let expertUserId = bookingDetails.expertId;
+                try {
+                    expertDoc = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
+                    if (expertDoc?.userId) {
+                        expertUserId = expertDoc.userId;
+                    }
+                } catch (_) {}
+
+                const autoAccept = expertDoc?.settings?.autoAccept === true;
+                const sessionStatus = autoAccept ? 'confirmed' : 'pending';
+
                 const sessionData = {
                     sessionId,
                     expertId: bookingDetails.expertId,
@@ -278,20 +290,12 @@ export const verifyPayment = async (req, res) => {
                     endTime,
                     topics: bookingDetails.topics || ["General Mock Interview"],
                     price: bookingDetails.price,
-                    status: 'confirmed',
+                    status: sessionStatus,
+                    meetingLink: autoAccept ? (expertDoc?.availability?.defaultMeetingLink || null) : null,
                     duration: bookingDetails.duration || 60,
                     level: bookingDetails.level || "Rising Mentor",
                     notes: bookingDetails.notes || ""
                 };
-
-                let expertUserId = bookingDetails.expertId;
-                try {
-                    const expert = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
-                    sessionData.meetingLink = expert?.availability?.defaultMeetingLink || null;
-                    if (expert?.userId) {
-                        expertUserId = expert.userId;
-                    }
-                } catch (_) {}
 
                 const session = await sessionService.createSession(sessionData);
 
@@ -433,13 +437,17 @@ export const usePremiumCredit = async (req, res) => {
         };
 
         let expertUserId = bookingDetails.expertId;
+        let expertDoc = null;
         try {
-            const expert = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
-            sessionData.meetingLink = expert?.availability?.defaultMeetingLink || null;
-            if (expert?.userId) {
-                expertUserId = expert.userId;
+            expertDoc = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
+            if (expertDoc?.userId) {
+                expertUserId = expertDoc.userId;
             }
         } catch (_) {}
+
+        const autoAccept = expertDoc?.settings?.autoAccept === true;
+        sessionData.status = autoAccept ? 'confirmed' : 'pending';
+        sessionData.meetingLink = autoAccept ? (expertDoc?.availability?.defaultMeetingLink || null) : null;
 
         const createdSession = await sessionService.createSession(sessionData, { session });
         
@@ -552,6 +560,18 @@ export const createFreeBooking = async (req, res) => {
 
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+        let expertDoc = null;
+        let expertUserId = bookingDetails.expertId;
+        try {
+            expertDoc = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
+            if (expertDoc?.userId) {
+                expertUserId = expertDoc.userId;
+            }
+        } catch (_) {}
+
+        const autoAccept = expertDoc?.settings?.autoAccept === true;
+        const sessionStatus = autoAccept ? 'confirmed' : 'pending';
+
         const sessionData = {
             sessionId,
             expertId: bookingDetails.expertId,
@@ -562,42 +582,54 @@ export const createFreeBooking = async (req, res) => {
                 ? bookingDetails.topics
                 : [bookingDetails?.skill || bookingDetails?.category || 'General Mock Interview'],
             price: 0,
-            status: 'confirmed',
+            status: sessionStatus,
+            meetingLink: autoAccept ? (expertDoc?.availability?.defaultMeetingLink || null) : null,
             duration: bookingDetails.duration || 60,
             level: bookingDetails.level || "Rising Mentor",
             notes: bookingDetails.notes || 'Booked with free promo code',
         };
 
-        let expertUserId = bookingDetails.expertId;
-        try {
-            const expert = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
-            sessionData.meetingLink = expert?.availability?.defaultMeetingLink || null;
-            if (expert?.userId) {
-                expertUserId = expert.userId;
-            }
-        } catch (_) {}
-
         const session = await sessionService.createSession(sessionData);
 
         const dt = formatSessionDateTime(startTime, endTime);
 
-        // Notify Expert
-        await createNotification({
-            userId: expertUserId,
-            type: 'booking_confirmed',
-            title: 'New Session Booked!',
-            message: `A candidate (${bookingDetails.candidateName || 'Candidate'}) has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-            metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
-        });
+        if (autoAccept) {
+            // Notify Expert
+            await createNotification({
+                userId: expertUserId,
+                type: 'booking_confirmed',
+                title: 'New Session Booked!',
+                message: `A candidate (${bookingDetails.candidateName || 'Candidate'}) has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
+            });
 
-        // Notify User
-        await createNotification({
-            userId: bookingDetails.candidateId,
-            type: 'booking_confirmed',
-            title: 'Meeting Scheduled Successfully! 🎉',
-            message: `Your free mock interview meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-            metadata: { sessionId: session.sessionId, link: '/my-sessions' }
-        });
+            // Notify User
+            await createNotification({
+                userId: bookingDetails.candidateId,
+                type: 'booking_confirmed',
+                title: 'Meeting Scheduled Successfully! 🎉',
+                message: `Your free mock interview meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+            });
+        } else {
+            // Notify Expert of Pending Request
+            await createNotification({
+                userId: expertUserId,
+                type: 'booking_request',
+                title: 'New Booking Request Pending Review! 🔔',
+                message: `A candidate (${bookingDetails.candidateName || 'Candidate'}) has requested a free session on ${dt.dateStr} at ${dt.timeSlotStr}. Please review and confirm.`,
+                metadata: { sessionId: session.sessionId, link: '/expert/sessions' }
+            });
+
+            // Notify User of Pending Status
+            await createNotification({
+                userId: bookingDetails.candidateId,
+                type: 'booking_pending',
+                title: 'Booking Request Submitted! ⏳',
+                message: `Your booking request for ${dt.dateStr} at ${dt.timeSlotStr} has been submitted. Awaiting mentor confirmation.`,
+                metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+            });
+        }
 
         // Directly send email notification to Interview Expert
         await triggerBookingEmails({

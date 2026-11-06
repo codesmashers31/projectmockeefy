@@ -4,6 +4,15 @@ import ExpertDetails from "../models/expertModel.js";
 import Session from "../models/Session.js";
 
 let io;
+const connectedUsers = new Map(); // userId string -> Set of socket IDs
+
+export const isUserOnline = (userId) => {
+    if (!userId) return false;
+    const sockets = connectedUsers.get(userId.toString());
+    return Boolean(sockets && sockets.size > 0);
+};
+
+export const getConnectedUserCount = () => connectedUsers.size;
 
 /**
  * Extract JWT from various handshake formats
@@ -57,6 +66,13 @@ export const initSocket = (httpServer, corsOptions) => {
 
         const role = (socket.user.userType || socket.user.role || "user").toLowerCase();
         console.log(`[Socket] User connected: ${userId} (${role}) - Socket ID: ${socket.id}`);
+
+        // Track active user sockets
+        const idStr = userId.toString();
+        if (!connectedUsers.has(idStr)) {
+            connectedUsers.set(idStr, new Set());
+        }
+        connectedUsers.get(idStr).add(socket.id);
 
         // 1. Join private user rooms (both raw ID and prefixed for compatibility)
         socket.join(userId);
@@ -119,6 +135,14 @@ export const initSocket = (httpServer, corsOptions) => {
 
         socket.on("disconnect", (reason) => {
             console.log(`[Socket] User disconnected: ${userId} (Reason: ${reason})`);
+            const idStr = userId.toString();
+            if (connectedUsers.has(idStr)) {
+                const set = connectedUsers.get(idStr);
+                set.delete(socket.id);
+                if (set.size === 0) {
+                    connectedUsers.delete(idStr);
+                }
+            }
         });
     });
 
