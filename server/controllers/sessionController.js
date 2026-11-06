@@ -536,9 +536,13 @@ export const getSessionsByCandidate = async (req, res) => {
                         overallRating: candidateReview.overallRating,
                         technicalRating: candidateReview.technicalRating,
                         communicationRating: candidateReview.communicationRating,
+                        problemSolvingRating: candidateReview.problemSolvingRating,
+                        designRating: candidateReview.designRating,
+                        behavioralRating: candidateReview.behavioralRating,
                         strengths: candidateReview.strengths,
                         weaknesses: candidateReview.weaknesses,
-                        feedback: candidateReview.feedback
+                        feedback: candidateReview.feedback,
+                        createdAt: candidateReview.createdAt
                     } : null,
                     expertDetails: {
                         name: expertName,
@@ -722,19 +726,36 @@ export const submitReview = async (req, res) => {
             weaknesses,
             hiringDecision,
             recommendation,
-            expertId,
-            candidateId,
-            reviewerRole
+            reviewerRole = 'candidate'
         } = req.body;
 
-        // Validation
-        if (!sessionId || !overallRating || !reviewerRole) {
-            return res.status(400).json({ success: false, message: "Missing required fields" });
+        // Auto-calculate overallRating if missing but sub-ratings are present (e.g. expert evaluations)
+        let computedOverall = overallRating;
+        if (!computedOverall && (problemSolvingRating || designRating || behavioralRating || technicalRating || communicationRating)) {
+            const ratings = [problemSolvingRating, designRating, behavioralRating, technicalRating, communicationRating]
+                .filter(r => r !== undefined && r !== null && Number(r) > 0)
+                .map(Number);
+            if (ratings.length > 0) {
+                computedOverall = Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length);
+            }
+        }
+
+        const ratingNum = Number(computedOverall);
+        if (!sessionId || !ratingNum || ratingNum < 1 || ratingNum > 5 || !Number.isInteger(ratingNum)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "A valid overall rating between 1 and 5 is required." 
+            });
+        }
+
+        if (reviewerRole !== 'expert' && reviewerRole !== 'candidate') {
+            return res.status(400).json({ success: false, message: "Invalid reviewer role" });
         }
 
         // Dynamically import models and services
         const ReviewDetails = (await import('../models/reviewModel.js')).default;
         const User = (await import('../models/User.js')).default;
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
         const sessionService = (await import('../services/sessionService.js'));
         const emailService = (await import('../services/emailService.js'));
 
@@ -768,48 +789,73 @@ export const submitReview = async (req, res) => {
             if (!isAuthorized) {
                 return res.status(403).json({ success: false, message: "Forbidden: You are not authorized as the candidate for this session" });
             }
-        } else {
-            return res.status(400).json({ success: false, message: "Invalid reviewer role" });
         }
 
-        // Upsert review (update if already exists from a previous retry, or create new)
-        let reviewDoc = await ReviewDetails.findOne({ sessionId, reviewerRole });
-        if (reviewDoc) {
-            reviewDoc.overallRating = overallRating;
-            reviewDoc.technicalRating = technicalRating || 0;
-            reviewDoc.communicationRating = communicationRating || 0;
-            reviewDoc.problemSolvingRating = problemSolvingRating || 0;
-            reviewDoc.designRating = designRating || 0;
-            reviewDoc.behavioralRating = behavioralRating || 0;
-            reviewDoc.feedback = feedback;
-            reviewDoc.suggestions = suggestions;
-            reviewDoc.strengths = strengths || [];
-            reviewDoc.weaknesses = weaknesses || [];
-            reviewDoc.hiringDecision = hiringDecision || reviewDoc.hiringDecision || 'Hire';
-            reviewDoc.recommendation = recommendation !== undefined ? recommendation : reviewDoc.recommendation;
-            await reviewDoc.save();
-        } else {
-            reviewDoc = new ReviewDetails({
-                sessionId,
-                expertId: session.expertId, // Use verified ID from DB session
-                candidateId: session.candidateId, // Use verified ID from DB session
-                reviewerRole,
-                overallRating,
-                technicalRating: technicalRating || 0,
-                communicationRating: communicationRating || 0,
-                problemSolvingRating: problemSolvingRating || 0,
-                designRating: designRating || 0,
-                behavioralRating: behavioralRating || 0,
-                feedback,
-                suggestions,
-                strengths: strengths || [],
-                weaknesses: weaknesses || [],
-                hiringDecision: hiringDecision || 'Hire',
-                recommendation: recommendation || ''
+        // Enforce one review per eligible user/session combination (prevent duplicate submissions)
+        const existingReview = await ReviewDetails.findOne({ sessionId, reviewerRole });
+        if (existingReview) {
+            return res.status(409).json({ 
+                success: false, 
+                message: "A review has already been submitted for this session." 
             });
-            await reviewDoc.save();
         }
+
+        const newDocData = {
+            sessionId,
+            expertId: session.expertId, // Use verified ID from DB session
+            candidateId: session.candidateId, // Use verified ID from DB session
+            reviewerRole,
+            overallRating: ratingNum,
+            feedback: (feedback || '').trim(),
+            suggestions: (suggestions || '').trim(),
+            strengths: Array.isArray(strengths) ? strengths : [],
+            weaknesses: Array.isArray(weaknesses) ? weaknesses : [],
+            hiringDecision: hiringDecision || 'Hire',
+            recommendation: recommendation || ''
+        };
+
+        // Only attach sub-ratings if explicitly provided as valid 1-5 integers
+        if (problemSolvingRating && Number(problemSolvingRating) >= 1 && Number(problemSolvingRating) <= 5) {
+            newDocData.problemSolvingRating = Number(problemSolvingRating);
+        }
+        if (designRating && Number(designRating) >= 1 && Number(designRating) <= 5) {
+            newDocData.designRating = Number(designRating);
+        }
+        if (behavioralRating && Number(behavioralRating) >= 1 && Number(behavioralRating) <= 5) {
+            newDocData.behavioralRating = Number(behavioralRating);
+        }
+        if (technicalRating && Number(technicalRating) >= 1 && Number(technicalRating) <= 5) {
+            newDocData.technicalRating = Number(technicalRating);
+        }
+        if (communicationRating && Number(communicationRating) >= 1 && Number(communicationRating) <= 5) {
+            newDocData.communicationRating = Number(communicationRating);
+        }
+
+        const reviewDoc = new ReviewDetails(newDocData);
+        await reviewDoc.save();
         const newReview = reviewDoc;
+
+        // Recalculate expert metrics if candidate submitted review
+        if (reviewerRole === 'candidate') {
+            try {
+                const candidateReviews = await ReviewDetails.find({ expertId: session.expertId, reviewerRole: 'candidate' });
+                if (candidateReviews.length > 0) {
+                    const sumRating = candidateReviews.reduce((acc, curr) => acc + (curr.overallRating || 0), 0);
+                    const avg = Number((sumRating / candidateReviews.length).toFixed(1));
+                    await ExpertDetails.findOneAndUpdate(
+                        { $or: [{ _id: session.expertId }, { userId: session.expertId }] },
+                        {
+                            $set: {
+                                'metrics.avgRating': avg,
+                                'metrics.totalReviews': candidateReviews.length
+                            }
+                        }
+                    );
+                }
+            } catch (metricErr) {
+                console.error("Failed to update expert review metrics:", metricErr);
+            }
+        }
 
         // Update Session status
         let walletCreditResult = null;
@@ -1018,6 +1064,12 @@ export const submitReview = async (req, res) => {
         });
     } catch (error) {
         console.error("Submit Review Error:", error);
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "A review has already been submitted for this session."
+            });
+        }
         res.status(500).json({ success: false, message: error.message || "Server Error" });
     }
 };

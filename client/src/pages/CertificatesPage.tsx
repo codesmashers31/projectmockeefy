@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams, useParams } from "react-router-dom";
+import { useSearchParams, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "../lib/axios";
 import {
@@ -431,8 +431,11 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const routeParams = useParams();
+  const location = useLocation();
 
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
+  const hasAutoOpenedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isMasterSelected, setIsMasterSelected] = useState(false);
@@ -530,23 +533,95 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   const pageEndIdx = Math.min(filteredCertificates.length, pageStartIdx + PAGE_SIZE);
   const pagedCertificates = filteredCertificates.slice(pageStartIdx, pageEndIdx);
 
-  // Check URL params for deep-linking into certificate preview
+  // Context-aware certificate navigation and deep-linking into preview
   useEffect(() => {
-    const paramId = routeParams.certId || searchParams.get("sessionId") || searchParams.get("id");
+    // Wait until sessions have finished loading
+    if (loading) return;
+
+    const navState = (location.state as any) || {};
+    const targetSessionId =
+      searchParams.get("sessionId") ||
+      searchParams.get("id") ||
+      routeParams.certId ||
+      navState.selectedSessionId;
+    const targetCertId =
+      searchParams.get("certId") ||
+      routeParams.certId ||
+      navState.selectedCertId;
     const paramMaster = searchParams.get("master") === "true";
 
+    // If master credential was explicitly requested
     if (paramMaster) {
-      setIsMasterSelected(true);
+      if (!hasAutoOpenedRef.current) {
+        hasAutoOpenedRef.current = true;
+        setIsMasterSelected(true);
+        setSelectedSession(null);
+      }
       return;
     }
 
-    if (paramId && completedSessions.length > 0) {
-      const match = completedSessions.find((s) => s.id === paramId || s.sessionId === paramId);
-      if (match) {
-        setSelectedSession(match);
-      }
+    // If no specific session or certificate is targeted, do nothing (normal browsing)
+    if (!targetSessionId && !targetCertId) {
+      return;
     }
-  }, [completedSessions, routeParams.certId, searchParams]);
+
+    // Prevent repeated auto-opening during normal browsing once handled
+    if (hasAutoOpenedRef.current) {
+      return;
+    }
+
+    // Find exact matching completed session by unique identifiers
+    const match = completedSessions.find((s) => {
+      const formattedCertId = `MCFY-${(s.id || s.sessionId || "CERT").slice(-8).toUpperCase()}`;
+      return (
+        (targetSessionId && s.sessionId && s.sessionId.toLowerCase() === targetSessionId.toLowerCase()) ||
+        (targetSessionId && s.id && s.id.toLowerCase() === targetSessionId.toLowerCase()) ||
+        (targetCertId && formattedCertId.toLowerCase() === targetCertId.toLowerCase()) ||
+        (targetSessionId && formattedCertId.toLowerCase() === targetSessionId.toLowerCase())
+      );
+    });
+
+    if (match) {
+      hasAutoOpenedRef.current = true;
+
+      // 1. Ensure category filter does not hide this certificate
+      if (selectedCategory !== "all" && match.category && match.category.toLowerCase() !== selectedCategory.toLowerCase()) {
+        setSelectedCategory("all");
+      }
+
+      // 2. Switch to the page containing this certificate
+      const matchIndex = completedSessions.findIndex((s) => s.id === match.id);
+      if (matchIndex !== -1) {
+        const targetPage = Math.floor(matchIndex / PAGE_SIZE) + 1;
+        setPage(targetPage);
+      }
+
+      // 3. Highlight the certificate card
+      const cardDomId = match.sessionId || match.id;
+      setHighlightedSessionId(cardDomId);
+
+      // 4. Smoothly scroll to the corresponding certificate card
+      setTimeout(() => {
+        const el = document.getElementById(`certificate-card-${cardDomId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 200);
+
+      // 5. Automatically open the matching certificate preview modal
+      setIsMasterSelected(false);
+      setSelectedSession(match);
+
+      // 6. Clear highlight after 3.5 seconds
+      setTimeout(() => {
+        setHighlightedSessionId(null);
+      }, 3500);
+    } else {
+      // Edge cases B & C: Requested session/certificate not found or not completed yet
+      hasAutoOpenedRef.current = true;
+      toast.info("Certificate not available for this session yet.");
+    }
+  }, [loading, completedSessions, location.state, searchParams, routeParams.certId, selectedCategory]);
 
   // Lock background page scroll when modal is open
   useEffect(() => {
@@ -978,15 +1053,22 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                   const isDownloading = downloading === session.id;
                   const formattedIssueDate = getFormattedIssueDate(session);
                   const certIdString = `MCFY-${(session.id || "CERT").slice(-8).toUpperCase()}`;
+                  const cardDomId = session.sessionId || session.id;
+                  const isHighlighted = highlightedSessionId === cardDomId;
 
                   return (
                     <article
+                      id={`certificate-card-${cardDomId}`}
                       key={session.id}
                       onClick={() => {
                         setIsMasterSelected(false);
                         setSelectedSession(session);
                       }}
-                      className="group relative bg-[#FFFFFF] rounded-2xl border border-[#E2E8F0] hover:border-[#93B8FF] shadow-[0_2px_12px_rgba(23,43,77,0.04)] hover:shadow-[0_6px_20px_rgba(7,85,232,0.08)] hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-4.5 flex flex-col justify-between h-full w-full text-left box-border cursor-pointer"
+                      className={`group relative bg-[#FFFFFF] rounded-2xl border transition-all duration-300 p-4 sm:p-4.5 flex flex-col justify-between h-full w-full text-left box-border cursor-pointer ${
+                        isHighlighted
+                          ? "border-[#0755E8] ring-4 ring-[#0755E8]/20 shadow-[0_8px_30px_rgba(7,85,232,0.22)] -translate-y-1"
+                          : "border-[#E2E8F0] hover:border-[#93B8FF] shadow-[0_2px_12px_rgba(23,43,77,0.04)] hover:shadow-[0_6px_20px_rgba(7,85,232,0.08)] hover:-translate-y-0.5"
+                      }`}
                     >
                       <div className="space-y-3 flex-1 flex flex-col">
                         {/* Certificate Visual Thumbnail Preview Frame */}

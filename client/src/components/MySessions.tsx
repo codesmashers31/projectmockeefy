@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Calendar,
@@ -15,7 +16,9 @@ import {
   Clock,
   Send,
   CheckCircle2,
-  BadgeCheck
+  BadgeCheck,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
@@ -30,9 +33,14 @@ type ReviewInfo = {
   overallRating?: number;
   technicalRating?: number;
   communicationRating?: number;
+  problemSolvingRating?: number;
+  designRating?: number;
+  behavioralRating?: number;
   feedback?: string;
+  suggestions?: string;
   strengths?: string[];
   weaknesses?: string[];
+  createdAt?: string;
 };
 
 type Session = {
@@ -242,12 +250,13 @@ const SessionCard: React.FC<{
   getSessionTimeAndCountdown: (s: Session, n: Date) => { timeLabel: string; countdown: string | null; joinable: boolean };
   setCertificateModalSession: (s: Session) => void;
   setReviewModalSession: (s: Session) => void;
+  handleOpenReviewModal: (s: Session) => void;
   handleRequestFeedback: (id: string) => void;
   handleJoin: (s: Session) => void;
   getCompletedCountForCategory: (cat: string) => number;
   navigate: any;
 }> = ({
-  session, now, getDisplayStatus, getSessionTimeAndCountdown, setCertificateModalSession, setReviewModalSession, handleRequestFeedback, handleJoin, getCompletedCountForCategory, navigate
+  session, now, getDisplayStatus, getSessionTimeAndCountdown, setCertificateModalSession, setReviewModalSession, handleOpenReviewModal, handleRequestFeedback, handleJoin, getCompletedCountForCategory, navigate
 }) => {
   const displayStatus = getDisplayStatus(session);
   const { timeLabel, countdown, joinable } = getSessionTimeAndCountdown(session, now);
@@ -359,63 +368,96 @@ const SessionCard: React.FC<{
       <div className="w-full pt-3.5 mt-3.5 border-t border-slate-100">
         {displayStatus === 'Completed' ? (
           <div className="space-y-2.5 w-full">
-            <div className="flex items-center gap-2 w-full flex-wrap sm:flex-nowrap">
+            {/* Clean 2-Column Action Grid for Completed Sessions */}
+            <div className="grid grid-cols-1 min-[340px]:grid-cols-2 gap-2 w-full min-w-0">
+              {/* Row 1, Col 1: Reviewed / Rate Expert */}
               {!session.candidateReview ? (
                 <button
                   type="button"
-                  onClick={() => setReviewModalSession(session)}
-                  className="group/rate flex-1 h-9 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenReviewModal(session);
+                  }}
+                  className="group/rate w-full h-9 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
                 >
                   <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 group-hover/rate:scale-110 transition-transform shrink-0" />
-                  <span>Rate Expert</span>
+                  <span className="truncate">Rate Expert</span>
                 </button>
-              ) : session.expertReview ? (
+              ) : (
+                <div
+                  className="w-full h-9 px-2.5 sm:px-3 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs min-w-0"
+                  title={session.candidateReview.feedback ? `Your feedback: ${session.candidateReview.feedback}` : "Review submitted"}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate">
+                    Reviewed {session.candidateReview.overallRating ? `(${session.candidateReview.overallRating}★)` : ""}
+                  </span>
+                </div>
+              )}
+
+              {/* Row 1, Col 2: Request Feedback / View Feedback / Feedback Requested */}
+              {session.expertReview ? (
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="group/view flex-1 h-9 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+                  className="group/view w-full h-9 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-[#0755E8] group-hover/view:scale-110 transition-transform shrink-0" />
-                  <span>View Feedback</span>
+                  <span className="truncate">View Feedback</span>
                 </button>
               ) : session.feedbackRequested ? (
                 <button
                   disabled
-                  className="flex-1 h-9 px-3 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed whitespace-nowrap"
+                  className="w-full h-9 px-2.5 sm:px-3 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
                 >
                   <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>Report Requested</span>
+                  <span className="truncate">Feedback Requested</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => handleRequestFeedback(session.sessionId)}
-                  className="group/req flex-1 h-9 px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+                  className="group/req w-full h-9 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
                 >
                   <Send className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
-                  <span>Request Report</span>
+                  <span className="truncate">Request Feedback</span>
                 </button>
               )}
 
-              {/* Certificate CTA */}
+              {/* Row 2, Col 1: Certificate */}
               <button
                 type="button"
-                onClick={() => navigate('/certificates')}
-                className="h-9 px-3.5 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
+                onClick={() => {
+                  const targetSessionId = session.sessionId || session.id;
+                  const targetCertId = `MCFY-${(session.id || session.sessionId || "CERT").slice(-8).toUpperCase()}`;
+                  navigate(
+                    `/certificates?sessionId=${encodeURIComponent(targetSessionId)}&certId=${encodeURIComponent(targetCertId)}`,
+                    {
+                      state: {
+                        selectedSessionId: targetSessionId,
+                        selectedCertId: targetCertId,
+                        expertId: session.expertId,
+                        expertName: session.expert,
+                        category: session.category,
+                      },
+                    }
+                  );
+                }}
+                className="w-full h-9 px-2.5 sm:px-3 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 min-w-0"
                 title="View your official completion certificate"
               >
                 <Award className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span>Certificate</span>
+                <span className="truncate">Certificate</span>
               </button>
 
-              {/* Book Again */}
+              {/* Row 2, Col 2: Book Again */}
               <button
                 type="button"
                 onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-                className="group/book h-9 px-3.5 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
+                className="group/book w-full h-9 px-2.5 sm:px-3 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95 min-w-0"
               >
-                <span>Book Again</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all" />
+                <span className="truncate">Book Again</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all shrink-0" />
               </button>
             </div>
 
@@ -525,8 +567,57 @@ const MySessions = ({
   const [savedExperts, setSavedExperts] = useState<any[]>([]);
   const [reviewModalSession, setReviewModalSession] = useState<Session | null>(null);
   const [certificateModalSession, setCertificateModalSession] = useState<Session | null>(null);
-  const [reviewForm, setReviewForm] = useState({ overallRating: 5, technicalRating: 5, communicationRating: 5, feedback: "" });
+  const [reviewForm, setReviewForm] = useState({
+    overallRating: 0,
+    feedback: "",
+  });
+  const [formError, setFormError] = useState<string>("");
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  const handleOpenReviewModal = (session: Session) => {
+    if (session.candidateReview) {
+      toast.info("A review has already been submitted for this session.");
+      return;
+    }
+    setReviewForm({
+      overallRating: 0,
+      feedback: "",
+    });
+    setFormError("");
+    setReviewModalSession(session);
+  };
+
+  const handleCloseReviewModal = () => {
+    if (submittingReview) return;
+    setReviewModalSession(null);
+    setFormError("");
+  };
+
+  const handleRatingChange = (val: number) => {
+    setReviewForm((prev) => ({
+      ...prev,
+      overallRating: val,
+    }));
+    setFormError("");
+  };
+
+  useEffect(() => {
+    if (!reviewModalSession) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !submittingReview) {
+        handleCloseReviewModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [reviewModalSession, submittingReview]);
   const [now, setNow] = useState(() => new Date());
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
@@ -755,26 +846,59 @@ const MySessions = ({
   };
 
   const handleSubmitReview = async () => {
-    if (!reviewModalSession || !user?.id) return;
+    if (!reviewModalSession) return;
+    if (submittingReview) return;
+
+    const currentUserId = user?.id || user?._id;
+    if (!currentUserId) {
+      toast.error("Please log in to submit your review");
+      return;
+    }
+
+    // Validation: single overall rating required between 1 and 5
+    const rating = Number(reviewForm.overallRating);
+    if (!rating || rating < 1 || rating > 5) {
+      const msg = "Please select a star rating before submitting your review.";
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    setFormError("");
     setSubmittingReview(true);
+
     try {
-      await axios.post(`/api/sessions/${reviewModalSession.sessionId}/review`, {
-        overallRating: reviewForm.overallRating,
-        technicalRating: reviewForm.technicalRating,
-        communicationRating: reviewForm.communicationRating,
-        feedback: reviewForm.feedback,
-        strengths: [],
-        weaknesses: [],
+      const targetSessionId = reviewModalSession.sessionId || reviewModalSession.id;
+      const res = await axios.post(`/api/sessions/${targetSessionId}/review`, {
+        overallRating: rating,
+        feedback: reviewForm.feedback ? reviewForm.feedback.trim() : "",
+        reviewerRole: "candidate",
         expertId: reviewModalSession.expertId,
-        candidateId: reviewModalSession.candidateId || user?.id || user?._id,
-        reviewerRole: "candidate"
+        candidateId: reviewModalSession.candidateId || currentUserId,
       });
-      toast.success("Review submitted. You can now view your certificate details.");
-      setReviewModalSession(null);
-      setReviewForm({ overallRating: 5, technicalRating: 5, communicationRating: 5, feedback: "" });
-      fetchSessions();
+
+      if (res.data?.success) {
+        toast.success("Review submitted successfully! Thank you for your feedback.");
+        setReviewModalSession(null);
+        setReviewForm({
+          overallRating: 0,
+          feedback: "",
+        });
+        await fetchSessions();
+      } else {
+        const errorMsg = res.data?.message || "Failed to submit review. Please try again.";
+        setFormError(errorMsg);
+        toast.error(errorMsg);
+      }
     } catch (e: any) {
-      toast.error(e.response?.data?.message || "Failed to submit review");
+      console.error("Submit Review Error:", e);
+      const errMsg =
+        e.response?.data?.message ||
+        (e.response?.status === 409
+          ? "A review has already been submitted for this session."
+          : e.message || "Failed to submit review");
+      setFormError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSubmittingReview(false);
     }
@@ -897,6 +1021,7 @@ const MySessions = ({
                       getSessionTimeAndCountdown={getSessionTimeAndCountdown}
                       setCertificateModalSession={setCertificateModalSession}
                       setReviewModalSession={setReviewModalSession}
+                      handleOpenReviewModal={handleOpenReviewModal}
                       handleRequestFeedback={handleRequestFeedback}
                       handleJoin={handleJoin}
                       getCompletedCountForCategory={getCompletedCountForCategory}
@@ -1076,50 +1201,172 @@ const MySessions = ({
           </div>
         )}
 
-        {/* Give Review Modal (candidate) — only after meeting ended; then they can view certificate */}
-        {reviewModalSession && (
+        {/* Give Review Modal (candidate) - Rendered through React Portal into document.body to prevent navbar overlap */}
+        {reviewModalSession && typeof document !== "undefined" && createPortal(
           <div
-            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-            onClick={() => setReviewModalSession(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="review-modal-title"
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+            onClick={handleCloseReviewModal}
           >
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900">Give your review</h3>
-                <button onClick={() => setReviewModalSession(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"><X size={18} /></button>
-              </div>
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-600">Session with <strong>{reviewModalSession.expert}</strong>. Your feedback helps improve the experience.</p>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-2">Overall rating (1–5)</label>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button key={star} type="button" onClick={() => setReviewForm((f) => ({ ...f, overallRating: star }))} className="p-1">
-                        <Star size={24} className={star <= reviewForm.overallRating ? "text-amber-400 fill-amber-400" : "text-slate-200"} />
-                      </button>
-                    ))}
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[calc(100dvh-32px)] overflow-hidden animate-in zoom-in-95 duration-200 text-left border border-slate-200/80 my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Pinned Modal Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shadow-2xs">
+                    <Star size={20} className="fill-amber-500 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 id="review-modal-title" className="font-bold text-slate-900 text-base leading-tight">
+                      Give Your Review
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Session with <span className="font-semibold text-slate-700">{reviewModalSession.expert}</span>
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Feedback (optional)</label>
-                  <textarea value={reviewForm.feedback} onChange={(e) => setReviewForm((f) => ({ ...f, feedback: e.target.value }))} placeholder="How was the session?" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none" rows={3} />
+                <button
+                  type="button"
+                  onClick={handleCloseReviewModal}
+                  disabled={submittingReview}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  aria-label="Close review modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Internally Scrollable Modal Body */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                {/* Form Error Banner */}
+                {formError && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-150">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                {/* 1. Overall Rating (Required) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                      <span>Overall Rating</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    {reviewForm.overallRating > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs">
+                        <Star size={12} className="fill-amber-500 text-amber-500" />
+                        <span>{reviewForm.overallRating} of 5 stars</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 font-medium">Select a rating</span>
+                    )}
+                  </div>
+
+                  {/* Interactive Star Row */}
+                  <div
+                    className="flex items-center justify-center gap-2.5 p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/70"
+                    role="radiogroup"
+                    aria-label="Overall Rating"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const isSelected = star <= reviewForm.overallRating;
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRatingChange(star);
+                          }}
+                          className="p-1 rounded-lg transition-transform hover:scale-115 active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                          title={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                          aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                        >
+                          <Star
+                            size={32}
+                            className={`transition-colors ${
+                              isSelected
+                                ? "text-amber-400 fill-amber-400 drop-shadow-xs"
+                                : "text-slate-300 fill-slate-100 hover:text-slate-400 hover:fill-slate-200"
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Written Feedback & Suggestions (Optional) */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Written Feedback &amp; Suggestions <span className="text-slate-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <textarea
+                    value={reviewForm.feedback}
+                    onChange={(e) => setReviewForm((prev) => ({ ...prev, feedback: e.target.value }))}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Share how the mock interview went and any feedback for the expert..."
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0755E8]/20 focus:border-[#0755E8] transition-all resize-none shadow-2xs"
+                    rows={4}
+                    maxLength={2000}
+                  />
+                  <div className="flex justify-end">
+                    <span className="text-[10px] text-slate-400">
+                      {reviewForm.feedback.length}/2000 characters
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
-                <button onClick={() => setReviewModalSession(null)} className="px-4 py-2 border border-slate-300/90 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-800 hover:text-slate-950 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer">Cancel</button>
-                <button onClick={handleSubmitReview} disabled={submittingReview} className="px-4 py-2 bg-[#0755E8] text-white rounded-lg text-sm font-bold hover:bg-[#0645C7] disabled:opacity-60">{submittingReview ? "Submitting…" : "Submit review"}</button>
+
+              {/* Pinned Modal Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCloseReviewModal}
+                  disabled={submittingReview}
+                  className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitReview}
+                  disabled={submittingReview}
+                  className="px-5 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#053AB0] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60 flex items-center gap-1.5 active:scale-98"
+                >
+                  {submittingReview ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin text-white" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <span>Submit Review</span>
+                  )}
+                </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
-        {/* View Certificate Modal — expert feedback (marks) and certificate details */}
-        {certificateModalSession && (
+        {/* View Certificate Modal — expert feedback (marks) and certificate details - Rendered via React Portal */}
+        {certificateModalSession && typeof document !== "undefined" && createPortal(
           <div
-            className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
             onClick={() => setCertificateModalSession(null)}
           >
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[calc(100dvh-32px)] flex flex-col my-auto border border-slate-200/80"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award size={20} className="text-[#0755E8]" /> Certificate details</h3>
                 <button
                   type="button"
@@ -1131,7 +1378,7 @@ const MySessions = ({
                   <span>Close</span>
                 </button>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] flex items-center justify-center"><Award className="w-6 h-6 text-[#0755E8]" /></div>
                   <div>
@@ -1192,7 +1439,7 @@ const MySessions = ({
                   <p className="text-sm text-slate-500">Expert feedback is not available yet for this session.</p>
                 )}
               </div>
-              <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
+              <div className="px-6 py-4 border-t border-slate-100 flex justify-end shrink-0 bg-slate-50/70">
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(null)}
@@ -1202,7 +1449,8 @@ const MySessions = ({
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
@@ -1210,3 +1458,4 @@ const MySessions = ({
 };
 
 export default MySessions;
+
