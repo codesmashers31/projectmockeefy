@@ -195,7 +195,7 @@ function AppRoutes() {
           <Route element={<RoleBasedRoute allowedRoles={['expert', 'candidate', 'user']} />}>
             <Route path="/watch-mock" element={<WatchMock />} />
             <Route path="/payment" element={<Navigate to="/my-sessions" replace />} />
-            <Route path="/live-meeting/:sessionId?" element={<LiveMeeting />} />
+            <Route path="/live-meeting/:sessionId?" element={<ErrorBoundary><LiveMeeting /></ErrorBoundary>} />
 
             {/* App shell */}
             <Route element={<UserShell />}>
