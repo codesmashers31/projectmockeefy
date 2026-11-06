@@ -30,32 +30,27 @@ const reviewSchema = new mongoose.Schema(
         technicalRating: {
             type: Number,
             min: 1,
-            max: 5,
-            default: 0
+            max: 5
         },
         problemSolvingRating: {
             type: Number,
             min: 1,
-            max: 5,
-            default: 0
+            max: 5
         },
         designRating: {
             type: Number,
             min: 1,
-            max: 5,
-            default: 0
+            max: 5
         },
         behavioralRating: {
             type: Number,
             min: 1,
-            max: 5,
-            default: 0
+            max: 5
         },
         communicationRating: {
             type: Number,
             min: 1,
-            max: 5,
-            default: 0
+            max: 5
         },
 
         // Qualitative Feedback
