@@ -79,14 +79,11 @@ const ViewExpertAvailability = () => {
         }
       });
 
-      const allowed = Array.isArray(data.allowedDurations) && data.allowedDurations.length > 0
-        ? data.allowedDurations.filter((d: number) => d === 30 || d === 60)
-        : (data.sessionDuration === 30 || data.sessionDuration === 60 ? [data.sessionDuration] : [30]);
-      
+      const singleDuration = Number(data.sessionDuration) === 60 ? 60 : 30;
       setProfile({
         availability: {
-          sessionDuration: data.sessionDuration || 30,
-          allowedDurations: allowed,
+          sessionDuration: singleDuration,
+          allowedDurations: [singleDuration],
           defaultMeetingLink: data.defaultMeetingLink || null,
           maxPerDay: data.maxPerDay || 4,
           weekly: weekly,

@@ -19,7 +19,11 @@ export const createSession = async (req, res) => {
 
         // Calculate Duration
         const start = new Date(startTime);
-        const end = new Date(endTime);
+        let end = new Date(endTime);
+        if (end <= start) {
+            const fallbackDuration = Number(req.body.duration || req.body.sessionDuration) || 30;
+            end = new Date(start.getTime() + fallbackDuration * 60 * 1000);
+        }
         const durationMinutes = Math.round((end - start) / (1000 * 60));
 
         // Fetch Expert to get Category

@@ -266,23 +266,12 @@ export default function BookSessionPage() {
     }
   }, [loading, profile, location.hash, location.state, searchParams]);
 
-  // Computed allowed durations
+  // Computed allowed duration (expert offers exactly ONE duration)
   const durationOptions = useMemo<SessionDuration[]>(() => {
     const prof = profile || existingProfile;
-    const allowed = prof?.availability?.allowedDurations;
-    const allowedSet = new Set<SessionDuration>(
-      Array.isArray(allowed) ? allowed.filter(isSessionDuration) : []
-    );
-
-    if (allowedSet.size === 0) {
-      const single = prof?.availability?.sessionDuration;
-      if (isSessionDuration(single)) allowedSet.add(single);
-      else allowedSet.add(30);
-    }
-
-    const arr = Array.from(allowedSet).sort((a, b) => a - b);
-    return arr.length > 0 ? arr : [30];
-  }, [profile?.availability?.allowedDurations, profile?.availability?.sessionDuration, existingProfile]);
+    const single = (prof?.availability?.sessionDuration === 60 || prof?.sessionDuration === 60) ? 60 : 30;
+    return [single as SessionDuration];
+  }, [profile?.availability?.sessionDuration, profile?.sessionDuration, existingProfile]);
 
   const [sessionDuration, setSessionDuration] = useState<SessionDuration>(() => durationOptions[0] || 30);
 
@@ -754,8 +743,11 @@ export default function BookSessionPage() {
       return `${h.toString().padStart(2, "0")}:${m}`;
     };
 
-    const startTime = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`).toISOString();
-    const endTime = new Date(`${kolkataDateStr}T${parseToHHMM(endRaw)}:00+05:30`).toISOString();
+    const startDate = new Date(`${kolkataDateStr}T${parseToHHMM(startRaw)}:00+05:30`);
+    const durationMin = Number(sessionDuration) || 30;
+    const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
+    const startTime = startDate.toISOString();
+    const endTime = endDate.toISOString();
 
     const candidateId = user?.id || user?.userId || (user as any)?._id;
 

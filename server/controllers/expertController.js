@@ -843,8 +843,8 @@ export const getPublicExpertById = async (req, res) => {
         isEnabled: s.isEnabled
       })) : [],
       availability: {
-        sessionDuration: expert.availability?.sessionDuration || 30,
-        allowedDurations: (expert.availability?.allowedDurations?.length ? expert.availability.allowedDurations : null) || [expert.availability?.sessionDuration || 30],
+        sessionDuration: expert.availability?.sessionDuration === 60 ? 60 : 30,
+        allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
         maxPerDay: expert.availability?.maxPerDay || 1,
         weekly: expert.availability?.weekly || {},
         breakDates: expert.availability?.breakDates || []
@@ -1369,9 +1369,15 @@ export const getAvailability = async (req, res) => {
     const queryUserId = toObjectId(userIdRaw);
     const expert = await ExpertDetails.findOne({ userId: queryUserId });
 
-    if (expert && expert.availability) return res.status(200).json({ success: true, data: expert.availability });
+    if (expert && expert.availability) {
+      const avail = expert.availability.toObject ? expert.availability.toObject() : { ...expert.availability };
+      const singleDur = avail.sessionDuration === 60 ? 60 : 30;
+      avail.sessionDuration = singleDur;
+      avail.allowedDurations = [singleDur];
+      return res.status(200).json({ success: true, data: avail });
+    }
 
-    return res.status(200).json({ success: true, data: { sessionDuration: 30, maxPerDay: 1, weekly: {}, breakDates: [] } });
+    return res.status(200).json({ success: true, data: { sessionDuration: 30, allowedDurations: [30], maxPerDay: 1, weekly: {}, breakDates: [] } });
   } catch (err) {
     console.error("getAvailability error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -1391,8 +1397,33 @@ export const updateAvailability = async (req, res) => {
 
     if (!expert.availability) expert.availability = { sessionDuration: 30, maxPerDay: 1, weekly: {}, breakDates: [] };
 
-    // Validate weekly slots overlap and solid 30-minute intervals
-    if (newAvailability.weekly) {
+    // Strict validation: reject multiple offered durations
+    if (Array.isArray(newAvailability.allowedDurations) && newAvailability.allowedDurations.length > 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Only one session duration can be offered (either 30 or 60 minutes). Multiple durations are not allowed."
+      });
+    }
+
+    // Determine the single effective duration (30 or 60)
+    let effectiveDuration = 30;
+    if (newAvailability.sessionDuration !== undefined) {
+      effectiveDuration = Number(newAvailability.sessionDuration) === 60 ? 60 : 30;
+    } else if (Array.isArray(newAvailability.allowedDurations) && newAvailability.allowedDurations.length === 1) {
+      effectiveDuration = Number(newAvailability.allowedDurations[0]) === 60 ? 60 : 30;
+    } else if (expert.availability?.sessionDuration) {
+      effectiveDuration = Number(expert.availability.sessionDuration) === 60 ? 60 : 30;
+    }
+
+    const maxSessionsPerDay = Number(newAvailability.maxPerDay ?? expert.availability.maxPerDay) || 4;
+    const maxStartMin = 1440 - effectiveDuration;
+    const lastSlotLabel = effectiveDuration === 60 ? "11:00 PM – 12:00 AM" : "11:30 PM – 12:00 AM";
+
+    const VALID_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+    // Validate weekly slots overlap, strict midnight cutoff, and interval limits
+    if (newAvailability.weekly && typeof newAvailability.weekly === 'object') {
       const timeToMinutes = (timeStr) => {
         if (!timeStr) return 0;
         const [h, m] = timeStr.split(':').map(Number);
@@ -1400,45 +1431,98 @@ export const updateAvailability = async (req, res) => {
       };
 
       for (const day of Object.keys(newAvailability.weekly)) {
+        if (!VALID_DAYS.includes(day.toLowerCase())) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid weekday identifier: ${day}. Must be one of: ${VALID_DAYS.join(', ')}`
+          });
+        }
+
         const daySlots = newAvailability.weekly[day] || [];
+        if (!Array.isArray(daySlots)) {
+          return res.status(400).json({
+            success: false,
+            message: `Slots for ${day} must be an array.`
+          });
+        }
+
+        if (daySlots.length > maxSessionsPerDay) {
+          return res.status(400).json({
+            success: false,
+            message: `Daily limit exceeded on ${day}: max ${maxSessionsPerDay} sessions allowed.`
+          });
+        }
+
         const sortedSlots = [...daySlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
 
         for (let i = 0; i < sortedSlots.length; i++) {
           const slot = sortedSlots[i];
-          const start = timeToMinutes(slot.from);
-          let end = timeToMinutes(slot.to);
+          if (!slot || typeof slot.from !== 'string' || typeof slot.to !== 'string') {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid slot format on ${day}.`
+            });
+          }
+
+          const fromTrim = slot.from.trim();
+          const toTrim = slot.to.trim();
+
+          if (!timeRegex.test(fromTrim)) {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid start time format "${fromTrim}" on ${day}. Expected HH:MM.`
+            });
+          }
+
+          // to time can be "00:00" representing midnight (12:00 AM at end of day), or valid HH:MM
+          if (!timeRegex.test(toTrim) && toTrim !== "24:00") {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid end time format "${toTrim}" on ${day}. Expected HH:MM.`
+            });
+          }
+
+          const start = timeToMinutes(fromTrim);
+          let end = timeToMinutes(toTrim);
           if (end === 0 && start > 0) {
-            end = 24 * 60; // 1440 (midnight)
-          } else if (end < start) {
-            end += 24 * 60;
+            end = 1440; // 12:00 AM (midnight)
           }
 
-          if (start >= end) {
+          // Strict daily cutoff: No slot may begin after 11:30 PM (or 11:00 PM for 60m)
+          if (start > maxStartMin) {
             return res.status(400).json({
               success: false,
-              message: `Invalid slot on ${day}: ${slot.from} - ${slot.to} cannot end before it starts.`
+              message: `${lastSlotLabel} is the last available slot of the day. You cannot add another slot after this time. Please select a slot on the next day.`
             });
           }
 
-          if (start % 30 !== 0) {
+          // Strict daily cutoff: Slot cannot cross midnight into the next day
+          if (end > 1440) {
             return res.status(400).json({
               success: false,
-              message: `Invalid slot on ${day}: Slot start time (${slot.from}) must be on a solid 30-minute interval (e.g. :00 or :30).`
+              message: `Slot ${fromTrim} - ${toTrim} on ${day} cannot cross midnight into the next day.`
             });
           }
 
+          // Slot end must be strictly after start
+          if (end <= start) {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid slot on ${day}: ${fromTrim} - ${toTrim} cannot end before or at start time.`
+            });
+          }
+
+          // Check overlap with previous slot on the same day
           if (i > 0) {
             const prevSlot = sortedSlots[i - 1];
             let prevEnd = timeToMinutes(prevSlot.to);
             if (prevEnd === 0 && timeToMinutes(prevSlot.from) > 0) {
-              prevEnd = 24 * 60;
-            } else if (prevEnd < timeToMinutes(prevSlot.from)) {
-              prevEnd += 24 * 60;
+              prevEnd = 1440;
             }
             if (start < prevEnd) {
               return res.status(400).json({
                 success: false,
-                message: `Slot overlap on ${day}: The slot ${slot.from} - ${slot.to} overlaps with ${prevSlot.from} - ${prevSlot.to}.`
+                message: `Slot overlap on ${day}: The slot ${fromTrim} - ${toTrim} overlaps with ${prevSlot.from} - ${prevSlot.to}.`
               });
             }
           }
@@ -1447,7 +1531,8 @@ export const updateAvailability = async (req, res) => {
       }
     }
 
-    expert.availability.sessionDuration = newAvailability.sessionDuration ?? expert.availability.sessionDuration;
+    expert.availability.sessionDuration = effectiveDuration;
+    expert.availability.allowedDurations = [effectiveDuration];
     expert.availability.maxPerDay = newAvailability.maxPerDay ?? expert.availability.maxPerDay;
     if (newAvailability.defaultMeetingLink !== undefined) {
       const raw = typeof newAvailability.defaultMeetingLink === 'string' ? newAvailability.defaultMeetingLink.trim() : '';
@@ -1458,12 +1543,6 @@ export const updateAvailability = async (req, res) => {
       } else {
         expert.availability.defaultMeetingLink = raw;
       }
-    }
-    if (Array.isArray(newAvailability.allowedDurations)) {
-      expert.availability.allowedDurations = newAvailability.allowedDurations.filter((d) => d === 30 || d === 60);
-      if (expert.availability.allowedDurations.length === 0) expert.availability.allowedDurations = [expert.availability.sessionDuration];
-    } else if (newAvailability.allowedDurations !== undefined) {
-      expert.availability.allowedDurations = undefined;
     }
     // ensure weekly is a plain object
     expert.availability.weekly = newAvailability.weekly ?? expert.availability.weekly ?? {};
@@ -1682,8 +1761,8 @@ export const getPendingExperts = async (req, res) => {
           languages: expert.skillsAndExpertise?.languages || []
         },
         availability: {
-          sessionDuration: expert.availability?.sessionDuration || 30,
-          allowedDurations: (expert.availability?.allowedDurations?.length ? expert.availability.allowedDurations : null) || [expert.availability?.sessionDuration || 30],
+          sessionDuration: expert.availability?.sessionDuration === 60 ? 60 : 30,
+          allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
           maxPerDay: expert.availability?.maxPerDay || 1,
           weekly: expert.availability?.weekly || {},
           breakDates: expert.availability?.breakDates || []
@@ -1767,8 +1846,8 @@ export const getRejectedExperts = async (req, res) => {
           languages: expert.skillsAndExpertise?.languages || []
         },
         availability: {
-          sessionDuration: expert.availability?.sessionDuration || 30,
-          allowedDurations: (expert.availability?.allowedDurations?.length ? expert.availability.allowedDurations : null) || [expert.availability?.sessionDuration || 30],
+          sessionDuration: expert.availability?.sessionDuration === 60 ? 60 : 30,
+          allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
           maxPerDay: expert.availability?.maxPerDay || 1,
           weekly: expert.availability?.weekly || {},
           breakDates: expert.availability?.breakDates || []
@@ -2007,8 +2086,8 @@ export const getVerifiedExperts = async (req, res) => {
           isEnabled: s.isEnabled
         })) : [],
         availability: {
-          sessionDuration: expert.availability?.sessionDuration || 30,
-          allowedDurations: (expert.availability?.allowedDurations?.length ? expert.availability.allowedDurations : null) || [expert.availability?.sessionDuration || 30],
+          sessionDuration: expert.availability?.sessionDuration === 60 ? 60 : 30,
+          allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
           maxPerDay: expert.availability?.maxPerDay || 1,
           weekly: expert.availability?.weekly || {},
           breakDates: expert.availability?.breakDates || []
@@ -2293,8 +2372,19 @@ export const updateExpertByAdmin = async (req, res) => {
     }
 
     // Availability
-    if (sessionDuration !== undefined && sessionDuration !== "") updateObj["availability.sessionDuration"] = Number(sessionDuration);
-    if (allowedDurations !== undefined) updateObj["availability.allowedDurations"] = Array.isArray(allowedDurations) ? allowedDurations : [Number(allowedDurations)];
+    if (sessionDuration !== undefined && sessionDuration !== "") {
+      const dur = Number(sessionDuration) === 60 ? 60 : 30;
+      updateObj["availability.sessionDuration"] = dur;
+      updateObj["availability.allowedDurations"] = [dur];
+    } else if (allowedDurations !== undefined) {
+      const arr = Array.isArray(allowedDurations) ? allowedDurations : [Number(allowedDurations)];
+      if (arr.length > 1) {
+        return res.status(400).json({ success: false, message: "Only one session duration can be offered (either 30 or 60 minutes)." });
+      }
+      const dur = Number(arr[0]) === 60 ? 60 : 30;
+      updateObj["availability.sessionDuration"] = dur;
+      updateObj["availability.allowedDurations"] = [dur];
+    }
     if (defaultMeetingLink !== undefined) updateObj["availability.defaultMeetingLink"] = defaultMeetingLink;
     if (maxPerDay !== undefined && maxPerDay !== "") updateObj["availability.maxPerDay"] = Number(maxPerDay);
 
