@@ -1,5 +1,5 @@
 // src/pages/expert/Sessions.tsx
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Video,
@@ -87,7 +87,16 @@ interface Session {
     expertReview?: any;
 }
 
-const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+// All 24 hours of the day (00:00 to 23:00) so all possible session times are present in the calendar matrix
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const formatCalendarHour = (hour: number) => {
+    const period = hour < 12 ? 'am' : 'pm';
+    let h12 = hour % 12;
+    if (h12 === 0) h12 = 12;
+    const hStr = h12 < 10 ? `0${h12}` : `${h12}`;
+    return `${hStr}.00 ${period}`;
+};
 
 export default function Sessions() {
     const navigate = useNavigate();
@@ -626,6 +635,26 @@ export default function Sessions() {
         return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     }, [selectedDate]);
 
+    // Ref and auto-scroll for weekly 24-hour time matrix
+    const weeklyScrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (calendarMode === 'weekly' && weeklyScrollRef.current) {
+            const weekSessions = allSessions.filter(s => {
+                const sDate = new Date(s.startTime);
+                return weekDays.some(d => isSameDay(d, sDate));
+            });
+
+            let targetHour = 8; // Default scroll position around 8:00 AM
+            if (weekSessions.length > 0) {
+                const earliestHour = Math.min(...weekSessions.map(s => new Date(s.startTime).getHours()));
+                targetHour = Math.max(0, earliestHour);
+            }
+
+            weeklyScrollRef.current.scrollTop = targetHour * 85;
+        }
+    }, [calendarMode, selectedDate, allSessions.length]);
+
     // Sessions for current selected date
     const selectedDateSessions = useMemo(() => {
         return filteredSessions.filter(s => isSameDay(new Date(s.startTime), selectedDate));
@@ -971,14 +1000,14 @@ export default function Sessions() {
                                 })}
                             </div>
 
-                            {/* Weekly Time Grid Matrix */}
-                            <div className="flex-1 overflow-y-auto thin-scrollbar min-h-0">
+                            {/* Weekly Time Grid Matrix (All 24 Hours) */}
+                            <div ref={weeklyScrollRef} className="flex-1 overflow-y-auto thin-scrollbar min-h-0">
                                 {HOURS.map(hour => {
                                     return (
-                                        <div key={hour} className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-slate-100 min-h-[85px]">
+                                        <div key={hour} className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-slate-100 min-h-[95px]">
                                             {/* Hour label */}
-                                            <div className="p-2 border-r border-slate-100 text-[11px] font-mono text-slate-400 text-center shrink-0">
-                                                {hour < 10 ? `0${hour}.00` : `${hour}.00`} {hour < 12 ? 'am' : 'pm'}
+                                            <div className="p-2 border-r border-slate-100 text-[11px] font-mono text-slate-400 text-center shrink-0 select-none">
+                                                {formatCalendarHour(hour)}
                                             </div>
 
                                             {/* 7 Columns for the week */}
@@ -1010,71 +1039,79 @@ export default function Sessions() {
                                                                         e.stopPropagation();
                                                                         setSelectedSessionModal(session);
                                                                     }}
-                                                                    className={`rounded-xl p-2 sm:p-2.5 mb-1.5 transition-all shadow-xs cursor-pointer border overflow-hidden ${isLive
-                                                                        ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-500/20'
+                                                                    className={`rounded-2xl p-2.5 sm:p-3 mb-2 transition-all shadow-xs cursor-pointer border overflow-hidden ${isLive
+                                                                        ? 'bg-blue-50/80 border-blue-400 shadow-md ring-2 ring-blue-500/20'
                                                                         : isCompleted
-                                                                            ? 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
-                                                                            : 'bg-white text-slate-900 border-blue-200 hover:border-blue-400 hover:shadow-sm'
+                                                                            ? 'bg-slate-50/90 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70'
+                                                                            : 'bg-white border-slate-200/90 hover:border-blue-400 hover:shadow-md'
                                                                         }`}
                                                                 >
-                                                                    <div className="flex items-center justify-between gap-1 mb-1">
-                                                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${isLive ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
+                                                                    {/* 1. Time Slot Range Badge */}
+                                                                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md inline-block tracking-tight ${isLive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
                                                                             }`}>
                                                                             {format(new Date(session.startTime), 'HH:mm')} - {format(new Date(session.endTime), 'HH:mm')}
                                                                         </span>
                                                                         {isLive && (
-                                                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                                                                            <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                                                                                <span>Live</span>
+                                                                            </span>
                                                                         )}
                                                                     </div>
 
-                                                                    <h4 className={`text-xs font-bold truncate leading-tight ${isLive ? 'text-white' : 'text-slate-900'
-                                                                        }`}>
-                                                                        {session.candidateName}
+                                                                    {/* 2. Candidate Name */}
+                                                                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate leading-tight">
+                                                                        {session.candidateName || session.candidateNameSnapshot || 'Candidate'}
                                                                     </h4>
-                                                                    <p className={`text-[10px] truncate mt-0.5 ${isLive ? 'text-blue-100' : 'text-slate-500'
-                                                                        }`}>
-                                                                        {session.topics?.[0] || '1:1 Mock Interview'}
+
+                                                                    {/* 3. Domain / Topic / Role */}
+                                                                    <p className="text-[10.5px] text-slate-500 font-medium truncate mt-0.5">
+                                                                        {session.topics?.[0] || (session as any).categoryName || (session as any).categoryId?.name || 'IT'}
                                                                     </p>
 
-                                                                    {/* Quick Action Badges */}
-                                                                    <div className="flex items-center justify-between gap-1 mt-2 pt-1.5 border-t border-slate-200/40 min-w-0">
+                                                                    {/* 4. Action Buttons: Resume & Review */}
+                                                                    <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
                                                                         <button
+                                                                            type="button"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 handleViewResume(session);
                                                                             }}
-                                                                            className={`text-[10px] font-semibold underline flex items-center gap-0.5 shrink-0 ${isLive ? 'text-white hover:text-blue-200' : 'text-blue-600 hover:text-blue-800'
-                                                                                }`}
-                                                                            title="View Resume in New Tab"
+                                                                            className="text-[10px] font-bold text-blue-600 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
+                                                                            title="View Candidate Resume in New Tab"
                                                                         >
-                                                                            <FileText className="w-2.5 h-2.5" />
+                                                                            <FileText className="w-3 h-3 text-blue-600" />
                                                                             <span>Resume</span>
                                                                         </button>
+
                                                                         {isSessionReviewed(session) ? (
                                                                             <button
+                                                                                type="button"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     openReviewModal(session);
                                                                                 }}
-                                                                                className="text-[9.5px] leading-tight font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0 max-w-[calc(100%-48px)]"
-                                                                                title={`Review completed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
+                                                                                className="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
+                                                                                title={`Reviewed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
                                                                             >
-                                                                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                                                                                <span className="truncate">Reviewed · ₹{getSessionPayoutAmount(session)}</span>
+                                                                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                                                                <span>Reviewed</span>
                                                                             </button>
-                                                                        ) : isSessionEnded(session) ? (
+                                                                        ) : (
                                                                             <button
+                                                                                type="button"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     openReviewModal(session);
                                                                                 }}
-                                                                                className="text-[10px] leading-tight font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-2xs animate-pulse shrink-0"
-                                                                                title="Session ended! Review required to release payout. Click to review."
+                                                                                className="text-[10px] font-bold text-rose-600 bg-rose-50/90 hover:bg-rose-100 border border-rose-200/80 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
+                                                                                title={isSessionEnded(session) ? "Session ended! Submit review to release payout." : "Review candidate after session completes"}
                                                                             >
-                                                                                <AlertCircle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                                                                <AlertCircle className="w-3 h-3 text-rose-600" />
                                                                                 <span>Review</span>
                                                                             </button>
-                                                                        ) : null}
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -1239,27 +1276,25 @@ export default function Sessions() {
                                                             </button>
                                                         </div>
 
-                                                        {/* Post-Session Review for ended sessions */}
-                                                        {isSessionEnded(session) && (
-                                                            isSessionReviewed(session) ? (
-                                                                <button
-                                                                    onClick={() => openReviewModal(session)}
-                                                                    className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                                                                    title={`Review completed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
-                                                                >
-                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                                                    <span>Reviewed · ₹{getSessionPayoutAmount(session)} {(session as any).expertReview?.hiringDecision ? `(${(session as any).expertReview.hiringDecision})` : ''}</span>
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => openReviewModal(session)}
-                                                                    className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center gap-1 border border-rose-200 shadow-2xs transition-all duration-200 cursor-pointer active:scale-95"
-                                                                    title="Give review to get your pay"
-                                                                >
-                                                                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                                                    <span>Give review to get pay</span>
-                                                                </button>
-                                                            )
+                                                        {/* Post-Session Review Action */}
+                                                        {isSessionReviewed(session) ? (
+                                                            <button
+                                                                onClick={() => openReviewModal(session)}
+                                                                className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                                                title={`Review completed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
+                                                            >
+                                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                                <span>Reviewed · ₹{getSessionPayoutAmount(session)} {(session as any).expertReview?.hiringDecision ? `(${(session as any).expertReview.hiringDecision})` : ''}</span>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => openReviewModal(session)}
+                                                                className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center gap-1 border border-rose-200 shadow-2xs transition-all duration-200 cursor-pointer active:scale-95"
+                                                                title={isSessionEnded(session) ? "Give review to get your pay" : "Review candidate after session completes"}
+                                                            >
+                                                                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                                                <span>Review</span>
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
