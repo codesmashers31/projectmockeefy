@@ -33,6 +33,13 @@ const GoogleMeetOnlyMeeting = ({
   const [fetchedMeetingLink, setFetchedMeetingLink] = useState<string | null>(null);
   const [resolvedSession, setResolvedSession] = useState<any>(sessionData?.session || null);
   const [loadingSession, setLoadingSession] = useState<boolean>(!sessionData?.session);
+
+  // Authoritative session participant check:
+  // If the resolved session specifies candidateId and matches currentUserId, force candidate view
+  const sessionCandidateId = resolvedSession?.candidateId?._id || resolvedSession?.candidateId;
+  const isCandidateInSession = Boolean(sessionCandidateId && currentUserId && String(sessionCandidateId) === String(currentUserId));
+  const activeRole = isCandidateInSession ? 'candidate' : role;
+
   const [expertReviewSubmitted, setExpertReviewSubmitted] = useState(false);
   const [autoClosed, setAutoClosed] = useState(false);
   const onLeaveRef = useRef(onLeave);
@@ -64,7 +71,7 @@ const GoogleMeetOnlyMeeting = ({
   ).toFixed(1));
 
   const isTimerEnded = remainingSeconds != null && remainingSeconds <= 0;
-  const canReviewCandidate = role === 'expert' && isTimerEnded && !expertReviewSubmitted;
+  const canReviewCandidate = activeRole === 'expert' && isTimerEnded && !expertReviewSubmitted;
   const candidateName = resolvedSession?.candidateDetails?.name || resolvedSession?.candidateName || 'Candidate';
 
   const fetchReviewStatus = async () => {
@@ -235,11 +242,11 @@ const GoogleMeetOnlyMeeting = ({
   };
 
   const handleEndMeeting = async () => {
-    if (!confirm(role === 'expert' ? 'End meeting for everyone?' : 'Leave this meeting?')) return;
+    if (!confirm(activeRole === 'expert' ? 'End meeting for everyone?' : 'Leave this meeting?')) return;
     setCompleting(true);
     try {
       await axios.post(`/api/sessions/${meetingId}/complete`);
-      toast.success(role === 'expert' ? 'Meeting ended.' : 'You left the meeting.');
+      toast.success(activeRole === 'expert' ? 'Meeting ended.' : 'You left the meeting.');
       onLeave();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to end meeting');
@@ -357,7 +364,7 @@ const GoogleMeetOnlyMeeting = ({
                 Back
               </button>
               <span className="px-2.5 py-1 rounded-full text-xs font-semibold capitalize bg-blue-50 border border-blue-200 text-blue-700">
-                {role || 'participant'}
+                {activeRole || 'participant'}
               </span>
             </div>
           </div>
@@ -385,8 +392,8 @@ const GoogleMeetOnlyMeeting = ({
               disabled={completing}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-sm font-medium text-white"
             >
-              {role === 'expert' ? <PhoneOff size={18} /> : <LogOut size={18} />}
-              {role === 'expert' ? 'End meeting' : 'Leave'}
+              {activeRole === 'expert' ? <PhoneOff size={18} /> : <LogOut size={18} />}
+              {activeRole === 'expert' ? 'End meeting' : 'Leave'}
             </button>
           </div>
         </div>
@@ -407,7 +414,7 @@ const GoogleMeetOnlyMeeting = ({
                   Review Candidate
                 </button>
               )}
-              {role === 'expert' && expertReviewSubmitted && (
+              {activeRole === 'expert' && expertReviewSubmitted && (
                 <span className="px-3 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Candidate review submitted
                 </span>
@@ -491,7 +498,7 @@ const GoogleMeetOnlyMeeting = ({
               </button>
             </div>
 
-            {role === 'expert' ? (
+            {activeRole === 'expert' ? (
               <>
                 {isGoogleMeetUrl ? (
                   <div className="flex flex-wrap items-center gap-3">
@@ -561,7 +568,7 @@ const GoogleMeetOnlyMeeting = ({
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
           <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-3">Quick Instructions</h3>
           <div className="space-y-2.5 text-sm text-slate-600">
-            {role === 'expert' ? (
+            {activeRole === 'expert' ? (
               <>
                 <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Create a Google Meet link and save it here before interview starts.</p>
                 <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Use "Open in Google Meet" to verify your mic/camera setup.</p>
@@ -677,19 +684,42 @@ export default function LiveMeetingPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { data: verificationData, confirmIdentity: confirmIdentityApi, refreshVerification } = useCertificateVerification();
   const [showIdentityModal, setShowIdentityModal] = useState(false);
 
-  useEffect(() => {
-    if (role !== 'expert' && verificationData?.confirmationRequired) {
-      setShowIdentityModal(true);
-    }
-  }, [role, verificationData?.confirmationRequired]);
-
   const sessionFromState = (location.state as any)?.session;
   const meetingId = sessionIdParam || searchParams.get('meetingId') || sessionFromState?.sessionId || null;
-  const role = searchParams.get('role') || (user as any)?.role || (location.state as any)?.role;
+
+  // Security-hardened authoritative role resolution:
+  // AuthContext is the absolute source of truth. Non-expert users (candidates/users)
+  // CANNOT be elevated to expert by tampering with URL parameters (?role=expert) or location.state.
+  const authUserType = String((user as any)?.userType || (user as any)?.role || '').toLowerCase();
+  const isAuthExpert = authUserType === 'expert' || authUserType === 'admin';
+
+  let role: 'expert' | 'candidate' = 'candidate';
+  if (isAuthExpert) {
+    const currentUserId = String((user as any)?._id || (user as any)?.id || (user as any)?.userId || '');
+    const sessionCandidateId = sessionFromState?.candidateId?._id || sessionFromState?.candidateId;
+    const isCandidateInThisSession = sessionCandidateId && String(sessionCandidateId) === currentUserId;
+
+    if (isCandidateInThisSession) {
+      role = 'candidate';
+    } else {
+      // By default an authenticated expert acts as expert, unless explicitly set to candidate view
+      const explicitRole = searchParams.get('role') || (location.state as any)?.role;
+      role = String(explicitRole).toLowerCase() === 'candidate' ? 'candidate' : 'expert';
+    }
+  } else {
+    // Candidates and general users can NEVER be granted expert role under any circumstances
+    role = 'candidate';
+  }
+
+  useEffect(() => {
+    if (!isAuthLoading && role !== 'expert' && verificationData?.confirmationRequired) {
+      setShowIdentityModal(true);
+    }
+  }, [isAuthLoading, role, verificationData?.confirmationRequired]);
 
   const now = new Date();
   const isSessionEndedOrExpired = sessionFromState && (
@@ -726,11 +756,11 @@ export default function LiveMeetingPage() {
   };
 
   useEffect(() => {
-    if (!meetingId) {
+    if (!isAuthLoading && !meetingId) {
       toast.error('Invalid Meeting ID');
-      navigate('/my-sessions', { replace: true });
+      navigate(role === 'expert' ? '/dashboard/sessions' : '/my-sessions', { replace: true });
     }
-  }, [meetingId, navigate]);
+  }, [isAuthLoading, meetingId, navigate, role]);
 
   useEffect(() => {
     if (isSessionEndedOrExpired) {
@@ -740,10 +770,31 @@ export default function LiveMeetingPage() {
     }
   }, [isSessionEndedOrExpired, navigate, role]);
 
-  if (!meetingId || !user) {
+  if (isAuthLoading || (!user && localStorage.getItem('token'))) {
     return (
       <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-700">
-        {!user ? 'Loading...' : 'Invalid meeting link. Redirecting...'}
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-sm font-medium text-slate-600">Loading meeting session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!meetingId) {
+    return (
+      <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-700">
+        <div className="text-center p-6 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm">
+          <p className="text-sm font-semibold text-slate-800 mb-1">Invalid Meeting Link</p>
+          <p className="text-xs text-slate-500 mb-4">No valid session or meeting identifier was provided.</p>
+          <button
+            type="button"
+            onClick={() => navigate(role === 'expert' ? '/dashboard/sessions' : '/my-sessions', { replace: true })}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+          >
+            Return to Sessions
+          </button>
+        </div>
       </div>
     );
   }
@@ -769,11 +820,11 @@ export default function LiveMeetingPage() {
         onConfirmApi={confirmIdentityApi}
       />
       <GoogleMeetOnlyMeeting
-      meetingId={meetingId}
-      role={role}
-      onLeave={() => navigate(role === 'expert' ? '/dashboard/sessions' : '/my-sessions')}
-      sessionData={location.state}
-      currentUserId={(user as any)?.id || (user as any)?._id || ''}
+        meetingId={meetingId}
+        role={role}
+        onLeave={() => navigate(role === 'expert' ? '/dashboard/sessions' : '/my-sessions')}
+        sessionData={location.state}
+        currentUserId={(user as any)?.id || (user as any)?._id || ''}
       />
     </>
   );
