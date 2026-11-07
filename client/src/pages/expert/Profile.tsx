@@ -184,7 +184,7 @@ export default function ProfilePage() {
 
         <div className="flex-1 flex min-h-0">
           {/* LEFT SIDEBAR - Fixed Width on Desktop, Hidden on Mobile */}
-          <div className="hidden lg:flex w-64 border-r border-gray-200 bg-white flex-col shrink-0 overflow-y-auto transition-all">
+          <div className="hidden lg:flex w-64 border-r border-slate-200/80 bg-transparent flex-col shrink-0 overflow-y-auto thin-scrollbar transition-all relative z-10">
             {/* <div className="p-6 border-b border-gray-100 bg-white text-center">
               <div className="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-3xl mb-3 shadow-inner">
                 {user?.name?.[0]?.toUpperCase() || "E"}
@@ -202,7 +202,7 @@ export default function ProfilePage() {
             </div> */}
 
             {/* Navigation Links */}
-            <div className="p-3 space-y-1">
+            <div className="pt-6 lg:pt-8 px-4 pb-4 space-y-1.5">
               {TABS.map((tab) => {
                 const isIncomplete = isTabIncomplete(tab.id);
 
@@ -214,8 +214,8 @@ export default function ProfilePage() {
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
                       active === tab.id
-                        ? "bg-slate-900 text-white shadow-xs"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
+                        : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
                     }`}
                   >
                     <tab.icon className={`w-4 h-4 shrink-0 ${active === tab.id ? "text-white" : "text-slate-400"}`} />
@@ -223,7 +223,7 @@ export default function ProfilePage() {
 
                     <div className="ml-auto shrink-0">
                       {isIncomplete ? (
-                        <AlertCircle className={`w-3.5 h-3.5 ${active === tab.id ? "text-amber-300" : "text-amber-500"}`} />
+                        <AlertCircle className={`w-3.5 h-3.5 ${active === tab.id ? "text-amber-200" : "text-amber-500"}`} />
                       ) : (
                         <CheckCircle2 className={`w-3.5 h-3.5 ${active === tab.id ? "text-emerald-300" : "text-emerald-500"}`} />
                       )}
@@ -235,7 +235,7 @@ export default function ProfilePage() {
 
             {/* Profile Status Widget - Bottom of Sidebar */}
             {status === "Active" ? (
-              <div className="p-4 mt-auto border-t border-slate-100 bg-emerald-50/40">
+              <div className="p-4 mt-auto border-t border-slate-200/80 bg-emerald-50/50 backdrop-blur-xs">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-4 h-4" />
@@ -247,7 +247,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="p-4 mt-auto border-t border-slate-100 bg-slate-50/60 space-y-2">
+              <div className="p-4 mt-auto border-t border-slate-200/80 bg-white/40 backdrop-blur-xs space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                   <span>Setup Progress</span>
                   <span className="text-blue-600 font-extrabold">{completion}%</span>
@@ -283,8 +283,8 @@ export default function ProfilePage() {
           </div>
 
           {/* RIGHT CONTENT AREA - Flexible */}
-          <div className="flex-1 overflow-y-auto bg-slate-50/50 flex flex-col">
-            <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto w-full">
+          <div className="flex-1 overflow-y-auto thin-scrollbar bg-transparent flex flex-col relative z-10">
+            <div className="pt-6 lg:pt-8 px-5 lg:px-8 pb-8 w-full max-w-5xl">
 
               {/* Mobile Tab Navigation */}
               <div className="lg:hidden mb-6 overflow-x-auto no-scrollbar pb-2">
@@ -297,8 +297,8 @@ export default function ProfilePage() {
                         onClick={() => handleTabSelect(tab.id)}
                         className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                           active === tab.id
-                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                            : 'bg-white text-slate-600 border-slate-200'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/20'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <tab.icon className="w-3.5 h-3.5" />
@@ -317,7 +317,7 @@ export default function ProfilePage() {
               {active === "overview" ? (
                 renderContent()
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 md:p-8 min-h-[500px]">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 sm:p-8">
                   {renderContent()}
                 </div>
               )}

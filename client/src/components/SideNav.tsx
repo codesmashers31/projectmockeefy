@@ -49,9 +49,9 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
   ];
 
   const SidebarContent = () => (
-    <aside className={`w-full h-full border-r border-slate-200 bg-white flex flex-col shrink-0 shadow-2xl md:shadow-none ${className}`}>
+    <aside className={`w-full h-full border-r border-slate-200/80 bg-white flex flex-col shrink-0 shadow-2xl md:shadow-none ${className}`}>
       {/* Header Area */}
-      <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 shrink-0">
+      <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200/80 shrink-0">
         <div className="flex items-center gap-2.5">
           <MockeefyLogo className="h-8 w-8" variant="brand" />
           <div className="flex flex-col justify-center mt-1">

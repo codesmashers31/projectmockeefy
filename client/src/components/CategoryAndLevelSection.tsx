@@ -137,44 +137,47 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto space-y-6 py-2">
-      <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
-        <div className="p-2 bg-blue-50 rounded-lg text-blue-600 shrink-0">
+    <div className="w-full space-y-6">
+      <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
+        <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600 shrink-0">
           <Award className="w-5 h-5" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Category & Level</h3>
-          <p className="text-xs text-gray-500">Configure your expertise category and choose your expert levels.</p>
+          <h3 className="text-lg font-bold text-slate-900 tracking-tight">Category & Level</h3>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Configure your expertise category and choose your expert levels.</p>
         </div>
       </div>
 
       <div className="space-y-6">
         {!isEditing ? (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-gray-500">Expertise Category</label>
-              <p className="text-base font-bold text-gray-900">{selectedCategory || "Not specified"}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="bg-slate-50/70 border border-slate-200/70 rounded-xl p-4 sm:p-5 space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Expertise Category</label>
+              <p className="text-base font-extrabold text-slate-900">{selectedCategory || "Not specified"}</p>
+              <p className="text-xs text-slate-500">Your primary consulting domain for mock interviews and candidate sessions.</p>
             </div>
 
-            <div className="flex flex-col gap-2.5">
-              <label className="text-sm font-semibold text-gray-500">Expert Levels</label>
-              <div className="flex flex-wrap gap-2">
+            <div className="bg-slate-50/70 border border-slate-200/70 rounded-xl p-4 sm:p-5 space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Expert Levels</label>
+              <div className="flex flex-wrap gap-2 pt-0.5">
                 {selectedLevels.map((level) => (
-                  <span key={level} className="bg-blue-50 text-blue-700 border border-blue-100/60 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm">
+                  <span key={level} className="bg-blue-50 text-blue-700 border border-blue-200/80 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
                     {level}
                   </span>
                 ))}
               </div>
+              <p className="text-xs text-slate-500">Tiers candidates can select when booking an interview with you.</p>
             </div>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="space-y-6">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-gray-700">Expertise Category</label>
+              <label className="text-sm font-semibold text-slate-700">Expertise Category</label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 font-medium"
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-800 font-medium shadow-2xs"
               >
                 <option value="">Choose Expertise Category</option>
                 {categories.map((c) => (
@@ -183,12 +186,12 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500">Choose the main field you want to conduct sessions for.</p>
+              <p className="text-xs text-slate-500">Choose the main field you want to conduct sessions for.</p>
             </div>
 
             <div className="flex flex-col gap-2.5">
-              <label className="text-sm font-semibold text-gray-700">Expert Levels (Choose Multi-option)</label>
-              <p className="text-xs text-gray-500 mb-2">Select all levels you wish to support. Candidates can choose their preferred tier when booking you.</p>
+              <label className="text-sm font-semibold text-slate-700">Expert Levels (Choose Multi-option)</label>
+              <p className="text-xs text-slate-500 mb-1">Select all levels you wish to support. Candidates can choose their preferred tier when booking you.</p>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {AVAILABLE_LEVELS.map((level) => {
@@ -201,14 +204,14 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
                       className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
                         isChecked
                           ? "border-blue-600 bg-blue-50/40 text-blue-900 shadow-sm font-semibold cursor-pointer"
-                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 cursor-pointer"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 cursor-pointer"
                       }`}
                     >
                       <div className="shrink-0 text-blue-600">
                         {isChecked ? (
                           <CheckSquare className="w-5 h-5" />
                         ) : (
-                          <Square className="w-5 h-5 text-gray-300" />
+                          <Square className="w-5 h-5 text-slate-300" />
                         )}
                       </div>
                       <span className="text-sm">{level}</span>
@@ -217,26 +220,26 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
                 })}
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        <div className="pt-6 border-t border-gray-100 mt-6 flex justify-end">
+        <div className="pt-6 border-t border-slate-100 flex items-center justify-end">
           {isEditing ? (
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
                   fetchInitialData();
                   setIsEditing(false);
                 }}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
+                className="px-6 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <PrimaryButton
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-all"
+                className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-all shadow-sm shadow-blue-500/20"
               >
                 {saving ? "Saving Changes..." : "Save Settings"}
               </PrimaryButton>
@@ -244,7 +247,7 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
           ) : (
             <PrimaryButton
               onClick={() => setIsEditing(true)}
-              className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-all shadow-sm shadow-blue-500/20"
             >
               Edit Category & Level
             </PrimaryButton>
