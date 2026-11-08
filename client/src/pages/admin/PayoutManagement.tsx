@@ -85,20 +85,34 @@ export default function PayoutManagement() {
   const [transactionRef, setTransactionRef] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Platform Minimum Withdrawal Configuration State
+  const [currentMinWithdrawal, setCurrentMinWithdrawal] = useState<number>(5);
+  const [minWithdrawalInput, setMinWithdrawalInput] = useState<number | ''>(5);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
   const fetchPayoutData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/api/payouts/admin/requests', {
-        params: {
-          status: statusFilter || undefined,
-          methodType: methodFilter || undefined
-        }
-      });
-      if (!res.data.success || !Array.isArray(res.data.data) || !res.data.analytics) {
-        throw new Error(res.data.message || "Failed to load payout requests.");
+      const [requestsRes, configRes] = await Promise.all([
+        axios.get('/api/payouts/admin/requests', {
+          params: {
+            status: statusFilter || undefined,
+            methodType: methodFilter || undefined
+          }
+        }),
+        axios.get('/api/payouts/admin/config').catch(() => null)
+      ]);
+
+      if (!requestsRes.data.success || !Array.isArray(requestsRes.data.data) || !requestsRes.data.analytics) {
+        throw new Error(requestsRes.data.message || "Failed to load payout requests.");
       }
-      setRequests(res.data.data);
-      setAnalytics(res.data.analytics);
+      setRequests(requestsRes.data.data);
+      setAnalytics(requestsRes.data.analytics);
+
+      if (configRes?.data?.success && configRes.data.data?.minWithdrawalAmount) {
+        setCurrentMinWithdrawal(configRes.data.data.minWithdrawalAmount);
+        setMinWithdrawalInput(configRes.data.data.minWithdrawalAmount);
+      }
       setHasLoaded(true);
       setLoadError(null);
     } catch (error: any) {
@@ -140,6 +154,30 @@ export default function PayoutManagement() {
       toast.error(error.response?.data?.message || "Failed to resolve payout request.");
     } finally {
       setIsResolving(false);
+    }
+  };
+
+  const handleUpdateMinWithdrawal = async () => {
+    const val = Number(minWithdrawalInput);
+    if (!minWithdrawalInput || isNaN(val) || val < 1) {
+      toast.error("Please enter a valid minimum withdrawal amount of at least ₹1.");
+      return;
+    }
+
+    try {
+      setIsSavingConfig(true);
+      const res = await axios.put('/api/payouts/admin/config', {
+        minWithdrawalAmount: val
+      });
+      if (res.data.success) {
+        setCurrentMinWithdrawal(res.data.data.minWithdrawalAmount);
+        setMinWithdrawalInput(res.data.data.minWithdrawalAmount);
+        toast.success(res.data.message || `Minimum withdrawal amount updated to ₹${val}`);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update minimum withdrawal amount.");
+    } finally {
+      setIsSavingConfig(false);
     }
   };
 
@@ -250,6 +288,55 @@ export default function PayoutManagement() {
             </div>
           </div>
           <p className="text-xs text-blue-600 font-semibold">Active ledger accounts tracked</p>
+        </div>
+      </div>
+
+      {/* Platform Payout Threshold Configuration Card */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+            <DollarSign className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="text-base font-bold text-slate-900">Minimum Withdrawal Limit</h2>
+              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-bold">
+                Current Threshold: ₹{currentMinWithdrawal}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
+              Experts can only request withdrawals if their requested amount is greater than or equal to this threshold. Experts with an available balance below this amount cannot initiate a payout.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-44">
+            <span className="absolute left-3.5 top-2.5 text-slate-500 font-bold text-sm">₹</span>
+            <input
+              type="number"
+              min="1"
+              value={minWithdrawalInput}
+              onChange={(e) => setMinWithdrawalInput(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Min amount"
+              className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleUpdateMinWithdrawal}
+            disabled={isSavingConfig || !minWithdrawalInput || Number(minWithdrawalInput) < 1 || Number(minWithdrawalInput) === currentMinWithdrawal}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0 flex items-center gap-2"
+          >
+            {isSavingConfig ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Saving...
+              </>
+            ) : (
+              <>Save Limit</>
+            )}
+          </button>
         </div>
       </div>
 

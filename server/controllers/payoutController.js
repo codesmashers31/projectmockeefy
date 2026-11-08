@@ -1,5 +1,6 @@
 import PayoutMethod from '../models/PayoutMethod.js';
 import PayoutRequest from '../models/PayoutRequest.js';
+import PayoutSetting from '../models/PayoutSetting.js';
 import User from '../models/User.js';
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
@@ -12,8 +13,8 @@ import Otp from '../models/Otp.js';
 import mongoose from 'mongoose';
 
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'rzp_secret_placeholder',
 });
 
 // IDOR & Authorization ownership helper
@@ -23,6 +24,72 @@ const isAuthorizedUserOrAdmin = (req, targetUserId) => {
     if (reqRole === 'admin') return true;
     const reqUserId = (req.user.userId || req.user.id || req.user._id || '').toString();
     return reqUserId === targetUserId?.toString();
+};
+
+// Platform Payout Settings Document Helper
+export const getPayoutSettingsDoc = async () => {
+    let settings = await PayoutSetting.findOne();
+    if (!settings) {
+        settings = await PayoutSetting.create({ minWithdrawalAmount: 5, payoutDayDescription: 'Wednesday' });
+    }
+    return settings;
+};
+
+// Get Platform Payout Configuration (Public / Authenticated users)
+export const getPayoutConfig = async (req, res) => {
+    try {
+        const settings = await getPayoutSettingsDoc();
+        res.status(200).json({
+            success: true,
+            data: {
+                minWithdrawalAmount: settings.minWithdrawalAmount,
+                payoutDayDescription: settings.payoutDayDescription,
+                updatedAt: settings.updatedAt
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update Platform Payout Configuration (Admin Only)
+export const updatePayoutConfig = async (req, res) => {
+    try {
+        const { minWithdrawalAmount, payoutDayDescription } = req.body;
+        const numAmount = Number(minWithdrawalAmount);
+        if (isNaN(numAmount) || numAmount < 1) {
+            return res.status(400).json({
+                success: false,
+                message: "Minimum withdrawal amount must be a valid number of at least ₹1."
+            });
+        }
+
+        let settings = await PayoutSetting.findOne();
+        if (!settings) {
+            settings = new PayoutSetting();
+        }
+        settings.minWithdrawalAmount = Math.round(numAmount);
+        if (payoutDayDescription) {
+            settings.payoutDayDescription = payoutDayDescription;
+        }
+        const adminId = req.user?.userId || req.user?.id || req.user?._id;
+        if (adminId) {
+            settings.updatedBy = adminId;
+        }
+        await settings.save();
+
+        res.status(200).json({
+            success: true,
+            message: `Minimum withdrawal amount updated to ₹${settings.minWithdrawalAmount} successfully.`,
+            data: {
+                minWithdrawalAmount: settings.minWithdrawalAmount,
+                payoutDayDescription: settings.payoutDayDescription,
+                updatedAt: settings.updatedAt
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
 
 // Add a Payout Method
@@ -132,8 +199,15 @@ export const initiatePayout = async (req, res) => {
             return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
-        if (amount < 5) {
-            return res.status(400).json({ success: false, message: "Minimum withdrawal amount is ₹5" });
+        const settings = await getPayoutSettingsDoc();
+        const minWithdrawal = settings.minWithdrawalAmount || 5;
+        const numAmount = Number(amount);
+
+        if (isNaN(numAmount) || numAmount < minWithdrawal) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Minimum withdrawal amount is ₹${minWithdrawal}` 
+            });
         }
 
         // Check if there is already a pending withdrawal request
@@ -182,19 +256,26 @@ export const initiatePayout = async (req, res) => {
              wallet = wallet[0];
         }
 
-        if (wallet.availableBalance < amount) {
+        if (wallet.availableBalance < minWithdrawal) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Withdrawals can only be processed when your available balance is greater than or equal to the minimum threshold of ₹${minWithdrawal}. Your current balance is ₹${wallet.availableBalance}.` 
+            });
+        }
+
+        if (wallet.availableBalance < numAmount) {
             return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
         }
 
         // Freeze balance
-        wallet.availableBalance -= amount;
-        wallet.frozenBalance += amount;
+        wallet.availableBalance -= numAmount;
+        wallet.frozenBalance += numAmount;
         await wallet.save({ session });
 
         // Create Payout Request
         const request = new PayoutRequest({
             expertId,
-            amount,
+            amount: numAmount,
             methodId: methodId || undefined,
             payoutMethodType: finalType,
             accountHolderName: finalHolder,
@@ -211,7 +292,7 @@ export const initiatePayout = async (req, res) => {
             walletId: wallet._id,
             userId: expertId,
             type: 'FREEZE',
-            amount: amount,
+            amount: numAmount,
             referenceId: request._id,
             referenceModel: 'PayoutRequest',
             status: 'COMPLETED',
@@ -487,6 +568,9 @@ export const getUserEarningsSummary = async (req, res) => {
         const sessions = await Session.find({ expertId: { $in: expertIdCandidates }, status: 'completed' });
         let totalEarnings = sessions.reduce((acc, session) => acc + (session.payoutAmount || session.price || 0), 0);
 
+        const settings = await getPayoutSettingsDoc();
+        const minWithdrawalAmount = settings.minWithdrawalAmount || 5;
+
         res.status(200).json({
             success: true,
             data: {
@@ -494,7 +578,8 @@ export const getUserEarningsSummary = async (req, res) => {
                 frozenBalance,
                 totalEarnings,
                 pendingPayouts,
-                completedPayouts
+                completedPayouts,
+                minWithdrawalAmount
             }
         });
     } catch (error) {

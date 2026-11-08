@@ -12,7 +12,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from "lucide-react";
 
 interface PayoutMethod {
@@ -33,6 +34,7 @@ interface Summary {
   totalEarnings: number;
   pendingPayouts: number;
   completedPayouts: number;
+  minWithdrawalAmount?: number;
 }
 
 interface PayoutHistory {
@@ -62,6 +64,8 @@ export default function WithdrawalPage() {
     pendingPayouts: 0,
     completedPayouts: 0
   });
+  const [minWithdrawalAmount, setMinWithdrawalAmount] = useState<number>(5);
+  const isEligibleToWithdraw = summary.currentBalance >= minWithdrawalAmount && summary.currentBalance > 0;
   const [loading, setLoading] = useState(true);
   const [selectedMethodId, setSelectedMethodId] = useState<string>('');
   const [amount, setAmount] = useState<number | ''>('');
@@ -93,14 +97,21 @@ export default function WithdrawalPage() {
     try {
       setLoading(true);
       const userId = user?.id || user?._id;
-      const [summaryRes, methodsRes, historyRes] = await Promise.all([
+      const [summaryRes, methodsRes, historyRes, configRes] = await Promise.all([
         axios.get(`/api/payouts/summary/${userId}`),
         axios.get(`/api/payouts/methods/${userId}`),
-        axios.get(`/api/payouts/history/${userId}`)
+        axios.get(`/api/payouts/history/${userId}`),
+        axios.get('/api/payouts/config').catch(() => null)
       ]);
 
       if (summaryRes.data.success) {
         setSummary(summaryRes.data.data);
+        if (summaryRes.data.data.minWithdrawalAmount) {
+          setMinWithdrawalAmount(summaryRes.data.data.minWithdrawalAmount);
+        }
+      }
+      if (configRes?.data?.success && configRes.data.data?.minWithdrawalAmount) {
+        setMinWithdrawalAmount(configRes.data.data.minWithdrawalAmount);
       }
       if (methodsRes.data.success) {
         setMethods(methodsRes.data.data);
@@ -129,12 +140,18 @@ export default function WithdrawalPage() {
   }, [user]);
 
   const handleWithdraw = async () => {
-    if (!amount || amount < 5) {
-      toast.error("Minimum withdrawal amount is ₹5");
+    if (summary.currentBalance < minWithdrawalAmount) {
+      toast.error(`Your available balance (₹${summary.currentBalance.toLocaleString()}) is below the minimum withdrawal amount of ₹${minWithdrawalAmount.toLocaleString()}.`);
       return;
     }
-    if (amount > summary.currentBalance) {
-      toast.error("Insufficient balance.");
+
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount < minWithdrawalAmount) {
+      toast.error(`Minimum withdrawal amount is ₹${minWithdrawalAmount}`);
+      return;
+    }
+    if (numAmount > summary.currentBalance) {
+      toast.error(`Insufficient balance. You cannot withdraw more than your available balance of ₹${summary.currentBalance.toLocaleString()}.`);
       return;
     }
 
@@ -147,7 +164,7 @@ export default function WithdrawalPage() {
 
     const payload: any = {
       expertId: user?.id || user?._id,
-      amount: Number(amount)
+      amount: numAmount
     };
 
     if (withdrawalMode === 'saved') {
@@ -327,8 +344,11 @@ export default function WithdrawalPage() {
             </div>
           </div>
           <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
-            <span className="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
-               <AlertCircle className="w-4 h-4" /> Min: ₹5
+            <span className={`text-sm font-medium flex items-center gap-1.5 ${!isEligibleToWithdraw ? 'text-amber-600' : 'text-emerald-600'}`}>
+               {!isEligibleToWithdraw ? <Lock className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />} Min: ₹{minWithdrawalAmount.toLocaleString()}
+               {!isEligibleToWithdraw && (
+                 <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded ml-1">Below Min</span>
+               )}
             </span>
             <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                Frozen: ₹{(summary.frozenBalance || 0).toLocaleString()}
@@ -374,23 +394,108 @@ export default function WithdrawalPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         {/* Withdrawal Section */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
-            <div className="p-2 bg-slate-50 rounded-lg">
-              <ArrowUpRight className="w-5 h-5 text-slate-700" />
+          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-50 rounded-lg">
+                <ArrowUpRight className="w-5 h-5 text-slate-700" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Request Withdrawal</h2>
             </div>
-            <h2 className="text-lg font-bold text-slate-900">Request Withdrawal</h2>
+            {!isEligibleToWithdraw && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                <Lock className="w-3.5 h-3.5 text-amber-600" /> Balance Below Min
+              </span>
+            )}
           </div>
 
-          <div className="space-y-6">
+          {!isEligibleToWithdraw ? (
+            <div className="space-y-6 my-auto py-2">
+              <div className="bg-gradient-to-b from-amber-50/70 to-slate-50/50 border border-amber-200/80 rounded-2xl p-6 flex flex-col items-center text-center">
+                <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700 shadow-sm mb-4">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1.5">
+                  Withdrawal Requests Locked
+                </h3>
+                <p className="text-xs text-slate-600 max-w-md leading-relaxed mb-6 font-medium">
+                  Withdrawal requests can only be processed when your available balance is greater than the minimum threshold of <strong className="text-slate-950 font-bold">₹{minWithdrawalAmount.toLocaleString()}</strong> configured by the admin.
+                </p>
+
+                {/* Progress bar towards unlock */}
+                <div className="w-full bg-white border border-amber-200/80 rounded-xl p-4 text-left space-y-3 shadow-xs">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-slate-500">Current Available Balance</span>
+                    <span className="text-slate-900 font-extrabold">₹{summary.currentBalance.toLocaleString()} <span className="text-slate-400 font-medium">/ ₹{minWithdrawalAmount.toLocaleString()}</span></span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, Math.max(0, (summary.currentBalance / minWithdrawalAmount) * 100))}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-semibold">
+                    <span className="text-slate-500">Admin Threshold: ₹{minWithdrawalAmount.toLocaleString()}</span>
+                    <span className="text-amber-800 font-bold">
+                      ₹{Math.max(0, minWithdrawalAmount - summary.currentBalance).toLocaleString()} more required
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3 text-xs text-slate-600 leading-relaxed">
+                <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                <p>
+                  Conduct more candidate sessions to build your wallet balance. Once your balance reaches or exceeds <strong className="text-slate-800 font-bold">₹{minWithdrawalAmount.toLocaleString()}</strong>, the withdrawal request form will be unlocked automatically.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled
+                className="w-full bg-slate-100 text-slate-400 border border-slate-200 text-sm font-bold py-3.5 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 select-none shadow-none"
+              >
+                <Lock className="w-4 h-4" />
+                Minimum Balance ₹{minWithdrawalAmount.toLocaleString()} Required to Process
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Amount (₹)</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-slate-700">Amount (₹)</label>
+                {summary.currentBalance >= minWithdrawalAmount && (
+                  <button
+                    type="button"
+                    onClick={() => setAmount(summary.currentBalance)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  >
+                    Withdraw All (₹{summary.currentBalance.toLocaleString()})
+                  </button>
+                )}
+              </div>
               <input 
                 type="number" 
+                min={minWithdrawalAmount}
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                placeholder="Enter amount (min ₹5)"
-                className="w-full text-xl font-bold text-slate-900 border border-slate-300 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:font-medium placeholder:text-slate-400 font-semibold"
+                onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder={`Enter amount (min ₹${minWithdrawalAmount})`}
+                className={`w-full text-xl font-bold text-slate-900 border rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 transition-all placeholder:font-medium placeholder:text-slate-400 font-semibold ${
+                  amount !== '' && (Number(amount) < minWithdrawalAmount || Number(amount) > summary.currentBalance)
+                    ? 'border-red-400 focus:ring-red-400 focus:border-red-400 bg-red-50/20'
+                    : 'border-slate-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
               />
+              {amount !== '' && Number(amount) < minWithdrawalAmount && (
+                <p className="text-xs font-semibold text-red-600 mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Amount must be at least ₹{minWithdrawalAmount} (admin configured minimum).
+                </p>
+              )}
+              {amount !== '' && Number(amount) > summary.currentBalance && (
+                <p className="text-xs font-semibold text-red-600 mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Amount cannot exceed your available balance of ₹{summary.currentBalance.toLocaleString()}.
+                </p>
+              )}
             </div>
 
             <div>
@@ -543,7 +648,15 @@ export default function WithdrawalPage() {
 
             <button 
               onClick={handleWithdraw}
-              disabled={withdrawing || history.some(p => ['PENDING', 'PROCESSING', 'HOLD'].includes(p.status)) || (withdrawalMode === 'saved' && methods.length === 0)}
+              disabled={
+                withdrawing || 
+                history.some(p => ['PENDING', 'PROCESSING', 'HOLD'].includes(p.status)) || 
+                summary.currentBalance < minWithdrawalAmount ||
+                !amount || 
+                Number(amount) < minWithdrawalAmount || 
+                Number(amount) > summary.currentBalance ||
+                (withdrawalMode === 'saved' && methods.length === 0)
+              }
               className="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-bold py-3.5 rounded-xl shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4 cursor-pointer"
             >
               {withdrawing ? (
@@ -551,6 +664,12 @@ export default function WithdrawalPage() {
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   Processing...
                 </>
+              ) : summary.currentBalance < minWithdrawalAmount ? (
+                <>Minimum Balance ₹{minWithdrawalAmount.toLocaleString()} Required</>
+              ) : !amount || Number(amount) < minWithdrawalAmount ? (
+                <>Enter at least ₹{minWithdrawalAmount.toLocaleString()}</>
+              ) : Number(amount) > summary.currentBalance ? (
+                <>Amount Exceeds Available Balance</>
               ) : (
                 <>Withdraw Funds</>
               )}
@@ -565,6 +684,7 @@ export default function WithdrawalPage() {
                </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Payout Methods Management */}
