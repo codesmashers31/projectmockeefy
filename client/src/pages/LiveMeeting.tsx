@@ -5,6 +5,7 @@ import { useSearchParams, useNavigate, useLocation, useParams } from 'react-rout
 import { Clock, Copy, ExternalLink, HelpCircle, LogOut, PhoneOff, CheckCircle2, AlertTriangle, Star, X, User, Briefcase, CalendarDays, Timer, ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { useSocket, useDataSync } from '../context/SocketContext';
 import { IdentityConfirmationModal } from '../components/IdentityConfirmationModal';
 import { useCertificateVerification } from '../hooks/useCertificateVerification';
 import axios from '../lib/axios';
@@ -33,6 +34,7 @@ const GoogleMeetOnlyMeeting = ({
   const [fetchedMeetingLink, setFetchedMeetingLink] = useState<string | null>(null);
   const [resolvedSession, setResolvedSession] = useState<any>(sessionData?.session || null);
   const [loadingSession, setLoadingSession] = useState<boolean>(!sessionData?.session);
+  const { socket } = useSocket();
 
   // Authoritative session participant check:
   // If the resolved session specifies candidateId and matches currentUserId, force candidate view
@@ -161,6 +163,45 @@ const GoogleMeetOnlyMeeting = ({
     return () => clearInterval(interval);
   }, [meetingId]);
 
+  useEffect(() => {
+    if (!meetingId || !socket) return;
+    socket.emit('join-session', meetingId);
+    return () => {
+      socket.emit('leave-session', meetingId);
+    };
+  }, [meetingId, socket]);
+
+  useDataSync(['SESSION_UPDATED', 'RECONNECTED'], (payload) => {
+    if (!payload) return;
+    const isTargetSession =
+      payload.sessionId === meetingId ||
+      payload.data?.sessionId === meetingId ||
+      (payload.data?._id && String(payload.data._id) === String(meetingId));
+
+    if (isTargetSession || payload.type === 'RECONNECTED') {
+      if (payload.data) {
+        setResolvedSession((prev: any) => ({ ...prev, ...payload.data }));
+        const link = payload.data.meetingLink || payload.data.meetLink;
+        if (link && /meet\.google\.com/i.test(link)) {
+          setFetchedMeetingLink(link);
+          setLocalMeetLink(link);
+        }
+      } else {
+        axios.get(`/api/sessions/${meetingId}`)
+          .then(res => {
+            if (res.data) {
+              setResolvedSession(res.data);
+              const link = res.data.meetingLink || res.data.meetLink;
+              if (link && /meet\.google\.com/i.test(link)) {
+                setFetchedMeetingLink(link);
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  });
+
   // Auto-alert + auto-close when the session is completed and expert feedback is available.
   useEffect(() => {
     if (!meetingId) return;
@@ -242,11 +283,19 @@ const GoogleMeetOnlyMeeting = ({
   };
 
   const handleEndMeeting = async () => {
-    if (!confirm(activeRole === 'expert' ? 'End meeting for everyone?' : 'Leave this meeting?')) return;
+    if (activeRole !== 'expert') {
+      if (!confirm('Leave this meeting?')) return;
+      onLeave();
+      return;
+    }
+    if (!confirm('End meeting for everyone?')) return;
     setCompleting(true);
     try {
-      await axios.post(`/api/sessions/${meetingId}/complete`);
-      toast.success(activeRole === 'expert' ? 'Meeting ended.' : 'You left the meeting.');
+      const res = await axios.post(`/api/sessions/${meetingId}/complete`);
+      if (res.data?.success) {
+        setResolvedSession((prev: any) => ({ ...prev, status: 'completed' }));
+      }
+      toast.success('Meeting ended.');
       onLeave();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to end meeting');

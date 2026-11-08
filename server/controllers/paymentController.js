@@ -216,9 +216,22 @@ export const verifyPayment = async (req, res) => {
             isVerified = true;
         }
 
-        // Security Hardening: Anti-Replay Attack Check
+        // Security Hardening & Idempotency: Anti-Replay Check
         const existingPayment = await PaymentRecord.findOne({ paymentId: razorpay_payment_id });
         if (existingPayment) {
+            // Idempotent retry: If this payment already created a session, return the existing confirmed session cleanly
+            if (existingPayment.sessionId) {
+                const existingSession = await Session.findOne({ sessionId: existingPayment.sessionId });
+                if (existingSession) {
+                    return res.status(200).json({
+                        success: true,
+                        message: "Payment verified and session retrieved successfully (idempotent)",
+                        data: existingSession,
+                        sessionId: existingSession.sessionId,
+                        alreadyProcessed: true
+                    });
+                }
+            }
             console.warn(`[Payment Security] Blocked replayed payment attempt: ${razorpay_payment_id}`);
             return res.status(400).json({
                 success: false,
@@ -279,8 +292,25 @@ export const verifyPayment = async (req, res) => {
                     }
                 } catch (_) {}
 
-                const autoAccept = expertDoc?.settings?.autoAccept === true;
-                const sessionStatus = autoAccept ? 'confirmed' : 'pending';
+                // Slot availability check: prevent concurrent booking of the exact same slot
+                const expertIds = [expertDoc?._id, expertDoc?.userId, bookingDetails.expertId].filter(Boolean);
+                const conflictingSession = await Session.findOne({
+                    expertId: { $in: expertIds },
+                    status: { $in: ['confirmed', 'live', 'Upcoming'] },
+                    startTime: { $lt: endTime },
+                    endTime: { $gt: startTime }
+                });
+
+                if (conflictingSession) {
+                    return res.status(409).json({
+                        success: false,
+                        message: "Slot conflict: This interview slot is already booked. Please choose another slot."
+                    });
+                }
+
+                // All successfully paid bookings with verified Razorpay payment are AUTOMATICALLY confirmed
+                // Bypasses expert autoAccept preference (expert availability provides authorization to book)
+                const sessionStatus = 'confirmed';
 
                 const sessionData = {
                     sessionId,
@@ -291,7 +321,7 @@ export const verifyPayment = async (req, res) => {
                     topics: bookingDetails.topics || ["General Mock Interview"],
                     price: bookingDetails.price,
                     status: sessionStatus,
-                    meetingLink: autoAccept ? (expertDoc?.availability?.defaultMeetingLink || null) : null,
+                    meetingLink: (expertDoc?.availability?.defaultMeetingLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(expertDoc.availability.defaultMeetingLink.trim())) ? expertDoc.availability.defaultMeetingLink.trim() : null,
                     duration: bookingDetails.duration || 60,
                     level: bookingDetails.level || "Rising Mentor",
                     notes: bookingDetails.notes || ""
@@ -447,7 +477,7 @@ export const usePremiumCredit = async (req, res) => {
 
         const autoAccept = expertDoc?.settings?.autoAccept === true;
         sessionData.status = autoAccept ? 'confirmed' : 'pending';
-        sessionData.meetingLink = autoAccept ? (expertDoc?.availability?.defaultMeetingLink || null) : null;
+        sessionData.meetingLink = (expertDoc?.availability?.defaultMeetingLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(expertDoc.availability.defaultMeetingLink.trim())) ? expertDoc.availability.defaultMeetingLink.trim() : null;
 
         const createdSession = await sessionService.createSession(sessionData, { session });
         
@@ -583,7 +613,7 @@ export const createFreeBooking = async (req, res) => {
                 : [bookingDetails?.skill || bookingDetails?.category || 'General Mock Interview'],
             price: 0,
             status: sessionStatus,
-            meetingLink: autoAccept ? (expertDoc?.availability?.defaultMeetingLink || null) : null,
+            meetingLink: (expertDoc?.availability?.defaultMeetingLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(expertDoc.availability.defaultMeetingLink.trim())) ? expertDoc.availability.defaultMeetingLink.trim() : null,
             duration: bookingDetails.duration || 60,
             level: bookingDetails.level || "Rising Mentor",
             notes: bookingDetails.notes || 'Booked with free promo code',

@@ -873,13 +873,7 @@ export const getPublicExpertById = async (req, res) => {
         level: s.level,
         isEnabled: s.isEnabled
       })) : [],
-      availability: {
-        sessionDuration: expert.availability?.sessionDuration === 60 ? 60 : 30,
-        allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
-        maxPerDay: expert.availability?.maxPerDay || 1,
-        weekly: expert.availability?.weekly || {},
-        breakDates: expert.availability?.breakDates || []
-      },
+      availability: formatAvailabilityForResponse(expert.availability),
       verification: expert.verification || {},
       userDetails: {
         email: user.email || "",
@@ -1399,6 +1393,34 @@ export const getExpertStats = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+export const formatAvailabilityForResponse = (availability) => {
+  if (!availability) {
+    return { sessionDuration: 30, allowedDurations: [30], maxPerDay: 4, weekly: {}, breakDates: [] };
+  }
+  const availObj = availability.toObject ? availability.toObject({ flattenMaps: true }) : { ...availability };
+  if (availObj.weekly instanceof Map) {
+    availObj.weekly = Object.fromEntries(availObj.weekly);
+  } else if (!availObj.weekly || typeof availObj.weekly !== 'object') {
+    availObj.weekly = {};
+  } else {
+    const plainWeekly = {};
+    for (const [day, slots] of Object.entries(availObj.weekly)) {
+      if (Array.isArray(slots)) {
+        plainWeekly[day] = slots.map(s => ({ from: s.from, to: s.to }));
+      } else {
+        plainWeekly[day] = [];
+      }
+    }
+    availObj.weekly = plainWeekly;
+  }
+  const singleDur = availObj.sessionDuration === 60 ? 60 : 30;
+  availObj.sessionDuration = singleDur;
+  availObj.allowedDurations = [singleDur];
+  availObj.maxPerDay = Number(availObj.maxPerDay) || 4;
+  availObj.breakDates = Array.isArray(availObj.breakDates) ? availObj.breakDates : [];
+  return availObj;
+};
+
 export const getAvailability = async (req, res) => {
   try {
     const userIdRaw = resolveUserIdFromReq(req);
@@ -1408,14 +1430,11 @@ export const getAvailability = async (req, res) => {
     const expert = await ExpertDetails.findOne({ userId: queryUserId });
 
     if (expert && expert.availability) {
-      const avail = expert.availability.toObject ? expert.availability.toObject() : { ...expert.availability };
-      const singleDur = avail.sessionDuration === 60 ? 60 : 30;
-      avail.sessionDuration = singleDur;
-      avail.allowedDurations = [singleDur];
+      const avail = formatAvailabilityForResponse(expert.availability);
       return res.status(200).json({ success: true, data: avail });
     }
 
-    return res.status(200).json({ success: true, data: { sessionDuration: 30, allowedDurations: [30], maxPerDay: 1, weekly: {}, breakDates: [] } });
+    return res.status(200).json({ success: true, data: { sessionDuration: 30, allowedDurations: [30], maxPerDay: 4, weekly: {}, breakDates: [] } });
   } catch (err) {
     console.error("getAvailability error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -1576,7 +1595,7 @@ export const updateAvailability = async (req, res) => {
       const raw = typeof newAvailability.defaultMeetingLink === 'string' ? newAvailability.defaultMeetingLink.trim() : '';
       if (!raw) {
         expert.availability.defaultMeetingLink = null;
-      } else if (!/^https?:\/\/meet\.google\.com\//i.test(raw)) {
+      } else if (!/^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(raw)) {
         return res.status(400).json({ success: false, message: "Invalid Google Meet link. Use a meet.google.com URL." });
       } else {
         expert.availability.defaultMeetingLink = raw;
@@ -1586,22 +1605,61 @@ export const updateAvailability = async (req, res) => {
     expert.availability.weekly = newAvailability.weekly ?? expert.availability.weekly ?? {};
     expert.availability.breakDates = newAvailability.breakDates ?? expert.availability.breakDates ?? [];
 
+    expert.markModified('availability');
+    expert.markModified('availability.weekly');
+
     await expert.save();
+
+    if (expert.availability?.defaultMeetingLink) {
+      try {
+        const Session = (await import('../models/Session.js')).default;
+        const expertIds = [expert._id, expert.userId].filter(Boolean);
+        const upcomingSessions = await Session.find({
+          expertId: { $in: expertIds },
+          status: { $nin: ['completed', 'cancelled'] },
+          endTime: { $gt: new Date() },
+          isCustomMeetingLink: { $ne: true }
+        });
+
+        for (const s of upcomingSessions) {
+          s.meetingLink = expert.availability.defaultMeetingLink;
+          await s.save();
+          syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: s.candidateId,
+            sessionId: s.sessionId,
+            data: s,
+            toAdmin: true
+          });
+          syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: expert.userId,
+            expertId: expert._id,
+            sessionId: s.sessionId,
+            data: s
+          });
+        }
+      } catch (err) {
+        console.error("Error propagating default meet link to upcoming sessions:", err);
+      }
+    }
+
+    const formattedAvailability = formatAvailabilityForResponse(expert.availability);
 
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: expert.availability
+      data: formattedAvailability
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: expert.availability }
+      data: { availability: formattedAvailability }
     });
 
-    return res.status(200).json({ success: true, message: "Availability updated", data: expert.availability });
+    return res.status(200).json({ success: true, message: "Availability updated", data: formattedAvailability });
   } catch (err) {
     console.error("updateAvailability error:", err);
     return res.status(500).json({ success: false, message: "Server error" });

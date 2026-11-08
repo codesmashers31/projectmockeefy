@@ -22,12 +22,23 @@ export const getSessionsForUser = async (userId, role) => {
     // 1. Fetch raw sessions
     const sessions = await Session.find({
         ...query,
-        status: { $in: ['upcoming', 'confirmed', 'live', 'completed', 'cancelled'] }
+        status: { $in: ['pending', 'upcoming', 'Upcoming', 'confirmed', 'live', 'completed', 'cancelled', 'no-show'] }
     }).sort({ startTime: -1 }).lean();
 
     // 2. Enrich
     const enrichedSessions = await Promise.all(sessions.map(async (session) => {
         try {
+            // Auto-confirm any pending paid session if a verified payment record exists
+            if (session.status === 'pending' && Number(session.price) > 0) {
+                try {
+                    const PaymentRecord = (await import('../models/PaymentRecord.js')).default;
+                    const payRecord = await PaymentRecord.findOne({ sessionId: session.sessionId, status: 'verified' });
+                    if (payRecord) {
+                        session.status = 'confirmed';
+                        Session.updateOne({ sessionId: session.sessionId }, { $set: { status: 'confirmed' } }).catch(() => {});
+                    }
+                } catch (_) {}
+            }
             let expert = null;
             let candidate = null;
             const lookupId = session.expertId;
@@ -218,10 +229,10 @@ export const getSessionById = async (sessionId) => {
     return await Session.findOne({ sessionId });
 };
 
-export const updateSessionMeetingLink = async (sessionId, meetingLink) => {
+export const updateSessionMeetingLink = async (sessionId, meetingLink, isCustom = true) => {
     return await Session.findOneAndUpdate(
         { sessionId },
-        { $set: { meetingLink: meetingLink || null } },
+        { $set: { meetingLink: meetingLink || null, isCustomMeetingLink: isCustom } },
         { new: true }
     );
 };

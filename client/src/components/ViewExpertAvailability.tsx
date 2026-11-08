@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from '../lib/axios';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { PrimaryButton } from '../pages/ExpertDashboard';
 import { Clock, Calendar as CalendarIcon, Edit3 } from "lucide-react";
 import ExpertPageSkeleton from "./ExpertPageSkeleton";
+import { useDataSync } from "../context/SocketContext";
 
 const formatKolkataDateString = (dateStr: string) => {
   if (!dateStr) return "";
@@ -48,8 +49,49 @@ const displayTime = (time24: string) => {
 
 const ViewExpertAvailability = () => {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<ProfileState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+
+  const parseWeeklySlots = useCallback((weeklyData: any) => {
+    const weekly: Record<string, Slot[]> = {};
+    if (!weeklyData || typeof weeklyData !== 'object') return weekly;
+
+    const timeToMinutes = (timeStr: string) => {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+
+    Object.keys(weeklyData).forEach(day => {
+      if (Array.isArray(weeklyData[day])) {
+        weekly[day] = weeklyData[day]
+          .map((slot: any) => ({ from: slot.from, to: slot.to }))
+          .sort((a: any, b: any) => timeToMinutes(a.from) - timeToMinutes(b.from));
+      } else {
+        weekly[day] = [];
+      }
+    });
+    return weekly;
+  }, []);
+
+  const [profile, setProfile] = useState<ProfileState | null>(() => {
+    const passed = (location.state as any)?.savedAvailability;
+    if (passed && typeof passed === 'object') {
+      const singleDur = Number(passed.sessionDuration) === 60 ? 60 : 30;
+      return {
+        availability: {
+          sessionDuration: singleDur,
+          allowedDurations: [singleDur],
+          defaultMeetingLink: passed.defaultMeetingLink || null,
+          maxPerDay: passed.maxPerDay || 4,
+          weekly: parseWeeklySlots(passed.weekly),
+          breakDates: passed.breakDates || [],
+        }
+      };
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState<boolean>(!profile);
 
   const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const dayLabel: Record<string, string> = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
@@ -60,25 +102,12 @@ const ViewExpertAvailability = () => {
 
   async function fetchAvailability() {
     try {
-      setLoading(true);
+      if (!profile) setLoading(true);
       const res = await axios.get("/api/expert/availability");
-      const data = res.data.data;
-      const weekly = data.weekly || {};
+      const data = res.data?.data;
+      if (!data) return;
 
-      const timeToMinutes = (timeStr: string) => {
-        if (!timeStr) return 0;
-        const [h, m] = timeStr.split(':').map(Number);
-        return (h || 0) * 60 + (m || 0);
-      };
-
-      Object.keys(weekly).forEach(day => {
-        if (Array.isArray(weekly[day])) {
-          weekly[day] = weekly[day]
-            .map((slot: any) => ({ from: slot.from, to: slot.to }))
-            .sort((a: any, b: any) => timeToMinutes(a.from) - timeToMinutes(b.from));
-        }
-      });
-
+      const weekly = parseWeeklySlots(data.weekly);
       const singleDuration = Number(data.sessionDuration) === 60 ? 60 : 30;
       setProfile({
         availability: {
@@ -96,6 +125,10 @@ const ViewExpertAvailability = () => {
       setLoading(false);
     }
   }
+
+  useDataSync(['AVAILABILITY_UPDATED', 'PROFILE_UPDATED'], () => {
+    fetchAvailability();
+  });
 
   if (loading) {
     return <ExpertPageSkeleton variant="availability" />;

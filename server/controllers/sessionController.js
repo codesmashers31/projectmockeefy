@@ -62,9 +62,10 @@ export const createSession = async (req, res) => {
             });
         }
 
-        // Enforce expert's autoAccept setting
+        // Enforce expert's autoAccept setting (explicit confirmed or autoAccept=true yields confirmed)
         const autoAccept = expert?.settings?.autoAccept === true;
-        const initialStatus = autoAccept ? (status || 'confirmed') : 'pending';
+        const isExplicitConfirmed = status === 'confirmed';
+        const initialStatus = (autoAccept || isExplicitConfirmed) ? 'confirmed' : 'pending';
 
         const sessionData = {
             sessionId,
@@ -75,7 +76,7 @@ export const createSession = async (req, res) => {
             topics: topics || [],
             price: finalPrice, // ALWAYS use server-calculated price
             status: initialStatus,
-            meetingLink: autoAccept ? (expert?.availability?.defaultMeetingLink || null) : null,
+            meetingLink: (expert?.availability?.defaultMeetingLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(expert.availability.defaultMeetingLink.trim())) ? expert.availability.defaultMeetingLink.trim() : null,
         };
 
         const session = await sessionService.createSession(sessionData);
@@ -187,7 +188,12 @@ export const updateMeetingLink = async (req, res) => {
             return res.status(403).json({ message: "Forbidden: Access denied" });
         }
 
-        const updated = await sessionService.updateSessionMeetingLink(sessionId, meetingLink);
+        const rawLink = typeof meetingLink === 'string' ? meetingLink.trim() : '';
+        if (!rawLink || !/^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(rawLink)) {
+            return res.status(400).json({ success: false, message: "Invalid Google Meet link. Use a meet.google.com URL." });
+        }
+
+        const updated = await sessionService.updateSessionMeetingLink(sessionId, rawLink, true);
 
         syncDataChange({
             type: "SESSION_UPDATED",
@@ -277,11 +283,15 @@ export const completeSession = async (req, res) => {
             console.error("[completeSession] Error recording candidate identity snapshot:", snapErr);
         }
 
+        const SessionModel = (await import('../models/Session.js')).default;
+        const updatedCompletedSession = await SessionModel.findOne({ sessionId: session.sessionId }).lean();
+        const payloadData = updatedCompletedSession || { sessionId: session.sessionId, _id: session._id, status: 'completed' };
+
         syncDataChange({
             type: "SESSION_UPDATED",
             userId: session.candidateId,
             sessionId: session.sessionId,
-            data: { status: 'completed' },
+            data: payloadData,
             toAdmin: true
         });
         if (expertProfile?.userId) {
@@ -290,11 +300,11 @@ export const completeSession = async (req, res) => {
                 userId: expertProfile.userId,
                 expertId: expertProfile._id,
                 sessionId: session.sessionId,
-                data: { status: 'completed' }
+                data: payloadData
             });
         }
 
-        return res.json({ success: true, message: "Session completed" });
+        return res.json({ success: true, message: "Session completed", data: payloadData });
     } catch (error) {
         console.error("Complete session error:", error);
         return res.status(500).json({ message: error.message });
@@ -442,6 +452,32 @@ export const getSession = async (req, res) => {
         };
 
         const sessionObj = typeof session.toObject === 'function' ? session.toObject() : session;
+        const defaultMeet = expert?.availability?.defaultMeetingLink || expertProfile?.availability?.defaultMeetingLink;
+        const isValidMeet = defaultMeet && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(defaultMeet.trim());
+        if (!sessionObj.meetingLink && isValidMeet && session.status !== 'completed' && session.status !== 'cancelled') {
+            const inheritedLink = defaultMeet.trim();
+            sessionObj.meetingLink = inheritedLink;
+            try {
+                const SessionModel = (await import('../models/Session.js')).default;
+                await SessionModel.updateOne({ sessionId: session.sessionId }, { $set: { meetingLink: inheritedLink } });
+            } catch (err) {
+                console.error("Failed to persist inherited meeting link in getSession:", err);
+            }
+        }
+        if (sessionObj.status === 'pending' && Number(sessionObj.price) > 0) {
+            try {
+                const PaymentRecord = (await import('../models/PaymentRecord.js')).default;
+                const payRecord = await PaymentRecord.findOne({ sessionId: session.sessionId, status: 'verified' });
+                if (payRecord) {
+                    sessionObj.status = 'confirmed';
+                    const SessionModel = (await import('../models/Session.js')).default;
+                    await SessionModel.updateOne({ sessionId: session.sessionId }, { $set: { status: 'confirmed' } });
+                }
+            } catch (err) {
+                console.error("Auto-confirm check failed in getSession:", err);
+            }
+        }
+
         const enrichedSession = {
             ...sessionObj,
             expertName,
@@ -706,6 +742,30 @@ export const joinSession = async (req, res) => {
         const session = await sessionService.getSessionById(sessionId);
         if (!session) return res.status(404).json({ message: "Session not found" });
 
+        // Check 0: Terminal session status check
+        const sessionStatus = (session.status || '').toLowerCase();
+        if (sessionStatus === 'completed') {
+            return res.status(400).json({ 
+                success: false, 
+                permitted: false, 
+                message: "This interview has concluded and is already marked completed. The meeting room is closed." 
+            });
+        }
+        if (sessionStatus === 'cancelled') {
+            return res.status(400).json({ 
+                success: false, 
+                permitted: false, 
+                message: "This session has been cancelled." 
+            });
+        }
+        if (sessionStatus === 'pending') {
+            return res.status(400).json({ 
+                success: false, 
+                permitted: false, 
+                message: "This session is pending expert approval and cannot be joined yet." 
+            });
+        }
+
         // 1. Validate Identity (Resilient check for ID or Email or Expert Profile)
         const mongoose = (await import('mongoose')).default;
         const User = (await import('../models/User.js')).default;
@@ -860,9 +920,22 @@ export const submitReview = async (req, res) => {
         }
 
         // Ensure session has concluded before evaluation/payout can be submitted
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                message: "This session was cancelled and cannot be evaluated."
+            });
+        }
+        if (sStatus === 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: "This session is pending expert approval and cannot be evaluated."
+            });
+        }
         const now = new Date();
         const isTimeConcluded = session.endTime && now >= new Date(session.endTime);
-        const isSessionFinished = session.status === 'completed' || isTimeConcluded;
+        const isSessionFinished = sStatus === 'completed' || isTimeConcluded;
         if (!isSessionFinished && session.startTime && now < new Date(session.startTime)) {
             return res.status(400).json({ 
                 success: false, 
@@ -885,13 +958,27 @@ export const submitReview = async (req, res) => {
             }
         }
 
-        // Enforce one review per eligible user/session combination (prevent duplicate submissions)
+        // Enforce one review per eligible user/session combination (prevent duplicate submissions / idempotent retry)
         const existingReview = await ReviewDetails.findOne({ sessionId, reviewerRole });
         if (existingReview) {
-            return res.status(409).json({ 
-                success: false, 
-                message: "A review has already been submitted for this session." 
-            });
+            const isCredited = Boolean(session.payoutCredited);
+            // If already credited or not eligible for expert payout: return idempotent response immediately
+            if (isCredited || reviewerRole !== 'expert') {
+                return res.status(200).json({ 
+                    success: true, 
+                    message: "Review already submitted.",
+                    data: existingReview,
+                    session,
+                    walletCredit: {
+                        credited: false,
+                        amount: session.payoutAmount || 0,
+                        alreadyCredited: isCredited,
+                        reason: isCredited ? 'Already credited' : 'Session payout has not been credited'
+                    }
+                });
+            }
+            // If reviewerRole === 'expert' and !isCredited:
+            // Allow execution to flow down to complete the pending payout!
         }
 
         const newDocData = {
@@ -925,9 +1012,53 @@ export const submitReview = async (req, res) => {
             newDocData.communicationRating = Number(communicationRating);
         }
 
-        const reviewDoc = new ReviewDetails(newDocData);
-        await reviewDoc.save();
-        const newReview = reviewDoc;
+        let newReview = existingReview;
+        if (!existingReview) {
+            let reviewDoc;
+            try {
+                reviewDoc = new ReviewDetails(newDocData);
+                await reviewDoc.save();
+            } catch (saveErr) {
+                if (saveErr.code === 11000) {
+                    // Idempotent recovery for concurrent submissions
+                    const dupReview = await ReviewDetails.findOne({ sessionId, reviewerRole });
+                    let currentSession = await Session.findOne({ sessionId });
+                    
+                    // If concurrent winning thread is currently committing payout, poll briefly
+                    if (reviewerRole === 'expert' && !currentSession?.payoutCredited) {
+                        for (let attempt = 0; attempt < 10; attempt++) {
+                            await new Promise(r => setTimeout(r, 150));
+                            currentSession = await Session.findOne({ sessionId });
+                            if (currentSession?.payoutCredited) break;
+                        }
+                    }
+
+                    const WalletTransaction = (await import("../models/WalletTransaction.js")).default;
+                    const existingTxn = await WalletTransaction.findOne({
+                        referenceId: session._id,
+                        referenceModel: 'Session',
+                        type: 'CREDIT'
+                    });
+
+                    const wasCredited = Boolean(currentSession?.payoutCredited || existingTxn);
+                    const finalAmount = currentSession?.payoutAmount || existingTxn?.amount || (reviewerRole === 'expert' ? (Number(session.price || 0) * 0.8) : 0);
+                    return res.status(200).json({
+                        success: true,
+                        message: "Review already submitted.",
+                        data: dupReview,
+                        session: currentSession || session,
+                        walletCredit: {
+                            credited: false,
+                            amount: finalAmount,
+                            alreadyCredited: wasCredited,
+                            reason: wasCredited ? 'Already credited' : 'Session payout has not been credited'
+                        }
+                    });
+                }
+                throw saveErr;
+            }
+            newReview = reviewDoc;
+        }
 
         // Recalculate expert metrics if candidate submitted review
         if (reviewerRole === 'candidate') {
@@ -968,9 +1099,16 @@ export const submitReview = async (req, res) => {
                     }
                     // Minimum ₹1 payout for nominal bookings, rounded cleanly to 2 decimal places
                     payoutAmount = Math.max(1, Math.round(payoutAmount * 100) / 100);
-                    if (!session.payoutCredited) {
-                        const rawExpertId = session.expertId || expertId;
 
+                    if (session.payoutCredited) {
+                        walletCreditResult = {
+                            credited: false,
+                            amount: Number(session.payoutAmount || payoutAmount),
+                            alreadyCredited: true,
+                            reason: 'Already credited'
+                        };
+                    } else {
+                        const rawExpertId = session.expertId || expertId;
                         if (rawExpertId) {
                             if (typeof rawExpertId === 'string' && rawExpertId.includes('@')) {
                                 expertUser = await User.findOne({ email: rawExpertId.toLowerCase() });
@@ -990,69 +1128,200 @@ export const submitReview = async (req, res) => {
                             expertUser = await User.findById(req.user.userId).catch(() => null);
                         }
 
-                        if (expertUser) {
-                            expertUser.walletBalance = Number(expertUser.walletBalance || 0) + payoutAmount;
-                            await expertUser.save();
-
-                            // Also sync availableBalance on the Wallet model (so it updates in the expert dashboard)
+                        if (!expertUser) {
+                            walletCreditResult = { credited: false, amount: 0, reason: 'Expert user not found' };
+                        } else {
                             const Wallet = (await import("../models/Wallet.js")).default;
                             const WalletTransaction = (await import("../models/WalletTransaction.js")).default;
+                            const mongoose = (await import('mongoose')).default;
 
-                            let wallet = await Wallet.findOne({ userId: expertUser._id });
-                            if (!wallet) {
-                                wallet = new Wallet({
-                                    userId: expertUser._id,
-                                    availableBalance: 0
-                                });
-                            }
-                            wallet.availableBalance = Number(wallet.availableBalance || 0) + payoutAmount;
-                            await wallet.save();
-
-                            // Create a ledger transaction history entry
-                            await WalletTransaction.create({
-                                walletId: wallet._id,
-                                userId: expertUser._id,
-                                type: 'CREDIT',
-                                amount: payoutAmount,
+                            // 1. Double-check if a ledger transaction already exists for this session
+                            const existingTxn = await WalletTransaction.findOne({
                                 referenceId: session._id,
                                 referenceModel: 'Session',
-                                status: 'COMPLETED',
-                                description: `Payout for completed session ${session.sessionId}`,
-                                balanceAfter: wallet.availableBalance
+                                type: 'CREDIT'
                             });
 
-                            session.payoutCredited = true;
-                            session.payoutCreditedAt = new Date();
-                            session.payoutAmount = payoutAmount;
-                            await session.save();
-
-                            walletCreditResult = { credited: true, amount: payoutAmount };
-
-                            const { createNotification } = await import('../controllers/notificationController.js');
-                            await createNotification({
-                                userId: expertUser._id,
-                                type: 'wallet_credit',
-                                title: 'Session payout credited',
-                                message: `₹${payoutAmount} has been credited to your wallet for session ${session.sessionId}.`,
-                                metadata: {
-                                    sessionId: session.sessionId,
-                                    amount: payoutAmount,
-                                    link: '/dashboard/sessions'
+                            if (existingTxn) {
+                                await Session.updateOne(
+                                    { _id: session._id, payoutCredited: { $ne: true } },
+                                    { $set: { payoutCredited: true, payoutAmount: existingTxn.amount, payoutCreditedAt: existingTxn.createdAt, status: 'completed' } }
+                                );
+                                session.payoutCredited = true;
+                                session.payoutAmount = existingTxn.amount;
+                                walletCreditResult = { credited: false, amount: existingTxn.amount, alreadyCredited: true };
+                            } else {
+                                // 2. Determine multi-document transaction capability
+                                let sessionTxn = null;
+                                let useMongooseTxn = false;
+                                try {
+                                    sessionTxn = await mongoose.startSession();
+                                    sessionTxn.startTransaction();
+                                    useMongooseTxn = true;
+                                } catch (startErr) {
+                                    console.warn("MongoDB transactions not supported or startSession failed:", startErr.message);
+                                    sessionTxn = null;
+                                    useMongooseTxn = false;
                                 }
-                            });
-                        } else {
-                            walletCreditResult = { credited: false, amount: 0, reason: 'Expert user not found' };
+
+                                // Strict transaction safety: if transactions are unavailable, fail safely without issuing payout
+                                if (!useMongooseTxn || !sessionTxn) {
+                                    walletCreditResult = {
+                                        credited: false,
+                                        amount: 0,
+                                        alreadyCredited: false,
+                                        reason: 'MongoDB multi-document transactions unavailable. Payout deferred safely.',
+                                        retryable: true
+                                    };
+                                } else {
+                                    const claimFilter = {
+                                        _id: session._id,
+                                        $or: [
+                                            { payoutCredited: false },
+                                            { payoutCredited: { $exists: false } },
+                                            { payoutCredited: null }
+                                        ]
+                                    };
+                                    const claimUpdate = {
+                                        $set: {
+                                            payoutCredited: true,
+                                            payoutCreditedAt: new Date(),
+                                            payoutAmount: payoutAmount,
+                                            status: 'completed'
+                                        }
+                                    };
+
+                                    try {
+                                        // Atomic claim: locks the payout so concurrent requests fail here
+                                        const claimedSession = await Session.findOneAndUpdate(
+                                            claimFilter,
+                                            claimUpdate,
+                                            { new: true, session: sessionTxn }
+                                        );
+
+                                        if (!claimedSession) {
+                                            // Concurrently claimed by another thread or already credited
+                                            await sessionTxn.abortTransaction();
+                                            walletCreditResult = { credited: false, amount: payoutAmount, alreadyCredited: true, reason: 'Already credited' };
+                                        } else {
+                                            // Update Wallet
+                                            let wallet = await Wallet.findOne(
+                                                { userId: expertUser._id },
+                                                null,
+                                                { session: sessionTxn }
+                                            );
+                                            if (!wallet) {
+                                                wallet = new Wallet({
+                                                    userId: expertUser._id,
+                                                    availableBalance: 0
+                                                });
+                                            }
+                                            wallet.availableBalance = Math.round((Number(wallet.availableBalance || 0) + payoutAmount) * 100) / 100;
+                                            await wallet.save({ session: sessionTxn });
+
+                                            // Update User balance inside transaction
+                                            const userDoc = await User.findById(expertUser._id, null, { session: sessionTxn });
+                                            if (userDoc) {
+                                                userDoc.walletBalance = Math.round((Number(userDoc.walletBalance || 0) + payoutAmount) * 100) / 100;
+                                                await userDoc.save({ session: sessionTxn });
+                                                expertUser.walletBalance = userDoc.walletBalance;
+                                            }
+
+                                            // Record Ledger Transaction
+                                            const txnData = {
+                                                walletId: wallet._id,
+                                                userId: expertUser._id,
+                                                type: 'CREDIT',
+                                                amount: payoutAmount,
+                                                referenceId: session._id,
+                                                referenceModel: 'Session',
+                                                status: 'COMPLETED',
+                                                description: `Payout for completed session ${session.sessionId}`,
+                                                balanceAfter: wallet.availableBalance
+                                            };
+
+                                            await WalletTransaction.create([txnData], { session: sessionTxn });
+                                            await sessionTxn.commitTransaction();
+
+                                            session.payoutCredited = true;
+                                            session.payoutCreditedAt = claimUpdate.$set.payoutCreditedAt;
+                                            session.payoutAmount = payoutAmount;
+                                            session.status = 'completed';
+
+                                            walletCreditResult = { credited: true, amount: payoutAmount, alreadyCredited: false };
+
+                                            const { createNotification } = await import('../controllers/notificationController.js');
+                                            await createNotification({
+                                                userId: expertUser._id,
+                                                type: 'wallet_credit',
+                                                title: 'Session payout credited',
+                                                message: `₹${payoutAmount} has been credited to your wallet for session ${session.sessionId}.`,
+                                                metadata: {
+                                                    sessionId: session.sessionId,
+                                                    amount: payoutAmount,
+                                                    link: '/dashboard/sessions'
+                                                }
+                                            }).catch(err => console.error("Notification dispatch error:", err));
+                                        }
+                                    } catch (payoutErr) {
+                                        if (sessionTxn) {
+                                            await sessionTxn.abortTransaction().catch(() => {});
+                                        }
+
+                                        // Concurrency conflict handler: write conflicts, transient transaction errors, duplicate keys
+                                        const isConflict = payoutErr.code === 11000 ||
+                                                           payoutErr.code === 112 ||
+                                                           payoutErr.codeName === 'WriteConflict' ||
+                                                           (payoutErr.errorLabels && payoutErr.errorLabels.includes('TransientTransactionError'));
+
+                                        if (isConflict) {
+                                            // Poll briefly for the concurrent winning transaction to finalize
+                                            let existingTxn = null;
+                                            let currentSession = null;
+                                            for (let attempt = 0; attempt < 10; attempt++) {
+                                                await new Promise(r => setTimeout(r, 150));
+                                                existingTxn = await WalletTransaction.findOne({
+                                                    referenceId: session._id,
+                                                    referenceModel: 'Session',
+                                                    type: 'CREDIT'
+                                                });
+                                                if (existingTxn) break;
+                                                currentSession = await Session.findById(session._id);
+                                                if (currentSession?.payoutCredited) break;
+                                            }
+
+                                            if (existingTxn || currentSession?.payoutCredited) {
+                                                const resolvedAmount = existingTxn?.amount || currentSession?.payoutAmount || payoutAmount;
+                                                session.payoutCredited = true;
+                                                session.payoutAmount = resolvedAmount;
+                                                walletCreditResult = { credited: false, amount: resolvedAmount, alreadyCredited: true, reason: 'Already credited' };
+                                            } else {
+                                                throw payoutErr;
+                                            }
+                                        } else if (payoutErr.message && payoutErr.message.includes('Transaction numbers are only allowed')) {
+                                            // If MongoDB throws transaction numbers not allowed (standalone deployment)
+                                            walletCreditResult = {
+                                                credited: false,
+                                                amount: 0,
+                                                alreadyCredited: false,
+                                                reason: 'MongoDB multi-document transactions unavailable. Payout deferred safely.',
+                                                retryable: true
+                                            };
+                                        } else {
+                                            throw payoutErr;
+                                        }
+                                    } finally {
+                                        if (sessionTxn) {
+                                            await sessionTxn.endSession().catch(() => {});
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    } else {
-                        walletCreditResult = {
-                            credited: false,
-                            amount: Number(session.payoutAmount || 0),
-                            reason: session.payoutCredited ? 'Already credited' : 'Session amount is zero'
-                        };
                     }
                 } catch (walletErr) {
                     console.error("Wallet credit failed:", walletErr);
-                    walletCreditResult = { credited: false, amount: 0, reason: 'Wallet credit failed' };
+                    walletCreditResult = { credited: false, amount: 0, reason: walletErr.message };
                 }
             }
 
@@ -1061,7 +1330,7 @@ export const submitReview = async (req, res) => {
                 try {
                     let candidateEmail = null;
                     let candidateUserId = null;
-                    const candIdStr = String(candidateId || session.candidateId || '');
+                    const candIdStr = String(session.candidateId || req.body?.candidateId || '');
 
                     if (candIdStr.includes('@')) {
                         candidateEmail = candIdStr;
@@ -1143,9 +1412,9 @@ export const submitReview = async (req, res) => {
             });
         }
 
-        res.status(201).json({
+        res.status(existingReview ? 200 : 201).json({
             success: true,
-            message: "Review submitted successfully",
+            message: existingReview ? "Review already submitted. Session payout processed successfully." : "Review submitted successfully",
             data: newReview,
             session: {
                 sessionId: session.sessionId,
@@ -1263,6 +1532,20 @@ export const getCandidateResume = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const mode = (req.query.mode || 'view').toLowerCase(); // 'view' or 'download'
+        const jwt = (await import('jsonwebtoken')).default;
+        const JWT_SECRET = process.env.JWT_SECRET || 'fallback_jwt_secret';
+        let user = req.user;
+        if (!user) {
+            const token = req.query.token || (req.headers['authorization'] && req.headers['authorization'].split(' ')[1]) || req.cookies?.jwt;
+            if (token) {
+                try {
+                    user = jwt.verify(token, JWT_SECRET);
+                } catch (e) {}
+            }
+        }
+        if (!user) {
+            return res.status(401).json({ success: false, message: "Authentication required to access candidate resume" });
+        }
 
         const Session = (await import('../models/Session.js')).default;
         const User = (await import('../models/User.js')).default;
@@ -1277,7 +1560,22 @@ export const getCandidateResume = async (req, res) => {
         }).lean();
 
         if (!session) {
-            return res.status(404).send("Session not found");
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        const requesterId = String(user.userId || user.id || user._id || '');
+        const isAdmin = user.userType === 'admin' || user.role === 'admin';
+        const Expert = (await import('../models/expertModel.js')).default;
+        const expertDoc = await Expert.findOne({
+            $or: [{ userId: requesterId }, { _id: requesterId.match(/^[0-9a-fA-F]{24}$/) ? requesterId : null }]
+        }).lean();
+
+        const isCandidate = String(session.candidateId) === requesterId;
+        const isExpert = (expertDoc && (String(expertDoc._id) === String(session.expertId) || String(expertDoc.userId) === String(session.expertId))) ||
+                         String(session.expertId) === requesterId;
+
+        if (!isAdmin && !isCandidate && !isExpert) {
+            return res.status(403).json({ success: false, message: "Forbidden: You are not authorized to view this candidate's resume" });
         }
 
         const candidateId = session.candidateId;
@@ -1346,11 +1644,41 @@ export const acceptSession = async (req, res) => {
             return res.status(400).json({ success: false, message: `Cannot accept session with status '${session.status}'` });
         }
 
-        session.status = 'confirmed';
-        if (!session.meetingLink && expertDoc?.availability?.defaultMeetingLink) {
-            session.meetingLink = expertDoc.availability.defaultMeetingLink;
+        // Check for availability conflicts: any other confirmed/live session for this expert overlapping this time window
+        const conflictingSession = await Session.findOne({
+            _id: { $ne: session._id },
+            expertId: session.expertId,
+            status: { $in: ['confirmed', 'live', 'Upcoming'] },
+            startTime: { $lt: session.endTime },
+            endTime: { $gt: session.startTime }
+        });
+
+        if (conflictingSession) {
+            return res.status(409).json({
+                success: false,
+                message: "Availability conflict: You already have another confirmed interview during this time slot."
+            });
         }
-        await session.save();
+
+        const defaultLink = expertDoc?.availability?.defaultMeetingLink;
+        const validMeetLink = defaultLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(defaultLink.trim()) ? defaultLink.trim() : null;
+        const meetingLinkToSet = session.meetingLink || validMeetLink || undefined;
+        const updateData = { status: 'confirmed' };
+        if (meetingLinkToSet && !session.meetingLink) {
+            updateData.meetingLink = meetingLinkToSet;
+        }
+
+        const updatedSession = await Session.findOneAndUpdate(
+            { _id: session._id, status: 'pending' },
+            { $set: updateData },
+            { new: true }
+        );
+
+        if (!updatedSession) {
+            return res.status(409).json({ success: false, message: "Session was already accepted or is no longer pending." });
+        }
+
+
 
         const { formatSessionDateTime } = await import('../services/emailService.js');
         const { createNotification } = await import('./notificationController.js');
@@ -1410,7 +1738,16 @@ export const rejectSession = async (req, res) => {
             return res.status(400).json({ success: false, message: `Cannot decline session with status '${session.status}'` });
         }
 
-        session.status = 'cancelled';
+        const updatedSession = await Session.findOneAndUpdate(
+            { _id: session._id, status: { $nin: ['completed', 'cancelled'] } },
+            { $set: { status: 'cancelled' } },
+            { new: true }
+        );
+
+        if (!updatedSession) {
+            return res.status(400).json({ success: false, message: `Cannot decline session with status '${session.status}'` });
+        }
+
         await session.save();
 
         // Restore free credit if this was a free credit booking

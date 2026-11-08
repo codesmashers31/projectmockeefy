@@ -1335,7 +1335,11 @@ const EditExpertAvailability = () => {
       const payload = {
         defaultMeetingLink: rawLink || null
       };
-      await axios.put("/api/expert/availability", payload);
+      const res = await axios.put("/api/expert/availability", payload);
+      if (!res.data || !res.data.success || !res.data.data) {
+        throw new Error(res.data?.message || "Failed to save availability");
+      }
+      const savedData = res.data.data;
       await queryClient.invalidateQueries({ queryKey: ["expertProfile"] });
       toast.success("Meet link auto-saved!");
     } catch (err) {
@@ -1429,10 +1433,14 @@ const EditExpertAvailability = () => {
         toast.error("Invalid Google Meet link. Use a meet.google.com URL.");
         return;
       }
-      await axios.put("/api/expert/availability", payload);
+      const res = await axios.put("/api/expert/availability", payload);
+      if (!res.data || !res.data.success || !res.data.data) {
+        throw new Error(res.data?.message || "Failed to save availability");
+      }
+      const savedData = res.data.data;
       await queryClient.invalidateQueries({ queryKey: ["expertProfile"] });
       toast.success("Availability saved successfully!");
-      navigate('/dashboard/availability');
+      navigate('/dashboard/availability', { state: { savedAvailability: savedData } });
     } catch (err) {
       console.error("Save error:", err);
       const message = (err as any)?.response?.data?.message || "Failed to save availability";

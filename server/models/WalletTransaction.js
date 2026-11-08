@@ -50,4 +50,13 @@ const walletTransactionSchema = new mongoose.Schema({
 walletTransactionSchema.index({ userId: 1, createdAt: -1 });
 walletTransactionSchema.index({ status: 1 });
 
+// Idempotency: ensure at most ONE credit transaction per session reference
+walletTransactionSchema.index(
+  { referenceId: 1, referenceModel: 1, type: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { referenceModel: 'Session', type: 'CREDIT' }
+  }
+);
+
 export default mongoose.model("WalletTransaction", walletTransactionSchema);
