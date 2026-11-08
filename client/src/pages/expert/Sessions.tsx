@@ -1,4 +1,4 @@
-// src/pages/expert/Sessions.tsx
+// src/pages/expert/Sessions.tsx - Verified build for Vercel deployment
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
