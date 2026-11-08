@@ -219,13 +219,13 @@ function MentorCategoryScrollRow({
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onClickCapture={handleClickCapture}
-          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-1 sm:px-1.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth scroll-pl-1 sm:scroll-pl-1.5"
+          className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto py-1 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (
             <div
               key={mentor.id}
-              className="w-full sm:w-[calc(50%-8px)] shrink-0 flex flex-col h-auto snap-start"
+              className="w-[calc(50%-6px)] sm:w-[calc(50%-7px)] shrink-0 flex flex-col h-auto snap-start"
             >
               <MentorJobCard mentor={mentor} />
             </div>
@@ -1411,7 +1411,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </div>
 
           {/* DIV CARD: All Experts Categories & Content */}
-          <div id="all-experts-categories" className="sidebar-main-card relative rounded-[24px] sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-7 overflow-hidden space-y-4 scroll-mt-24">
+          <div id="all-experts-categories" className="sidebar-main-card relative rounded-[24px] sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 md:p-6 overflow-hidden space-y-4 scroll-mt-24">
             {/* Decorative ambient blue lighting */}
             <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
@@ -1423,9 +1423,9 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="space-y-3">
                       <div className="h-6 w-48 bg-slate-100 rounded-lg animate-pulse" />
-                      <div className="flex gap-4 overflow-hidden">
+                      <div className="flex gap-3 sm:gap-3.5 overflow-hidden">
                         {[1, 2].map((n) => (
-                          <div key={n} className="w-full sm:w-[calc(50%-8px)] shrink-0">
+                          <div key={n} className="w-[calc(50%-6px)] sm:w-[calc(50%-7px)] shrink-0">
                             <MentorCardSkeleton />
                           </div>
                         ))}

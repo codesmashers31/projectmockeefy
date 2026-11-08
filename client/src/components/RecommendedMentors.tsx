@@ -168,7 +168,7 @@ const RecommendedMentors = () => {
                 <div
                     ref={scrollContainerRef}
                     className={`
-                        flex gap-5 overflow-x-auto pb-6 -mb-6 scrollbar-hide snap-x pt-1 px-1
+                        flex gap-3 sm:gap-3.5 overflow-x-auto pb-6 -mb-6 scrollbar-hide snap-x pt-1 px-0.5
                         ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}
                     `}
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -182,7 +182,9 @@ const RecommendedMentors = () => {
                         <SkeletonLoader />
                     ) : mentors.length > 0 ? (
                         mentors.map(mentor => (
-                            <MentorJobCard key={mentor.id} mentor={mentor} />
+                            <div key={mentor.id} className="w-[calc(50%-6px)] sm:w-[calc(50%-7px)] shrink-0 flex flex-col snap-start">
+                                <MentorJobCard mentor={mentor} />
+                            </div>
                         ))
                     ) : (
                         <div className="w-full py-10 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
