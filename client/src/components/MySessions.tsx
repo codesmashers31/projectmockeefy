@@ -201,7 +201,8 @@ function MySessionsSkeletonMobile() {
 
 /** Session is joinable from startTime until endTime (e.g. 2:00–2:30 → joinable until 2:30). */
 function canJoinSession(session: Session): boolean {
-  if (['Completed', 'Cancelled'].includes(session.status)) return false;
+  const st = (session.status || '').toLowerCase();
+  if (['completed', 'cancelled'].includes(st)) return false;
   const now = new Date();
   const start = session.startTime ? new Date(session.startTime) : null;
   const end = session.endTime ? new Date(session.endTime) : null;
@@ -213,14 +214,16 @@ function canJoinSession(session: Session): boolean {
 
 /** Expired only after endTime (e.g. 2:00–2:30 → Expired only after 2:30). */
 function getDisplayStatus(session: Session): string {
-  if (session.status?.toLowerCase() === 'pending') return 'Pending';
-  if (session.status === 'Completed' || session.status === 'Cancelled') return session.status;
+  const st = (session.status || '').toLowerCase();
+  if (st === 'pending') return 'Pending';
+  if (st === 'completed') return 'Completed';
+  if (st === 'cancelled') return 'Cancelled';
   const now = new Date();
   const end = session.endTime ? new Date(session.endTime) : null;
   const start = session.startTime ? new Date(session.startTime) : null;
   if (end && now > end) return 'Expired';
   if (start && now >= start && (!end || now <= end)) return 'Live';
-  return session.status;
+  return (session.status || '').charAt(0).toUpperCase() + (session.status || '').slice(1);
 }
 
 /** Session time (e.g. "3:45 PM") and countdown. Countdown runs 3 min before start; Join only when countdown done. */
@@ -228,7 +231,8 @@ function getSessionTimeAndCountdown(session: Session, now: Date): { timeLabel: s
   const start = session.startTime ? new Date(session.startTime) : null;
   const end = session.endTime ? new Date(session.endTime) : null;
   const timeLabel = start ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (session.time || '—');
-  if (['Completed', 'Cancelled'].includes(session.status)) return { timeLabel, countdown: null, joinable: false };
+  const st = (session.status || '').toLowerCase();
+  if (['completed', 'cancelled'].includes(st)) return { timeLabel, countdown: null, joinable: false };
   if (!start) return { timeLabel, countdown: null, joinable: true };
   if (end && now > end) return { timeLabel, countdown: null, joinable: false };
   if (now >= start && (!end || now <= end)) return { timeLabel, countdown: null, joinable: true };
@@ -645,7 +649,8 @@ const MySessions = ({
 
   const upcomingCount = useMemo(() => {
     return sessions.filter(s => {
-      if (['Completed', 'Cancelled'].includes(s.status)) return false;
+      const st = (s.status || '').toLowerCase();
+      if (['completed', 'cancelled'].includes(st)) return false;
       const end = s.endTime ? new Date(s.endTime) : null;
       if (end && now > end) return false;
       return true;
@@ -653,28 +658,29 @@ const MySessions = ({
   }, [sessions, now]);
 
   const completedCount = useMemo(() => {
-    return sessions.filter(s => s.status === 'Completed').length;
+    return sessions.filter(s => (s.status || '').toLowerCase() === 'completed').length;
   }, [sessions]);
 
   const cancelledCount = useMemo(() => {
-    return sessions.filter(s => s.status === 'Cancelled').length;
+    return sessions.filter(s => (s.status || '').toLowerCase() === 'cancelled').length;
   }, [sessions]);
 
   const filteredSessions = useMemo(() => {
     if (statusFilter === 'all') return sortedSessions;
     if (statusFilter === 'upcoming') {
       return sortedSessions.filter(s => {
-        if (['Completed', 'Cancelled'].includes(s.status)) return false;
+        const st = (s.status || '').toLowerCase();
+        if (['completed', 'cancelled'].includes(st)) return false;
         const end = s.endTime ? new Date(s.endTime) : null;
         if (end && now > end) return false;
         return true;
       });
     }
     if (statusFilter === 'completed') {
-      return sortedSessions.filter(s => s.status === 'Completed');
+      return sortedSessions.filter(s => (s.status || '').toLowerCase() === 'completed');
     }
     if (statusFilter === 'cancelled') {
-      return sortedSessions.filter(s => s.status === 'Cancelled');
+      return sortedSessions.filter(s => (s.status || '').toLowerCase() === 'cancelled');
     }
     return sortedSessions;
   }, [sortedSessions, statusFilter, now]);
