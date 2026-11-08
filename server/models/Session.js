@@ -14,6 +14,7 @@ const sessionSchema = new mongoose.Schema({
   duration: { type: Number, default: 30 }, // in minutes
   notes: { type: String, trim: true, maxlength: 500 },
   meetingLink: { type: String, trim: true },
+  isCustomMeetingLink: { type: Boolean, default: false },
   payoutCredited: { type: Boolean, default: false },
   payoutCreditedAt: { type: Date, default: null },
   payoutAmount: { type: Number, default: 0 },

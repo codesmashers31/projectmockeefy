@@ -1,5 +1,6 @@
 // src/pages/expert/Sessions.tsx
-import { useEffect, useState, useMemo, useRef } from 'react';
+
+import { useEffect, useState, useMemo, useCallback,useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Video,
@@ -29,24 +30,24 @@ import {
     ExternalLink,
     FileText,
     CalendarDays,
-    Lock
+    Lock,
+    Sparkles,
+    CalendarCheck,
+    SlidersHorizontal,
+    ArrowUpRight,
+    Wallet
 } from 'lucide-react';
 import {
     format,
-    startOfMonth,
-    endOfMonth,
+    isToday,
+    isTomorrow,
+    isYesterday,
+    isSameDay,
     startOfWeek,
     endOfWeek,
-    eachDayOfInterval,
-    isSameMonth,
-    isSameDay,
-    addMonths,
-    subMonths,
-    addWeeks,
-    subWeeks,
     addDays,
     subDays,
-    isToday
+    differenceInMinutes
 } from 'date-fns';
 import { useAuth } from "../../context/AuthContext";
 import { useDataSync } from "../../context/SocketContext";
@@ -97,6 +98,8 @@ const formatCalendarHour = (hour: number) => {
     const hStr = h12 < 10 ? `0${h12}` : `${h12}`;
     return `${hStr}.00 ${period}`;
 };
+type StatusFilterType = 'upcoming' | 'pending' | 'all' | 'completed' | 'cancelled';
+type DateQuickFilterType = 'all' | 'today' | 'tomorrow' | 'this_week' | 'next_week';
 
 export default function Sessions() {
     const navigate = useNavigate();
@@ -106,14 +109,20 @@ export default function Sessions() {
     const [loadingSessions, setLoadingSessions] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
 
-    // --- CALENDAR & NAVIGATION STATE ---
-    const [calendarMode, setCalendarMode] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [miniCalendarMonth, setMiniCalendarMonth] = useState<Date>(new Date());
-
     // --- FILTERS STATE ---
+    const [statusFilter, setStatusFilter] = useState<StatusFilterType>('upcoming');
+    const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilterType>('all');
+    const [customDateFilter, setCustomDateFilter] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
+
+    // --- PAGINATION STATE ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10; // 10 date groups per page
+
+    // Reset pagination to page 1 whenever any filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [statusFilter, dateQuickFilter, customDateFilter, searchTerm]);
 
     // --- ACTIVE & MODAL STATE ---
     const [selectedSessionModal, setSelectedSessionModal] = useState<Session | null>(null);
@@ -140,6 +149,59 @@ export default function Sessions() {
 
     const currentUserId = user?.id || user?.userId || user?._id || "";
 
+    // Expert's configured timezone (defaults to Asia/Kolkata)
+    const expertTimezone = useMemo(() => {
+        return (user as any)?.personalInfo?.timezone || (user as any)?.timezone || 'Asia/Kolkata';
+    }, [user]);
+
+    // Formatters bound to expert's configured timezone
+    const getDateKeyInTz = useCallback((date: Date | string): string => {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        try {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: expertTimezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(d);
+        } catch {
+            return format(d, 'yyyy-MM-dd');
+        }
+    }, [expertTimezone]);
+
+    const formatTimeInTz = useCallback((date: Date | string): string => {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        try {
+            return new Intl.DateTimeFormat('en-US', {
+                timeZone: expertTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }).format(d);
+        } catch {
+            return format(d, 'hh:mm a');
+        }
+    }, [expertTimezone]);
+
+    const formatDateHeadingInTz = useCallback((date: Date | string): string => {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        try {
+            return new Intl.DateTimeFormat('en-US', {
+                timeZone: expertTimezone,
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }).format(d);
+        } catch {
+            return format(d, 'EEEE, d MMMM yyyy');
+        }
+    }, [expertTimezone]);
+
+    const todayKeyInTz = useMemo(() => getDateKeyInTz(currentTime), [getDateKeyInTz, currentTime]);
+    const tomorrowKeyInTz = useMemo(() => getDateKeyInTz(addDays(currentTime, 1)), [getDateKeyInTz, currentTime]);
+    const yesterdayKeyInTz = useMemo(() => getDateKeyInTz(subDays(currentTime, 1)), [getDateKeyInTz, currentTime]);
+
     // Timer Effect
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -158,7 +220,19 @@ export default function Sessions() {
             const res = await axios.get(`/api/sessions/user/${currentUserId}/role/expert`);
             const data = res.data;
             if (Array.isArray(data)) {
-                const sorted = data.sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+                // Keep raw sorted by startTime ascending (chronological order)
+                const seen = new Set<string>();
+                const uniqueSessions: Session[] = [];
+                for (const item of data) {
+                    const idKey = String(item._id || item.sessionId || '');
+                    if (idKey && !seen.has(idKey)) {
+                        seen.add(idKey);
+                        uniqueSessions.push(item);
+                    } else if (!idKey) {
+                        uniqueSessions.push(item);
+                    }
+                }
+                const sorted = uniqueSessions.sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
                 setAllSessions(sorted);
                 setSelectedSessionModal(prev => {
                     if (!prev) return null;
@@ -186,30 +260,24 @@ export default function Sessions() {
         fetchSessions(false);
     });
 
-    // --- FILTERED SESSIONS ---
-    const filteredSessions = useMemo(() => {
-        return allSessions.filter(session => {
-            const matchesSearch =
-                session.candidateName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                session.topics?.some(t => t.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                session.sessionId?.toLowerCase().includes(searchTerm.toLowerCase());
-
-            const matchesStatus = statusFilter === 'all' || session.status.toLowerCase() === statusFilter.toLowerCase();
-
-            return matchesSearch && matchesStatus;
-        });
-    }, [allSessions, searchTerm, statusFilter]);
-
-    // --- SESSIONS METRICS ---
+    // Helper: is session active right now? (terminal states cannot be active)
     const isSessionActive = (session: Session) => {
+        if (!session) return false;
+        const status = session.status?.toLowerCase();
+        if (status === 'completed' || status === 'cancelled' || status === 'pending') {
+            return false;
+        }
         const start = new Date(session.startTime);
         const end = new Date(session.endTime);
         return currentTime >= start && currentTime < end;
     };
 
+    // Helper: is session ended?
     const isSessionEnded = (session: Session) => {
         if (!session) return false;
-        if (session.status?.toLowerCase() === 'completed') return true;
+        const status = session.status?.toLowerCase();
+        if (status === 'cancelled') return false;
+        if (status === 'completed') return true;
         if (Boolean((session as any).expertReview || (session as any).review?.reviewerRole === 'expert')) return true;
         return currentTime >= new Date(session.endTime);
     };
@@ -235,14 +303,132 @@ export default function Sessions() {
         return 1;
     };
 
-    const liveSessionsCount = allSessions.filter((s) => isSessionActive(s)).length;
-    const upcomingSessionsCount = allSessions.filter((s) => currentTime < new Date(s.startTime)).length;
-    const completedSessionsCount = allSessions.filter((s) => s.status.toLowerCase() === 'completed').length;
+    // --- REAL METRICS COUNTS ---
+    const pendingSessionsCount = useMemo(() => {
+        return allSessions.filter(s => s.status?.toLowerCase() === 'pending').length;
+    }, [allSessions]);
+
+    const upcomingSessionsCount = useMemo(() => {
+        return allSessions.filter(s => {
+            const status = s.status?.toLowerCase();
+            return status !== 'cancelled' && status !== 'completed' && currentTime < new Date(s.endTime);
+        }).length;
+    }, [allSessions, currentTime]);
+
+    const completedSessionsCount = useMemo(() => {
+        return allSessions.filter(s => s.status?.toLowerCase() === 'completed').length;
+    }, [allSessions]);
+
+    const todaySessionsCount = useMemo(() => {
+        return allSessions.filter(s => getDateKeyInTz(s.startTime) === todayKeyInTz && s.status?.toLowerCase() !== 'cancelled').length;
+    }, [allSessions]);
+
+    const liveSessionsCount = useMemo(() => {
+        return allSessions.filter(s => isSessionActive(s)).length;
+    }, [allSessions, currentTime]);
+
+    // --- FILTERED SESSIONS LIST ---
+    const filteredSessions = useMemo(() => {
+        return allSessions.filter(session => {
+            const status = session.status?.toLowerCase() || '';
+            const sessionStart = new Date(session.startTime);
+            const sessionEnd = new Date(session.endTime);
+
+            // 1. Status Filter
+            if (statusFilter === 'upcoming') {
+                if (status === 'cancelled' || status === 'completed' || currentTime >= sessionEnd) {
+                    return false;
+                }
+            } else if (statusFilter === 'pending') {
+                if (status !== 'pending') return false;
+            } else if (statusFilter === 'completed') {
+                if (status !== 'completed' && !isSessionEnded(session)) return false;
+            } else if (statusFilter === 'cancelled') {
+                if (status !== 'cancelled') return false;
+            }
+
+            // 2. Search Term
+            if (searchTerm.trim()) {
+                const term = searchTerm.toLowerCase().trim();
+                const matches =
+                    session.candidateName?.toLowerCase().includes(term) ||
+                    session.topics?.some(t => t.toLowerCase().includes(term)) ||
+                    session.sessionId?.toLowerCase().includes(term) ||
+                    session.candidateDetails?.email?.toLowerCase().includes(term);
+                if (!matches) return false;
+            }
+
+            // 3. Custom Date Filter (if set)
+            if (customDateFilter) {
+                const dateKey = getDateKeyInTz(sessionStart);
+                if (dateKey !== customDateFilter) return false;
+            }
+
+            // 4. Date Quick Filter
+            if (dateQuickFilter === 'today') {
+                if (getDateKeyInTz(sessionStart) !== todayKeyInTz) return false;
+            } else if (dateQuickFilter === 'tomorrow') {
+                if (getDateKeyInTz(sessionStart) !== tomorrowKeyInTz) return false;
+            } else if (dateQuickFilter === 'this_week') {
+                const now = new Date();
+                const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+                const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+                if (sessionStart < weekStart || sessionStart > weekEnd) return false;
+            } else if (dateQuickFilter === 'next_week') {
+                const now = new Date();
+                const nextWeekStart = addDays(startOfWeek(now, { weekStartsOn: 1 }), 7);
+                const nextWeekEnd = addDays(endOfWeek(now, { weekStartsOn: 1 }), 7);
+                if (sessionStart < nextWeekStart || sessionStart > nextWeekEnd) return false;
+            }
+
+            return true;
+        });
+    }, [allSessions, statusFilter, searchTerm, customDateFilter, dateQuickFilter, currentTime]);
+
+    // --- DATE-BASED GROUPING ---
+    // Group filtered sessions chronologically by their calendar date (yyyy-MM-dd)
+    const groupedDateSessions = useMemo(() => {
+        const groups: { [key: string]: { dateKey: string; date: Date; sessions: Session[] } } = {};
+
+        // Sort filtered sessions chronologically
+        const sorted = [...filteredSessions].sort((a, b) => {
+            const timeA = new Date(a.startTime).getTime();
+            const timeB = new Date(b.startTime).getTime();
+            // For completed/cancelled, show newest first; for upcoming/pending, show soonest first
+            if (statusFilter === 'completed' || statusFilter === 'cancelled') {
+                return timeB - timeA;
+            }
+            return timeA - timeB;
+        });
+
+        sorted.forEach(session => {
+            const startDate = new Date(session.startTime);
+            const key = getDateKeyInTz(startDate);
+            if (!groups[key]) {
+                groups[key] = {
+                    dateKey: key,
+                    date: startDate,
+                    sessions: []
+                };
+            }
+            groups[key].sessions.push(session);
+        });
+
+        return Object.values(groups);
+    }, [filteredSessions, statusFilter, getDateKeyInTz]);
+
+    const totalPages = Math.max(1, Math.ceil(groupedDateSessions.length / pageSize));
+    const paginatedDateSessions = useMemo(() => {
+        const startIdx = (currentPage - 1) * pageSize;
+        return groupedDateSessions.slice(startIdx, startIdx + pageSize);
+    }, [groupedDateSessions, currentPage, pageSize]);
 
     // --- RESUME UTILITIES ---
     const getSessionResumeUrl = (session: Session, mode: 'view' | 'download' = 'view') => {
         const id = session.sessionId || session._id;
-        return `${API_BASE_URL}/api/sessions/${id}/resume?mode=${mode}`;
+        const token = localStorage.getItem('token') || '';
+        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+        return `${API_BASE_URL}/api/sessions/${id}/resume?mode=${mode}${tokenParam}`;
     };
 
     const handleViewResume = (session: Session) => {
@@ -258,12 +444,14 @@ export default function Sessions() {
 
         try {
             toast.loading(`Preparing ${fileName}...`, { id: 'download-resume' });
-            const res = await fetch(resumeUrl);
+            const token = localStorage.getItem('token');
+            const res = await fetch(resumeUrl, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const contentType = res.headers.get('content-type') || '';
             if (contentType.includes('text/html')) {
-                // If candidate only has structured data, open printable resume in new tab
                 window.open(getSessionResumeUrl(session, 'view'), '_blank', 'noopener,noreferrer');
                 toast.info("Opened printable resume. Click 'Print / Save as PDF' to save.", { id: 'download-resume' });
                 return;
@@ -292,7 +480,7 @@ export default function Sessions() {
         }
     };
 
-    // --- CALENDAR INTEGRATIONS (Google Calendar & .ics) ---
+    // --- CALENDAR INTEGRATIONS ---
     const generateGoogleCalendarUrl = (session: Session) => {
         try {
             const start = new Date(session.startTime);
@@ -415,12 +603,22 @@ export default function Sessions() {
         });
         setReviewSession(session);
     };
+
     const handleJoin = async (session: Session) => {
+        const status = session.status?.toLowerCase();
+        if (status === 'completed') {
+            toast.error("This session has already ended and is marked completed.");
+            return;
+        }
+        if (status === 'cancelled') {
+            toast.error("This session has been cancelled.");
+            return;
+        }
         const start = new Date(session.startTime);
         const end = new Date(session.endTime);
 
         if (currentTime < start) {
-            toast.error(`Session starts at ${format(start, 'HH:mm')}. Access activates at scheduled start time.`);
+            toast.error(`Session starts at ${formatTimeInTz(start)}. Access activates at scheduled start time.`);
             return;
         }
         if (currentTime >= end) {
@@ -443,15 +641,14 @@ export default function Sessions() {
             } else {
                 toast.error(data.message || "Cannot join session at this time.");
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Join Error:", error);
-            toast.error("Failed to join session.");
+            toast.error(error.response?.data?.message || "Failed to join session.");
         } finally {
             setLoading(false);
         }
     };
 
-    // --- SUBMIT REVIEW ---
     const handleSubmitReview = async () => {
         if (!reviewSession) return;
         setSubmittingReview(true);
@@ -497,22 +694,8 @@ export default function Sessions() {
                     reviewSession.price ??
                     0
                 );
-                const reviewData = res.data.data || {
-                    overallRating: payload.overallRating,
-                    technicalRating: payload.technicalRating,
-                    communicationRating: payload.communicationRating,
-                    problemSolvingRating: payload.problemSolvingRating,
-                    designRating: payload.designRating,
-                    behavioralRating: payload.behavioralRating,
-                    hiringDecision: payload.hiringDecision,
-                    recommendation: payload.recommendation,
-                    feedback: payload.feedback,
-                    suggestions: payload.suggestions,
-                    strengths: payload.strengths,
-                    weaknesses: payload.weaknesses
-                };
+                const reviewData = res.data.data || payload;
 
-                // Immediately update local allSessions & active modal
                 setAllSessions(prev => prev.map(s => {
                     if ((targetSessionId && s.sessionId === targetSessionId) || (targetId && s._id === targetId)) {
                         return {
@@ -552,7 +735,6 @@ export default function Sessions() {
         }
     };
 
-    // Copy Session ID
     const handleCopySessionId = (id: string) => {
         if (!id) return;
         navigator.clipboard.writeText(id);
@@ -561,55 +743,88 @@ export default function Sessions() {
         setTimeout(() => setCopiedSessionId(false), 2000);
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
-            case 'confirmed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-            case 'completed': return 'bg-slate-100 text-slate-700 border-slate-200';
-            case 'cancelled': return 'bg-rose-50 text-rose-700 border-rose-200';
-            default: return 'bg-blue-50 text-blue-700 border-blue-200';
+    const getStatusBadge = (status: string) => {
+        const lower = (status || '').toLowerCase();
+        switch (lower) {
+            case 'pending':
+                return {
+                    label: 'Pending Approval',
+                    classes: 'bg-amber-50 text-amber-700 border-amber-200/90'
+                };
+            case 'confirmed':
+                return {
+                    label: 'Confirmed',
+                    classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/90'
+                };
+            case 'completed':
+                return {
+                    label: 'Completed',
+                    classes: 'bg-slate-100 text-slate-700 border-slate-200/90'
+                };
+            case 'cancelled':
+                return {
+                    label: 'Cancelled',
+                    classes: 'bg-rose-50 text-rose-700 border-rose-200/90'
+                };
+            default:
+                return {
+                    label: status || 'Scheduled',
+                    classes: 'bg-blue-50 text-blue-700 border-blue-200/90'
+                };
         }
     };
 
-    const getTimerDisplay = (session: Session) => {
+    const getCountdownLabel = (session: Session) => {
+        const status = session.status?.toLowerCase();
+
+        // 1. Cancelled status (highest terminal priority)
+        if (status === 'cancelled') {
+            return {
+                text: 'Cancelled',
+                badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+                isLive: false
+            };
+        }
+
+        // 2. Completed status (terminal priority over any time calculation)
+        if (status === 'completed' || isSessionReviewed(session)) {
+            const reviewed = isSessionReviewed(session);
+            return {
+                text: reviewed ? 'Evaluation Completed' : 'Completed • Awaiting Review',
+                badgeClass: reviewed ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200 font-semibold',
+                isLive: false
+            };
+        }
+
+        // 3. Pending status
+        if (status === 'pending') {
+            return {
+                text: 'Awaiting Your Approval',
+                badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+                isLive: false
+            };
+        }
+
         const start = new Date(session.startTime);
         const end = new Date(session.endTime);
 
-        if (currentTime < start) {
-            const diff = start.getTime() - currentTime.getTime();
-            const totalSeconds = Math.max(0, Math.floor(diff / 1000));
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-
-            if (hours > 0) {
-                return {
-                    text: `Starts in ${hours}h ${minutes.toString().padStart(2, '0')}m`,
-                    detailed: `Starts in ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
-                    color: 'text-blue-700 bg-blue-50 border-blue-200'
-                };
-            }
-            return {
-                text: `Starts in ${minutes}m ${seconds.toString().padStart(2, '0')}s`,
-                detailed: `Starts in ${minutes}:${seconds.toString().padStart(2, '0')}`,
-                color: 'text-amber-700 bg-amber-50 border-amber-200'
-            };
-        }
-
+        // 4. Live / In Progress status (Only for confirmed/live sessions within window)
         if (currentTime >= start && currentTime < end) {
-            const diff = end.getTime() - currentTime.getTime();
-            const totalSeconds = Math.max(0, Math.floor(diff / 1000));
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
+            const diffMs = end.getTime() - currentTime.getTime();
+            const minsLeft = Math.max(1, Math.floor(diffMs / 60000));
             return {
-                text: `Live • ${minutes}m left`,
-                detailed: `Ends in ${minutes}:${seconds.toString().padStart(2, '0')}`,
-                color: 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                text: `Live Now • ${minsLeft}m left`,
+                badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold',
+                isLive: true
             };
         }
 
-        return { text: 'Concluded', detailed: 'Session Ended', color: 'text-slate-600 bg-slate-100 border-slate-200' };
-    };
+        // 5. Upcoming / Confirmed status (Before start)
+        if (currentTime < start) {
+            const diffMs = start.getTime() - currentTime.getTime();
+            const totalMins = Math.floor(diffMs / 60000);
+            const hours = Math.floor(totalMins / 60);
+            const mins = totalMins % 60;
 
     // --- MINI CALENDAR DAYS ---
     const miniCalendarDays = useMemo(() => {
@@ -663,6 +878,33 @@ export default function Sessions() {
     // Sessions for a specific day
     const getSessionsForDate = (date: Date) => {
         return filteredSessions.filter(s => isSameDay(new Date(s.startTime), date));
+            if (totalMins < 60) {
+                return {
+                    text: `Starts in ${Math.max(1, totalMins)}m`,
+                    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200 font-bold animate-pulse',
+                    isLive: false
+                };
+            }
+            if (hours < 24) {
+                return {
+                    text: `Starts in ${hours}h ${mins}m`,
+                    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+                    isLive: false
+                };
+            }
+            const days = Math.floor(hours / 24);
+            return {
+                text: `In ${days} ${days === 1 ? 'day' : 'days'}`,
+                badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+                isLive: false
+            };
+        }
+
+        return {
+            text: 'Concluded',
+            badgeClass: 'bg-slate-50 text-slate-500 border-slate-200',
+            isLive: false
+        };
     };
 
     if (isAuthLoading || (loadingSessions && allSessions.length === 0)) {
@@ -671,334 +913,384 @@ export default function Sessions() {
     if (!user) return <div className="p-8 text-center text-slate-500 font-medium">Please log in to view sessions.</div>;
 
     return (
-        <div className="sidebar-main-card relative w-full h-[calc(100vh-6.5rem)] lg:h-[calc(100vh-7.5rem)] rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 flex flex-col min-h-0 overflow-hidden font-sans text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] animate-in fade-in duration-200">
+        <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-6 animate-in fade-in duration-200">
             {/* Decorative ambient blue lighting */}
             <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col min-h-0 flex-1">
-            {/* Top Page Header (Reference Style) */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Interview Schedule</h1>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                        Manage your calendar, join live video calls, review candidate resumes, and evaluate sessions.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => fetchSessions(true)}
-                        disabled={loadingSessions}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-blue-600 transition-colors shadow-2xs text-xs font-semibold flex items-center gap-1.5"
-                        title="Sync with server"
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${loadingSessions ? 'animate-spin' : ''}`} />
-                        <span>Sync</span>
-                    </button>
-                    {liveSessionsCount > 0 && (
-                        <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 shadow-2xs animate-pulse">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>{liveSessionsCount} Live Session</span>
-                        </span>
-                    )}
-                </div>
-            </header>
-
-            {/* Main Single-Page Calendar Layout (AIRecruit360 reference) */}
-            <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+            <div className="relative z-10 space-y-6">
                 {/* ======================================================== */}
-                {/* --- LEFT SIDEBAR: MINI CALENDAR & EVENT FILTERS --- */}
+                {/* --- 1. PAGE HEADER --- */}
                 {/* ======================================================== */}
-                <aside className="w-full md:w-72 lg:w-80 shrink-0 flex flex-col gap-3.5 overflow-y-auto thin-scrollbar">
-                    {/* Top All Calendar Card */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 space-y-3.5">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold">
-                                    <CalendarDays className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h2 className="text-sm font-bold text-slate-900 leading-tight">All Calendar</h2>
-                                    <p className="text-[11px] text-slate-500">Candidate Sessions</p>
-                                </div>
-                            </div>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                {allSessions.length}
+                <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/70">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Interview Sessions</h1>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                            Manage your upcoming interviews and review your session history.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                        {liveSessionsCount > 0 && (
+                            <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-2 shadow-2xs animate-pulse">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                <span>{liveSessionsCount} Live Now</span>
                             </span>
+                        )}
+
+                        <button
+                            onClick={() => navigate('/dashboard/availability')}
+                            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-blue-600 transition-colors shadow-2xs text-xs font-semibold flex items-center gap-2 cursor-pointer"
+                        >
+                            <CalendarDays className="w-4 h-4 text-slate-500" />
+                            <span>Set Availability</span>
+                        </button>
+
+                        <button
+                            onClick={() => fetchSessions(true)}
+                            disabled={loadingSessions}
+                            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-blue-600 transition-colors shadow-2xs text-xs font-semibold flex items-center gap-2 cursor-pointer"
+                            title="Sync with server"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loadingSessions ? 'animate-spin' : ''}`} />
+                            <span>Sync</span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* ======================================================== */}
+                {/* --- 2. COMPACT SUMMARY METRICS --- */}
+                {/* ======================================================== */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {/* Upcoming Sessions */}
+                    <div
+                        onClick={() => { setStatusFilter('upcoming'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                            statusFilter === 'upcoming'
+                                ? 'bg-white border-blue-400 shadow-md ring-2 ring-blue-500/10'
+                                : 'bg-white/80 border-slate-200/90 hover:bg-white hover:border-slate-300 shadow-2xs'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Upcoming</span>
+                            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                                <CalendarCheck className="w-4 h-4" />
+                            </div>
                         </div>
-
-                        {/* Mini Month Calendar */}
-                        <div className="border-t border-slate-100 pt-3 space-y-2.5">
-                            {/* Mini Calendar Header */}
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-900">
-                                    {format(miniCalendarMonth, 'MMMM yyyy')}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setMiniCalendarMonth(prev => subMonths(prev, 1))}
-                                        className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-                                        title="Previous month"
-                                    >
-                                        <ChevronLeft className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setMiniCalendarMonth(new Date());
-                                            setSelectedDate(new Date());
-                                        }}
-                                        className="text-[10px] font-bold text-blue-600 px-1.5 py-0.5 rounded hover:bg-blue-50"
-                                    >
-                                        Today
-                                    </button>
-                                    <button
-                                        onClick={() => setMiniCalendarMonth(prev => addMonths(prev, 1))}
-                                        className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-                                        title="Next month"
-                                    >
-                                        <ChevronRight className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Mini Weekday Headers */}
-                            <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400">
-                                <span>M</span>
-                                <span>T</span>
-                                <span>W</span>
-                                <span>T</span>
-                                <span>F</span>
-                                <span>S</span>
-                                <span>S</span>
-                            </div>
-
-                            {/* Mini Days Grid */}
-                            <div className="grid grid-cols-7 text-center gap-y-1 text-xs">
-                                {miniCalendarDays.map((day, idx) => {
-                                    const isCurrentMonth = isSameMonth(day, miniCalendarMonth);
-                                    const isSelected = isSameDay(day, selectedDate);
-                                    const hasSessions = allSessions.some(s => isSameDay(new Date(s.startTime), day));
-                                    const isTodayDay = isToday(day);
-
-                                    return (
-                                        <button
-                                            key={idx}
-                                            onClick={() => {
-                                                setSelectedDate(day);
-                                                if (!isCurrentMonth) {
-                                                    setMiniCalendarMonth(startOfMonth(day));
-                                                }
-                                            }}
-                                            className={`h-7 w-7 mx-auto flex flex-col items-center justify-center rounded-full text-xs font-medium transition-all relative cursor-pointer ${isSelected
-                                                ? 'bg-blue-600 text-white font-bold shadow-2xs scale-105'
-                                                : isTodayDay
-                                                    ? 'text-blue-600 font-bold border border-blue-300'
-                                                    : isCurrentMonth
-                                                        ? 'text-slate-700 hover:bg-slate-100'
-                                                        : 'text-slate-300 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            <span>{format(day, 'd')}</span>
-                                            {hasSessions && !isSelected && (
-                                                <span className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-0.5"></span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-black text-slate-900 tracking-tight">{upcomingSessionsCount}</span>
+                            <span className="text-xs text-slate-500 font-medium">Interviews</span>
                         </div>
                     </div>
 
-                    {/* Event Type & Status Filter Card (Reference Style) */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Event Status</h3>
-                            <span className="text-[10px] text-slate-400">Click to filter</span>
+                    {/* Pending Requests */}
+                    <div
+                        onClick={() => { setStatusFilter('pending'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                            statusFilter === 'pending'
+                                ? 'bg-white border-amber-400 shadow-md ring-2 ring-amber-500/10'
+                                : 'bg-white/80 border-slate-200/90 hover:bg-white hover:border-slate-300 shadow-2xs'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Requests</span>
+                            <div className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
+                                pendingSessionsCount > 0 ? 'bg-amber-100 text-amber-700 border-amber-200 animate-pulse' : 'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}>
+                                <AlertCircle className="w-4 h-4" />
+                            </div>
                         </div>
-
-                        {/* Search Input */}
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search candidate..."
-                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 placeholder:text-slate-400 transition-all"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            {searchTerm && (
-                                <button
-                                    onClick={() => setSearchTerm("")}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            )}
+                        <div className="flex items-baseline gap-2">
+                            <span className={`text-2xl font-black tracking-tight ${pendingSessionsCount > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                                {pendingSessionsCount}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">Awaiting action</span>
                         </div>
+                    </div>
 
-                        {/* Status Filter List */}
-                        <div className="space-y-1.5 pt-1">
+                    {/* Today's Agenda */}
+                    <div
+                        onClick={() => { setDateQuickFilter('today'); setCustomDateFilter(''); }}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                            dateQuickFilter === 'today'
+                                ? 'bg-white border-emerald-400 shadow-md ring-2 ring-emerald-500/10'
+                                : 'bg-white/80 border-slate-200/90 hover:bg-white hover:border-slate-300 shadow-2xs'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Today's Agenda</span>
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
+                                <Clock className="w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-black text-slate-900 tracking-tight">{todaySessionsCount}</span>
+                            <span className="text-xs text-slate-500 font-medium">Scheduled today</span>
+                        </div>
+                    </div>
+
+                    {/* Completed Sessions */}
+                    <div
+                        onClick={() => { setStatusFilter('completed'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                            statusFilter === 'completed'
+                                ? 'bg-white border-purple-400 shadow-md ring-2 ring-purple-500/10'
+                                : 'bg-white/80 border-slate-200/90 hover:bg-white hover:border-slate-300 shadow-2xs'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed</span>
+                            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-black text-slate-900 tracking-tight">{completedSessionsCount}</span>
+                            <span className="text-xs text-slate-500 font-medium">Total interviews</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ======================================================== */}
+                {/* --- 3. FILTER & SEARCH TOOLBAR --- */}
+                {/* ======================================================== */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3.5 shadow-2xs">
+                    {/* Top Row: Status Tabs & Search */}
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                        {/* Status Pills */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto thin-scrollbar pb-1 md:pb-0">
                             {[
-                                { id: 'all', label: 'All Sessions', count: allSessions.length, color: 'bg-blue-600' },
-                                { id: 'pending', label: 'Pending Requests', count: allSessions.filter(s => s.status.toLowerCase() === 'pending').length, color: 'bg-amber-500' },
-                                { id: 'confirmed', label: 'Confirmed / Upcoming', count: upcomingSessionsCount, color: 'bg-emerald-500' },
-                                { id: 'completed', label: 'Completed (Reviewed)', count: completedSessionsCount, color: 'bg-slate-400' },
-                                { id: 'cancelled', label: 'Cancelled', count: allSessions.filter(s => s.status.toLowerCase() === 'cancelled').length, color: 'bg-rose-500' }
-                            ].map(item => {
-                                const isSelected = statusFilter === item.id;
+                                { id: 'upcoming', label: 'Upcoming', count: upcomingSessionsCount },
+                                { id: 'pending', label: 'Pending Requests', count: pendingSessionsCount, badgeColor: 'bg-amber-500 text-white' },
+                                { id: 'all', label: 'All Sessions', count: allSessions.length },
+                                { id: 'completed', label: 'Completed', count: completedSessionsCount },
+                                { id: 'cancelled', label: 'Cancelled', count: allSessions.filter(s => s.status?.toLowerCase() === 'cancelled').length }
+                            ].map(tab => {
+                                const active = statusFilter === tab.id;
                                 return (
                                     <button
-                                        key={item.id}
-                                        onClick={() => setStatusFilter(item.id)}
-                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${isSelected
-                                            ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-                                            : 'hover:bg-slate-50 text-slate-600 border border-transparent'
-                                            }`}
+                                        key={tab.id}
+                                        onClick={() => setStatusFilter(tab.id as StatusFilterType)}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                                            active
+                                                ? 'bg-blue-600 text-white shadow-xs'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                                        }`}
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <span className={`w-2 h-2 rounded-full ${item.color}`}></span>
-                                            <span>{item.label}</span>
-                                        </div>
-                                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                                            {item.count}
+                                        <span>{tab.label}</span>
+                                        <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                                            active ? 'bg-white/20 text-white' : (tab.badgeColor || 'bg-white text-slate-700 border border-slate-200')
+                                        }`}>
+                                            {tab.count}
                                         </span>
                                     </button>
                                 );
                             })}
                         </div>
-                    </div>
-                </aside>
 
-                {/* ======================================================== */}
-                {/* --- MAIN CALENDAR CANVAS (AIRecruit360 reference) --- */}
-                {/* ======================================================== */}
-                <main className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
-                    {/* Calendar Control Header Bar */}
-                    <div className="p-4 border-b border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
-                        {/* Month Navigation & Selected Date Heading */}
+                        {/* Search Input */}
+                        <div className="relative min-w-[240px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search candidate, topic, or ID..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white text-slate-900 placeholder:text-slate-400 transition-all"
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Bottom Row: Quick Date Filter Jumps */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
+                                Date View:
+                            </span>
+                            {[
+                                { id: 'all', label: 'All Dates' },
+                                { id: 'today', label: 'Today' },
+                                { id: 'tomorrow', label: 'Tomorrow' },
+                                { id: 'this_week', label: 'This Week' },
+                                { id: 'next_week', label: 'Next Week' }
+                            ].map(item => {
+                                const active = dateQuickFilter === item.id && !customDateFilter;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => {
+                                            setDateQuickFilter(item.id as DateQuickFilterType);
+                                            setCustomDateFilter('');
+                                        }}
+                                        className={`px-2.5 py-1 rounded-lg font-semibold text-xs transition-colors cursor-pointer ${
+                                            active
+                                                ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+                                                : 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                                        }`}
+                                    >
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Specific Date Picker / Filter reset */}
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold text-slate-900 min-w-[150px]">
-                                {calendarMode === 'daily'
-                                    ? format(selectedDate, 'MMMM d, yyyy')
-                                    : format(selectedDate, 'MMMM yyyy')}
-                            </h2>
-                            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs">
+                            <input
+                                type="date"
+                                value={customDateFilter}
+                                onChange={(e) => {
+                                    setCustomDateFilter(e.target.value);
+                                    setDateQuickFilter('all');
+                                }}
+                                className="px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-blue-500"
+                                title="Filter by exact date"
+                            />
+                            {(customDateFilter || dateQuickFilter !== 'all' || searchTerm) && (
                                 <button
                                     onClick={() => {
-                                        if (calendarMode === 'daily') setSelectedDate(prev => subDays(prev, 1));
-                                        else if (calendarMode === 'weekly') setSelectedDate(prev => subWeeks(prev, 1));
-                                        else {
-                                            setSelectedDate(prev => {
-                                                const next = subMonths(prev, 1);
-                                                setMiniCalendarMonth(next);
-                                                return next;
-                                            });
-                                        }
+                                        setCustomDateFilter('');
+                                        setDateQuickFilter('all');
+                                        setSearchTerm('');
                                     }}
-                                    className="p-1 rounded-lg hover:bg-white text-slate-600 transition-colors"
-                                    title="Previous"
+                                    className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
+                                    Reset filters
                                 </button>
-                                <button
-                                    onClick={() => {
-                                        const now = new Date();
-                                        setSelectedDate(now);
-                                        setMiniCalendarMonth(now);
-                                    }}
-                                    className="px-2.5 py-1 text-xs font-semibold hover:bg-white rounded-lg text-slate-700 transition-colors"
-                                >
-                                    Today
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (calendarMode === 'daily') setSelectedDate(prev => addDays(prev, 1));
-                                        else if (calendarMode === 'weekly') setSelectedDate(prev => addWeeks(prev, 1));
-                                        else {
-                                            setSelectedDate(prev => {
-                                                const next = addMonths(prev, 1);
-                                                setMiniCalendarMonth(next);
-                                                return next;
-                                            });
-                                        }
-                                    }}
-                                    className="p-1 rounded-lg hover:bg-white text-slate-600 transition-colors"
-                                    title="Next"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* View Switchers (Daily / Weekly / Monthly) like reference */}
-                        <div className="bg-slate-100 p-1 rounded-xl border border-slate-200/80 flex items-center text-xs font-semibold shadow-2xs">
-                            <button
-                                onClick={() => setCalendarMode('daily')}
-                                className={`px-3 py-1.5 rounded-lg transition-all ${calendarMode === 'daily'
-                                    ? 'bg-white text-blue-600 font-bold shadow-2xs'
-                                    : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                            >
-                                Daily
-                            </button>
-                            <button
-                                onClick={() => setCalendarMode('weekly')}
-                                className={`px-3 py-1.5 rounded-lg transition-all ${calendarMode === 'weekly'
-                                    ? 'bg-white text-blue-600 font-bold shadow-2xs'
-                                    : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                            >
-                                Weekly
-                            </button>
-                            <button
-                                onClick={() => setCalendarMode('monthly')}
-                                className={`px-3 py-1.5 rounded-lg transition-all ${calendarMode === 'monthly'
-                                    ? 'bg-white text-blue-600 font-bold shadow-2xs'
-                                    : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                            >
-                                Monthly
-                            </button>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    {/* ==================== 1. WEEKLY VIEW (AIRecruit360 reference) ==================== */}
-                    {calendarMode === 'weekly' && (
-                        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                            {/* Weekday Column Headers */}
-                            <div className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-slate-200 bg-slate-50/70 text-xs font-semibold shrink-0">
-                                <div className="p-2.5 border-r border-slate-200 text-slate-400 text-center font-mono">
-                                    Time
-                                </div>
-                                {weekDays.map((day, idx) => {
-                                    const isCurrentDay = isSameDay(day, selectedDate);
-                                    const isTodayDate = isToday(day);
-                                    const daySessionsCount = getSessionsForDate(day).length;
-
-                                    return (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setSelectedDate(day)}
-                                            className={`p-2.5 text-center border-r border-slate-200 last:border-r-0 transition-colors cursor-pointer ${isCurrentDay
-                                                ? 'bg-blue-50/60 font-bold text-blue-700'
-                                                : 'hover:bg-slate-100/70 text-slate-700'
-                                                }`}
-                                        >
-                                            <div className="text-[11px] text-slate-500 uppercase">{format(day, 'EEE')}</div>
-                                            <div className="flex items-center justify-center gap-1 mt-0.5">
-                                                <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs ${isTodayDate ? 'bg-blue-600 text-white font-bold' : ''
-                                                    }`}>
-                                                    {format(day, 'd')}
-                                                </span>
-                                                {daySessionsCount > 0 && (
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                {/* ======================================================== */}
+                {/* --- 4. DATE-BASED SESSION AGENDA STREAM --- */}
+                {/* ======================================================== */}
+                <div className="space-y-6">
+                    {groupedDateSessions.length === 0 ? (
+                        /* Empty State Card */
+                        <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center space-y-4 shadow-2xs">
+                            <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
+                                <CalendarDays className="w-8 h-8" />
                             </div>
+                            <div className="max-w-md mx-auto space-y-1.5">
+                                <h3 className="text-base font-bold text-slate-900">
+                                    {statusFilter === 'pending'
+                                        ? 'No Pending Booking Requests'
+                                        : statusFilter === 'upcoming'
+                                            ? 'No Upcoming Interviews Scheduled'
+                                            : 'No Sessions Found'}
+                                </h3>
+                                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                                    {statusFilter === 'pending'
+                                        ? 'When candidates book interview slots that require manual approval, they will appear here.'
+                                        : 'New candidate bookings matching your availability will appear here in chronological order.'}
+                                </p>
+                            </div>
+                            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                                <button
+                                    onClick={() => navigate('/dashboard/availability')}
+                                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                                >
+                                    Configure Availability Slots
+                                </button>
+                                {(statusFilter !== 'upcoming' || dateQuickFilter !== 'all' || searchTerm) && (
+                                    <button
+                                        onClick={() => {
+                                            setStatusFilter('upcoming');
+                                            setDateQuickFilter('all');
+                                            setCustomDateFilter('');
+                                            setSearchTerm('');
+                                        }}
+                                        className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                                    >
+                                        View All Upcoming
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        paginatedDateSessions.map(({ dateKey, date, sessions }) => {
+                            const isTodayDate = dateKey === todayKeyInTz;
+                            const isTomorrowDate = dateKey === tomorrowKeyInTz;
+                            const isYesterdayDate = dateKey === yesterdayKeyInTz;
+
+                            // Format exact header date in expert's configured timezone
+                            const formattedDate = formatDateHeadingInTz(date);
+
+                            return (
+                                <section key={dateKey} className="space-y-3">
+                                    {/* Date Group Heading Banner */}
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex items-center gap-2.5">
+                                            {isTodayDate ? (
+                                                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                    TODAY
+                                                </span>
+                                            ) : isTomorrowDate ? (
+                                                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-300">
+                                                    TOMORROW
+                                                </span>
+                                            ) : isYesterdayDate ? (
+                                                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-slate-200 text-slate-700 border border-slate-300">
+                                                    YESTERDAY
+                                                </span>
+                                            ) : null}
+
+                                            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                                                <span>{formattedDate}</span>
+                                            </h2>
+                                        </div>
+
+                                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/80">
+                                            {sessions.length} {sessions.length === 1 ? 'Interview' : 'Interviews'}
+                                        </span>
+                                    </div>
+
+                                    {/* Session Cards Grid / Vertical Stack */}
+                                    <div className="space-y-3">
+                                        {sessions.map(session => {
+                                            const start = new Date(session.startTime);
+                                            const end = new Date(session.endTime);
+                                            const durationMinutes = Math.max(1, differenceInMinutes(end, start));
+                                            const statusBadge = getStatusBadge(session.status);
+                                            const countdown = getCountdownLabel(session);
+                                            const payout = getSessionPayoutAmount(session);
+                                            const activeNow = isSessionActive(session);
+                                            const ended = isSessionEnded(session);
+                                            const reviewed = isSessionReviewed(session);
+
+                                            // Exact start & end time strings (never rounded, exact source of truth)
+                                            const timeString = `${formatTimeInTz(start)} – ${formatTimeInTz(end)}`;
+
+                                            return (
+                                                <div
+                                                    key={session.sessionId || session._id}
+                                                    className={`group relative bg-white rounded-2xl border transition-all duration-200 p-4 sm:p-5 shadow-xs hover:shadow-md ${
+                                                        activeNow
+                                                            ? 'border-emerald-400 ring-2 ring-emerald-500/20'
+                                                            : session.status?.toLowerCase() === 'pending'
+                                                                ? 'border-amber-300 bg-amber-50/20'
+                                                                : 'border-slate-200 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                                        {/* Left: Time Block + Candidate Information */}
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 min-w-0">
+                                                            {/* Exact Time Column with Tabular Numerals */}
+                                                            <div className="flex flex-col justify-center sm:min-w-[190px] pr-2 sm:border-r sm:border-slate-100">
+                                                                <div className="flex items-center gap-1.5 text-sm sm:text-base font-black text-slate-900 tracking-tight font-mono tabular-nums">
+                                                                    <Clock className={`w-4 h-4 shrink-0 ${activeNow ? 'text-emerald-600 animate-pulse' : 'text-blue-600'}`} />
+                                                                    <span>{timeString}</span>
+                                                                </div>
 
                             {/* Weekly Time Grid Matrix (All 24 Hours) */}
                             <div ref={weeklyScrollRef} className="flex-1 overflow-y-auto thin-scrollbar min-h-0">
@@ -1056,6 +1348,42 @@ export default function Sessions() {
                                                                             <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
                                                                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                                                                                 <span>Live</span>
+                                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                                    <span className="text-[11px] font-semibold text-slate-500 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
+                                                                        {durationMinutes} mins
+                                                                    </span>
+
+                                                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${countdown.badgeClass}`}>
+                                                                        {countdown.text}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Candidate Identity & Topics */}
+                                                            <div className="flex items-start gap-3 min-w-0">
+                                                                {/* Avatar */}
+                                                                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-200 shadow-2xs">
+                                                                    {(session.candidateName || "CA").slice(0, 2).toUpperCase()}
+                                                                </div>
+
+                                                                {/* Details */}
+                                                                <div className="min-w-0 space-y-1">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <h4
+                                                                            onClick={() => setSelectedCandidateProfile(session)}
+                                                                            className="font-bold text-slate-900 text-sm sm:text-base hover:text-blue-600 cursor-pointer truncate transition-colors"
+                                                                        >
+                                                                            {session.candidateName || "Candidate"}
+                                                                        </h4>
+
+                                                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${statusBadge.classes}`}>
+                                                                            {statusBadge.label}
+                                                                        </span>
+
+                                                                        {payout > 0 && (
+                                                                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                                                                <Wallet className="w-3 h-3 text-emerald-600" />
+                                                                                ₹{payout} Payout
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -1112,167 +1440,135 @@ export default function Sessions() {
                                                                                 <span>Review</span>
                                                                             </button>
                                                                         )}
+                                                                    {/* Candidate Email / Identifier */}
+                                                                    <p className="text-xs text-slate-500 flex items-center gap-1.5 truncate">
+                                                                        <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                        <span className="truncate">{session.candidateDetails?.email || session.candidateId}</span>
+                                                                        <span className="text-slate-300">•</span>
+                                                                        <span className="font-mono text-[10px] text-slate-400">ID: {session.sessionId || session._id}</span>
+                                                                    </p>
+
+                                                                    {/* Topic Badges */}
+                                                                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                                        {(session.topics?.length ? session.topics : ['1:1 Technical Interview']).map((t, idx) => (
+                                                                            <span key={idx} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
+                                                                                {t}
+                                                                            </span>
+                                                                        ))}
                                                                     </div>
                                                                 </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ==================== 2. DAILY VIEW ==================== */}
-                    {calendarMode === 'daily' && (
-                        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto thin-scrollbar p-5 space-y-4">
-                            {/* Day Header Banner */}
-                            <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Daily Schedule</span>
-                                    <h3 className="text-lg font-bold text-slate-900">
-                                        {format(selectedDate, 'EEEE, MMMM d, yyyy')}
-                                    </h3>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                        {selectedDateSessions.length} {selectedDateSessions.length === 1 ? 'interview session scheduled' : 'interview sessions scheduled'}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setSelectedDate(new Date())}
-                                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs"
-                                    >
-                                        Jump to Today
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Sessions for selected day */}
-                            {selectedDateSessions.length > 0 ? (
-                                <div className="space-y-3.5">
-                                    {selectedDateSessions.map(session => {
-                                        const isLive = isSessionActive(session);
-                                        const isCompleted = session.status.toLowerCase() === 'completed';
-                                        const isEnded = isSessionEnded(session);
-
-                                        return (
-                                            <div
-                                                key={session._id}
-                                                className={`rounded-2xl border p-5 transition-all shadow-xs ${isLive
-                                                    ? 'bg-blue-50/50 border-blue-300 ring-2 ring-blue-500/20'
-                                                    : 'bg-white border-slate-200 hover:border-slate-300'
-                                                    }`}
-                                            >
-                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                                                    {/* Candidate & Metadata */}
-                                                    <div className="flex items-start gap-3.5">
-                                                        <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 font-bold text-lg flex items-center justify-center shrink-0 border border-blue-200">
-                                                            {session.candidateName?.[0] || 'C'}
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-bold text-slate-900 text-base">{session.candidateName}</h4>
-                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold capitalize ${getStatusColor(session.status)}`}>
-                                                                    {session.status}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                                                                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                                                <span>{session.candidateDetails?.email || session.candidateId}</span>
-                                                            </p>
-                                                            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                                                                <span className="flex items-center gap-1 text-slate-700 font-semibold bg-slate-100 px-2 py-0.5 rounded-md">
-                                                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                                                    {format(new Date(session.startTime), 'HH:mm')} - {format(new Date(session.endTime), 'HH:mm')}
-                                                                </span>
-                                                                <span className={`px-2 py-0.5 rounded-md border text-xs font-semibold ${getTimerDisplay(session).color}`}>
-                                                                    {getTimerDisplay(session).text}
-                                                                </span>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    {/* Actions: View Resume, Download Resume, Review, Join */}
-                                                    <div className="flex flex-wrap sm:flex-col items-end gap-2 shrink-0">
-                                                        {isLive ? (
-                                                            <button
-                                                                onClick={() => handleJoin(session)}
-                                                                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                                                            >
-                                                                <Video className="w-4 h-4" />
-                                                                <span>Join Live Meeting</span>
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => setSelectedSessionModal(session)}
-                                                                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                                                            >
-                                                                <span>Session Details</span>
-                                                                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                                                            </button>
-                                                        )}
+                                                        {/* Right: Actions Container */}
+                                                        <div className="flex items-center gap-2 flex-wrap lg:justify-end shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                                                            {/* Action 1: Pending Request Approval */}
+                                                            {session.status?.toLowerCase() === 'pending' ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleAcceptSession(session)}
+                                                                        disabled={actionLoading === session.sessionId}
+                                                                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                                                                    >
+                                                                        {actionLoading === session.sessionId ? (
+                                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                        ) : (
+                                                                            <Check className="w-3.5 h-3.5" />
+                                                                        )}
+                                                                        <span>Accept Request</span>
+                                                                    </button>
 
-                                                        {/* Pending Booking Accept/Decline Actions */}
-                                                        {session.status.toLowerCase() === 'pending' && (
-                                                            <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleRejectSession(session)}
+                                                                        disabled={actionLoading === session.sessionId}
+                                                                        className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition-colors"
+                                                                    >
+                                                                        Decline
+                                                                    </button>
+                                                                </div>
+                                                            ) : session.status?.toLowerCase() === 'cancelled' ? (
+                                                                <span className="text-xs text-rose-600 font-bold px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200">
+                                                                    Cancelled
+                                                                </span>
+                                                            ) : session.status?.toLowerCase() === 'completed' || ended ? (
+                                                                /* Action: Concluded Session / Evaluation (Prioritized over Live) */
+                                                                reviewed ? (
+                                                                    <button
+                                                                        onClick={() => setSelectedSessionModal(session)}
+                                                                        className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                                                                    >
+                                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                                        <span>Evaluation Completed</span>
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => openReviewModal(session)}
+                                                                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors animate-pulse"
+                                                                    >
+                                                                        <Star className="w-3.5 h-3.5 fill-current" />
+                                                                        <span>Review Candidate</span>
+                                                                    </button>
+                                                                )
+                                                            ) : activeNow ? (
+                                                                /* Action: Live Meeting Room Join (Only for active non-completed sessions) */
                                                                 <button
-                                                                    onClick={() => handleAcceptSession(session)}
-                                                                    disabled={actionLoading === session.sessionId}
-                                                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1 shadow-sm transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50"
+                                                                    onClick={() => handleJoin(session)}
+                                                                    disabled={loading}
+                                                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer transition-all animate-pulse"
                                                                 >
-                                                                    <Check className="w-3.5 h-3.5" />
-                                                                    <span>Accept</span>
+                                                                    <Video className="w-4 h-4" />
+                                                                    <span>Join Live Meeting</span>
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => handleRejectSession(session)}
-                                                                    disabled={actionLoading === session.sessionId}
-                                                                    className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs flex items-center gap-1 transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50"
-                                                                >
-                                                                    <X className="w-3.5 h-3.5" />
-                                                                    <span>Decline</span>
-                                                                </button>
-                                                            </div>
-                                                        )}
+                                                            ) : !ended ? (
+                                                                /* Action: Upcoming Confirmed Meeting */
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <button
+                                                                        onClick={() => handleJoin(session)}
+                                                                        className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                                                                        title={`Access activates at scheduled start time (${formatTimeInTz(start)})`}
+                                                                    >
+                                                                        <Video className="w-3.5 h-3.5 text-slate-400" />
+                                                                        <span>Join ({formatTimeInTz(start)})</span>
+                                                                    </button>
 
-                                                        {/* Candidate Resume & Calendar Sync Actions */}
-                                                        <div className="flex items-center gap-1.5">
+                                                                    {/* Quick Google Calendar Link */}
+                                                                    <a
+                                                                        href={generateGoogleCalendarUrl(session)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-blue-600 shadow-2xs transition-colors"
+                                                                        title="Add to Google Calendar"
+                                                                    >
+                                                                        <CalendarIcon className="w-3.5 h-3.5" />
+                                                                    </a>
+
+                                                                    <button
+                                                                        onClick={() => downloadIcsFile(session)}
+                                                                        className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 shadow-2xs transition-colors cursor-pointer"
+                                                                        title="Download .ics Calendar Invite"
+                                                                    >
+                                                                        <Download className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            ) : null}
+
+                                                            {/* Secondary Action: View Candidate Resume */}
                                                             <button
                                                                 onClick={() => handleViewResume(session)}
-                                                                className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1 shadow-2xs cursor-pointer"
-                                                                title="Open candidate resume in new tab"
+                                                                className="px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                                                                title="Open candidate resume"
                                                             >
-                                                                <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                                                                <span>Resume</span>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDownloadResume(session)}
-                                                                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-2xs cursor-pointer"
-                                                                title="Download Resume"
-                                                            >
-                                                                <Download className="w-3.5 h-3.5 text-slate-600" />
+                                                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                                <span className="hidden sm:inline">Resume</span>
                                                             </button>
 
-                                                            {/* 1-Click Google Calendar */}
-                                                            <a
-                                                                href={generateGoogleCalendarUrl(session)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="p-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 transition-colors shadow-2xs"
-                                                                title="Add to Google Calendar"
-                                                            >
-                                                                <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
-                                                            </a>
-
-                                                            {/* Download .ics */}
+                                                            {/* Secondary Action: Session Details Modal */}
                                                             <button
-                                                                onClick={() => downloadIcsFile(session)}
-                                                                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shadow-2xs cursor-pointer"
-                                                                title="Download iCal (.ics) Event"
+                                                                onClick={() => setSelectedSessionModal(session)}
+                                                                className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
                                                             >
-                                                                <CalendarDays className="w-3.5 h-3.5 text-slate-600" />
+                                                                <span>Details</span>
+                                                                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                                                             </button>
                                                         </div>
 
@@ -1298,243 +1594,98 @@ export default function Sessions() {
                                                         )}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-                                    <CalendarIcon className="w-12 h-12 text-slate-300 stroke-1" />
-                                    <p className="text-sm font-semibold text-slate-600">No interview sessions scheduled for {format(selectedDate, 'MMMM d, yyyy')}</p>
-                                    <p className="text-xs text-slate-400 max-w-sm">
-                                        Select a date with a session marker from the mini calendar on the left or switch to Weekly view.
-                                    </p>
-                                    <button
-                                        onClick={() => setCalendarMode('weekly')}
-                                        className="mt-2 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-semibold text-xs hover:bg-blue-100"
-                                    >
-                                        View Full Weekly Calendar
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            );
+                        })
                     )}
 
-                    {/* ==================== 3. MONTHLY VIEW ==================== */}
-                    {calendarMode === 'monthly' && (
-                        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                            {/* Weekday headers */}
-                            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-600 py-2 shrink-0">
-                                <span>Mon</span>
-                                <span>Tue</span>
-                                <span>Wed</span>
-                                <span>Thu</span>
-                                <span>Fri</span>
-                                <span>Sat</span>
-                                <span>Sun</span>
-                            </div>
-
-                            {/* Month Matrix: Dynamic row count so all 5 or 6 weeks fit precisely without leaking or overlapping */}
-                            <div
-                                className="flex-1 grid grid-cols-7 overflow-y-auto thin-scrollbar min-h-0 bg-slate-200 gap-px"
-                                style={{ gridTemplateRows: `repeat(${Math.ceil(monthlyDays.length / 7)}, minmax(90px, 1fr))` }}
-                            >
-                                {monthlyDays.map((day, idx) => {
-                                    const daySessions = getSessionsForDate(day);
-                                    const isCurrentMonthDay = isSameMonth(day, selectedDate);
-                                    const isSelected = isSameDay(day, selectedDate);
-                                    const isTodayDate = isToday(day);
-
-                                    return (
-                                        <div
-                                            key={idx}
-                                            onClick={() => {
-                                                setSelectedDate(day);
-                                                if (daySessions.length > 0) {
-                                                    setCalendarMode('daily');
-                                                }
-                                            }}
-                                            className={`bg-white p-2 min-h-[90px] flex flex-col justify-between transition-colors cursor-pointer relative overflow-hidden ${
-                                                !isCurrentMonthDay ? 'bg-slate-50/70 text-slate-400' : 'text-slate-800'
-                                            } ${isSelected ? 'ring-2 ring-inset ring-blue-500 bg-blue-50/30' : 'hover:bg-slate-50'}`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
-                                                    isTodayDate ? 'bg-blue-600 text-white font-bold shadow-2xs' : ''
-                                                }`}>
-                                                    {format(day, 'd')}
-                                                </span>
-                                                {daySessions.length > 0 && (
-                                                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
-                                                        <span>{daySessions.length}</span>
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div className="space-y-1 mt-1 overflow-y-auto max-h-[55px] no-scrollbar">
-                                                {daySessions.slice(0, 2).map(session => (
-                                                    <div
-                                                        key={session._id}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedSessionModal(session);
-                                                        }}
-                                                        className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 truncate font-semibold transition-colors flex items-center gap-1"
-                                                        title={`${format(new Date(session.startTime), 'HH:mm')} - ${session.candidateName || session.candidateDetails?.name || 'Candidate'}`}
-                                                    >
-                                                        <span className="font-bold shrink-0">{format(new Date(session.startTime), 'HH:mm')}</span>
-                                                        <span className="text-blue-300">•</span>
-                                                        <span className="truncate flex-1">{session.candidateName || session.candidateDetails?.name || session.topics?.[0] || '1:1 Session'}</span>
-                                                        {isSessionReviewed(session) ? (
-                                                            <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 shrink-0" title={`Reviewed · ₹${getSessionPayoutAmount(session)}`}>
-                                                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                                                                <span>₹{getSessionPayoutAmount(session)}</span>
-                                                            </span>
-                                                        ) : isSessionEnded(session) ? (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Review pending" />
-                                                        ) : null}
-                                                    </div>
-                                                ))}
-                                                {daySessions.length > 2 && (
-                                                    <span className="text-[10px] text-blue-600 font-bold block text-center">
-                                                        +{daySessions.length - 2} more
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                    {/* Agenda Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80 pt-5 px-2">
+                            <p className="text-xs text-slate-500 font-medium">
+                                Showing page <span className="font-bold text-slate-800">{currentPage}</span> of <span className="font-bold text-slate-800">{totalPages}</span> ({groupedDateSessions.length} active {groupedDateSessions.length === 1 ? 'date' : 'dates'})
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs"
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-xs font-bold text-slate-700 px-2">
+                                    {currentPage} / {totalPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs"
+                                >
+                                    Next
+                                </button>
                             </div>
                         </div>
                     )}
-                </main>
+                </div>
             </div>
 
             {/* ======================================================== */}
-            {/* --- SESSION DETAILS MODAL / DRAWER --- */}
+            {/* --- 5. SESSION DETAILS MODAL --- */}
             {/* ======================================================== */}
             {selectedSessionModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
                     <div
-                        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
                         onClick={() => setSelectedSessionModal(null)}
                     ></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
                         {/* Modal Header */}
                         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
                             <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Interview Session</span>
-                                <h3 className="font-bold text-slate-900 text-lg">{selectedSessionModal.candidateName}</h3>
+                                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-blue-600" />
+                                    <span>Session Briefing & Details</span>
+                                </h3>
+                                <p className="text-xs text-slate-500">Comprehensive session timeline and briefing</p>
                             </div>
                             <button
                                 onClick={() => setSelectedSessionModal(null)}
-                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-6 space-y-4 overflow-y-auto thin-scrollbar">
-                            {/* Badges & Payout */}
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5">
-                                    {(selectedSessionModal.topics?.length ? selectedSessionModal.topics : ['1:1 Mock Interview']).map((topic, i) => (
-                                        <span key={i} className="text-xs px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-100">
-                                            {topic}
-                                        </span>
-                                    ))}
+                        <div className="p-6 space-y-6 overflow-y-auto thin-scrollbar">
+                            {/* Session Quick Status Row */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Scheduled Time</span>
+                                    <p className="text-sm font-bold text-slate-900 font-mono">
+                                        {formatDateHeadingInTz(new Date(selectedSessionModal.startTime))}
+                                    </p>
+                                    <p className="text-xs font-semibold text-blue-600 font-mono">
+                                        {formatTimeInTz(new Date(selectedSessionModal.startTime))} – {formatTimeInTz(new Date(selectedSessionModal.endTime))}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {/* Review Message Pill: Left side of Confirmed badge (Post-meeting flow) */}
-                                    {isSessionReviewed(selectedSessionModal) ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => openReviewModal(selectedSessionModal)}
-                                            className="group/rev h-7 px-3 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-lg text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
-                                            title={`Review submitted and ₹${getSessionPayoutAmount(selectedSessionModal)} payout released. Click to view or edit evaluation.`}
-                                        >
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                            <span>Review given · Pay released (₹{getSessionPayoutAmount(selectedSessionModal)})</span>
-                                        </button>
-                                    ) : isSessionEnded(selectedSessionModal) ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => openReviewModal(selectedSessionModal)}
-                                            className="group/rev h-7 px-3 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
-                                            title="Session has concluded! Give candidate review & rubric marks to receive your payout."
-                                        >
-                                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                            <span>Give review to get your pay</span>
-                                        </button>
-                                    ) : (
-                                        <div
-                                            className="h-7 px-2.5 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 select-none"
-                                            title="Evaluation unlocks automatically after the meeting concludes"
-                                        >
-                                            <Lock className="w-3 h-3 text-slate-400" />
-                                            <span>Review unlocks post-meeting</span>
-                                        </div>
-                                    )}
-
-                                    <span className={`text-xs px-2.5 py-1 rounded-md border font-bold capitalize ${getStatusColor(selectedSessionModal.status)}`}>
-                                        {selectedSessionModal.status}
+                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${getStatusBadge(selectedSessionModal.status).classes}`}>
+                                        {getStatusBadge(selectedSessionModal.status).label}
                                     </span>
-                                    {selectedSessionModal.status?.toLowerCase() === 'completed' && (
-                                        selectedSessionModal.payoutCredited ? (
-                                            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700">
-                                                Wallet credited: ₹{getSessionPayoutAmount(selectedSessionModal)}
-                                            </span>
-                                        ) : (
-                                            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700">
-                                                Wallet credit pending
-                                            </span>
-                                        )
-                                    )}
                                 </div>
                             </div>
 
-                            {/* Schedule & Info Grid */}
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Date & Time</p>
-                                    <p className="font-semibold text-slate-900">
-                                        {format(new Date(selectedSessionModal.startTime), 'EEE, d MMM yyyy')}
-                                    </p>
-                                    <p className="text-slate-600 mt-0.5">
-                                        {format(new Date(selectedSessionModal.startTime), 'HH:mm')} - {format(new Date(selectedSessionModal.endTime), 'HH:mm')}
-                                    </p>
-                                </div>
-
-                                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Session ID</p>
-                                    <div className="flex items-center justify-between font-mono text-slate-800">
-                                        <span className="truncate max-w-[150px]">{selectedSessionModal.sessionId}</span>
-                                        <button
-                                            onClick={() => handleCopySessionId(selectedSessionModal.sessionId)}
-                                            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"
-                                            title="Copy"
-                                        >
-                                            {copiedSessionId ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                                        </button>
-                                    </div>
-                                    <p className={`mt-1 font-semibold ${getTimerDisplay(selectedSessionModal).color} px-1.5 py-0.5 rounded text-[11px] inline-block`}>
-                                        {getTimerDisplay(selectedSessionModal).detailed}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Calendar Sync Card (Phase 2) */}
-                            <div className="p-3 rounded-xl border border-blue-100 bg-blue-50/70 flex flex-wrap items-center justify-between gap-2.5">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-2xs">
-                                        <CalendarIcon className="w-4 h-4" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-900 leading-tight">Calendar Sync</p>
-                                        <p className="text-[11px] text-slate-500">Add to your work calendar so you stay on schedule</p>
-                                    </div>
+                            {/* Calendar Sync Options */}
+                            <div className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/40 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-900 leading-tight">Sync With Your Calendar</p>
+                                    <p className="text-[11px] text-slate-500">Export invite to stay reminded on your calendar app</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <a
@@ -1551,45 +1702,67 @@ export default function Sessions() {
                                         className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                                     >
                                         <Download className="w-3.5 h-3.5 text-slate-600" />
-                                        <span>Download .ics</span>
+                                        <span>.ics</span>
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Meeting Hero Action */}
-                            <div className="pt-1">
-                                <button
-                                    onClick={() => handleJoin(selectedSessionModal)}
-                                    disabled={!isSessionActive(selectedSessionModal) || loading}
-                                    className={`w-full py-3 px-4 rounded-xl font-bold text-white text-xs flex items-center justify-center gap-2 shadow-sm ${isSessionActive(selectedSessionModal)
-                                        ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-md'
-                                        : 'bg-slate-300 cursor-not-allowed text-slate-500'
-                                        }`}
-                                >
-                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
-                                    {loading ? 'Joining Room...' : isSessionActive(selectedSessionModal) ? 'Join Live Meeting Room' : 'Join Meeting (Opens at Scheduled Time)'}
-                                </button>
-                                {!isSessionActive(selectedSessionModal) && (
-                                    <p className="text-center text-[11px] text-slate-400 mt-1.5">
-                                        Meeting access activates automatically at scheduled start time ({format(new Date(selectedSessionModal.startTime), 'HH:mm')}).
-                                    </p>
+                            {/* Hero Action: Join Room or Evaluation */}
+                            <div>
+                                {selectedSessionModal.status?.toLowerCase() === 'completed' || isSessionEnded(selectedSessionModal) ? (
+                                    isSessionReviewed(selectedSessionModal) ? (
+                                        <div className="w-full py-3 px-4 rounded-xl font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 text-xs flex items-center justify-center gap-2">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                            <span>Evaluation Completed</span>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => openReviewModal(selectedSessionModal)}
+                                            className="w-full py-3 px-4 rounded-xl font-bold text-white text-xs flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 cursor-pointer shadow-md transition-all animate-pulse"
+                                        >
+                                            <Star className="w-4 h-4 fill-current" />
+                                            <span>Review Candidate</span>
+                                        </button>
+                                    )
+                                ) : selectedSessionModal.status?.toLowerCase() === 'cancelled' ? (
+                                    <div className="w-full py-3 px-4 rounded-xl font-bold text-rose-700 bg-rose-50 border border-rose-200 text-xs flex items-center justify-center gap-2">
+                                        <span>Session Cancelled</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => handleJoin(selectedSessionModal)}
+                                            disabled={!isSessionActive(selectedSessionModal) || loading}
+                                            className={`w-full py-3 px-4 rounded-xl font-bold text-white text-xs flex items-center justify-center gap-2 shadow-sm ${
+                                                isSessionActive(selectedSessionModal)
+                                                    ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-md'
+                                                    : 'bg-slate-300 cursor-not-allowed text-slate-500'
+                                            }`}
+                                        >
+                                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
+                                            {loading ? 'Joining Room...' : isSessionActive(selectedSessionModal) ? 'Join Live Meeting Room' : 'Join Meeting (Opens at Scheduled Time)'}
+                                        </button>
+                                        {!isSessionActive(selectedSessionModal) && (
+                                            <p className="text-center text-[11px] text-slate-400 mt-1.5">
+                                                Access opens at scheduled start time ({formatTimeInTz(new Date(selectedSessionModal.startTime))}).
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
-                            {/* Candidate Dossier & Resume Card (Phase 2 Briefing) */}
+                            {/* Candidate Briefing Card */}
                             <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                                         <UserIcon className="w-3.5 h-3.5 text-blue-600" />
-                                        Candidate Briefing & Dossier
+                                        Candidate Dossier & Resume
                                     </h4>
                                     <button
-                                        onClick={() => {
-                                            setSelectedCandidateProfile(selectedSessionModal);
-                                        }}
-                                        className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                                        onClick={() => setSelectedCandidateProfile(selectedSessionModal)}
+                                        className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
                                     >
-                                        <span>Full Dossier</span>
+                                        <span>Full Profile</span>
                                         <ChevronRight className="w-3 h-3" />
                                     </button>
                                 </div>
@@ -1613,7 +1786,6 @@ export default function Sessions() {
                                             <button
                                                 onClick={() => handleViewResume(selectedSessionModal)}
                                                 className="px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 shadow-2xs cursor-pointer"
-                                                title="Open candidate resume in new tab"
                                             >
                                                 <ExternalLink className="w-3.5 h-3.5" />
                                                 <span>View Resume</span>
@@ -1628,7 +1800,7 @@ export default function Sessions() {
                                         </div>
                                     </div>
 
-                                    {/* Skills & Focus Pills */}
+                                    {/* Focus Topics */}
                                     <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Focus:</span>
                                         {(selectedSessionModal.topics?.length ? selectedSessionModal.topics : ['1:1 Technical Interview']).map((t, idx) => (
@@ -1636,18 +1808,13 @@ export default function Sessions() {
                                                 {t}
                                             </span>
                                         ))}
-                                        {selectedSessionModal.candidateDetails?.skills && selectedSessionModal.candidateDetails.skills.slice(0, 3).map((skill, idx) => (
-                                            <span key={`sk-${idx}`} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200">
-                                                {skill}
-                                            </span>
-                                        ))}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Structured Evaluation Rubric & Feedback Section (Dynamic Flow: Locked -> Red Alert -> Green Completed) */}
+                            {/* Evaluation Status Banner */}
                             {Boolean((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review?.reviewerRole === 'expert') ? (
-                                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 space-y-3 transition-all duration-300">
+                                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -1668,75 +1835,9 @@ export default function Sessions() {
                                             Edit Evaluation
                                         </button>
                                     </div>
-
-                                    {/* Green Review Summary Banner */}
-                                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs shadow-2xs">
-                                        <span className="font-semibold text-slate-700">Payout Status:</span>
-                                        <span className="font-bold text-emerald-700 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                            Wallet Credited ₹{getSessionPayoutAmount(selectedSessionModal)}
-                                        </span>
-                                    </div>
-
-                                    <div className="p-3.5 rounded-xl bg-white border border-emerald-200 space-y-3 text-xs shadow-2xs">
-                                        {/* Decision Header */}
-                                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[11px] font-bold uppercase text-slate-500">Recommendation:</span>
-                                                {(() => {
-                                                    const reviewObj = (selectedSessionModal as any).expertReview || (selectedSessionModal as any).review || {};
-                                                    const dec = reviewObj.hiringDecision || reviewObj.recommendation || 'Hire';
-                                                    if (dec === 'Strong Hire') {
-                                                        return <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">🟢 Strong Hire</span>;
-                                                    } else if (dec === 'Hire') {
-                                                        return <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold border border-blue-300">🔵 Hire</span>;
-                                                    } else if (dec === 'Lean Hire') {
-                                                        return <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-300">🟡 Lean Hire</span>;
-                                                    } else {
-                                                        return <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold border border-rose-300">🔴 No Hire</span>;
-                                                    }
-                                                })()}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-amber-500 font-bold">
-                                                <Star className="w-4 h-4 fill-current" />
-                                                <span>{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.overallRating || 5}/5 Overall</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Rubric Breakdown Grid */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
-                                                <span className="text-slate-400 block text-[10px]">Technical / DSA</span>
-                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.technicalRating || '-'}/5</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
-                                                <span className="text-slate-400 block text-[10px]">System Design</span>
-                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.designRating || '-'}/5</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
-                                                <span className="text-slate-400 block text-[10px]">Problem Solving</span>
-                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.problemSolvingRating || '-'}/5</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
-                                                <span className="text-slate-400 block text-[10px]">Communication</span>
-                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.communicationRating || '-'}/5</span>
-                                            </div>
-                                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
-                                                <span className="text-slate-400 block text-[10px]">Behavioral / Fit</span>
-                                                <span className="font-bold text-slate-800">{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.behavioralRating || '-'}/5</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Written Feedback Preview */}
-                                        {((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review)?.feedback && (
-                                            <p className="text-slate-600 text-xs italic bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                                                "{((selectedSessionModal as any).expertReview || (selectedSessionModal as any).review).feedback}"
-                                            </p>
-                                        )}
-                                    </div>
                                 </div>
                             ) : isSessionEnded(selectedSessionModal) ? (
-                                <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50/50 space-y-3 transition-all duration-300">
+                                <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50/50 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
@@ -1744,60 +1845,33 @@ export default function Sessions() {
                                             </div>
                                             <div>
                                                 <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900 leading-tight">
-                                                    Interview Evaluation & Rubric
+                                                    Evaluation Required
                                                 </h4>
-                                                <p className="text-[11px] text-rose-700">Give candidate review to get your pay released</p>
+                                                <p className="text-[11px] text-rose-700">Submit rubric evaluation to release your payout</p>
                                             </div>
                                         </div>
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-200/80 text-rose-800 border border-rose-300">
-                                            Review Required
+                                            Action Needed
                                         </span>
                                     </div>
-
-                                    <p className="text-xs text-rose-800 leading-relaxed">
-                                        The session has concluded! Please provide rubric marks and candidate evaluation. Once submitted, your payout of <strong>₹{getSessionPayoutAmount(selectedSessionModal)}</strong> will be credited directly to your wallet.
-                                    </p>
-
                                     <button
                                         type="button"
                                         onClick={() => openReviewModal(selectedSessionModal)}
-                                        className="w-full py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white border-rose-600 shadow-2xs hover:shadow-md hover:shadow-rose-600/25 cursor-pointer active:scale-95 flex items-center justify-center gap-2 group/btm"
+                                        className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-2xs cursor-pointer flex items-center justify-center gap-2"
                                     >
-                                        <Star className="w-3.5 h-3.5 fill-current shrink-0 text-white group-hover/btm:rotate-12 transition-transform duration-200" />
+                                        <Star className="w-3.5 h-3.5 fill-current" />
                                         <span>Write Evaluation & Rubric Marks</span>
                                     </button>
                                 </div>
                             ) : (
-                                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3 transition-all duration-300">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                                                <Lock className="w-4 h-4 text-slate-500" />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 leading-tight">
-                                                    Interview Evaluation & Rubric
-                                                </h4>
-                                                <p className="text-[11px] text-slate-500">Unlocks automatically once the meeting concludes</p>
-                                            </div>
-                                        </div>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 border border-slate-300">
-                                            Locked
-                                        </span>
+                                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center gap-3">
+                                    <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                        <Lock className="w-4 h-4 text-slate-500" />
                                     </div>
-
-                                    <p className="text-xs text-slate-500 leading-relaxed">
-                                        Candidate marks, rubric evaluation, and payout release will unlock immediately after this session concludes or the meeting call is finished.
-                                    </p>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => toast.info("Evaluation unlocks after the session concludes.")}
-                                        className="w-full py-2.5 px-4 rounded-xl text-xs font-bold border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 cursor-pointer transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Lock className="w-3.5 h-3.5 shrink-0" />
-                                        <span>Evaluation Locked Until Meeting Concludes</span>
-                                    </button>
+                                    <div>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Evaluation Rubric Locked</h4>
+                                        <p className="text-[11px] text-slate-500">Unlocks automatically once this meeting concludes.</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1811,7 +1885,7 @@ export default function Sessions() {
             )}
 
             {/* ======================================================== */}
-            {/* --- CANDIDATE PROFILE MODAL --- */}
+            {/* --- 6. CANDIDATE PROFILE MODAL --- */}
             {/* ======================================================== */}
             {selectedCandidateProfile && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -1829,7 +1903,7 @@ export default function Sessions() {
                             </div>
                             <button
                                 onClick={() => setSelectedCandidateProfile(null)}
-                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -1931,7 +2005,7 @@ export default function Sessions() {
                         <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <button
                                 onClick={() => handleViewResume(selectedCandidateProfile)}
-                                className="px-3.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1.5"
+                                className="px-3.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
                             >
                                 <ExternalLink className="w-3.5 h-3.5" />
                                 <span>View Candidate Resume</span>
@@ -1943,7 +2017,7 @@ export default function Sessions() {
             )}
 
             {/* ======================================================== */}
-            {/* --- STRUCTURED INTERVIEW EVALUATION RUBRIC MODAL --- */}
+            {/* --- 7. STRUCTURED INTERVIEW EVALUATION RUBRIC MODAL --- */}
             {/* ======================================================== */}
             {reviewSession && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -1980,7 +2054,7 @@ export default function Sessions() {
                                     <div className="min-w-0">
                                         <p className="font-bold text-slate-900 text-sm truncate">{reviewSession.candidateName}</p>
                                         <p className="text-[11px] text-slate-500">
-                                            {format(new Date(reviewSession.startTime), 'EEE, d MMM yyyy')} • {format(new Date(reviewSession.startTime), 'HH:mm')} - {format(new Date(reviewSession.endTime), 'HH:mm')}
+                                            {formatDateHeadingInTz(new Date(reviewSession.startTime))} • {formatTimeInTz(new Date(reviewSession.startTime))} - {formatTimeInTz(new Date(reviewSession.endTime))}
                                         </p>
                                     </div>
                                 </div>
@@ -2203,7 +2277,7 @@ export default function Sessions() {
                         {/* Modal Footer */}
                         <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/70 sticky bottom-0">
                             <span className="text-xs text-slate-500">
-                                Payout of 80% credited to your wallet upon submit
+                                Payout credited to your wallet upon submit
                             </span>
                             <div className="flex items-center gap-2">
                                 <SecondaryButton onClick={() => setReviewSession(null)}>Cancel</SecondaryButton>
@@ -2219,7 +2293,6 @@ export default function Sessions() {
                     </div>
                 </div>
             )}
-            </div>
         </div>
     );
 }
