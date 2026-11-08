@@ -134,9 +134,12 @@ const CertificateTemplate = ({
   };
   const recipientFontSize = getNameFontSize(formattedName);
 
-  // Universal date formatting to match "Nov 1, 2026"
+  // Universal date formatting (e.g. "Nov 7, 2026")
   const displayDate = useMemo(() => {
-    if (!issueDateStr) return "Nov 1, 2026";
+    if (!issueDateStr) {
+      const now = new Date();
+      return `${now.toLocaleString("en-US", { month: "short" })} ${now.getDate()}, ${now.getFullYear()}`;
+    }
     const d = new Date(issueDateStr);
     if (!isNaN(d.getTime())) {
       const month = d.toLocaleString("en-US", { month: "short" });
@@ -148,7 +151,6 @@ const CertificateTemplate = ({
   }, [issueDateStr]);
 
   const isDefaultIT = displayDomain === "IT" && !isMaster;
-  const isDefaultDate = displayDate === "Nov 1, 2026";
 
   return (
     <div
@@ -186,6 +188,44 @@ const CertificateTemplate = ({
             <stop offset="100%" stopColor="#041633" />
           </linearGradient>
         </defs>
+
+        {/* ----------------------------------------------------------- */}
+        {/* REFINEMENT 1: PATCH CONCEALING OLD OVERSIZED LOGO           */}
+        {/* ----------------------------------------------------------- */}
+        <rect
+          x="490"
+          y="24"
+          width="556"
+          height="166"
+          fill="#FEFEFC"
+        />
+
+        {/* ----------------------------------------------------------- */}
+        {/* REFINEMENT 2: PATCH CONCEALING OLD OVERSIZED TITLE          */}
+        {/* Cleanly between the left laurel (x<=384) & right laurel (x>=1125) */}
+        {/* ----------------------------------------------------------- */}
+        <rect
+          x="382"
+          y="198"
+          width="744"
+          height="130"
+          fill="#FEFEFC"
+        />
+
+        {/* REFINEMENT 2: REDUCED CERTIFICATE TITLE (8-10% smaller)      */}
+        {/* Editorial serif typography, centered, italic 'of'           */}
+        <text
+          x="768"
+          y="282"
+          textAnchor="middle"
+          fill="#08172A"
+          fontSize="62px"
+          fontFamily="'Playfair Display', 'Lora', Georgia, 'Times New Roman', serif"
+        >
+          <tspan fontWeight="700">Certificate </tspan>
+          <tspan fontStyle="italic" fontWeight="400" fontFamily="'Playfair Display', Georgia, serif">of </tspan>
+          <tspan fontWeight="700">Completion</tspan>
+        </text>
 
         {/* Dynamic Plaque Overlay: if domain is NOT standard IT mock session */}
         {!isDefaultIT && (
@@ -268,29 +308,85 @@ const CertificateTemplate = ({
           </g>
         )}
 
-        {/* Dynamic Issued Date: if date is NOT 'Nov 1, 2026' */}
-        {!isDefaultDate && (
-          <g>
-            <rect
-              x="250"
-              y="815"
-              width="210"
-              height="40"
-              fill="#FAF8F4"
-            />
-            <text
-              x="264"
-              y="845"
-              fill="#08172A"
-              fontSize="25px"
-              fontWeight="800"
-              fontFamily="'Inter', sans-serif"
-            >
-              {displayDate}
-            </text>
-          </g>
-        )}
+        {/* ----------------------------------------------------------- */}
+        {/* REFINEMENT 3: FIXED ISSUED ON DATE VISIBILITY               */}
+        {/* ----------------------------------------------------------- */}
+        <g id="certificate-issued-on-group">
+          {/* Seamless ivory patch covering old date and label */}
+          <rect
+            x="250"
+            y="788"
+            width="230"
+            height="80"
+            fill="#FEFEFC"
+          />
+
+          {/* Label: Issued on */}
+          <text
+            x="268"
+            y="814"
+            fill="#64748B"
+            fontSize="16.5px"
+            fontWeight="600"
+            letterSpacing="0.03em"
+            fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
+          >
+            Issued on
+          </text>
+
+          {/* Dynamic Issuance Date (Darker, more prominent, professional font weight) */}
+          <text
+            x="268"
+            y="848"
+            fill="#08172A"
+            fontSize="26px"
+            fontWeight="800"
+            letterSpacing="-0.01em"
+            fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
+          >
+            {displayDate}
+          </text>
+        </g>
       </svg>
+
+      {/* ----------------------------------------------------------- */}
+      {/* REFINEMENT 1: REFINED MOCKEEFY BRAND LOGO (10-12% smaller)  */}
+      {/* HTML overlay positioned precisely, preserving brand asset   */}
+      {/* ----------------------------------------------------------- */}
+      <div
+        className="absolute left-0 right-0 flex flex-col items-center pointer-events-none select-none"
+        style={{ top: "45px" }}
+      >
+        <div className="flex items-center justify-center gap-3">
+          <img
+            src={brandLogo}
+            alt="Mockeefy"
+            className="w-[48px] h-[48px] object-contain shrink-0"
+          />
+          <span
+            className="text-[38px] font-extrabold tracking-tight leading-none"
+            style={{
+              color: "#08172A",
+              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+            }}
+          >
+            Mockeefy
+          </span>
+        </div>
+        <div className="flex items-center justify-center gap-3 mt-2.5">
+          <div style={{ width: "65px", height: "1.2px", backgroundColor: "#D4AF37" }} />
+          <span
+            className="text-[11.5px] font-bold uppercase tracking-[0.28em] leading-none"
+            style={{
+              color: "#475569",
+              fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
+            }}
+          >
+            PRACTICE • IMPROVE • SUCCEED
+          </span>
+          <div style={{ width: "65px", height: "1.2px", backgroundColor: "#D4AF37" }} />
+        </div>
+      </div>
     </div>
   );
 };
@@ -688,6 +784,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
 
   // PDF Generation function
   const downloadElementAsPDF = async (element: HTMLElement, filename: string) => {
+    await document.fonts?.ready;
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
@@ -1398,7 +1495,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                     ? (masterCert?.issueDate
                         ? new Date(masterCert.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                         : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))
-                    : (selectedSession ? getFormattedIssueDate(selectedSession) : "Nov 1, 2026")
+                    : (selectedSession ? getFormattedIssueDate(selectedSession) : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))
                 }
                 certId={
                   isMasterSelected
@@ -1489,7 +1586,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                   ? (masterCert?.issueDate
                       ? new Date(masterCert.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                       : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))
-                  : (downloadTarget.session ? getFormattedIssueDate(downloadTarget.session) : "Nov 1, 2026")
+                  : (downloadTarget.session ? getFormattedIssueDate(downloadTarget.session) : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))
               }
               certId={
                 downloadTarget.isMaster

@@ -1,6 +1,5 @@
 // src/pages/expert/Sessions.tsx
-
-import { useEffect, useState, useMemo, useCallback,useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Video,
@@ -88,16 +87,6 @@ interface Session {
     expertReview?: any;
 }
 
-// All 24 hours of the day (00:00 to 23:00) so all possible session times are present in the calendar matrix
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-
-const formatCalendarHour = (hour: number) => {
-    const period = hour < 12 ? 'am' : 'pm';
-    let h12 = hour % 12;
-    if (h12 === 0) h12 = 12;
-    const hStr = h12 < 10 ? `0${h12}` : `${h12}`;
-    return `${hStr}.00 ${period}`;
-};
 type StatusFilterType = 'upcoming' | 'pending' | 'all' | 'completed' | 'cancelled';
 type DateQuickFilterType = 'all' | 'today' | 'tomorrow' | 'this_week' | 'next_week';
 
@@ -826,58 +815,6 @@ export default function Sessions() {
             const hours = Math.floor(totalMins / 60);
             const mins = totalMins % 60;
 
-    // --- MINI CALENDAR DAYS ---
-    const miniCalendarDays = useMemo(() => {
-        const monthStart = startOfMonth(miniCalendarMonth);
-        const monthEnd = endOfMonth(monthStart);
-        const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday start like reference
-        const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-        return eachDayOfInterval({ start: startDate, end: endDate });
-    }, [miniCalendarMonth]);
-
-    // --- MONTHLY VIEW DAYS (Synced with active calendar selectedDate) ---
-    const monthlyDays = useMemo(() => {
-        const monthStart = startOfMonth(selectedDate);
-        const monthEnd = endOfMonth(monthStart);
-        const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-        const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-        return eachDayOfInterval({ start: startDate, end: endDate });
-    }, [selectedDate]);
-
-    // --- WEEKLY VIEW DAYS ---
-    const weekDays = useMemo(() => {
-        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-        return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-    }, [selectedDate]);
-
-    // Ref and auto-scroll for weekly 24-hour time matrix
-    const weeklyScrollRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (calendarMode === 'weekly' && weeklyScrollRef.current) {
-            const weekSessions = allSessions.filter(s => {
-                const sDate = new Date(s.startTime);
-                return weekDays.some(d => isSameDay(d, sDate));
-            });
-
-            let targetHour = 8; // Default scroll position around 8:00 AM
-            if (weekSessions.length > 0) {
-                const earliestHour = Math.min(...weekSessions.map(s => new Date(s.startTime).getHours()));
-                targetHour = Math.max(0, earliestHour);
-            }
-
-            weeklyScrollRef.current.scrollTop = targetHour * 85;
-        }
-    }, [calendarMode, selectedDate, allSessions.length]);
-
-    // Sessions for current selected date
-    const selectedDateSessions = useMemo(() => {
-        return filteredSessions.filter(s => isSameDay(new Date(s.startTime), selectedDate));
-    }, [filteredSessions, selectedDate]);
-
-    // Sessions for a specific day
-    const getSessionsForDate = (date: Date) => {
-        return filteredSessions.filter(s => isSameDay(new Date(s.startTime), date));
             if (totalMins < 60) {
                 return {
                     text: `Starts in ${Math.max(1, totalMins)}m`,
@@ -1292,62 +1229,6 @@ export default function Sessions() {
                                                                     <span>{timeString}</span>
                                                                 </div>
 
-                            {/* Weekly Time Grid Matrix (All 24 Hours) */}
-                            <div ref={weeklyScrollRef} className="flex-1 overflow-y-auto thin-scrollbar min-h-0">
-                                {HOURS.map(hour => {
-                                    return (
-                                        <div key={hour} className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-slate-100 min-h-[95px]">
-                                            {/* Hour label */}
-                                            <div className="p-2 border-r border-slate-100 text-[11px] font-mono text-slate-400 text-center shrink-0 select-none">
-                                                {formatCalendarHour(hour)}
-                                            </div>
-
-                                            {/* 7 Columns for the week */}
-                                            {weekDays.map((day, dayIdx) => {
-                                                const daySessions = getSessionsForDate(day);
-                                                // Find sessions matching this hour
-                                                const matchingSessions = daySessions.filter(s => {
-                                                    const sHour = new Date(s.startTime).getHours();
-                                                    return sHour === hour;
-                                                });
-
-                                                const isCurrentDay = isSameDay(day, selectedDate);
-
-                                                return (
-                                                    <div
-                                                        key={dayIdx}
-                                                        onClick={() => setSelectedDate(day)}
-                                                        className={`p-1.5 border-r border-slate-100 last:border-r-0 relative transition-colors ${isCurrentDay ? 'bg-blue-50/15' : ''
-                                                            }`}
-                                                    >
-                                                        {matchingSessions.map(session => {
-                                                            const isLive = isSessionActive(session);
-                                                            const isCompleted = session.status.toLowerCase() === 'completed';
-
-                                                            return (
-                                                                <div
-                                                                    key={session._id}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setSelectedSessionModal(session);
-                                                                    }}
-                                                                    className={`rounded-2xl p-2.5 sm:p-3 mb-2 transition-all shadow-xs cursor-pointer border overflow-hidden ${isLive
-                                                                        ? 'bg-blue-50/80 border-blue-400 shadow-md ring-2 ring-blue-500/20'
-                                                                        : isCompleted
-                                                                            ? 'bg-slate-50/90 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70'
-                                                                            : 'bg-white border-slate-200/90 hover:border-blue-400 hover:shadow-md'
-                                                                        }`}
-                                                                >
-                                                                    {/* 1. Time Slot Range Badge */}
-                                                                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md inline-block tracking-tight ${isLive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                                                                            }`}>
-                                                                            {format(new Date(session.startTime), 'HH:mm')} - {format(new Date(session.endTime), 'HH:mm')}
-                                                                        </span>
-                                                                        {isLive && (
-                                                                            <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
-                                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                                                                                <span>Live</span>
                                                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                                                     <span className="text-[11px] font-semibold text-slate-500 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
                                                                         {durationMinutes} mins
@@ -1388,58 +1269,6 @@ export default function Sessions() {
                                                                         )}
                                                                     </div>
 
-                                                                    {/* 2. Candidate Name */}
-                                                                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate leading-tight">
-                                                                        {session.candidateName || session.candidateNameSnapshot || 'Candidate'}
-                                                                    </h4>
-
-                                                                    {/* 3. Domain / Topic / Role */}
-                                                                    <p className="text-[10.5px] text-slate-500 font-medium truncate mt-0.5">
-                                                                        {session.topics?.[0] || (session as any).categoryName || (session as any).categoryId?.name || 'IT'}
-                                                                    </p>
-
-                                                                    {/* 4. Action Buttons: Resume & Review */}
-                                                                    <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleViewResume(session);
-                                                                            }}
-                                                                            className="text-[10px] font-bold text-blue-600 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
-                                                                            title="View Candidate Resume in New Tab"
-                                                                        >
-                                                                            <FileText className="w-3 h-3 text-blue-600" />
-                                                                            <span>Resume</span>
-                                                                        </button>
-
-                                                                        {isSessionReviewed(session) ? (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    openReviewModal(session);
-                                                                                }}
-                                                                                className="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
-                                                                                title={`Reviewed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
-                                                                            >
-                                                                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                                                                <span>Reviewed</span>
-                                                                            </button>
-                                                                        ) : (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    openReviewModal(session);
-                                                                                }}
-                                                                                className="text-[10px] font-bold text-rose-600 bg-rose-50/90 hover:bg-rose-100 border border-rose-200/80 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
-                                                                                title={isSessionEnded(session) ? "Session ended! Submit review to release payout." : "Review candidate after session completes"}
-                                                                            >
-                                                                                <AlertCircle className="w-3 h-3 text-rose-600" />
-                                                                                <span>Review</span>
-                                                                            </button>
-                                                                        )}
                                                                     {/* Candidate Email / Identifier */}
                                                                     <p className="text-xs text-slate-500 flex items-center gap-1.5 truncate">
                                                                         <Mail className="w-3 h-3 text-slate-400 shrink-0" />
@@ -1571,27 +1400,6 @@ export default function Sessions() {
                                                                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                                                             </button>
                                                         </div>
-
-                                                        {/* Post-Session Review Action */}
-                                                        {isSessionReviewed(session) ? (
-                                                            <button
-                                                                onClick={() => openReviewModal(session)}
-                                                                className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                                                                title={`Review completed · Wallet credited: ₹${getSessionPayoutAmount(session)}. Click to view/edit evaluation.`}
-                                                            >
-                                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                                                <span>Reviewed · ₹{getSessionPayoutAmount(session)} {(session as any).expertReview?.hiringDecision ? `(${(session as any).expertReview.hiringDecision})` : ''}</span>
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => openReviewModal(session)}
-                                                                className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center gap-1 border border-rose-200 shadow-2xs transition-all duration-200 cursor-pointer active:scale-95"
-                                                                title={isSessionEnded(session) ? "Give review to get your pay" : "Review candidate after session completes"}
-                                                            >
-                                                                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                                                <span>Review</span>
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </div>
                                             );
