@@ -102,5 +102,15 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^7.3.1"
+  },
+  "allowScripts": {
+    "@swc/core": true,
+    "@swc/core@1.15.4": true,
+    "canvas": true,
+    "core-js": true,
+    "core-js@3.49.0": true,
+    "esbuild": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.27.3": true
   }
 }
