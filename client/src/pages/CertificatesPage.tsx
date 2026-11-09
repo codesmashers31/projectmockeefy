@@ -19,7 +19,7 @@ import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import CertificatesSkeleton from "../components/CertificatesSkeleton";
 import brandLogo from "../assets/logo/mockeefylogo.png";
-import masterCertTemplateImg from "../assets/certificates/mockeefy_certificate_master.jpg";
+import artworkMasterImg from "../assets/certificates/mockeefy_artwork_master.png";
 
 type ReviewInfo = {
   overallRating?: number;
@@ -98,8 +98,8 @@ const formatCertificateName = (rawName?: string | null): string => {
 };
 
 // ============================================================================
-// MASTER CERTIFICATE TEMPLATE — REBUILT FROM ZERO (1024 × 682 CANONICAL CANVAS)
-// 100% DETERMINISTIC VECTOR ARTWORK MATCHING THE TARGET REFERENCE IMAGE
+// MASTER CERTIFICATE TEMPLATE – 100% FAITHFUL RECONSTRUCTION (1682 × 935 CANVAS)
+// EXACT MATCH TO APPROVED REFERENCE ARTWORK – ZERO DUPLICATION, ZERO GHOSTING
 // ============================================================================
 const CertificateTemplate = ({
   userName,
@@ -122,19 +122,19 @@ const CertificateTemplate = ({
     : `${displayDomain} PROFESSIONAL MOCK INTERVIEW SESSION`;
 
   const formattedName = formatCertificateName(userName);
-  
-  // Dynamic font sizing for recipient name on 1536 x 1024 master canvas
+
+  // Dynamic responsive font sizing for recipient name inside the golden ribbon banner
   const getNameFontSize = (name: string): string => {
     const len = (name || "").trim().length;
-    if (len <= 8) return "74px";
-    if (len <= 14) return "66px";
-    if (len <= 20) return "56px";
-    if (len <= 28) return "46px";
-    return "36px";
+    if (len <= 8) return "64px";
+    if (len <= 14) return "54px";
+    if (len <= 20) return "44px";
+    if (len <= 28) return "36px";
+    return "28px";
   };
   const recipientFontSize = getNameFontSize(formattedName);
 
-  // Universal date formatting (e.g. "Nov 7, 2026")
+  // Universal dynamic date formatting (e.g. "Nov 7, 2026")
   const displayDate = useMemo(() => {
     if (!issueDateStr) {
       const now = new Date();
@@ -150,99 +150,75 @@ const CertificateTemplate = ({
     return issueDateStr;
   }, [issueDateStr]);
 
-  const isDefaultIT = displayDomain === "IT" && !isMaster;
-
   return (
     <div
       id="mockeefy-official-certificate"
       className="relative overflow-hidden select-none box-border"
       style={{
-        width: "1536px",
-        height: "1024px",
-        backgroundColor: "#FFFEFA",
+        width: "1682px",
+        height: "935px",
+        backgroundColor: "#030B1C",
         color: "#08172A",
         fontFamily: "'Inter', 'Plus Jakarta Sans', -apple-system, sans-serif",
+        WebkitFontSmoothing: "antialiased",
+        MozOsxFontSmoothing: "grayscale",
+        textRendering: "geometricPrecision",
       }}
     >
-      {/* 1. MASTER PHOTOREALISTIC TARGET ARTWORK (1536 x 1024) */}
-      <img
-        src={masterCertTemplateImg}
-        alt="Mockeefy Master Certificate Template"
-        className="absolute inset-0 w-full h-full object-cover block select-none pointer-events-none"
-        style={{ width: "1536px", height: "1024px" }}
-      />
-
-      {/* 2. DYNAMIC VECTOR OVERLAY (1536 x 1024) */}
       <svg
-        className="absolute inset-0 w-full h-full block select-none"
-        style={{ width: "1536px", height: "1024px" }}
-        viewBox="0 0 1536 1024"
+        className="w-full h-full block select-none pointer-events-none"
+        viewBox="0 0 1682 935"
+        width="1682"
+        height="935"
         xmlns="http://www.w3.org/2000/svg"
+        shapeRendering="geometricPrecision"
+        textRendering="geometricPrecision"
+        style={{
+          shapeRendering: "geometricPrecision",
+          textRendering: "geometricPrecision",
+          WebkitFontSmoothing: "antialiased",
+          MozOsxFontSmoothing: "grayscale",
+        }}
       >
         <defs>
-          <linearGradient id="plaqueGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#041633" />
-            <stop offset="20%" stopColor="#08377E" />
-            <stop offset="50%" stopColor="#0B4FB8" />
-            <stop offset="80%" stopColor="#08377E" />
-            <stop offset="100%" stopColor="#041633" />
+          <linearGradient id="cartoucheGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#021638" />
+            <stop offset="20%" stopColor="#073A85" />
+            <stop offset="50%" stopColor="#0B52BC" />
+            <stop offset="80%" stopColor="#073A85" />
+            <stop offset="100%" stopColor="#021638" />
           </linearGradient>
         </defs>
 
-        {/* ----------------------------------------------------------- */}
-        {/* REFINEMENT 1: PATCH CONCEALING OLD OVERSIZED LOGO           */}
-        {/* ----------------------------------------------------------- */}
-        <rect
-          x="490"
-          y="24"
-          width="556"
-          height="166"
-          fill="#FEFEFC"
+        {/* 1. MASTER DECORATIVE ARTWORK LAYER (Authentic approved reference artwork) */}
+        <image
+          href={artworkMasterImg}
+          x="0"
+          y="0"
+          width="1682"
+          height="935"
+          preserveAspectRatio="none"
+          imageRendering="optimizeQuality"
+          style={{ imageRendering: "high-quality" }}
         />
 
-        {/* ----------------------------------------------------------- */}
-        {/* REFINEMENT 2: PATCH CONCEALING OLD OVERSIZED TITLE          */}
-        {/* Cleanly between the left laurel (x<=384) & right laurel (x>=1125) */}
-        {/* ----------------------------------------------------------- */}
-        <rect
-          x="382"
-          y="198"
-          width="744"
-          height="130"
-          fill="#FEFEFC"
-        />
-
-        {/* REFINEMENT 2: REDUCED CERTIFICATE TITLE (8-10% smaller)      */}
-        {/* Editorial serif typography, centered, italic 'of'           */}
-        <text
-          x="768"
-          y="282"
-          textAnchor="middle"
-          fill="#08172A"
-          fontSize="62px"
-          fontFamily="'Playfair Display', 'Lora', Georgia, 'Times New Roman', serif"
-        >
-          <tspan fontWeight="700">Certificate </tspan>
-          <tspan fontStyle="italic" fontWeight="400" fontFamily="'Playfair Display', Georgia, serif">of </tspan>
-          <tspan fontWeight="700">Completion</tspan>
-        </text>
-
-        {/* Dynamic Plaque Overlay: if domain is NOT standard IT mock session */}
-        {!isDefaultIT && (
-          <g transform="translate(768, 363)">
-            {/* Seamless Royal Blue Cartouche Fill */}
+        {/* 2. DOMAIN-SPECIFIC CARTOUCHE (When not master certificate) */}
+        {!isMaster && (
+          <g transform="translate(841, 313)">
             <polygon
-              points="-320,0 -292,-20 292,-20 320,0 292,20 -292,20"
-              fill="url(#plaqueGrad)"
+              points="-310,0 -284,-22 284,-22 310,0 284,22 -284,22"
+              fill="url(#cartoucheGrad)"
+              stroke="#D4AF37"
+              strokeWidth="2"
             />
             <text
               x="0"
               y="6"
               textAnchor="middle"
               fill="#FFFFFF"
-              fontSize="17.5"
+              fontSize="17px"
               fontWeight="800"
-              letterSpacing="2.8"
+              letterSpacing="2.8px"
               fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
             >
               {plaqueText}
@@ -250,146 +226,84 @@ const CertificateTemplate = ({
           </g>
         )}
 
-        {/* Recipient Name: Directly on warm ivory certificate background (No background box) */}
+        {/* 3. ACHIEVEMENT DESCRIPTION (Rendered directly on ivory certificate artwork — NO rectangular background) */}
+        {isMaster ? (
+          <text
+            x="841"
+            y="577"
+            textAnchor="middle"
+            fill="#334155"
+            fontSize="19px"
+            fontWeight="500"
+            fontFamily="'Plus Jakarta Sans', 'Inter', sans-serif"
+            letterSpacing="0.01em"
+          >
+            <tspan x="841" dy="0">
+              demonstrating comprehensive mastery across multiple technical domains,
+            </tspan>
+            <tspan x="841" dy="28">
+              interview readiness, and elite communication.
+            </tspan>
+          </text>
+        ) : (
+          <text
+            x="841"
+            y="577"
+            textAnchor="middle"
+            fill="#334155"
+            fontSize="19px"
+            fontWeight="500"
+            fontFamily="'Plus Jakarta Sans', 'Inter', sans-serif"
+            letterSpacing="0.01em"
+          >
+            <tspan x="841" dy="0">
+              has successfully completed a structured mock interview in the{" "}
+              <tspan fontWeight="700" fill="#08172A">{displayDomain} domain</tspan>,
+            </tspan>
+            <tspan x="841" dy="28">
+              demonstrating dedication to improving interview skills and professional growth.
+            </tspan>
+          </text>
+        )}
+
+        {/* 3. RECIPIENT NAME INSIDE GOLDEN RIBBON BANNER */}
         <text
-          x="768"
-          y="544"
+          x="841"
+          y="488"
           textAnchor="middle"
           fill="#08172A"
           fontSize={recipientFontSize}
           fontWeight="700"
           fontStyle="italic"
-          fontFamily="'Lora', 'Libre Baskerville', Georgia, 'Times New Roman', serif"
+          fontFamily="'Georgia', 'Times New Roman', serif"
+          letterSpacing="0.01em"
         >
           {formattedName}
         </text>
 
-        {/* Dynamic Description Paragraph: if domain is NOT standard IT */}
-        {!isDefaultIT && (
-          <g>
-            {/* Seamless Warm Ivory Parchment Patch */}
-            <rect
-              x="260"
-              y="615"
-              width="1016"
-              height="60"
-              fill="#FAF8F4"
-            />
-            {isMaster ? (
-              <text
-                x="768"
-                y="638"
-                textAnchor="middle"
-                fill="#334155"
-                fontSize="20px"
-                fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
-              >
-                <tspan x="768" dy="0">demonstrating comprehensive mastery across multiple technical domains,</tspan>
-                <tspan x="768" dy="30">interview readiness, and elite communication.</tspan>
-              </text>
-            ) : (
-              <text
-                x="768"
-                y="638"
-                textAnchor="middle"
-                fill="#334155"
-                fontSize="20px"
-                fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
-              >
-                <tspan x="768" dy="0">
-                  has successfully completed a structured mock interview in the{" "}
-                  <tspan fontWeight="700" fill="#08172A">{displayDomain} domain</tspan>,
-                </tspan>
-                <tspan x="768" dy="30">
-                  demonstrating dedication to improving interview skills and professional growth.
-                </tspan>
-              </text>
-            )}
-          </g>
-        )}
-
-        {/* ----------------------------------------------------------- */}
-        {/* REFINEMENT 3: FIXED ISSUED ON DATE VISIBILITY               */}
-        {/* ----------------------------------------------------------- */}
-        <g id="certificate-issued-on-group">
-          {/* Seamless ivory patch covering old date and label */}
-          <rect
-            x="250"
-            y="788"
-            width="230"
-            height="80"
-            fill="#FEFEFC"
-          />
-
-          {/* Label: Issued on */}
-          <text
-            x="268"
-            y="814"
-            fill="#64748B"
-            fontSize="16.5px"
-            fontWeight="600"
-            letterSpacing="0.03em"
-            fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
-          >
-            Issued on
-          </text>
-
-          {/* Dynamic Issuance Date (Darker, more prominent, professional font weight) */}
-          <text
-            x="268"
-            y="848"
-            fill="#08172A"
-            fontSize="26px"
-            fontWeight="800"
-            letterSpacing="-0.01em"
-            fontFamily="'Inter', 'Plus Jakarta Sans', sans-serif"
-          >
-            {displayDate}
-          </text>
-        </g>
+        {/* 5. DYNAMIC ISSUE DATE (Rendered exactly once inside the authentic master plaque) */}
+        <text
+          x="363"
+          y="767"
+          fill="#08172A"
+          fontSize="26px"
+          fontWeight="800"
+          letterSpacing="-0.01em"
+          fontFamily="'Plus Jakarta Sans', -apple-system, sans-serif"
+          textRendering="geometricPrecision"
+          style={{
+            textRendering: "geometricPrecision",
+            WebkitFontSmoothing: "antialiased",
+            MozOsxFontSmoothing: "grayscale",
+          }}
+        >
+          {displayDate}
+        </text>
       </svg>
-
-      {/* ----------------------------------------------------------- */}
-      {/* REFINEMENT 1: REFINED MOCKEEFY BRAND LOGO (10-12% smaller)  */}
-      {/* HTML overlay positioned precisely, preserving brand asset   */}
-      {/* ----------------------------------------------------------- */}
-      <div
-        className="absolute left-0 right-0 flex flex-col items-center pointer-events-none select-none"
-        style={{ top: "45px" }}
-      >
-        <div className="flex items-center justify-center gap-3">
-          <img
-            src={brandLogo}
-            alt="Mockeefy"
-            className="w-[48px] h-[48px] object-contain shrink-0"
-          />
-          <span
-            className="text-[38px] font-extrabold tracking-tight leading-none"
-            style={{
-              color: "#08172A",
-              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
-            }}
-          >
-            Mockeefy
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-3 mt-2.5">
-          <div style={{ width: "65px", height: "1.2px", backgroundColor: "#D4AF37" }} />
-          <span
-            className="text-[11.5px] font-bold uppercase tracking-[0.28em] leading-none"
-            style={{
-              color: "#475569",
-              fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
-            }}
-          >
-            PRACTICE • IMPROVE • SUCCEED
-          </span>
-          <div style={{ width: "65px", height: "1.2px", backgroundColor: "#D4AF37" }} />
-        </div>
-      </div>
     </div>
   );
 };
+
 const CertificateThumbnail = (props: {
   userName: string;
   domain?: string;
@@ -404,7 +318,7 @@ const CertificateThumbnail = (props: {
   useLayoutEffect(() => {
     if (!containerRef.current) return;
     const w = containerRef.current.offsetWidth;
-    if (w > 0) setScale(w / 1536);
+    if (w > 0) setScale(w / 1682);
   }, []);
 
   useEffect(() => {
@@ -412,7 +326,7 @@ const CertificateThumbnail = (props: {
     const update = () => {
       if (containerRef.current) {
         const w = containerRef.current.offsetWidth;
-        if (w > 0) setScale(w / 1536);
+        if (w > 0) setScale(w / 1682);
       }
     };
     update();
@@ -425,16 +339,18 @@ const CertificateThumbnail = (props: {
     <div
       ref={containerRef}
       className="w-full h-full relative overflow-hidden pointer-events-none select-none bg-[#FFFEFA]"
-      style={{ aspectRatio: "1536 / 1024" }}
+      style={{ aspectRatio: "1682 / 935" }}
     >
       <div
         style={{
-          width: "1536px", height: "1024px",
-          transform: `scale(${scale})`,
+          width: "1682px", height: "935px",
+          transform: `scale(${scale}) translateZ(0)`,
           transformOrigin: "top left",
           position: "absolute",
           top: 0,
           left: 0,
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
         }}
       >
         <CertificateTemplate {...props} />
@@ -459,8 +375,8 @@ const CertificateModalPreview = ({ children }: { children: React.ReactNode }) =>
     const availW = Math.max(100, rect.width - paddingX);
     const availH = Math.max(100, rect.height - paddingY);
 
-    const CANVAS_WIDTH = 1536;
-    const CANVAS_HEIGHT = 1024;
+    const CANVAS_WIDTH = 1682;
+    const CANVAS_HEIGHT = 935;
     const scaleX = availW / CANVAS_WIDTH;
     const scaleY = availH / CANVAS_HEIGHT;
     const fittedScale = Math.min(scaleX, scaleY);
@@ -492,27 +408,29 @@ const CertificateModalPreview = ({ children }: { children: React.ReactNode }) =>
     >
       <div
         style={{
-          width: `${Math.round(1536 * scale)}px`,
-          height: `${Math.round(1024 * scale)}px`,
+          width: `${Math.round(1682 * scale)}px`,
+          height: `${Math.round(935 * scale)}px`,
           position: "relative",
           boxShadow:
             "0 25px 70px -15px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.08)",
-          borderRadius: "6px",
+          borderRadius: "0px",
           overflow: "hidden",
-          backgroundColor: "#FFFEFA",
+          backgroundColor: "#030B1C",
           flexShrink: 0,
           transition: "width 0.15s ease-out, height 0.15s ease-out",
         }}
       >
         <div
           style={{
-            width: "1536px",
-            height: "1024px",
-            transform: `scale(${scale})`,
+            width: "1682px",
+            height: "935px",
+            transform: `scale(${scale}) translateZ(0)`,
             transformOrigin: "top left",
             position: "absolute",
             top: 0,
             left: 0,
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
           }}
         >
           {children}
@@ -785,16 +703,31 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
   // PDF Generation function
   const downloadElementAsPDF = async (element: HTMLElement, filename: string) => {
     await document.fonts?.ready;
+    if (document.fonts?.load) {
+      try {
+        await Promise.all([
+          document.fonts.load("800 24px 'Plus Jakarta Sans'"),
+          document.fonts.load("700 64px 'Georgia'"),
+          document.fonts.load("700 18px 'Inter'"),
+        ]);
+      } catch (e) {
+        console.warn("Font preloading note:", e);
+      }
+    }
+    // Give browser a micro-tick to ensure layout paints with loaded font
+    await new Promise((r) => setTimeout(r, 60));
+
     const canvas = await html2canvas(element, {
-      scale: 2,
+      scale: 3, // Ultra-high resolution capture (5046 x 2805)
       useCORS: true,
       allowTaint: true,
       logging: false,
-      backgroundColor: "#FFFEFA",
-      width: 1536,
-      height: 1024,
-      windowWidth: 1536,
-      windowHeight: 1024,
+      backgroundColor: "#030B1C",
+      width: 1682,
+      height: 935,
+      windowWidth: 1682,
+      windowHeight: 935,
+      imageTimeout: 15000,
       onclone: (clonedDoc) => {
         const container = clonedDoc.getElementById("pdf-capture-container");
         if (container) {
@@ -817,15 +750,21 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
       },
     });
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    // Lossless PNG data URL ensures no JPEG compression artifacts or edge blurring around text glyphs
+    const imgData = canvas.toDataURL("image/png");
 
     const pdf = new jsPDF({
       orientation: "landscape",
       unit: "mm",
       format: "a4",
+      compress: true,
     });
 
-    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210, undefined, "FAST");
+    const targetW = 297;
+    const targetH = 297 / (1682 / 935);
+    const offsetY = (210 - targetH) / 2;
+    // Use SLOW (bicubic) interpolation for pristine downscaling into the PDF
+    pdf.addImage(imgData, "PNG", 0, offsetY, targetW, targetH, undefined, "SLOW");
     pdf.save(filename);
   };
 
@@ -1097,13 +1036,13 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
 
             {/* Right Section: Certificate Thumbnail + Action Buttons Directly Underneath */}
             <div className="flex flex-col items-center lg:items-end gap-2.5 shrink-0 self-center">
-              {/* Certificate Thumbnail (width: 220-235px, aspect-ratio: 1536/1024) */}
+              {/* Certificate Thumbnail (width: 220-235px, aspect-ratio: 1682/935) */}
               <div
                 onClick={() => {
                   setSelectedSession(null);
                   setIsMasterSelected(true);
                 }}
-                className="w-[210px] sm:w-[225px] md:w-[235px] aspect-[1536/1024] rounded-lg overflow-hidden border border-[#93C5FD] shadow-xs hover:border-[#0755E8] hover:shadow-md transition-all cursor-pointer bg-[#FFFEFA]"
+                className="w-[210px] sm:w-[225px] md:w-[235px] aspect-[1682/935] rounded-lg overflow-hidden border border-[#93C5FD] shadow-xs hover:border-[#0755E8] hover:shadow-md transition-all cursor-pointer bg-[#FFFEFA]"
                 title="Click to preview Master Certificate"
               >
                 <CertificateThumbnail
@@ -1227,7 +1166,7 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
                         {/* Certificate Visual Thumbnail Preview Frame */}
                         <div className="w-full flex items-center justify-center bg-[#F5F8FF] rounded-xl p-2 sm:p-2.5 border border-[#E2E8F0]">
                           <div
-                            className="relative w-full max-w-[260px] sm:max-w-[280px] aspect-[1536/1024] rounded-lg overflow-hidden border border-[#E2E8F0] shadow-xs group/thumb bg-[#FFFEFA] transition-all duration-200 hover:border-[#0755E8]"
+                            className="relative w-full max-w-[260px] sm:max-w-[280px] aspect-[1682/935] rounded-lg overflow-hidden border border-[#E2E8F0] shadow-xs group/thumb bg-[#FFFEFA] transition-all duration-200 hover:border-[#0755E8]"
                             title="Click to view full certificate preview"
                           >
                             <CertificateThumbnail
@@ -1559,15 +1498,15 @@ export default function CertificatesPage({ showSkeletons = false }: Certificates
           position: "fixed",
           top: "-99999px",
           left: "-99999px",
-          width: "1536px",
-          height: "1024px",
+          width: "1682px",
+          height: "935px",
           opacity: 0,
           pointerEvents: "none",
           overflow: "hidden",
           zIndex: -99999,
         }}
       >
-        <div ref={pdfRenderRef} id="pdf-capture-stage" style={{ width: "1536px", height: "1024px" }}>
+        <div ref={pdfRenderRef} id="pdf-capture-stage" style={{ width: "1682px", height: "935px" }}>
           {downloadTarget && (
             <CertificateTemplate
               userName={
