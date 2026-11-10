@@ -1640,7 +1640,7 @@ export const acceptSession = async (req, res) => {
             return res.status(403).json({ success: false, message: "Unauthorized: Only the assigned expert can accept this session" });
         }
 
-        if (session.status !== 'pending') {
+        if (session.status?.toLowerCase() !== 'pending') {
             return res.status(400).json({ success: false, message: `Cannot accept session with status '${session.status}'` });
         }
 
@@ -1669,7 +1669,7 @@ export const acceptSession = async (req, res) => {
         }
 
         const updatedSession = await Session.findOneAndUpdate(
-            { _id: session._id, status: 'pending' },
+            { _id: session._id, status: session.status },
             { $set: updateData },
             { new: true }
         );
@@ -1697,11 +1697,11 @@ export const acceptSession = async (req, res) => {
             userId: session.candidateId,
             expertId: expertDoc?._id,
             sessionId: session.sessionId,
-            data: session,
+            data: updatedSession,
             toAdmin: true
         });
 
-        return res.json({ success: true, message: "Session accepted successfully", session });
+        return res.json({ success: true, message: "Session accepted successfully", session: updatedSession });
     } catch (err) {
         console.error("acceptSession error:", err);
         return res.status(500).json({ success: false, message: "Error accepting session: " + err.message });
@@ -1748,8 +1748,6 @@ export const rejectSession = async (req, res) => {
             return res.status(400).json({ success: false, message: `Cannot decline session with status '${session.status}'` });
         }
 
-        await session.save();
-
         // Restore free credit if this was a free credit booking
         if (session.notes?.includes("Premium Free Credit Used")) {
             const User = (await import('../models/User.js')).default;
@@ -1773,11 +1771,11 @@ export const rejectSession = async (req, res) => {
             userId: session.candidateId,
             expertId: expertDoc?._id,
             sessionId: session.sessionId,
-            data: session,
+            data: updatedSession,
             toAdmin: true
         });
 
-        return res.json({ success: true, message: "Session declined successfully", session });
+        return res.json({ success: true, message: "Session declined successfully", session: updatedSession });
     } catch (err) {
         console.error("rejectSession error:", err);
         return res.status(500).json({ success: false, message: "Error declining session: " + err.message });

@@ -87,7 +87,7 @@ interface Session {
     expertReview?: any;
 }
 
-type StatusFilterType = 'upcoming' | 'pending' | 'all' | 'completed' | 'cancelled';
+type StatusFilterType = 'upcoming' | 'all' | 'completed' | 'cancelled';
 type DateQuickFilterType = 'all' | 'today' | 'tomorrow' | 'this_week' | 'next_week';
 
 export default function Sessions() {
@@ -119,7 +119,6 @@ export default function Sessions() {
     const [reviewSession, setReviewSession] = useState<Session | null>(null);
     const [submittingReview, setSubmittingReview] = useState(false);
     const [copiedSessionId, setCopiedSessionId] = useState(false);
-    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     // Review Form State
     const [reviewForm, setReviewForm] = useState({
@@ -253,7 +252,7 @@ export default function Sessions() {
     const isSessionActive = (session: Session) => {
         if (!session) return false;
         const status = session.status?.toLowerCase();
-        if (status === 'completed' || status === 'cancelled' || status === 'pending') {
+        if (status === 'completed' || status === 'cancelled') {
             return false;
         }
         const start = new Date(session.startTime);
@@ -293,10 +292,6 @@ export default function Sessions() {
     };
 
     // --- REAL METRICS COUNTS ---
-    const pendingSessionsCount = useMemo(() => {
-        return allSessions.filter(s => s.status?.toLowerCase() === 'pending').length;
-    }, [allSessions]);
-
     const upcomingSessionsCount = useMemo(() => {
         return allSessions.filter(s => {
             const status = s.status?.toLowerCase();
@@ -328,8 +323,6 @@ export default function Sessions() {
                 if (status === 'cancelled' || status === 'completed' || currentTime >= sessionEnd) {
                     return false;
                 }
-            } else if (statusFilter === 'pending') {
-                if (status !== 'pending') return false;
             } else if (statusFilter === 'completed') {
                 if (status !== 'completed' && !isSessionEnded(session)) return false;
             } else if (statusFilter === 'cancelled') {
@@ -383,7 +376,7 @@ export default function Sessions() {
         const sorted = [...filteredSessions].sort((a, b) => {
             const timeA = new Date(a.startTime).getTime();
             const timeB = new Date(b.startTime).getTime();
-            // For completed/cancelled, show newest first; for upcoming/pending, show soonest first
+            // For completed/cancelled, show newest first; for upcoming, show soonest first
             if (statusFilter === 'completed' || statusFilter === 'cancelled') {
                 return timeB - timeA;
             }
@@ -537,37 +530,6 @@ export default function Sessions() {
         } catch (e) {
             console.error("ICS download error:", e);
             toast.error("Could not export calendar invite");
-        }
-    };
-
-    const handleAcceptSession = async (session: Session) => {
-        try {
-            setActionLoading(session.sessionId);
-            const res = await axios.patch(`/api/sessions/${session.sessionId}/accept`);
-            if (res.data?.success) {
-                toast.success("Booking request accepted! Session is now confirmed.");
-                fetchSessions();
-            }
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to accept session");
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
-    const handleRejectSession = async (session: Session) => {
-        if (!window.confirm("Are you sure you want to decline this booking request?")) return;
-        try {
-            setActionLoading(session.sessionId);
-            const res = await axios.patch(`/api/sessions/${session.sessionId}/reject`);
-            if (res.data?.success) {
-                toast.info("Booking request declined.");
-                fetchSessions();
-            }
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to decline session");
-        } finally {
-            setActionLoading(null);
         }
     };
 
@@ -735,11 +697,6 @@ export default function Sessions() {
     const getStatusBadge = (status: string) => {
         const lower = (status || '').toLowerCase();
         switch (lower) {
-            case 'pending':
-                return {
-                    label: 'Pending Approval',
-                    classes: 'bg-amber-50 text-amber-700 border-amber-200/90'
-                };
             case 'confirmed':
                 return {
                     label: 'Confirmed',
@@ -781,15 +738,6 @@ export default function Sessions() {
             return {
                 text: reviewed ? 'Evaluation Completed' : 'Completed • Awaiting Review',
                 badgeClass: reviewed ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200 font-semibold',
-                isLive: false
-            };
-        }
-
-        // 3. Pending status
-        if (status === 'pending') {
-            return {
-                text: 'Awaiting Your Approval',
-                badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
                 isLive: false
             };
         }
@@ -898,7 +846,7 @@ export default function Sessions() {
                 {/* ======================================================== */}
                 {/* --- 2. COMPACT SUMMARY METRICS --- */}
                 {/* ======================================================== */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                     {/* Upcoming Sessions */}
                     <div
                         onClick={() => { setStatusFilter('upcoming'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
@@ -917,31 +865,6 @@ export default function Sessions() {
                         <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-black text-slate-900 tracking-tight">{upcomingSessionsCount}</span>
                             <span className="text-xs text-slate-500 font-medium">Interviews</span>
-                        </div>
-                    </div>
-
-                    {/* Pending Requests */}
-                    <div
-                        onClick={() => { setStatusFilter('pending'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
-                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                            statusFilter === 'pending'
-                                ? 'bg-white border-amber-400 shadow-md ring-2 ring-amber-500/10'
-                                : 'bg-white/80 border-slate-200/90 hover:bg-white hover:border-slate-300 shadow-2xs'
-                        }`}
-                    >
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Requests</span>
-                            <div className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
-                                pendingSessionsCount > 0 ? 'bg-amber-100 text-amber-700 border-amber-200 animate-pulse' : 'bg-slate-100 text-slate-500 border-slate-200'
-                            }`}>
-                                <AlertCircle className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-2xl font-black tracking-tight ${pendingSessionsCount > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                                {pendingSessionsCount}
-                            </span>
-                            <span className="text-xs text-slate-500 font-medium">Awaiting action</span>
                         </div>
                     </div>
 
@@ -998,7 +921,6 @@ export default function Sessions() {
                         <div className="flex items-center gap-1.5 overflow-x-auto thin-scrollbar pb-1 md:pb-0">
                             {[
                                 { id: 'upcoming', label: 'Upcoming', count: upcomingSessionsCount },
-                                { id: 'pending', label: 'Pending Requests', count: pendingSessionsCount, badgeColor: 'bg-amber-500 text-white' },
                                 { id: 'all', label: 'All Sessions', count: allSessions.length },
                                 { id: 'completed', label: 'Completed', count: completedSessionsCount },
                                 { id: 'cancelled', label: 'Cancelled', count: allSessions.filter(s => s.status?.toLowerCase() === 'cancelled').length }
@@ -1116,20 +1038,16 @@ export default function Sessions() {
                         /* Empty State Card */
                         <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center space-y-4 shadow-2xs">
                             <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
-                                <CalendarDays className="w-8 h-8" />
+                                <CalendarDays className="w-8 h-8 text-blue-600" />
                             </div>
                             <div className="max-w-md mx-auto space-y-1.5">
                                 <h3 className="text-base font-bold text-slate-900">
-                                    {statusFilter === 'pending'
-                                        ? 'No Pending Booking Requests'
-                                        : statusFilter === 'upcoming'
-                                            ? 'No Upcoming Interviews Scheduled'
-                                            : 'No Sessions Found'}
+                                    {statusFilter === 'upcoming'
+                                        ? 'No Upcoming Interviews Scheduled'
+                                        : 'No Sessions Found'}
                                 </h3>
                                 <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                                    {statusFilter === 'pending'
-                                        ? 'When candidates book interview slots that require manual approval, they will appear here.'
-                                        : 'New candidate bookings matching your availability will appear here in chronological order.'}
+                                    New candidate bookings matching your availability will appear here in chronological order.
                                 </p>
                             </div>
                             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -1214,9 +1132,7 @@ export default function Sessions() {
                                                     className={`group relative bg-white rounded-2xl border transition-all duration-200 p-4 sm:p-5 shadow-xs hover:shadow-md ${
                                                         activeNow
                                                             ? 'border-emerald-400 ring-2 ring-emerald-500/20'
-                                                            : session.status?.toLowerCase() === 'pending'
-                                                                ? 'border-amber-300 bg-amber-50/20'
-                                                                : 'border-slate-200 hover:border-slate-300'
+                                                            : 'border-slate-200 hover:border-slate-300'
                                                     }`}
                                                 >
                                                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1291,31 +1207,7 @@ export default function Sessions() {
 
                                                         {/* Right: Actions Container */}
                                                         <div className="flex items-center gap-2 flex-wrap lg:justify-end shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                                                            {/* Action 1: Pending Request Approval */}
-                                                            {session.status?.toLowerCase() === 'pending' ? (
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        onClick={() => handleAcceptSession(session)}
-                                                                        disabled={actionLoading === session.sessionId}
-                                                                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
-                                                                    >
-                                                                        {actionLoading === session.sessionId ? (
-                                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                                        ) : (
-                                                                            <Check className="w-3.5 h-3.5" />
-                                                                        )}
-                                                                        <span>Accept Request</span>
-                                                                    </button>
-
-                                                                    <button
-                                                                        onClick={() => handleRejectSession(session)}
-                                                                        disabled={actionLoading === session.sessionId}
-                                                                        className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition-colors"
-                                                                    >
-                                                                        Decline
-                                                                    </button>
-                                                                </div>
-                                                            ) : session.status?.toLowerCase() === 'cancelled' ? (
+                                                            {session.status?.toLowerCase() === 'cancelled' ? (
                                                                 <span className="text-xs text-rose-600 font-bold px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200">
                                                                     Cancelled
                                                                 </span>

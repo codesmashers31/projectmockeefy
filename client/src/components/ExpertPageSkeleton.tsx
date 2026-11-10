@@ -604,62 +604,52 @@ export function AvailabilitySkeleton() {
 
 export function SkillsSkeleton() {
   return (
-    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-8 overflow-hidden font-sans text-left animate-in fade-in duration-200">
+    <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left animate-in fade-in duration-200">
       {/* Decorative ambient blue lighting */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+      <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
-      <div className="w-full space-y-6 relative z-10">
+      <div className="relative z-10 space-y-6 sm:space-y-8">
         <SkeletonHeader icon={Award} titleWidth="w-48" subtitleWidth="w-80" showAction={true} />
 
-        <div className="space-y-6 max-w-5xl mx-auto">
-          {/* Add Skills Card */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden">
-            <div className="p-6 border-b border-slate-100 bg-slate-50/50 space-y-4">
-              <div className="h-5 w-36 rounded bg-slate-200/80 shimmer-shining" />
-              <div className="h-10 max-w-md rounded-xl bg-white border border-slate-200 shimmer-shining" />
-            </div>
-            <div className="p-6 space-y-6">
-              {Array.from({ length: 3 }).map((_, catIdx) => (
-                <div key={catIdx} className="space-y-2.5">
-                  <div className="h-3.5 w-28 rounded bg-slate-200/70 shimmer-shining uppercase" />
-                  <div className="flex flex-wrap gap-2.5">
-                    {Array.from({ length: 6 }).map((_, pillIdx) => (
-                      <div
-                        key={pillIdx}
-                        className={`h-8 w-24 rounded-full shimmer-shining ${
-                          pillIdx === 0
-                            ? "bg-[#0755E8]/20"
-                            : pillIdx % 2 === 0
-                            ? "bg-[#EAF2FF]"
-                            : "bg-slate-100"
-                        }`}
-                      />
-                    ))}
-                  </div>
+        <div className="space-y-6">
+          {/* Add Skills & Search */}
+          <div className="space-y-3">
+            <div className="h-5 w-36 rounded bg-slate-200/80 shimmer-shining" />
+            <div className="h-10 max-w-md rounded-xl bg-white border border-slate-200 shimmer-shining" />
+          </div>
+
+          <div className="space-y-5">
+            {Array.from({ length: 3 }).map((_, catIdx) => (
+              <div key={catIdx} className="space-y-2">
+                <div className="h-3.5 w-28 rounded bg-slate-200/70 shimmer-shining uppercase" />
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: 6 }).map((_, pillIdx) => (
+                    <div
+                      key={pillIdx}
+                      className={`h-7 w-24 rounded-full shimmer-shining ${
+                        pillIdx === 0
+                          ? "bg-[#0755E8]/20"
+                          : pillIdx % 2 === 0
+                          ? "bg-[#EAF2FF]"
+                          : "bg-white border border-slate-200"
+                      }`}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
 
           {/* Selected Skills */}
-          <div className="space-y-3">
+          <div className="space-y-3 pt-2">
             <div className="h-5 w-40 rounded bg-slate-200/80 shimmer-shining" />
-            <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-2xl border border-slate-200/80 bg-white flex items-center justify-between shadow-2xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#EAF2FF] shimmer-shining shrink-0" />
-                    <div className="h-4 w-32 rounded bg-slate-200/80 shimmer-shining" />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-7 w-28 rounded-lg bg-slate-100 shimmer-shining" />
-                    <div className="w-7 h-7 rounded-lg bg-rose-50 shimmer-shining" />
-                  </div>
-                </div>
+                  className="h-7 w-28 rounded-full bg-blue-100/70 border border-blue-200/80 shimmer-shining"
+                />
               ))}
             </div>
           </div>

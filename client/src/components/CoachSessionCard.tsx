@@ -208,13 +208,13 @@ function MentorCategoryScrollRow({
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onClickCapture={handleClickCapture}
-          className="flex items-stretch gap-3.5 sm:gap-4 overflow-x-auto py-1.5 px-1 sm:px-1.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth scroll-pl-1 sm:scroll-pl-1.5"
+          className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto py-1 px-0.5 no-scrollbar select-none cursor-grab active:cursor-grabbing snap-x snap-mandatory scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {mentors.map((mentor) => (
             <div
               key={mentor.id}
-              className="w-full sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] shrink-0 flex flex-col h-auto snap-start"
+              className="w-[calc(50%-6px)] sm:w-[calc(50%-7px)] shrink-0 flex flex-col h-auto snap-start"
             >
               <MentorJobCard mentor={mentor} />
             </div>
