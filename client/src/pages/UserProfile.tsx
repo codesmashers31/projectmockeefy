@@ -117,9 +117,13 @@ export default function UserProfile() {
 
   // Calculate Finished / Completed Interviews
   const completedSessions = useMemo(() => {
-    return candidateSessions.filter(
-      (s: any) => (s.status || "").toLowerCase() === "completed"
-    );
+    return candidateSessions.filter((s: any) => {
+      const st = (s.status || "").toLowerCase();
+      if (st !== "completed") return false;
+      if (st === "no-show" || st === "candidate_no_show" || st === "no_show" || st === "cancelled") return false;
+      if (s.attendanceStatus === "absent" || s.attendanceStatus === "no-show") return false;
+      return true;
+    });
   }, [candidateSessions]);
 
   const completedCount = completedSessions.length;

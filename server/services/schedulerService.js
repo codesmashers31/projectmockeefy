@@ -15,18 +15,19 @@ export const initScheduler = () => {
         try {
             const now = new Date();
 
-            // Auto-complete sessions that have ended (Google Meet runs outside app)
-            // This ensures sessions become "completed" even if users keep only the Meet tab open.
+            // Transition sessions that have ended outside the app (Google Meet)
+            // Note: Does NOT touch pending sessions, cancelled sessions, or candidate no-shows.
+            // Furthermore, completed sessions without expert evaluation do NOT count toward certification.
             try {
                 const result = await Session.updateMany(
                     {
                         endTime: { $lt: now },
-                        status: { $in: ['confirmed', 'live', 'Upcoming', 'pending'] },
+                        status: { $in: ['confirmed', 'live', 'Upcoming'] },
                     },
                     { $set: { status: 'completed' } }
                 );
                 if (result?.modifiedCount) {
-                    console.log(`[Scheduler] Auto-completed ${result.modifiedCount} ended sessions`);
+                    console.log(`[Scheduler] Auto-concluded ${result.modifiedCount} ended sessions`);
                 }
             } catch (e) {
                 console.error("[Scheduler] Auto-complete error:", e);

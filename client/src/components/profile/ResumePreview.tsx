@@ -3,6 +3,7 @@ import { Download, X, Mail, Phone, MapPin, ArrowLeft, FileText } from "lucide-re
 import { useQuery } from "@tanstack/react-query";
 import axios from "../../lib/axios";
 import { useAuth } from "../../context/AuthContext";
+import { formatScoreDisplay } from "../../lib/utils";
 
 interface ResumePreviewProps {
   isOpen: boolean;
@@ -615,11 +616,11 @@ export default function ResumePreview({ isOpen, onClose }: ResumePreviewProps) {
                                   <div className="grid grid-cols-2 gap-4 mb-4">
                                     <div className={`p-3 rounded-lg border ${templateStyle.statsBg} ${templateStyle.statsBorder}`}>
                                       <div className="text-[10px] text-slate-500 uppercase font-bold">Tech Rating</div>
-                                      <div className="text-xl font-bold text-elite-black">{resumeData.performance.avgTechnical}/5.0</div>
+                                      <div className="text-xl font-bold text-elite-black">{formatScoreDisplay(resumeData.performance.avgTechnical)}/5</div>
                                     </div>
                                     <div className={`p-3 rounded-lg border ${templateStyle.statsBg} ${templateStyle.statsBorder}`}>
                                       <div className="text-[10px] text-slate-500 uppercase font-bold">Comm Rating</div>
-                                      <div className="text-xl font-bold text-elite-black">{resumeData.performance.avgCommunication}/5.0</div>
+                                      <div className="text-xl font-bold text-elite-black">{formatScoreDisplay(resumeData.performance.avgCommunication)}/5</div>
                                     </div>
                                   </div>
                                   {resumeData.performance.highlights?.length > 0 && (

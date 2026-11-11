@@ -9,6 +9,8 @@ interface IdentityConfirmationModalProps {
   onClose?: () => void;
   onConfirmed: () => void;
   candidateName: string;
+  categoryName?: string;
+  milestoneNumber?: number;
   onConfirmApi: (confirmedName: string) => Promise<any>;
   submitting?: boolean;
 }
@@ -18,6 +20,8 @@ export const IdentityConfirmationModal: React.FC<IdentityConfirmationModalProps>
   onClose,
   onConfirmed,
   candidateName,
+  categoryName,
+  milestoneNumber,
   onConfirmApi,
   submitting: externalSubmitting = false,
 }) => {
@@ -78,10 +82,10 @@ export const IdentityConfirmationModal: React.FC<IdentityConfirmationModalProps>
               <span>Identity Verification</span>
             </div>
             <h3 id="verify-cert-name-title" className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-tight">
-              Verify Your Certificate Name
+              Verify Certificate Name {categoryName ? `— ${categoryName}` : ""}
             </h3>
             <p className="text-xs sm:text-[13px] text-slate-500 mt-1 leading-relaxed">
-              Your certificate will be issued using the name confirmed below. Please review your profile name carefully before proceeding.
+              Your {categoryName ? `${categoryName} ` : ""}certificate {milestoneNumber ? `(Milestone ${milestoneNumber}) ` : ""}will be issued using the confirmed name below.
             </p>
           </div>
         </div>

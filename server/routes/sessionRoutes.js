@@ -17,6 +17,9 @@ router.get('/user/:userId/role/:role', protect, sessionController.getUserSession
 router.post('/:sessionId/join', protect, sessionController.joinSession);
 router.patch('/:sessionId/meeting-link', protect, sessionController.updateMeetingLink);
 router.post('/:sessionId/complete', protect, sessionController.completeSession);
+router.post('/:sessionId/no-show', protect, sessionController.markCandidateNoShow);
+router.post('/:sessionId/no-show-dispute', protect, sessionController.disputeCandidateNoShow);
+router.post('/:sessionId/no-show-dispute/resolve', protect, sessionController.resolveCandidateNoShowDispute);
 router.get('/:sessionId', protect, sessionController.getSession);
 router.get('/candidate/:candidateId', protect, sessionController.getSessionsByCandidate);
 router.get('/expert/:expertId', optionalProtect, sessionController.getSessionsByExpert);

@@ -1341,6 +1341,8 @@ const EditExpertAvailability = () => {
       }
       const savedData = res.data.data;
       await queryClient.invalidateQueries({ queryKey: ["expertProfile"] });
+      await queryClient.invalidateQueries({ queryKey: ["allMentorsList"] });
+      await queryClient.invalidateQueries({ queryKey: ["experts-recommended"] });
       toast.success("Meet link auto-saved!");
     } catch (err) {
       console.error("Auto-save Meet link error:", err);
@@ -1439,6 +1441,8 @@ const EditExpertAvailability = () => {
       }
       const savedData = res.data.data;
       await queryClient.invalidateQueries({ queryKey: ["expertProfile"] });
+      await queryClient.invalidateQueries({ queryKey: ["allMentorsList"] });
+      await queryClient.invalidateQueries({ queryKey: ["experts-recommended"] });
       toast.success("Availability saved successfully!");
       navigate('/dashboard/availability', { state: { savedAvailability: savedData } });
     } catch (err) {

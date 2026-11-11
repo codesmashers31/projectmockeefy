@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   BadgeCheck,
   AlertCircle,
+  AlertTriangle,
   Loader2
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDataSync } from "../context/SocketContext";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { formatScoreDisplay } from "../lib/utils";
 import { MentorJobCard } from "./MentorJobCard";
 import MySessionsSkeleton, { SessionCardSkeleton } from "./MySessionsSkeleton";
 import { IdentityConfirmationModal } from "./IdentityConfirmationModal";
@@ -66,6 +68,9 @@ type Session = {
   expertReview?: ReviewInfo | null;
   candidateReview?: ReviewInfo | null;
   feedbackRequested?: boolean;
+  allocatedCertificateId?: string | null;
+  certificateId?: string | null;
+  allocatedMilestone?: number | null;
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -202,7 +207,7 @@ function MySessionsSkeletonMobile() {
 /** Session is joinable from startTime until endTime (e.g. 2:00–2:30 → joinable until 2:30). */
 function canJoinSession(session: Session): boolean {
   const st = (session.status || '').toLowerCase();
-  if (['completed', 'cancelled'].includes(st)) return false;
+  if (['completed', 'cancelled', 'no-show', 'candidate_no_show', 'no_show'].includes(st)) return false;
   const now = new Date();
   const start = session.startTime ? new Date(session.startTime) : null;
   const end = session.endTime ? new Date(session.endTime) : null;
@@ -218,6 +223,7 @@ function getDisplayStatus(session: Session): string {
   if (st === 'pending') return 'Pending';
   if (st === 'completed') return 'Completed';
   if (st === 'cancelled') return 'Cancelled';
+  if (['no-show', 'candidate_no_show', 'no_show'].includes(st)) return 'No-Show';
   const now = new Date();
   const end = session.endTime ? new Date(session.endTime) : null;
   const start = session.startTime ? new Date(session.startTime) : null;
@@ -405,7 +411,7 @@ const SessionCard: React.FC<{
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span className="truncate">
-                    Reviewed {session.candidateReview.overallRating ? `(${session.candidateReview.overallRating}★)` : ""}
+                    Reviewed {session.candidateReview.overallRating ? `(${formatScoreDisplay(session.candidateReview.overallRating)}★)` : ""}
                   </span>
                 </div>
               )}
@@ -443,26 +449,38 @@ const SessionCard: React.FC<{
               <button
                 type="button"
                 onClick={() => {
-                  const targetSessionId = session.sessionId || session.id;
-                  const targetCertId = `MCFY-${(session.id || session.sessionId || "CERT").slice(-8).toUpperCase()}`;
-                  navigate(
-                    `/certificates?sessionId=${encodeURIComponent(targetSessionId)}&certId=${encodeURIComponent(targetCertId)}`,
-                    {
-                      state: {
-                        selectedSessionId: targetSessionId,
-                        selectedCertId: targetCertId,
-                        expertId: session.expertId,
-                        expertName: session.expert,
-                        category: session.category,
-                      },
-                    }
-                  );
+                  if (session.allocatedCertificateId) {
+                    const targetSessionId = session.sessionId || session.id;
+                    const targetCertId = session.allocatedCertificateId;
+                    navigate(
+                      `/certificates?certId=${encodeURIComponent(targetCertId)}&sessionId=${encodeURIComponent(targetSessionId)}`,
+                      {
+                        state: {
+                          selectedCertId: targetCertId,
+                          selectedSessionId: targetSessionId,
+                          expertId: session.expertId,
+                          expertName: session.expert,
+                          category: session.category,
+                        },
+                      }
+                    );
+                  } else {
+                    toast.info("Certificate not yet issued for this session. Complete 3 qualifying sessions in the same category to earn your certificate.");
+                  }
                 }}
-                className="w-full h-9 px-2.5 sm:px-3 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 min-w-0"
-                title="View your official completion certificate"
+                className={`w-full h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs min-w-0 ${
+                  session.allocatedCertificateId
+                    ? "bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 cursor-pointer active:scale-95"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200/80 cursor-pointer"
+                }`}
+                title={
+                  session.allocatedCertificateId
+                    ? "View your official completion certificate"
+                    : "Certificate not yet issued for this session"
+                }
               >
-                <Award className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="truncate">Certificate</span>
+                <Award className={`w-3.5 h-3.5 shrink-0 ${session.allocatedCertificateId ? "text-indigo-600" : "text-slate-400"}`} />
+                <span className="truncate">{session.allocatedCertificateId ? "Certificate" : "Not Issued"}</span>
               </button>
 
               {/* Row 2, Col 2: Book Again */}
@@ -483,10 +501,34 @@ const SessionCard: React.FC<{
                 </span>
                 <span className="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
-                  {session.candidateReview.overallRating || 5}.0 / 5.0
+                  {formatScoreDisplay(session.candidateReview.overallRating)} / 5
                 </span>
               </div>
             )}
+          </div>
+        ) : displayStatus === 'No-Show' ? (
+          <div className="space-y-2.5 w-full">
+            <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl text-xs text-amber-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Interview Marked as Absent</span>
+              </div>
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                You were marked as absent for this scheduled interview. Under platform policy, unattended sessions do not count toward certificate eligibility and are non-refundable.
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-[11px] font-semibold text-slate-400">
+                Ineligible for certificate credit
+              </span>
+              <button
+                type="button"
+                onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
+                className="h-8.5 px-3.5 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+              >
+                Book New Session
+              </button>
+            </div>
           </div>
         ) : displayStatus === 'Cancelled' ? (
           <button
@@ -688,12 +730,54 @@ const MySessions = ({
   const PAGE_SIZE = 10;
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(filteredSessions.length / PAGE_SIZE));
+  const isUserPaginationAction = useRef(false);
+  const sessionsTopAnchorRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    // Ordinary filter changes reset to page 1 WITHOUT triggering pagination scroll reset
     setPage(1);
   }, [filteredSessions.length, statusFilter]);
+
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
+
+  // PART 9: After user navigates pagination (Next / Prev), reset scroll to top of sessions content
+  useEffect(() => {
+    if (isUserPaginationAction.current) {
+      isUserPaginationAction.current = false;
+      // 1. If an internal scroll container exists (overflow-y auto/scroll), reset it
+      let node: HTMLElement | null = sessionsTopAnchorRef.current?.parentElement || null;
+      let handledByContainer = false;
+      while (node && node !== document.body) {
+        const style = window.getComputedStyle(node);
+        if (node.scrollHeight > node.clientHeight && (style.overflowY === 'auto' || style.overflowY === 'scroll')) {
+          node.scrollTo({ top: 0, behavior: 'smooth' });
+          handledByContainer = true;
+          break;
+        }
+        node = node.parentElement;
+      }
+
+      // 2. Document-level scroll to the top of the sessions content
+      if (sessionsTopAnchorRef.current) {
+        const rect = sessionsTopAnchorRef.current.getBoundingClientRect();
+        const targetY = window.scrollY + rect.top - 84; // 84px offset for sticky navbar
+        window.scrollTo({
+          top: Math.max(0, targetY),
+          behavior: 'smooth'
+        });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [page]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === page || newPage < 1 || newPage > totalPages) return;
+    isUserPaginationAction.current = true;
+    setPage(newPage);
+  };
 
   const pageStartIdx = (page - 1) * PAGE_SIZE;
   const pageEndIdx = Math.min(filteredSessions.length, pageStartIdx + PAGE_SIZE);
@@ -743,7 +827,10 @@ const MySessions = ({
           expertReview: s.expertReview || null,
           candidateReview: s.candidateReview || null,
           meetLink: s.meetingLink || undefined,
-          meetingLink: s.meetingLink || undefined
+          meetingLink: s.meetingLink || undefined,
+          allocatedCertificateId: s.allocatedCertificateId || s.certificateId || null,
+          allocatedMilestone: s.allocatedMilestone || null,
+          certificateId: s.certificateId || s.allocatedCertificateId || null,
         }));
         setSessions(mapped);
       }
@@ -1065,7 +1152,7 @@ const MySessions = ({
             </div>
 
             {/* List */}
-            <div>
+            <div ref={sessionsTopAnchorRef} className="scroll-mt-24">
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
                   {Array.from({ length: 4 }).map((_, index) => (
@@ -1132,7 +1219,7 @@ const MySessions = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => handlePageChange(page - 1)}
                     disabled={page <= 1}
                     className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#0755E8] hover:text-[#0755E8] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                   >
@@ -1143,7 +1230,7 @@ const MySessions = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => handlePageChange(page + 1)}
                     disabled={page >= totalPages}
                     className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black hover:border-[#0755E8] hover:text-[#0755E8] disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600 transition-all cursor-pointer bg-white"
                   >
@@ -1322,7 +1409,7 @@ const MySessions = ({
                     {reviewForm.overallRating > 0 ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs">
                         <Star size={12} className="fill-amber-500 text-amber-500" />
-                        <span>{reviewForm.overallRating} of 5 stars</span>
+                        <span>{formatScoreDisplay(reviewForm.overallRating)} of 5 stars</span>
                       </span>
                     ) : (
                       <span className="text-xs text-slate-400 font-medium">Select a rating</span>
@@ -1465,12 +1552,12 @@ const MySessions = ({
                     <div>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expert feedback & marks</p>
                       <div className="flex flex-wrap gap-3 mb-2">
-                        <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-700 text-sm font-bold">Overall: {certificateModalSession.expertReview.overallRating}/5</span>
-                        {certificateModalSession.expertReview.technicalRating != null && <span className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">Technical: {certificateModalSession.expertReview.technicalRating}/5</span>}
-                        {certificateModalSession.expertReview.communicationRating != null && <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium">Communication: {certificateModalSession.expertReview.communicationRating}/5</span>}
-                        {certificateModalSession.expertReview.problemSolvingRating != null && certificateModalSession.expertReview.problemSolvingRating > 0 && <span className="px-2 py-1 rounded-lg bg-violet-50 text-violet-700 text-sm font-medium">Problem Solving: {certificateModalSession.expertReview.problemSolvingRating}/5</span>}
-                        {certificateModalSession.expertReview.designRating != null && certificateModalSession.expertReview.designRating > 0 && <span className="px-2 py-1 rounded-lg bg-cyan-50 text-cyan-700 text-sm font-medium">System Design: {certificateModalSession.expertReview.designRating}/5</span>}
-                        {certificateModalSession.expertReview.behavioralRating != null && certificateModalSession.expertReview.behavioralRating > 0 && <span className="px-2 py-1 rounded-lg bg-pink-50 text-pink-700 text-sm font-medium">Behavioral: {certificateModalSession.expertReview.behavioralRating}/5</span>}
+                        <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-700 text-sm font-bold">Overall: {formatScoreDisplay(certificateModalSession.expertReview.overallRating)}/5</span>
+                        {certificateModalSession.expertReview.technicalRating != null && <span className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">Technical: {formatScoreDisplay(certificateModalSession.expertReview.technicalRating)}/5</span>}
+                        {certificateModalSession.expertReview.communicationRating != null && <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium">Communication: {formatScoreDisplay(certificateModalSession.expertReview.communicationRating)}/5</span>}
+                        {certificateModalSession.expertReview.problemSolvingRating != null && certificateModalSession.expertReview.problemSolvingRating > 0 && <span className="px-2 py-1 rounded-lg bg-violet-50 text-violet-700 text-sm font-medium">Problem Solving: {formatScoreDisplay(certificateModalSession.expertReview.problemSolvingRating)}/5</span>}
+                        {certificateModalSession.expertReview.designRating != null && certificateModalSession.expertReview.designRating > 0 && <span className="px-2 py-1 rounded-lg bg-cyan-50 text-cyan-700 text-sm font-medium">System Design: {formatScoreDisplay(certificateModalSession.expertReview.designRating)}/5</span>}
+                        {certificateModalSession.expertReview.behavioralRating != null && certificateModalSession.expertReview.behavioralRating > 0 && <span className="px-2 py-1 rounded-lg bg-pink-50 text-pink-700 text-sm font-medium">Behavioral: {formatScoreDisplay(certificateModalSession.expertReview.behavioralRating)}/5</span>}
                       </div>
                       {certificateModalSession.expertReview.feedback && (
                         <div className="mt-2">

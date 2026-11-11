@@ -37,6 +37,25 @@ const certificationSchema = new mongoose.Schema({
         enum: ['ISSUED', 'REVOKED', 'PENDING'],
         default: 'ISSUED'
     },
+    milestoneNumber: {
+        type: Number,
+        default: 1
+    },
+    milestoneRange: {
+        type: String,
+        trim: true,
+        default: 'Interviews 1–3'
+    },
+    categoryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        required: true
+    },
+    categoryNameSnapshot: {
+        type: String,
+        required: true,
+        trim: true
+    },
     qualifyingSessionIds: [{
         type: String,
         trim: true
@@ -52,11 +71,15 @@ const certificationSchema = new mongoose.Schema({
     metadata: {
         score: Number,
         sessionCount: Number,
-        cycle: Number
+        cycle: Number,
+        milestoneNumber: Number,
+        milestoneRange: String
     }
 }, { timestamps: true });
 
 // Index for fast lookups
 certificationSchema.index({ userId: 1, name: 1 });
+certificationSchema.index({ userId: 1, categoryId: 1, milestoneNumber: 1 }, { unique: true, sparse: true });
+certificationSchema.index({ categoryId: 1 });
 
 export default mongoose.model('Certification', certificationSchema);

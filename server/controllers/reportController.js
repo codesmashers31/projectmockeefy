@@ -18,6 +18,11 @@ export const createReport = async (req, res) => {
             return res.status(404).json({ message: "Session not found or unauthorized" });
         }
 
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus === 'no-show' || sStatus === 'candidate_no_show' || sStatus === 'cancelled') {
+            return res.status(400).json({ message: "A cancelled or no-show session cannot be evaluated." });
+        }
+
         // Check if report already exists
         const existingReport = await Report.findOne({ sessionId });
         if (existingReport) {

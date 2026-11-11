@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import {
   getKolkataToday,
   getKolkataTimeParts,
-  isTodayBookingCutoffReached,
   getKolkataDateString,
   getInitialKolkataMonth,
   generateAvailableSlotsForDate,
@@ -21,6 +20,7 @@ import {
   mapExpertToProfile,
   Profile
 } from "../lib/bookSessionUtils";
+import { useDataSync } from "../context/SocketContext";
 import { MentorProfile } from "./MentorJobCard";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
@@ -241,33 +241,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
 
-  const cutoffAlertShownDateRef = useRef<string | null>(null);
   const [currentTick, setCurrentTick] = useState<number>(() => Date.now());
 
-  // Periodically update current tick to ensure real-time cutoff tracking across 12:00 PM boundary
+  // Periodically update current tick to ensure real-time slot tracking (e.g. at 1:30 PM a 1:30 PM slot auto-hides)
   useEffect(() => {
     if (!isOpen) return;
     const interval = setInterval(() => {
       setCurrentTick(Date.now());
-    }, 10000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [isOpen]);
-
-  // When 12:00 PM cutoff is reached today, inform the user once per calendar date transition
-  useEffect(() => {
-    if (!isOpen) return;
-    const now = new Date();
-    const todayStr = getKolkataDateString(now);
-    if (isTodayBookingCutoffReached(now)) {
-      if (cutoffAlertShownDateRef.current !== todayStr) {
-        cutoffAlertShownDateRef.current = todayStr;
-        toast.info("Today's booking window has closed. We've moved you to tomorrow's available slots.", {
-          id: "today-cutoff-alert",
-          duration: 4500,
-        });
-      }
-    }
-  }, [isOpen, currentTick]);
 
   // Reset booking flow state to selecting whenever modal opens
   useEffect(() => {
@@ -413,112 +396,111 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     );
   }, [expertId, profile?.id, (profile as any)?._id, initialProfile]);
 
-  // Dedicated effect: ALWAYS fetch booked sessions when modal opens or expert/user changes
+  const fetchSessions = useCallback(async () => {
+    if (!targetExpertId) return;
+    try {
+      const candidateUserId = user?.id || user?._id || (user as any)?.userId;
+      const [expertRes, candidateRes] = await Promise.allSettled([
+        axios.get(`/api/sessions/expert/${targetExpertId}`),
+        candidateUserId
+          ? axios.get(`/api/sessions/candidate/${candidateUserId}`)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const allBooked: any[] = [];
+      if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
+        allBooked.push(...expertRes.value.data);
+      }
+      if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
+        allBooked.push(...candidateRes.value.data);
+      }
+
+      setBookedSessions(allBooked);
+    } catch (err) {
+      console.error("Failed to load booked sessions", err);
+    }
+  }, [targetExpertId, user?.id, user?._id, (user as any)?.userId]);
+
+  const fetchExpert = useCallback(async (showLoadingSpinner = true) => {
+    if (!targetExpertId) return;
+    try {
+      if (showLoadingSpinner && !profile && !(initialProfile as any)?.rawExpert) {
+        setLoading(true);
+      }
+      let expertData = null;
+      try {
+        const res = await axios.get(`/api/expert/public/profile/${targetExpertId}`);
+        if (res.data?.success && res.data?.profile) {
+          expertData = res.data.profile;
+        }
+      } catch {
+        // Fallback to verified list if public profile not found
+      }
+
+      if (!expertData) {
+        const res = await axios.get(`/api/expert/verified`);
+        const experts = res.data?.data || res.data || [];
+        expertData = experts.find(
+          (e: any) =>
+            (e._id || e.userId || e.id || e.expertID)?.toString() === targetExpertId.toString()
+        );
+      }
+
+      if (expertData) {
+        const mapped = mapExpertToProfile(expertData);
+        setProfile(mapped);
+        if (mapped.sessionDuration) {
+          setSessionDuration(mapped.sessionDuration === 60 ? 60 : 30);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load expert for booking", err);
+    } finally {
+      if (showLoadingSpinner) {
+        setLoading(false);
+      }
+    }
+  }, [targetExpertId, profile, initialProfile]);
+
+  // Dedicated effect: ALWAYS fetch booked sessions & authoritative expert profile when modal opens
   useEffect(() => {
     if (!isOpen || !targetExpertId) return;
 
-    let isMounted = true;
-    const fetchSessions = async () => {
-      try {
-        const candidateUserId = user?.id || user?._id || (user as any)?.userId;
-        const [expertRes, candidateRes] = await Promise.allSettled([
-          axios.get(`/api/sessions/expert/${targetExpertId}`),
-          candidateUserId
-            ? axios.get(`/api/sessions/candidate/${candidateUserId}`)
-            : Promise.resolve({ data: [] }),
-        ]);
-
-        if (!isMounted) return;
-
-        const allBooked: any[] = [];
-        if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
-          allBooked.push(...expertRes.value.data);
-        }
-        if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
-          allBooked.push(...candidateRes.value.data);
-        }
-
-        setBookedSessions(allBooked);
-      } catch (err) {
-        console.error("Failed to load booked sessions", err);
-      }
-    };
-
-    fetchSessions();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, targetExpertId, user?.id, user?._id, (user as any)?.userId]);
-
-  // Fetch expert details if not provided or incomplete
-  useEffect(() => {
-    if (!isOpen) return;
-
     if ((initialProfile as any)?.rawExpert && !profile) {
       setProfile(mapExpertToProfile((initialProfile as any).rawExpert));
+    } else if (initialProfile && !profile) {
+      setProfile(initialProfile);
     }
 
-    const hasAvailability = Boolean(
-      profile?.availability ||
-      (initialProfile as any)?.availability ||
-      (initialProfile as any)?.rawExpert?.availability
-    );
+    fetchSessions();
+    fetchExpert(false);
+  }, [isOpen, targetExpertId, fetchSessions, fetchExpert]);
 
-    // If availability is already present, synchronize session duration and skip expert metadata fetching
-    if (hasAvailability) {
-      const dur =
-        profile?.sessionDuration ||
-        (initialProfile as any)?.sessionDuration ||
-        (initialProfile as any)?.rawExpert?.sessionDuration ||
-        (initialProfile as any)?.rawExpert?.availability?.sessionDuration ||
-        (initialProfile as any)?.availability?.sessionDuration;
-      if (dur) {
-        setSessionDuration(dur === 60 ? 60 : 30);
+  // Real-time synchronization when availability or booked sessions change
+  useDataSync(
+    ["AVAILABILITY_UPDATED", "PROFILE_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "SESSION_CANCELLED"],
+    (payload) => {
+      if (!isOpen || !targetExpertId) return;
+
+      const evtExpertId = payload.expertId || payload.data?.expertId || payload.data?.userId;
+      const targetStr = targetExpertId.toString();
+
+      if (
+        payload.type === "AVAILABILITY_UPDATED" ||
+        payload.type === "PROFILE_UPDATED"
+      ) {
+        if (!evtExpertId || evtExpertId.toString() === targetStr) {
+          fetchExpert(false);
+        }
+      } else if (
+        payload.type === "SESSION_CREATED" ||
+        payload.type === "SESSION_UPDATED" ||
+        payload.type === "SESSION_CANCELLED"
+      ) {
+        fetchSessions();
       }
-      return;
     }
-
-    const fetchExpert = async () => {
-      try {
-        setLoading(true);
-        let expertData = (initialProfile as any)?.rawExpert || null;
-        if (!expertData && targetExpertId) {
-          try {
-            const res = await axios.get(`/api/expert/public/profile/${targetExpertId}`);
-            if (res.data?.success && res.data?.profile) {
-              expertData = res.data.profile;
-            }
-          } catch {
-            // Fallback to verified list if public profile not found
-          }
-
-          if (!expertData) {
-            const res = await axios.get(`/api/expert/verified`);
-            const experts = res.data?.data || res.data || [];
-            expertData = experts.find(
-              (e: any) =>
-                (e._id || e.userId || e.id || e.expertID) === targetExpertId
-            );
-          }
-        }
-
-        if (expertData) {
-          const mapped = mapExpertToProfile(expertData);
-          setProfile(mapped);
-          if (mapped.sessionDuration) {
-            setSessionDuration(mapped.sessionDuration === 60 ? 60 : 30);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load expert for booking", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpert();
-  }, [isOpen, targetExpertId]);
+  );
 
   // Handle escape key & strictly lock background page scrolling behind modal
   useEffect(() => {

@@ -154,6 +154,8 @@ const userSchema = new mongoose.Schema({
     confirmedName: { type: String, trim: true, default: null },
     confirmedAt: { type: Date, default: null },
     confirmedForCycle: { type: Number, default: 0 },
+    confirmedForMilestone: { type: Number, default: 0 },
+    confirmedForCategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
     confirmationReference: { type: String, trim: true, default: null },
     ipAddress: { type: String, default: null },
     userAgent: { type: String, default: null }

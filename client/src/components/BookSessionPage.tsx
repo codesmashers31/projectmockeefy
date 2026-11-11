@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDataSync } from "../context/SocketContext";
 import {
   Star, Clock, Calendar, CheckCircle, Shield, Video,
   ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
@@ -17,7 +18,6 @@ import {
   Profile,
   getKolkataToday,
   getKolkataTimeParts,
-  isTodayBookingCutoffReached,
   getKolkataDateString,
   getInitialKolkataMonth,
   generateAvailableSlotsForDate,
@@ -381,31 +381,15 @@ export default function BookSessionPage() {
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
 
-  const cutoffAlertShownDateRef = useRef<string | null>(null);
   const [currentTick, setCurrentTick] = useState<number>(() => Date.now());
 
-  // Periodically update current tick to ensure real-time cutoff tracking across 12:00 PM boundary
+  // Periodically update current tick to ensure real-time slot tracking (e.g. at 1:30 PM a 1:30 PM slot auto-hides)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTick(Date.now());
-    }, 10000);
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
-
-  // When 12:00 PM cutoff is reached today, inform the user once per calendar date transition
-  useEffect(() => {
-    const now = new Date();
-    const todayStr = getKolkataDateString(now);
-    if (isTodayBookingCutoffReached(now)) {
-      if (cutoffAlertShownDateRef.current !== todayStr) {
-        cutoffAlertShownDateRef.current = todayStr;
-        toast.info("Today's booking window has closed. We've moved you to tomorrow's available slots.", {
-          id: "today-cutoff-alert",
-          duration: 4500,
-        });
-      }
-    }
-  }, [currentTick]);
 
   const [canScrollCarouselLeft, setCanScrollCarouselLeft] = useState(false);
   const [canScrollCarouselRight, setCanScrollCarouselRight] = useState(false);
@@ -480,41 +464,61 @@ export default function BookSessionPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
-  useEffect(() => {
+  const queryClient = useQueryClient();
+
+  const fetchSessions = useCallback(async () => {
     if (!expertId) return;
+    try {
+      const candidateUserId = user?.id || user?._id || (user as any)?.userId;
+      const [expertRes, candidateRes] = await Promise.allSettled([
+        axios.get(`/api/sessions/expert/${expertId}`),
+        candidateUserId
+          ? axios.get(`/api/sessions/candidate/${candidateUserId}`)
+          : Promise.resolve({ data: [] }),
+      ]);
 
-    let isMounted = true;
-    const fetchSessions = async () => {
-      try {
-        const candidateUserId = user?.id || user?._id || (user as any)?.userId;
-        const [expertRes, candidateRes] = await Promise.allSettled([
-          axios.get(`/api/sessions/expert/${expertId}`),
-          candidateUserId
-            ? axios.get(`/api/sessions/candidate/${candidateUserId}`)
-            : Promise.resolve({ data: [] }),
-        ]);
-
-        if (!isMounted) return;
-
-        const allBooked: any[] = [];
-        if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
-          allBooked.push(...expertRes.value.data);
-        }
-        if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
-          allBooked.push(...candidateRes.value.data);
-        }
-
-        setBookedSessions(allBooked);
-      } catch (err) {
-        console.error("Failed to load booked sessions", err);
+      const allBooked: any[] = [];
+      if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
+        allBooked.push(...expertRes.value.data);
       }
-    };
-    fetchSessions();
+      if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
+        allBooked.push(...candidateRes.value.data);
+      }
 
-    return () => {
-      isMounted = false;
-    };
+      setBookedSessions(allBooked);
+    } catch (err) {
+      console.error("Failed to load booked sessions", err);
+    }
   }, [expertId, user?.id, user?._id, (user as any)?.userId]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  // Real-time synchronization when availability or booked sessions change
+  useDataSync(
+    ["AVAILABILITY_UPDATED", "PROFILE_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "SESSION_CANCELLED"],
+    (payload) => {
+      const evtExpertId = payload.expertId || payload.data?.expertId || payload.data?.userId;
+      const targetStr = (expertId || "").toString();
+
+      if (
+        payload.type === "AVAILABILITY_UPDATED" ||
+        payload.type === "PROFILE_UPDATED"
+      ) {
+        if (!evtExpertId || evtExpertId.toString() === targetStr) {
+          queryClient.invalidateQueries({ queryKey: ["expert-profile", expertId] });
+          refetch();
+        }
+      } else if (
+        payload.type === "SESSION_CREATED" ||
+        payload.type === "SESSION_UPDATED" ||
+        payload.type === "SESSION_CANCELLED"
+      ) {
+        fetchSessions();
+      }
+    }
+  );
 
   useEffect(() => {
     if (!expertId) return;

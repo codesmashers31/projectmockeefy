@@ -22,7 +22,7 @@ export const getSessionsForUser = async (userId, role) => {
     // 1. Fetch raw sessions
     const sessions = await Session.find({
         ...query,
-        status: { $in: ['pending', 'upcoming', 'Upcoming', 'confirmed', 'live', 'completed', 'cancelled', 'no-show'] }
+        status: { $in: ['pending', 'upcoming', 'Upcoming', 'confirmed', 'live', 'completed', 'cancelled', 'no-show', 'CANDIDATE_NO_SHOW'] }
     }).sort({ startTime: -1 }).lean();
 
     // 2. Enrich
@@ -92,7 +92,19 @@ export const getSessionsForUser = async (userId, role) => {
                 const review = await ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'expert' });
                 if (review) {
                     expertReview = {
-                        overallRating: review.overallRating,
+                        overallRating: (
+                            review.technicalRating != null &&
+                            review.communicationRating != null &&
+                            review.problemSolvingRating != null &&
+                            review.designRating != null &&
+                            review.behavioralRating != null
+                        ) ? Number(((
+                            Number(review.technicalRating) +
+                            Number(review.communicationRating) +
+                            Number(review.problemSolvingRating) +
+                            Number(review.designRating) +
+                            Number(review.behavioralRating)
+                        ) / 5).toFixed(1)) : review.overallRating,
                         technicalRating: review.technicalRating,
                         communicationRating: review.communicationRating,
                         problemSolvingRating: review.problemSolvingRating,
@@ -239,15 +251,74 @@ export const updateSessionMeetingLink = async (sessionId, meetingLink, isCustom 
 
 export const completeSession = async (sessionId) => {
     return await Session.findOneAndUpdate(
-        { sessionId },
+        {
+            sessionId,
+            status: { $nin: ['cancelled', 'no-show', 'CANDIDATE_NO_SHOW'] }
+        },
         { $set: { status: 'completed' } },
         { new: true }
     );
 };
 
-export const createSession = async (sessionData) => {
+export const markSessionNoShow = async (sessionId, { reportedBy, reason } = {}) => {
+    return await Session.findOneAndUpdate(
+        {
+            sessionId,
+            status: { $nin: ['completed', 'evaluated', 'cancelled', 'no-show', 'CANDIDATE_NO_SHOW'] }
+        },
+        {
+            $set: {
+                status: 'CANDIDATE_NO_SHOW',
+                noShowReportedBy: reportedBy,
+                noShowReportedAt: new Date(),
+                noShowReason: reason || 'Candidate did not attend within grace period'
+            }
+        },
+        { new: true }
+    );
+};
+
+export const createSession = async (sessionData, options = {}) => {
+    // Dynamically resolve and guarantee categoryId and categoryNameSnapshot
+    try {
+        const Category = (await import('../models/Category.js')).default;
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
+
+        if (!sessionData.categoryId || !sessionData.categoryNameSnapshot) {
+            let catName = null;
+            if (sessionData.expertId) {
+                const expertDoc = await ExpertDetails.findOne({
+                    $or: [{ _id: sessionData.expertId }, { userId: sessionData.expertId }]
+                }).lean();
+                catName = expertDoc?.personalInformation?.category || expertDoc?.category;
+            }
+
+            if (!catName && sessionData.categoryId) {
+                const catDoc = await Category.findById(sessionData.categoryId).lean();
+                if (catDoc) {
+                    sessionData.categoryNameSnapshot = catDoc.name;
+                }
+            } else if (catName) {
+                const catDoc = await Category.findOne({ name: { $regex: new RegExp(`^${catName.trim()}$`, 'i') } }).lean();
+                if (catDoc) {
+                    sessionData.categoryId = catDoc._id;
+                    sessionData.categoryNameSnapshot = catDoc.name;
+                } else {
+                    sessionData.categoryNameSnapshot = catName;
+                }
+            }
+        } else if (sessionData.categoryId && !sessionData.categoryNameSnapshot) {
+            const catDoc = await Category.findById(sessionData.categoryId).lean();
+            if (catDoc) {
+                sessionData.categoryNameSnapshot = catDoc.name;
+            }
+        }
+    } catch (err) {
+        console.error("[createSession] Category resolution warning:", err?.message || err);
+    }
+
     const session = new Session(sessionData);
-    return await session.save();
+    return await session.save(options);
 };
 
 export const getSessionsByExpertId = async (expertId) => {

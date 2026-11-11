@@ -1645,18 +1645,29 @@ export const updateAvailability = async (req, res) => {
     }
 
     const formattedAvailability = formatAvailabilityForResponse(expert.availability);
+    clearVerifiedExpertsCache();
 
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: formattedAvailability
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: formattedAvailability }
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
 
     return res.status(200).json({ success: true, message: "Availability updated", data: formattedAvailability });
@@ -1689,17 +1700,30 @@ export const deleteBreakDate = async (req, res) => {
 
     await expert.save();
 
+    clearVerifiedExpertsCache();
+    const formattedAvailability = formatAvailabilityForResponse(expert.availability);
+
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: expert.availability
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: expert.availability }
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
 
     return res.status(200).json({ success: true, message: "Break date removed", data: expert.availability.breakDates });
@@ -1734,17 +1758,30 @@ export const deleteWeeklySlot = async (req, res) => {
     await expert.save();
     const resultSlots = weekly && typeof weekly.get === 'function' ? weekly.get(day) : (weekly ? weekly[day] : []);
 
+    clearVerifiedExpertsCache();
+    const formattedAvailability = formatAvailabilityForResponse(expert.availability);
+
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: expert.availability
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: expert.availability }
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
 
     return res.status(200).json({ success: true, message: "Slot removed", data: resultSlots });
@@ -1971,6 +2008,67 @@ export const clearVerifiedExpertsCache = () => {
   verifiedExpertsCache.clear();
 };
 
+/* -------------------- Availability Helpers (Asia/Kolkata timezone aware) -------------------- */
+export const getDaySlotsFromWeekly = (weekly, dayName) => {
+  if (!weekly) return [];
+  const entries = weekly instanceof Map ? Array.from(weekly.entries()) : Object.entries(weekly);
+  const targetLower = String(dayName).toLowerCase();
+  const targetShort = targetLower.slice(0, 3);
+
+  for (const [key, slots] of entries) {
+    const kLower = String(key).toLowerCase();
+    const kShort = kLower.slice(0, 3);
+    if (kLower === targetLower || kShort === targetShort) {
+      if (Array.isArray(slots)) return slots;
+    }
+  }
+  return [];
+};
+
+export const computeExpertAvailabilityStatus = (weekly) => {
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const now = new Date();
+  const kolkataShort = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short'
+  }).format(now).toLowerCase();
+
+  const currentIdx = days.indexOf(kolkataShort);
+
+  const todaySlots = getDaySlotsFromWeekly(weekly, kolkataShort);
+  const isAvailableToday = todaySlots.length > 0;
+
+  let isAvailableThisWeek = false;
+  for (const d of days) {
+    if (getDaySlotsFromWeekly(weekly, d).length > 0) {
+      isAvailableThisWeek = true;
+      break;
+    }
+  }
+
+  let activeTime = "Next: Upon Request";
+  if (isAvailableToday) {
+    activeTime = "Available Today";
+  } else if (isAvailableThisWeek) {
+    for (let offset = 1; offset < 7; offset++) {
+      const nextIdx = (currentIdx + offset) % 7;
+      const nextShort = days[nextIdx];
+      if (getDaySlotsFromWeekly(weekly, nextShort).length > 0) {
+        if (offset === 1) {
+          activeTime = "Available Tomorrow";
+        } else {
+          activeTime = `Next: ${dayNamesFull[nextIdx].slice(0, 3)}`;
+        }
+        break;
+      }
+    }
+  }
+
+  return { isAvailableToday, isAvailableThisWeek, activeTime };
+};
+
 /* -------------------- getVerifiedExperts (Active experts only) -------------------- */
 export const getVerifiedExperts = async (req, res) => {
   try {
@@ -1986,7 +2084,12 @@ export const getVerifiedExperts = async (req, res) => {
     ];
 
     if (category && category !== "all") {
-      pipeline[0].$match["personalInformation.category"] = category;
+      const escapedCategory = category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const categoryRegex = new RegExp(`^${escapedCategory}$`, "i");
+      pipeline[0].$match.$or = [
+        { "personalInformation.category": categoryRegex },
+        { "skillsAndExpertise.domains": categoryRegex }
+      ];
     }
 
     pipeline.push(
@@ -2133,6 +2236,8 @@ export const getVerifiedExperts = async (req, res) => {
         console.error("Price fetch error", e);
       }
 
+      const availStatus = computeExpertAvailabilityStatus(expert.availability?.weekly);
+
       return {
         _id: expert._id,
         userId: expert.userId,
@@ -2142,6 +2247,9 @@ export const getVerifiedExperts = async (req, res) => {
         maxPrice: maxPrice,
         minOriginalPrice: minOriginalPrice,
         maxOriginalPrice: maxOriginalPrice,
+        activeTime: availStatus.activeTime,
+        isAvailableToday: availStatus.isAvailableToday,
+        isAvailableThisWeek: availStatus.isAvailableThisWeek,
         metrics: {
           avgRating: expert.avgRating || 0,
           totalReviews: expert.reviewCount || 0
@@ -2186,7 +2294,10 @@ export const getVerifiedExperts = async (req, res) => {
           allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
           maxPerDay: expert.availability?.maxPerDay || 1,
           weekly: expert.availability?.weekly || {},
-          breakDates: expert.availability?.breakDates || []
+          breakDates: expert.availability?.breakDates || [],
+          activeTime: availStatus.activeTime,
+          isAvailableToday: availStatus.isAvailableToday,
+          isAvailableThisWeek: availStatus.isAvailableThisWeek
         },
         verification: expert.verification || {},
         agreement: expert.agreement || {},

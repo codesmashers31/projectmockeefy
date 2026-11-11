@@ -1,0 +1,401 @@
+<USER_REQUEST>
+# MOCKEEFY — CRITICAL CERTIFICATE PROGRESS DATA RECONCILIATION & FULLY DYNAMIC DOMAIN PROGRESS FIX
+
+## PRIORITY: CRITICAL — REAL DATABASE DATA ONLY
+
+I have attached the current application screen recording and screenshots.
+
+The certificate progress UI is displaying incorrect interview counts. For example, the candidate has completed approximately 14 IT interviews and received expert feedback, but the certificate progress banner displays:
+
+- IT: 0/3
+- 0 unallocated interviews completed
+- Milestone 2 (Interviews 4–6)
+
+This is incorrect and must be investigated at the database, backend calculation, API, and frontend rendering levels.
+
+I want the entire certificate progress feature to reflect the actual MongoDB data accurately.
+
+**Do not simply change the displayed number from 0 to 14. Investigate the underlying records, attendance evidence, evaluation records, previous certificate allocations, and milestone calculation. The final result must be mathematically and logically correct.**
+
+---
+
+# 1. FIRST: PERFORM A COMPLETE DATABASE RECONCILIATION
+
+Before modifying the frontend, inspect the actual MongoDB records for the authenticated candidate.
+
+Trace:
+
+- `User`
+- `Session`
+- `Meeting`
+- `Review`
+- `Certification`
+- Category records
+- Existing milestone allocations
+- Attendance audit records
+
+Use the actual authenticated candidate ID. Never hardcode Joel's ID or any other user's ID.
+
+For each candidate, retrieve all sessions belonging to that candidate and group them by their actual `categoryId`.
+
+For every session, independently determine:
+
+1. Does the session belong to the authenticated candidate?
+2. Is the session genuinely completed?
+3. Is candidate-specific attendance confirmed?
+4. Does an expert evaluation/review actually exist?
+5. Is the review associated with the correct session?
+6. Is the session already allocated to an issued certificate?
+7. Is the session cancelled, rejected, absent, or a no-show?
+8. Does the session have an administrative attendance approval where required?
+
+Do not count a session merely because:
+- The expert attended.
+- The meeting status is `finished`.
+- The booking exists.
+- The session status is completed without attendance evidence.
+- A numerical score exists without a valid review.
+- The candidate has a feedback-related notification.
+
+Use the existing candidate-specific attendance security rules.
+
+An administrator-approved attendance record may qualify only when the existing permanent audit record is valid.
+
+**Important:** An expert's submitted feedback is necessary for evaluation eligibility, but it must not independently prove candidate attendance.
+
+---
+
+# 2. FIX THE CORE MILESTONE COUNTING LOGIC
+
+The certificate rule is:
+
+**Every 3 genuinely attended, completed, and expert-evaluated interviews in the SAME category produce one certificate.**
+
+Each category must have an independent milestone sequence.
+
+Examples:
+
+- IT interviews 1–3 → IT Certificate 1.
+- IT interviews 4–6 → IT Certificate 2.
+- IT interviews 7–9 → IT Certificate 3.
+- Web Development interviews 1–3 → Web Development Certificate 1.
+- Cybersecurity interviews 1–3 → Cybersecurity Certificate 1.
+
+Different domains must never be combined.
+
+## Critical distinction: Total eligible sessions vs. unallocated sessions
+
+The current implementation appears to be displaying only the remaining unallocated sessions as the progress count, which is confusing and potentially incorrect.
+
+Implement two separate calculations:
+
+**A. Total qualifying interview count**
+
+Count every genuinely eligible session in the category, including sessions already allocated to previously issued certificates.
+
+**B. Unallocated qualifying interview count**
+
+Count eligible sessions that have not yet been allocated to an issued certificate.
+
+Use these values to calculate the next milestone correctly.
+
+Example:
+
+Suppose the candidate has 14 genuinely eligible IT interviews:
+
+- Total qualifying IT interviews: 14
+- IT Certificate 1: Interviews 1–3
+- IT Certificate 2: Interviews 4–6
+- IT Certificate 3: Interviews 7–9
+- IT Certificate 4: Interviews 10–12
+- Next IT milestone: Interviews 13–15
+- Next milestone progress: 2/3
+- Remaining interviews required: 1
+
+The UI must therefore show:
+
+`IT — 2/3 completed`
+
+`Complete 1 more eligible IT interview to earn your next IT certificate.`
+
+If the candidate has exactly 13 eligible interviews, the next milestone is 1/3.
+
+If the candidate has exactly 12 eligible interviews, the fourth certificate is ready for issuance if it has not already been issued.
+
+If the candidate has 15 eligible interviews, the fifth certificate is ready for issuance if it has not already been issued.
+
+Do not assume the above example values are the actual database values. Query MongoDB and calculate the real result.
+
+## Important allocation integrity
+
+- Never reuse a session across certificates.
+- Never count an allocated session twice.
+- Never modify historical qualifying session allocations.
+- Never create duplicate certificates.
+- Preserve existing compound unique indexes.
+- Ensure concurrent issuance remains atomic and idempotent.
+
+If the current data contains inconsistencies between certificate allocations and qualifying sessions, report them and repair them only through a safe, backed-up, idempotent migration.
+
+---
+
+# 3. REMOVE THE INCORRECT PROGRESS DISPLAY
+
+The current banner displays:
+
+- `IT 0/3`
+- `You have completed 0 unallocated interviews in IT`
+- `Milestone 2 (Interviews 4–6)`
+- `0/3 completed`
+- `1 Issued · 3 Total`
+
+These values must not contradict one another.
+
+Use one authoritative backend calculation and derive every displayed count from it.
+
+The next milestone progress should be based on the genuinely eligible sessions allocated to the current milestone range, not an arbitrary zero value or a frontend-only calculation.
+
+Remove the confusing text:
+
+`Milestone 2 (Interviews 4–6)`
+
+I do not want this extra milestone-range text displayed in the progress banner.
+
+Keep the UI simple and understandable.
+
+---
+
+# 4. SHOW ONLY DOMAINS WHERE THE CANDIDATE HAS AT LEAST ONE QUALIFYING INTERVIEW
+
+This is a mandatory requirement.
+
+If a candidate has zero qualifying attended, completed, and evaluated interviews in a domain, do not show that domain in the candidate's certificate progress UI.
+
+Examples:
+
+| Domain | Eligible interviews | Display |
+|---|---:|---|
+| IT | 1 | IT — 1/3 |
+| Web Development | 2 | Web Development — 2/3 |
+| Cybersecurity | 0 | Completely hidden |
+| Software Development | 3 | Certificate ready |
+| Business | 0 | Completely hidden |
+
+Only display a domain when:
+
+`totalQualifyingCount > 0`
+
+An existing genuinely issued certificate must also remain represented in the earned-certificate history even if no new interviews have been completed in that category.
+
+Do not display every category configured in Admin Category Management as an empty progress card.
+
+New categories must automatically work without frontend code changes.
+
+---
+
+# 5. MAKE THE DOMAIN PROGRESS BANNER SIMPLE AND CLEAR
+
+Keep the existing premium Mockeefy visual design.
+
+Inside the main certificate progress banner, show only useful information.
+
+For each domain with candidate activity, display:
+
+- Domain name.
+- Current next-milestone progress, such as `1/3`, `2/3`, or `3/3`.
+- A compact progress bar.
+- Number of additional interviews required.
+- A short, understandable explanation.
+
+Examples:
+
+**IT**
+
+`You have completed 2 of 3 qualifying IT interviews.`
+
+`Complete 1 more interview to earn your next IT certificate.`
+
+**Web Development**
+
+`You have completed 1 of 3 qualifying Web Development interviews.`
+
+`Complete 2 more interviews to earn your next Web Development certificate.`
+
+**Cybersecurity**
+
+`You have completed 3 of 3 qualifying Cybersecurity interviews.`
+
+`Your next Cybersecurity certificate is ready for issuance.`
+
+When a domain has reached 3/3, show the existing legitimate `Confirm Name & Generate Certificate` action.
+
+Do not introduce additional fake or duplicate actions.
+
+---
+
+# 6. REMOVE THE UNWANTED INFORMATION FROM THE BANNER
+
+Remove the extra milestone-range content shown in the attached screenshot, including:
+
+`Milestone 2 (Interviews 4–6)`
+
+Do not replace it with another long milestone description.
+
+Keep the progress area compact and readable.
+
+Do not display contradictory counts such as:
+
+`0/3 completed` alongside `14 completed interviews`.
+
+The progress count must always represent the correct next milestone.
+
+If useful, show the overall category total separately in a small secondary caption, but do not confuse it with next-milestone progress.
+
+---
+
+# 7. ALL VALUES MUST COME FROM REAL MONGODB DATA
+
+This application must be 100% dynamic.
+
+Strictly prohibit:
+
+- Hardcoded candidate IDs.
+- Hardcoded interview counts.
+- Hardcoded category names.
+- Hardcoded certificate counts.
+- Fake progress values.
+- Static fallback values such as `0`, `3`, or `13` when real data is available.
+- Mock arrays.
+- Demo certificate records.
+- Frontend calculations that contradict the backend.
+- Sample data inserted into the database to make the UI appear correct.
+
+The backend must calculate authoritative progress using the authenticated candidate's actual records.
+
+The frontend must render the backend response.
+
+If the backend fails, show a proper loading/error state. Do not silently display fabricated progress.
+
+Use MongoDB category references and category snapshots consistently, handling legacy records safely without accidentally grouping unrelated categories.
+
+---
+
+# 8. PRESERVE THE EXISTING CERTIFICATE SYSTEM
+
+Do not damage any existing working functionality.
+
+Preserve:
+
+- Existing issued certificates.
+- Immutable `candidateNameSnapshot`.
+- Immutable `categoryNameSnapshot`.
+- Actual certificate issue dates.
+- Certificate IDs.
+- Domain-specific recurring milestones.
+- Candidate attendance verification.
+- Administrative attendance approval and audit trail.
+- Expert feedback and review validation.
+- Official PDF generation.
+- Public certificate verification.
+- Generic view-only certificate preview.
+- My Sessions certificate navigation.
+- Razorpay payments.
+- Expert payouts and wallet transactions.
+
+A profile name change must continue affecting only future certificate issuance.
+
+Never rewrite an already issued certificate's frozen recipient name.
+
+---
+
+# 9. RESPONSIVE DESIGN REQUIREMENTS
+
+The certificate page must remain fully responsive.
+
+Desktop:
+- Clean horizontal progress layout.
+- Properly aligned domain information.
+- No wrapped or overflowing milestone text.
+- Certificate preview thumbnail remains properly scaled.
+
+Tablet:
+- Progress and preview must rearrange naturally.
+- Maintain readable spacing.
+
+Mobile:
+- Stack domain information vertically.
+- Keep domain names and progress counts readable.
+- Avoid horizontal overflow.
+- Ensure progress bars and actions fit the viewport.
+
+Do not redesign the entire Certificates page.
+
+---
+
+# 10. MANDATORY REAL-DATA TESTING
+
+Create and execute database-backed tests using actual schema behavior and controlled test fixtures. Do not modify production candidate data merely to make tests pass.
+
+Test the following:
+
+1. Candidate with 0 qualifying interviews: domain is hidden.
+2. Candidate with 1 eligible IT interview: IT shows 1/3.
+3. Candidate with 2 eligible IT interviews: IT shows 2/3.
+4. Candidate with 3 eligible IT interviews: IT certificate is ready.
+5. Candidate with 6 eligible IT interviews and one issued certificate: next milestone is correctly 3/3.
+6. Candidate with 9 eligible IT interviews and two issued certificates: next milestone is correctly 3/3.
+7. Candidate with 12 eligible IT interviews and three issued certificates: next milestone is correctly 3/3.
+8. Candidate with 14 eligible IT interviews and four issued certificates: next milestone is correctly 2/3.
+9. Candidate with 1 IT, 1 Web Development, and 1 Cybersecurity interview: three separate 1/3 progress indicators.
+10. Candidate with 14 total IT sessions but only 10 genuinely eligible sessions: count only the 10 valid sessions.
+11. Expert-only meeting attendance must not qualify.
+12. Missing candidate attendance evidence must not qualify automatically.
+13. No-show and cancelled sessions must not qualify.
+14. Completed sessions without expert feedback must not qualify.
+15. Sessions with valid candidate attendance, completed status, and expert evaluation must qualify.
+16. Previously allocated sessions must not be reused.
+17. Existing issued certificates must remain unchanged.
+18. A newly created active category must work dynamically.
+19. Progress must update after a new qualifying interview receives expert feedback.
+20. Progress must update after a certificate is successfully issued.
+
+Also test API responses against direct MongoDB queries for the same candidate and category.
+
+---
+
+# 11. FINAL VERIFICATION REPORT
+
+Before declaring completion, provide:
+
+1. The actual number of candidate sessions retrieved from MongoDB.
+2. The number of genuinely attended sessions.
+3. The number of completed and evaluated sessions.
+4. The number excluded and the exact reasons.
+5. The number already allocated to issued certificates.
+6. The total eligible count for each category.
+7. The correct next milestone progress for each category.
+8. The actual root cause of the incorrect 0/3 display.
+9. The exact backend and frontend files changed.
+10. Automated test results.
+11. TypeScript and production build results.
+12. Screenshots of the final live browser UI.
+
+**Do not claim that the candidate has 14 eligible interviews unless MongoDB records prove it. Do not claim the issue is fixed based only on frontend code or mocked API responses.**
+
+## FINAL ACCEPTANCE CRITERIA
+
+The application must show the exact number of genuinely attended, completed, and expert-evaluated interviews from MongoDB.
+
+For every category, the progress must accurately represent the candidate's NEXT unallocated three-interview milestone.
+
+If a candidate has at least one qualifying interview in a category, show that category.
+
+If the candidate has zero qualifying interviews in a category, hide it.
+
+No hardcoded data. No fake counts. No misleading milestone labels. No duplicate allocations.
+
+**The actual database is the single source of truth. Verify the final result against MongoDB and the live browser before declaring completion.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-11T15:45:37+05:30.
+</ADDITIONAL_METADATA>

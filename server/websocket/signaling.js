@@ -114,7 +114,7 @@ export default function attachSignaling(io) {
       try {
         await meetingService.updateMeetingStatus(meetingId, "finished");
         await Session.findOneAndUpdate(
-          { sessionId: meetingId },
+          { sessionId: meetingId, status: { $nin: ['cancelled', 'no-show', 'CANDIDATE_NO_SHOW', 'NO_SHOW'] } },
           { status: "completed" },
           { new: true }
         );

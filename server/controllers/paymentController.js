@@ -59,6 +59,7 @@ import ExpertDetails from '../models/expertModel.js';
 import User from '../models/User.js';
 import PaymentRecord from '../models/PaymentRecord.js';
 import Session from '../models/Session.js';
+import { validateBookingSlot } from '../utils/availabilityValidator.js';
 import { createNotification } from './notificationController.js';
 import {
     sendBookingNotificationToExpert,
@@ -292,19 +293,19 @@ export const verifyPayment = async (req, res) => {
                     }
                 } catch (_) {}
 
-                // Slot availability check: prevent concurrent booking of the exact same slot
-                const expertIds = [expertDoc?._id, expertDoc?.userId, bookingDetails.expertId].filter(Boolean);
-                const conflictingSession = await Session.findOne({
-                    expertId: { $in: expertIds },
-                    status: { $in: ['confirmed', 'live', 'Upcoming'] },
-                    startTime: { $lt: endTime },
-                    endTime: { $gt: startTime }
+                // Comprehensive authoritative backend slot validation
+                const slotValidation = await validateBookingSlot({
+                    expertId: bookingDetails.expertId,
+                    startTime,
+                    endTime,
+                    duration: bookingDetails.duration || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000))
                 });
 
-                if (conflictingSession) {
-                    return res.status(409).json({
+                if (!slotValidation.valid) {
+                    return res.status(slotValidation.status || 400).json({
                         success: false,
-                        message: "Slot conflict: This interview slot is already booked. Please choose another slot."
+                        message: slotValidation.message,
+                        reason: slotValidation.reason
                     });
                 }
 
@@ -587,6 +588,22 @@ export const createFreeBooking = async (req, res) => {
 
         const startTime = new Date(bookingDetails.startTime);
         const endTime = new Date(bookingDetails.endTime);
+
+        // Comprehensive authoritative backend slot validation
+        const slotValidation = await validateBookingSlot({
+            expertId: bookingDetails.expertId,
+            startTime,
+            endTime,
+            duration: bookingDetails.duration || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000))
+        });
+
+        if (!slotValidation.valid) {
+            return res.status(slotValidation.status || 400).json({
+                success: false,
+                message: slotValidation.message,
+                reason: slotValidation.reason
+            });
+        }
 
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
