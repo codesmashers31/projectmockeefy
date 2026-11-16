@@ -4,8 +4,8 @@ import { HR } from '../types';
 import { dataService } from '../services/dataService';
 import HRForm from './HRForm';
 import Modal from './Modal';
-import Toast from './Toast';
-import { Toast as ToastType } from '../types';
+import Swal from 'sweetalert2';
+import { toast } from 'sonner';
 
 const HRManager: React.FC = () => {
   const [hrs, setHRs] = useState<HR[]>([]);
@@ -13,7 +13,7 @@ const HRManager: React.FC = () => {
   const [selectedHR, setSelectedHR] = useState<HR | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'create' | 'edit' | 'view'>('create');
-  const [toast, setToast] = useState<ToastType | null>(null);
+  
 
   useEffect(() => {
     loadData();
@@ -48,8 +48,17 @@ const HRManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteHR = (hr: HR) => {
-    if (window.confirm(`Are you sure you want to delete ${hr.name}?`)) {
+  const handleDeleteHR = async (hr: HR) => {
+    const res = await Swal.fire({
+      title: 'Delete HR?',
+      text: `Are you sure you want to delete ${hr.name}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0755E8',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, delete',
+    });
+    if (res.isConfirmed) {
       const success = dataService.deleteHR(hr.id);
       if (success) {
         loadData();
@@ -76,12 +85,10 @@ const HRManager: React.FC = () => {
     }
   };
 
-  const showToast = (message: string, type: ToastType['type']) => {
-    setToast({
-      id: Date.now().toString(),
-      type,
-      message
-    });
+  const showToast = (message: string, type: string) => {
+    if (type === 'success') toast.success(message);
+    else if (type === 'error') toast.error(message);
+    else toast.info(message);
   };
 
   const getStatusColor = (status: HR['status']) => {
@@ -239,12 +246,7 @@ const HRManager: React.FC = () => {
         />
       </Modal>
 
-      {toast && (
-        <Toast
-          toast={toast}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
     </div>
   );
 };

@@ -16,7 +16,7 @@ const razorpay = new Razorpay({
 
 export const createOrder = async (req, res) => {
     try {
-        const { amount, currency = 'INR', receipt, planId } = req.body;
+        const { amount, currency = 'INR', receipt, planId, bookingDetails } = req.body;
 
         const numAmount = Number(amount);
         if (!amount || isNaN(numAmount) || numAmount <= 0) {
@@ -32,17 +32,171 @@ export const createOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid price for Ultimate plan' });
         }
 
+        // Pre-validate interview booking slot if bookingDetails is provided
+        if (bookingDetails) {
+            const { expertId, startTime, endTime, duration } = bookingDetails;
+            if (expertId && startTime) {
+                const slotValidation = await validateBookingSlot({
+                    expertId,
+                    startTime,
+                    endTime,
+                    duration
+                });
+                if (!slotValidation.valid) {
+                    return res.status(slotValidation.status || 400).json({
+                        success: false,
+                        cutoffExpired: Boolean(slotValidation.cutoffExpired),
+                        message: slotValidation.error || 'This interview slot is no longer available for booking.',
+                        reason: slotValidation.error
+                    });
+                }
+            }
+        }
+
+        // Check Candidate Wallet balance if useWallet is requested
+        let walletDeduction = 0;
+        let payableAmount = numAmount;
+        const candidateId = bookingDetails?.candidateId || req.user?._id || req.user?.id || req.user?.userId;
+
+        if (req.body.useWallet && candidateId) {
+            try {
+                const Wallet = (await import('../models/Wallet.js')).default;
+                const userWallet = await Wallet.findOne({ userId: candidateId });
+                console.log('[CreateOrder Debug]', { candidateId, userWallet });
+                const available = userWallet?.availableBalance || 0;
+                if (available > 0) {
+                    walletDeduction = Math.min(available, numAmount);
+                    payableAmount = numAmount - walletDeduction;
+                }
+            } catch (wErr) {
+                console.warn('[CreateOrder] Error fetching candidate wallet:', wErr.message);
+            }
+        }
+
+        // Sub-case 1: Full Wallet Payment (payableAmount === 0)
+        if (req.body.useWallet && walletDeduction === numAmount && payableAmount === 0) {
+            const walletOrderId = `wallet_ord_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+            if (bookingDetails?.expertId && bookingDetails?.startTime && bookingDetails?.endTime) {
+                const resResult = await acquireSlotReservation({
+                    expertId: bookingDetails.expertId,
+                    candidateId,
+                    startTime: bookingDetails.startTime,
+                    endTime: bookingDetails.endTime,
+                    orderId: walletOrderId,
+                    ttlMinutes: 15
+                });
+
+                if (!resResult.acquired) {
+                    return res.status(409).json({
+                        success: false,
+                        slotConflict: true,
+                        message: resResult.reason || 'This slot is currently reserved or already booked.',
+                        conflictType: resResult.conflictType
+                    });
+                }
+            }
+
+            return res.status(200).json({
+                success: true,
+                fullWalletPayment: true,
+                walletDeduction,
+                payableAmount: 0,
+                order: {
+                    id: walletOrderId,
+                    amount: 0,
+                    currency,
+                    receipt: receipt || `rcpt_wallet_${Date.now()}`
+                }
+            });
+        }
+
+        // Sub-case 2: External payment (or partial wallet payment)
+        const chosenPaymentMethod = req.body.paymentMethod || (req.body.useWallet && walletDeduction > 0 ? 'COMBINED' : 'RAZORPAY');
+        const bookingId = bookingDetails?.bookingId || bookingDetails?.slotLockKey || `bk_${Date.now()}`;
         const options = {
-            amount: Math.round(numAmount * 100), // Razorpay works in paise
+            amount: Math.round(payableAmount * 100), // Razorpay works in paise
             currency,
             receipt: receipt || `rcpt_${Date.now()}`,
+            notes: {
+                bookingId: String(bookingId),
+                candidateId: String(candidateId || ''),
+                totalBookingAmount: String(numAmount),
+                walletContribution: String(walletDeduction),
+                razorpayPayableAmount: String(payableAmount),
+                paymentMethod: String(chosenPaymentMethod),
+                walletDeduction: String(walletDeduction),
+                fullAmount: String(numAmount)
+            }
         };
 
         const order = await razorpay.orders.create(options);
 
+        // Reserve / debit partial wallet deduction upfront so it cannot be double-spent while Razorpay checkout is open
+        let walletDebitTxnId = null;
+        if (req.body.useWallet && walletDeduction > 0 && payableAmount > 0 && candidateId) {
+            try {
+                const debitRes = await debitWallet({
+                    userId: candidateId,
+                    amount: walletDeduction,
+                    orderId: order.id,
+                    paymentMethod: 'COMBINED',
+                    totalBookingAmount: numAmount,
+                    walletAmountUsed: walletDeduction,
+                    reason: 'INTERVIEW_BOOKING_DEBIT',
+                    description: `Partial wallet payment of ₹${walletDeduction} reserved for order ${order.id}`
+                });
+                if (debitRes.success) {
+                    walletDebitTxnId = debitRes.transaction?._id;
+                } else {
+                    console.warn('[CreateOrder] Failed to reserve wallet deduction:', debitRes.message);
+                    walletDeduction = 0;
+                    payableAmount = numAmount;
+                }
+            } catch (dErr) {
+                console.warn('[CreateOrder] Exception reserving wallet deduction:', dErr.message);
+                walletDeduction = 0;
+                payableAmount = numAmount;
+            }
+        }
+
+        // Atomic reservation: Reserve the slot for this candidate while they complete payment
+        if (bookingDetails?.expertId && bookingDetails?.startTime && bookingDetails?.endTime) {
+            const resResult = await acquireSlotReservation({
+                expertId: bookingDetails.expertId,
+                candidateId,
+                startTime: bookingDetails.startTime,
+                endTime: bookingDetails.endTime,
+                orderId: order.id,
+                ttlMinutes: 15
+            });
+
+            if (!resResult.acquired) {
+                // If wallet was debited, roll it back immediately!
+                if (walletDebitTxnId) {
+                    await restoreWalletDebit({
+                        userId: candidateId,
+                        amount: walletDeduction,
+                        originalTransactionId: walletDebitTxnId,
+                        reason: 'SLOT_RESERVATION_FAILED_RESTORE',
+                        description: `Restored ₹${walletDeduction} because slot reservation could not be acquired for order ${order.id}`
+                    });
+                }
+                return res.status(409).json({
+                    success: false,
+                    slotConflict: true,
+                    message: resResult.reason || 'This slot is currently reserved or already booked.',
+                    conflictType: resResult.conflictType
+                });
+            }
+        }
+
         res.status(200).json({
             success: true,
             order,
+            walletDeduction,
+            walletDebitTxnId,
+            payableAmount
         });
     } catch (error) {
         console.error('Razorpay Create Order Error:', error);
@@ -59,12 +213,158 @@ import ExpertDetails from '../models/expertModel.js';
 import User from '../models/User.js';
 import PaymentRecord from '../models/PaymentRecord.js';
 import Session from '../models/Session.js';
+import Wallet from '../models/Wallet.js';
+import { validateBookingSlot } from '../utils/availabilityValidator.js';
 import { createNotification } from './notificationController.js';
 import {
     sendBookingNotificationToExpert,
     sendBookingNotificationToCandidate,
     formatSessionDateTime
 } from '../services/emailService.js';
+import { acquireSlotReservation, confirmSlotReservation, releaseSlotReservation, buildSlotKey } from '../services/slotReservationService.js';
+import { getRazorpayClient, executeRefund } from '../services/refundService.js';
+import { enqueueEmail, processOutbox } from '../services/emailOutboxService.js';
+import { getAppBaseUrl, getMeetingUrl, getCandidateSessionsUrl, getExpertSessionsUrl } from '../utils/appUrl.js';
+import { getOrCreateWallet, creditWallet, debitWallet, restoreWalletDebit } from '../services/walletService.js';
+
+/**
+ * Authoritative payment capture evidence extractor.
+ * Strictly adheres to Razorpay entity specifications and signed webhooks.
+ * NEVER uses payment.created_at or order.created_at as capture time proof.
+ */
+export const getAuthoritativeCaptureEvidence = ({ payment, webhookPayload = null, bookingCutoff = null, gatewayCaptureVerificationReceivedAt = null }) => {
+    const serverReceiptTimestamp = new Date();
+    const verificationReceivedAt = gatewayCaptureVerificationReceivedAt || serverReceiptTimestamp;
+
+    // 1. Webhook Payload: Only 'payment.captured' event represents capture
+    if (webhookPayload && webhookPayload.event === 'payment.captured') {
+        const pEntity = webhookPayload.payload?.payment?.entity;
+        // In Razorpay webhooks: pEntity.captured_at is authoritative capture time if present
+        if (typeof pEntity?.captured_at === 'number' && pEntity.captured_at > 0) {
+            const providerEventTimestamp = new Date(pEntity.captured_at * 1000);
+            return {
+                hasAuthoritativeTimestamp: true,
+                capturedAt: providerEventTimestamp,
+                timestampSource: 'RAZORPAY_PAYMENT_CAPTURED_AT',
+                providerEventTimestamp,
+                serverReceiptTimestamp,
+                gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+                awaitingReconciliation: false
+            };
+        }
+
+        // Webhook event.created_at represents event creation time, not exact payment capture time.
+        // A verified payment.captured event proves capture occurred no later than the event timestamp.
+        // If event timestamp is before cutoff, capture was guaranteed before cutoff!
+        const eventEpoch = typeof webhookPayload.created_at === 'number' ? webhookPayload.created_at : null;
+        if (eventEpoch && bookingCutoff) {
+            const eventTime = new Date(eventEpoch * 1000);
+            if (eventTime.getTime() < bookingCutoff.getTime()) {
+                return {
+                    hasAuthoritativeTimestamp: true,
+                    capturedAt: eventTime,
+                    timestampSource: 'WEBHOOK_PROVEN_BEFORE_CUTOFF',
+                    providerEventTimestamp: eventTime,
+                    serverReceiptTimestamp,
+                    gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+                    awaitingReconciliation: false
+                };
+            }
+            // If event timestamp is at or after cutoff and captured_at is unavailable:
+            // The event alone cannot establish whether capture was before or after cutoff.
+            // Do NOT assume it was captured after cutoff! Preserve for reconciliation.
+        }
+    }
+
+    // 2. Authoritative Razorpay Payment Entity
+    if (payment) {
+        // Razorpay returns payment.captured_at as numeric epoch in seconds when captured
+        if (typeof payment.captured_at === 'number' && payment.captured_at > 0) {
+            const providerTime = new Date(payment.captured_at * 1000);
+            // Determine eligibility relative to cutoff using epoch seconds for exact comparison
+            if (bookingCutoff) {
+                const cutoffSec = Math.floor(bookingCutoff.getTime() / 1000);
+                if (payment.captured_at >= cutoffSec) {
+                    return {
+                        hasAuthoritativeTimestamp: true,
+                        capturedAt: providerTime,
+                        timestampSource: 'RAZORPAY_PAYMENT_CAPTURED_AT_AFTER_CUTOFF',
+                        providerEventTimestamp: providerTime,
+                        serverReceiptTimestamp,
+                        gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+                        awaitingReconciliation: false
+                    };
+                }
+            }
+            return {
+                hasAuthoritativeTimestamp: true,
+                capturedAt: providerTime,
+                timestampSource: 'RAZORPAY_PAYMENT_CAPTURED_AT',
+                providerEventTimestamp: providerTime,
+                serverReceiptTimestamp,
+                gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+                awaitingReconciliation: false
+            };
+        }
+
+        // 3. Scenario 4: If payment entity was initialized or captured at/after cutoff
+        if (bookingCutoff) {
+            const rawTime = payment.captured_at || payment.created_at;
+            if (rawTime) {
+                const ts = new Date(rawTime * 1000);
+                if (ts.getTime() >= bookingCutoff.getTime()) {
+                    return {
+                        hasAuthoritativeTimestamp: true,
+                        capturedAt: ts,
+                        timestampSource: payment.captured_at ? 'RAZORPAY_PAYMENT_CAPTURED_AT_AFTER_CUTOFF' : 'CREATED_AFTER_CUTOFF',
+                        providerEventTimestamp: ts,
+                        serverReceiptTimestamp,
+                        gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+                        awaitingReconciliation: false,
+                        isCreatedAfterCutoff: true
+                    };
+                }
+            }
+        }
+
+        // 2b. Mathematical & Physical Rule:
+        // captureTime <= gatewayCaptureVerificationReceivedAt < bookingCutoff
+        // If the Razorpay API response confirms captured status strictly before cutoff,
+        // this establishes that capture occurred no later than the response receipt time.
+        // Do NOT use payment.created_at as the exact capture timestamp.
+        if (payment.status === 'captured' && (payment.captured === true || payment.captured === 'true') && bookingCutoff) {
+            if (verificationReceivedAt.getTime() < bookingCutoff.getTime()) {
+                return {
+                    hasAuthoritativeTimestamp: true,
+                    capturedAt: verificationReceivedAt, // Exact response receipt boundary
+                    timestampSource: 'VERIFIED_BEFORE_CUTOFF',
+                    gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+                    providerEventTimestamp: verificationReceivedAt,
+                    serverReceiptTimestamp,
+                    awaitingReconciliation: false
+                };
+            }
+        }
+    }
+
+    // 4. Fallback: Payment created before cutoff but captured_at is unavailable
+    // and gateway verification response arrived at or after cutoff.
+    // NEVER guess that it was captured before cutoff!
+    return {
+        hasAuthoritativeTimestamp: false,
+        capturedAt: null,
+        timestampSource: 'RECONCILIATION_PENDING',
+        providerEventTimestamp: null,
+        serverReceiptTimestamp,
+        gatewayCaptureVerificationReceivedAt: verificationReceivedAt,
+        awaitingReconciliation: true
+    };
+};
+
+export const getAuthoritativeCaptureTimestamp = (payment, webhookPayload = null, bookingCutoff = null) => {
+    const evidence = getAuthoritativeCaptureEvidence({ payment, webhookPayload, bookingCutoff });
+    return evidence.capturedAt;
+};
 
 /**
  * Helper to dispatch rich professional confirmation emails to the Interview Expert (and Candidate).
@@ -140,8 +440,8 @@ export const triggerBookingEmails = async ({
         const expertEmail = expertUser?.email || expertDoc?.email || expertDoc?.personalInformation?.email || bookingDetails.expertEmail;
         const expertName = expertUser?.name || expertDoc?.personalInformation?.userName || expertDoc?.userDetails?.name || bookingDetails.expertName || "Interview Expert";
 
-        // Meeting link resolution
-        const resolvedMeetingLink = meetingLink || expertDoc?.availability?.defaultMeetingLink || (sessionId ? `${process.env.CLIENT_URL || "http://localhost:5173"}/live-meeting/${sessionId}` : null);
+        // Meeting link resolution using authoritative central URL resolver
+        const resolvedMeetingLink = getMeetingUrl(sessionId, meetingLink || expertDoc?.availability?.defaultMeetingLink);
 
         const duration = Number(bookingDetails.duration) || 30;
         const amountPaid = price !== undefined ? price : bookingDetails.price;
@@ -188,6 +488,7 @@ export const triggerBookingEmails = async ({
                 timeSlot: dt.timeSlotStr,
                 duration,
                 topics,
+                category,
                 amountPaid,
                 paymentId: paymentId || "N/A",
                 meetingLink: resolvedMeetingLink,
@@ -205,7 +506,7 @@ export const verifyPayment = async (req, res) => {
 
         let isVerified = false;
 
-        // Remove Dummy bypass, enforce actual verification
+        // Security: Razorpay signature verification
         const sign = razorpay_order_id + '|' + razorpay_payment_id;
         const expectedSign = crypto
             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -231,6 +532,31 @@ export const verifyPayment = async (req, res) => {
                         alreadyProcessed: true
                     });
                 }
+            }
+            if (existingPayment.walletCredited) {
+                const Wallet = (await import('../models/Wallet.js')).default;
+                const wallet = await Wallet.findOne({ userId: existingPayment.userId });
+                return res.status(200).json({
+                    success: true,
+                    walletCredited: true,
+                    alreadyCredited: true,
+                    cutoffExpired: true,
+                    amountCredited: existingPayment.amount,
+                    updatedBalance: wallet?.availableBalance || existingPayment.amount,
+                    walletTransactionRef: existingPayment.walletTransactionId,
+                    title: "Payment Added to Your Mockeefy Wallet",
+                    message: "Your payment was successfully received, but the booking cutoff for this interview slot had passed before payment capture. Your payment amount has been safely credited to your Mockeefy wallet. You can use this balance to book another interview."
+                });
+            }
+            if (existingPayment.status === 'refunded') {
+                return res.status(200).json({
+                    success: false,
+                    cutoffExpired: Boolean(existingPayment.cutoffExpired),
+                    alreadyRefunded: true,
+                    refundId: existingPayment.refundId,
+                    refundStatus: existingPayment.refundStatus,
+                    message: "This payment was already refunded because the 10-minute booking cutoff was reached."
+                });
             }
             console.warn(`[Payment Security] Blocked replayed payment attempt: ${razorpay_payment_id}`);
             return res.status(400).json({
@@ -280,54 +606,431 @@ export const verifyPayment = async (req, res) => {
             if (bookingDetails) {
                 const startTime = new Date(bookingDetails.startTime);
                 const endTime = new Date(bookingDetails.endTime);
+                const duration = Number(bookingDetails.duration) || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000));
+                const now = new Date();
+                const bookingCutoff = new Date(endTime.getTime() - 10 * 60 * 1000);
 
-                const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                // PHASE 3: AUTHORITATIVE PAYMENT INSPECTION & CAPTURE TIMESTAMP CHECK
+                const razorpay = getRazorpayClient();
+                let payment = null;
+                let gatewayCaptureVerificationReceivedAt = null;
+                try {
+                    payment = await razorpay.payments.fetch(razorpay_payment_id);
+                    gatewayCaptureVerificationReceivedAt = new Date();
+                } catch (fetchErr) {
+                    console.warn(`[PaymentVerification] Could not fetch payment from Razorpay: ${fetchErr.message}`);
+                }
+
+                // Security & Integrity: verify matching payment ID and order ID
+                if (payment) {
+                    if (payment.id !== razorpay_payment_id || payment.order_id !== razorpay_order_id) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Security Alert: Gateway payment or order ID mismatch.'
+                        });
+                    }
+                }
+
+                // Case C: Payment not captured / failed
+                if (payment && payment.status !== 'captured' && payment.captured === false) {
+                    return res.status(400).json({
+                        success: false,
+                        paymentCaptured: false,
+                        status: payment.status || 'failed',
+                        message: `Payment has not been captured by the gateway (status: ${payment.status || 'unverified'}). No booking or wallet credit has been issued.`
+                    });
+                }
+
+                const authoritativeAmountINR = payment?.amount ? (payment.amount / 100) : (Number(bookingDetails.price) || 0);
+                const candidateUserId = bookingDetails.candidateId || user?.id || user?.userId;
+
+                // Extract authoritative evidence with exact gateway response receipt timestamp
+                const evidence = getAuthoritativeCaptureEvidence({
+                    payment,
+                    webhookPayload: req.body.webhookPayload,
+                    bookingCutoff,
+                    gatewayCaptureVerificationReceivedAt
+                });
+
+                // Scenario 3: If capture timestamp cannot be authoritatively established,
+                // do NOT guess that it was captured before cutoff! Mark as awaiting reconciliation.
+                if (evidence.awaitingReconciliation) {
+                    console.warn(`[PaymentVerification] Authoritative capture timestamp unavailable for payment ${razorpay_payment_id}. Marking as awaiting reconciliation.`);
+
+                    // Preserve slot reservation so reconciliation worker can confirm session if capture is verified!
+
+                    try {
+                        await PaymentRecord.create({
+                            paymentId: razorpay_payment_id,
+                            orderId: razorpay_order_id,
+                            userId: candidateUserId,
+                            paymentType: 'booking',
+                            amount: authoritativeAmountINR,
+                            status: 'awaiting_reconciliation',
+                            reconciliationStatus: 'awaiting_capture_timestamp',
+                            timestampSource: 'RECONCILIATION_PENDING',
+                            serverReceiptTimestamp: now,
+                            gatewayCaptureVerificationReceivedAt,
+                            providerEventTimestamp: null,
+                            metadata: {
+                                bookingDetails,
+                                serverVerificationTime: now,
+                                bookingCutoff,
+                                clientPrice: bookingDetails.price,
+                                reason: 'Capture timestamp unavailable; held for webhook reconciliation'
+                            }
+                        });
+                    } catch (recErr) {
+                        console.warn('[PaymentRecord] Error saving reconciliation record:', recErr.message);
+                    }
+
+                    return res.status(202).json({
+                        success: false,
+                        status: 'awaiting_reconciliation',
+                        awaitingReconciliation: true,
+                        message: 'Payment capture timestamp is awaiting authoritative reconciliation from Razorpay. Booking is held until capture time is verified.',
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id
+                    });
+                }
+
+                const capturedAt = evidence.capturedAt;
+                const isCutoffExpired = capturedAt.getTime() >= bookingCutoff.getTime();
+
+                // Case B: Payment captured at or after cutoff -> Credit to Candidate Wallet
+                if (isCutoffExpired) {
+                    console.warn(`[PaymentCutoff] Payment ${razorpay_payment_id} was captured at ${capturedAt.toISOString()} (Source: ${evidence.timestampSource}) which is AT OR AFTER the booking cutoff (${bookingCutoff.toISOString()}). Converting to wallet credit.`);
+
+                    const creditRes = await creditWallet({
+                        userId: candidateUserId,
+                        amount: authoritativeAmountINR,
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id,
+                        reason: 'CUTOFF_EXPIRED_CREDIT',
+                        description: `Booking cutoff passed prior to payment capture for interview slot ending at ${endTime.toISOString()}`
+                    });
+
+                    await releaseSlotReservation({ orderId: razorpay_order_id });
+
+                    try {
+                        await PaymentRecord.create({
+                            paymentId: razorpay_payment_id,
+                            orderId: razorpay_order_id,
+                            userId: candidateUserId,
+                            paymentType: 'booking',
+                            amount: authoritativeAmountINR,
+                            status: 'verified',
+                            walletCredited: true,
+                            walletTransactionId: creditRes.transaction?._id,
+                            paymentCapturedAt: capturedAt,
+                            timestampSource: evidence.timestampSource,
+                            providerEventTimestamp: evidence.providerEventTimestamp,
+                            serverReceiptTimestamp: evidence.serverReceiptTimestamp,
+                            reconciliationStatus: 'verified',
+                            cutoffExpired: true,
+                            metadata: {
+                                capturedAt,
+                                bookingCutoff,
+                                timestampSource: evidence.timestampSource,
+                                serverVerificationTime: now,
+                                reason: 'Booking cutoff reached before payment capture'
+                            }
+                        });
+                    } catch (pRecErr) {
+                        console.warn('[PaymentRecord] Error saving wallet credit record:', pRecErr.message);
+                    }
+
+                    return res.status(200).json({
+                        success: true,
+                        walletCredited: true,
+                        cutoffExpired: true,
+                        amountCredited: authoritativeAmountINR,
+                        updatedBalance: creditRes.balanceAfter,
+                        walletTransactionRef: creditRes.transaction?._id,
+                        title: "Payment Added to Your Mockeefy Wallet",
+                        message: "Your payment was successfully received, but the booking cutoff for this interview slot had passed before payment capture. Your payment amount has been safely credited to your Mockeefy wallet. You can use this balance to book another interview."
+                    });
+                }
+
+                // Case A: Payment was captured strictly before cutoff -> Eligible for Booking!
+                let walletDeduction = Number(req.body.walletDeduction || payment?.notes?.walletDeduction || 0);
+                let walletDebitTxnId = null;
+
+                if (walletDeduction > 0 && candidateUserId) {
+                    const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+                    const existingDebit = await WalletTransaction.findOne({
+                        userId: candidateUserId,
+                        orderId: razorpay_order_id,
+                        type: 'DEBIT',
+                        reason: 'INTERVIEW_BOOKING_DEBIT'
+                    });
+
+                    let isDebitActive = false;
+                    if (existingDebit) {
+                        const isRestored = await WalletTransaction.findOne({
+                            userId: candidateUserId,
+                            $or: [
+                                { referenceId: existingDebit._id },
+                                { relatedTransactionId: existingDebit._id }
+                            ],
+                            type: 'CREDIT',
+                            reason: { $regex: /RESTORE/i }
+                        });
+                        if (!isRestored) {
+                            isDebitActive = true;
+                            walletDebitTxnId = existingDebit._id;
+                        }
+                    }
+
+                    if (!isDebitActive) {
+                        const debitRes = await debitWallet({
+                            userId: candidateUserId,
+                            amount: walletDeduction,
+                            orderId: razorpay_order_id,
+                            reason: 'INTERVIEW_BOOKING_DEBIT',
+                            description: `Partial wallet payment of ₹${walletDeduction} for interview booking`
+                        });
+
+                        if (!debitRes.success) {
+                            console.warn(`[PaymentVerification] Wallet debit failed during hybrid checkout: ${debitRes.message}`);
+                            const refund = await executeRefund({
+                                paymentId: razorpay_payment_id,
+                                orderId: razorpay_order_id,
+                                userId: candidateUserId,
+                                reason: 'Wallet balance insufficient at confirmation time'
+                            });
+                            await releaseSlotReservation({ orderId: razorpay_order_id });
+                            return res.status(400).json({
+                                success: false,
+                                walletDebitFailed: true,
+                                refundInitiated: refund.success,
+                                message: 'Could not complete booking because wallet balance could not be deducted. External payment has been refunded.'
+                            });
+                        }
+                        walletDebitTxnId = debitRes.transaction?._id;
+                    }
+                }
 
                 let expertDoc = null;
                 let expertUserId = bookingDetails.expertId;
                 try {
-                    expertDoc = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] });
+                    expertDoc = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] }).populate('userId');
                     if (expertDoc?.userId) {
-                        expertUserId = expertDoc.userId;
+                        expertUserId = expertDoc.userId?._id || expertDoc.userId;
                     }
                 } catch (_) {}
 
-                // Slot availability check: prevent concurrent booking of the exact same slot
-                const expertIds = [expertDoc?._id, expertDoc?.userId, bookingDetails.expertId].filter(Boolean);
-                const conflictingSession = await Session.findOne({
-                    expertId: { $in: expertIds },
-                    status: { $in: ['confirmed', 'live', 'Upcoming'] },
-                    startTime: { $lt: endTime },
-                    endTime: { $gt: startTime }
+                // Comprehensive authoritative backend slot validation (using verified capture timestamp for cutoff evaluation)
+                const slotValidation = await validateBookingSlot({
+                    expertId: bookingDetails.expertId,
+                    startTime,
+                    endTime,
+                    duration,
+                    currentTime: capturedAt || now
                 });
 
-                if (conflictingSession) {
-                    return res.status(409).json({
+                if (!slotValidation.valid) {
+                    if (walletDeduction > 0) {
+                        await restoreWalletDebit({
+                            userId: candidateUserId,
+                            amount: walletDeduction,
+                            originalTransactionId: walletDebitTxnId,
+                            reason: 'SLOT_INVALID_RESTORE',
+                            description: 'Restored wallet funds due to slot validation failure'
+                        });
+                    }
+
+                    const refund = await executeRefund({
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id,
+                        userId: candidateUserId,
+                        reason: slotValidation.error || 'Slot validation failed',
+                        cutoffExpired: Boolean(slotValidation.cutoffExpired),
+                        metadata: { clientPrice: bookingDetails.price }
+                    });
+
+                    await releaseSlotReservation({ orderId: razorpay_order_id });
+
+                    return res.status(slotValidation.status || 400).json({
                         success: false,
-                        message: "Slot conflict: This interview slot is already booked. Please choose another slot."
+                        cutoffExpired: Boolean(slotValidation.cutoffExpired),
+                        refundInitiated: refund.success,
+                        refundId: refund.refundId,
+                        refundStatus: refund.refundStatus,
+                        refundAmount: refund.refundAmount,
+                        message: slotValidation.error || 'This slot is no longer available. A full refund has been initiated.',
+                        reason: slotValidation.reason
                     });
                 }
 
-                // All successfully paid bookings with verified Razorpay payment are AUTOMATICALLY confirmed
-                // Bypasses expert autoAccept preference (expert availability provides authorization to book)
+                // ATOMIC CONCURRENCY PROTECTION:
+                // Construct authoritative database slotLockKey
+                const expertIds = [bookingDetails.expertId, expertDoc?._id, expertDoc?.userId].filter(Boolean);
+                const slotLockKey = buildSlotKey(expertUserId, startTime, endTime);
+
+                const concurrentConflict = await Session.findOne({
+                    $or: [
+                        { slotLockKey, status: { $nin: ['cancelled'] } },
+                        {
+                            expertId: { $in: expertIds },
+                            status: { $in: ['confirmed', 'live', 'upcoming', 'Upcoming', 'pending'] },
+                            startTime: { $lt: endTime },
+                            endTime: { $gt: startTime }
+                        }
+                    ]
+                });
+
+                if (concurrentConflict) {
+                    console.warn(`[ConcurrencyProtection] Concurrent booking conflict detected for expert ${bookingDetails.expertId} at ${startTime.toISOString()}`);
+
+                    if (walletDeduction > 0) {
+                        await restoreWalletDebit({
+                            userId: candidateUserId,
+                            amount: walletDeduction,
+                            originalTransactionId: walletDebitTxnId,
+                            reason: 'SLOT_CONFLICT_RESTORE',
+                            description: 'Restored wallet funds due to slot collision'
+                        });
+                    }
+
+                    const refund = await executeRefund({
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id,
+                        userId: candidateUserId,
+                        reason: 'Slot conflict: Booked concurrently by another candidate',
+                        metadata: { clientPrice: bookingDetails.price }
+                    });
+
+                    await releaseSlotReservation({ orderId: razorpay_order_id });
+
+                    return res.status(409).json({
+                        success: false,
+                        slotConflict: true,
+                        refundInitiated: refund.success,
+                        refundId: refund.refundId,
+                        refundStatus: refund.refundStatus,
+                        refundAmount: refund.refundAmount,
+                        message: 'This interview slot was just booked by another candidate. Your payment has been refunded in full.'
+                    });
+                }
+
+                const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 const sessionStatus = 'confirmed';
 
                 const sessionData = {
                     sessionId,
                     expertId: bookingDetails.expertId,
-                    candidateId: bookingDetails.candidateId,
+                    candidateId: candidateUserId,
                     startTime,
                     endTime,
+                    slotLockKey,
+                    paymentId: razorpay_payment_id,
+                    orderId: razorpay_order_id,
                     topics: bookingDetails.topics || ["General Mock Interview"],
-                    price: bookingDetails.price,
+                    price: authoritativeAmountINR + walletDeduction,
                     status: sessionStatus,
                     meetingLink: (expertDoc?.availability?.defaultMeetingLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(expertDoc.availability.defaultMeetingLink.trim())) ? expertDoc.availability.defaultMeetingLink.trim() : null,
-                    duration: bookingDetails.duration || 60,
+                    duration,
                     level: bookingDetails.level || "Rising Mentor",
                     notes: bookingDetails.notes || ""
                 };
 
-                const session = await sessionService.createSession(sessionData);
+                let session = null;
+                try {
+                    session = await sessionService.createSession(sessionData);
+                } catch (sessionErr) {
+                    if (sessionErr.code === 11000 || sessionErr.message?.includes('duplicate key') || sessionErr.message?.includes('slotLockKey')) {
+                        console.warn(`[ConcurrencyProtection] Caught duplicate key error (E11000) for slotLockKey: ${slotLockKey}`);
+
+                        if (walletDeduction > 0) {
+                            await restoreWalletDebit({
+                                userId: candidateUserId,
+                                amount: walletDeduction,
+                                originalTransactionId: walletDebitTxnId,
+                                reason: 'SLOT_CONFLICT_RESTORE',
+                                description: 'Restored wallet funds due to slot collision'
+                            });
+                        }
+
+                        const refund = await executeRefund({
+                            paymentId: razorpay_payment_id,
+                            orderId: razorpay_order_id,
+                            userId: candidateUserId,
+                            reason: 'Slot conflict: Race condition caught by database unique index',
+                            metadata: { clientPrice: bookingDetails.price }
+                        });
+                        await releaseSlotReservation({ orderId: razorpay_order_id });
+
+                        return res.status(409).json({
+                            success: false,
+                            slotConflict: true,
+                            refundInitiated: refund.success,
+                            refundId: refund.refundId,
+                            refundStatus: refund.refundStatus,
+                            refundAmount: refund.refundAmount,
+                            message: 'This interview slot was just booked by another candidate. Your payment has been refunded in full.'
+                        });
+                    }
+                    throw sessionErr;
+                }
+
+                // Confirm slot reservation on successful session confirmation
+                await confirmSlotReservation({
+                    orderId: razorpay_order_id,
+                    sessionId: session.sessionId,
+                    paymentId: razorpay_payment_id
+                }).catch(() => {});
+
+                // Record booking payment to permanently prevent replay attacks
+                try {
+                    await PaymentRecord.create({
+                        paymentId: razorpay_payment_id,
+                        orderId: razorpay_order_id,
+                        userId: candidateUserId,
+                        paymentType: walletDeduction > 0 ? 'hybrid' : 'booking',
+                        amount: authoritativeAmountINR + walletDeduction,
+                        walletAmountDeducted: walletDeduction,
+                        paymentCapturedAt: capturedAt,
+                        timestampSource: evidence.timestampSource,
+                        providerEventTimestamp: evidence.providerEventTimestamp,
+                        serverReceiptTimestamp: evidence.serverReceiptTimestamp,
+                        gatewayCaptureVerificationReceivedAt: evidence.gatewayCaptureVerificationReceivedAt || gatewayCaptureVerificationReceivedAt,
+                        reconciliationStatus: 'verified',
+                        sessionId: session.sessionId,
+                        status: 'verified',
+                        cutoffExpired: false,
+                        metadata: {
+                            capturedAt,
+                            bookingCutoff,
+                            timestampSource: evidence.timestampSource,
+                            serverVerificationTime: now,
+                            bookingId: session.sessionId,
+                            candidateId: String(candidateUserId),
+                            totalBookingAmount: authoritativeAmountINR + walletDeduction,
+                            walletContribution: walletDeduction,
+                            razorpayPayableAmount: authoritativeAmountINR,
+                            paymentMethod: walletDeduction > 0 ? 'COMBINED' : 'RAZORPAY'
+                        }
+                    });
+                    if (walletDeduction > 0) {
+                        const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+                        await WalletTransaction.updateMany(
+                            { orderId: razorpay_order_id, type: 'DEBIT' },
+                            {
+                                $set: {
+                                    sessionId: session.sessionId,
+                                    referenceId: session._id,
+                                    referenceModel: 'Session',
+                                    paymentMethod: 'COMBINED',
+                                    totalBookingAmount: authoritativeAmountINR + walletDeduction,
+                                    walletAmountUsed: walletDeduction
+                                }
+                            }
+                        );
+                    }
+                } catch (recErr) {
+                    console.warn("[PaymentRecord] Failed to record booking payment:", recErr.message);
+                }
 
                 syncDataChange({
                     type: "SESSION_CREATED",
@@ -346,28 +1049,51 @@ export const verifyPayment = async (req, res) => {
                 }
 
                 const dt = formatSessionDateTime(startTime, endTime);
+                const domainName = expertDoc?.personalInformation?.category || expertDoc?.category || (bookingDetails.topics && bookingDetails.topics[0]) || "Technical Interview";
+                const expertTitle = expertDoc?.professionalDetails?.title || expertDoc?.title || "Interview Expert";
+                const candidateName = bookingDetails.candidateName || user?.name || "Candidate";
+                const expertName = expertDoc?.personalInformation?.userName || bookingDetails.expertName || "Interview Expert";
 
-                // Notify Expert
-                await createNotification({
-                    userId: expertUserId,
-                    type: 'booking_confirmed',
-                    title: 'New Session Booked & Payment Received! 🎉',
-                    message: `A candidate (${bookingDetails.candidateName || user?.name || "Candidate"}) has booked a ${bookingDetails.duration || 30} min session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-                    metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
-                });
-
-                // Notify User
+                // PHASE 4: Automatic In-App Notifications
+                // 1. Candidate In-App Notification
                 await createNotification({
                     userId: bookingDetails.candidateId,
                     type: 'booking_confirmed',
-                    title: 'Meeting Scheduled Successfully! 🎉',
-                    message: `Your meeting has been scheduled on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-                    metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+                    title: 'Interview Booking Confirmed 🎉',
+                    message: `Your ${duration}-min ${domainName} interview with ${expertName} (${expertTitle}) is confirmed for ${dt.dateStr} from ${dt.timeSlotStr}.`,
+                    metadata: {
+                        sessionId: session.sessionId,
+                        link: '/my-sessions',
+                        meetingLink: sessionData.meetingLink,
+                        domain: domainName,
+                        duration
+                    }
                 });
 
-                // Directly send professional email notification asynchronously so client gets immediate verification response
+                // 2. Expert In-App Notification
+                if (expertUserId) {
+                    await createNotification({
+                        userId: expertUserId,
+                        type: 'booking_confirmed',
+                        title: 'New Interview Booking 🎯',
+                        message: `New booking: ${candidateName} has booked a ${duration}-min ${domainName} interview with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                        metadata: {
+                            sessionId: session.sessionId,
+                            link: '/dashboard/sessions',
+                            meetingLink: sessionData.meetingLink,
+                            domain: domainName,
+                            candidateName,
+                            duration
+                        }
+                    });
+                }
+
+                // PHASE 5: Automatic Confirmation Emails (Asynchronously & Safe)
                 triggerBookingEmails({
-                    bookingDetails,
+                    bookingDetails: {
+                        ...bookingDetails,
+                        category: domainName
+                    },
                     sessionId: session.sessionId,
                     meetingLink: sessionData.meetingLink,
                     paymentId: razorpay_payment_id,
@@ -378,21 +1104,6 @@ export const verifyPayment = async (req, res) => {
                 }).catch((emailErr) => {
                     console.error("[BookingPayment] Error in asynchronous triggerBookingEmails:", emailErr);
                 });
-
-                // Record booking payment to permanently prevent replay attacks
-                try {
-                    await PaymentRecord.create({
-                        paymentId: razorpay_payment_id,
-                        orderId: razorpay_order_id,
-                        userId: bookingDetails.candidateId || user?.id || user?.userId,
-                        paymentType: 'booking',
-                        amount: Number(bookingDetails.price) || 0,
-                        sessionId: session.sessionId,
-                        status: 'verified'
-                    });
-                } catch (recErr) {
-                    console.warn("[PaymentRecord] Failed to record booking payment:", recErr.message);
-                }
 
                 return res.status(200).json({
                     success: true,
@@ -433,6 +1144,29 @@ export const usePremiumCredit = async (req, res) => {
         const { bookingDetails } = req.body;
         const userId = bookingDetails.candidateId;
 
+        const startTime = new Date(bookingDetails.startTime);
+        const endTime = new Date(bookingDetails.endTime);
+        const duration = Number(bookingDetails.duration) || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000));
+
+        // Authoritative validation of slot & 10-minute universal cutoff
+        const slotValidation = await validateBookingSlot({
+            expertId: bookingDetails.expertId,
+            startTime,
+            endTime,
+            duration
+        });
+
+        if (!slotValidation.valid) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(slotValidation.status || 400).json({
+                success: false,
+                cutoffExpired: Boolean(slotValidation.cutoffExpired),
+                message: slotValidation.error || 'This slot is no longer available.',
+                reason: slotValidation.reason
+            });
+        }
+
         // Use pessimistic locking to prevent race conditions during concurrent clicks
         const user = await User.findById(userId).session(session);
         if (!user || !user.isPremium || user.freeInterviewsCount <= 0) {
@@ -448,8 +1182,6 @@ export const usePremiumCredit = async (req, res) => {
         user.freeInterviewsCount -= 1;
         await user.save({ session });
 
-        const startTime = new Date(bookingDetails.startTime);
-        const endTime = new Date(bookingDetails.endTime);
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         const sessionData = {
@@ -587,6 +1319,22 @@ export const createFreeBooking = async (req, res) => {
 
         const startTime = new Date(bookingDetails.startTime);
         const endTime = new Date(bookingDetails.endTime);
+
+        // Comprehensive authoritative backend slot validation
+        const slotValidation = await validateBookingSlot({
+            expertId: bookingDetails.expertId,
+            startTime,
+            endTime,
+            duration: bookingDetails.duration || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000))
+        });
+
+        if (!slotValidation.valid) {
+            return res.status(slotValidation.status || 400).json({
+                success: false,
+                message: slotValidation.message,
+                reason: slotValidation.reason
+            });
+        }
 
         const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -740,5 +1488,400 @@ export const createFreeSubscription = async (req, res) => {
             message: 'Failed to create free subscription',
             error: error.message,
         });
+    }
+};
+
+/**
+ * Handle 100% Mockeefy Wallet interview bookings.
+ * Deducts wallet funds atomically, enforces slot lock, and issues notifications/emails.
+ */
+export const bookWithWallet = async (req, res) => {
+    try {
+        const rawBooking = req.body.bookingDetails || req.body;
+        const candidateId = rawBooking.candidateId || req.user?.userId || req.user?.id || req.body.userId;
+        const bookingDetails = { ...rawBooking, candidateId };
+
+        if (!bookingDetails?.expertId || !bookingDetails?.candidateId || !bookingDetails?.startTime || !bookingDetails?.endTime) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required booking details (expertId, candidateId, startTime, endTime)'
+            });
+        }
+
+        const startTime = new Date(bookingDetails.startTime);
+        const endTime = new Date(bookingDetails.endTime);
+        const duration = Number(bookingDetails.duration) || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000));
+        const sessionFee = Number(bookingDetails.price || req.body.price || 0);
+
+        if (sessionFee <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'A positive session fee is required for wallet booking'
+            });
+        }
+
+        // 1. Cutoff check: booking permitted until 10 minutes before scheduled end time
+        const bookingCutoff = new Date(endTime.getTime() - 10 * 60 * 1000);
+        const now = new Date();
+        if (now.getTime() >= bookingCutoff.getTime()) {
+            return res.status(400).json({
+                success: false,
+                cutoffExpired: true,
+                message: 'The 10-minute booking cutoff for this interview slot has passed.'
+            });
+        }
+
+        // 2. Validate slot
+        const slotValidation = await validateBookingSlot({
+            expertId: bookingDetails.expertId,
+            startTime,
+            endTime,
+            duration
+        });
+
+        if (!slotValidation.valid) {
+            return res.status(slotValidation.status || 400).json({
+                success: false,
+                message: slotValidation.error || 'This slot is no longer available.',
+                reason: slotValidation.reason
+            });
+        }
+
+        // 3. Atomically debit candidate's wallet
+        const debitRes = await debitWallet({
+            userId: candidateId,
+            amount: sessionFee,
+            paymentMethod: 'MOCKEEFY_WALLET',
+            totalBookingAmount: sessionFee,
+            walletAmountUsed: sessionFee,
+            reason: 'INTERVIEW_BOOKING_DEBIT',
+            description: `Full wallet payment of ₹${sessionFee} for mock interview`
+        });
+
+        if (!debitRes.success) {
+            return res.status(400).json({
+                success: false,
+                message: debitRes.message || 'Insufficient wallet balance',
+                currentBalance: debitRes.currentBalance
+            });
+        }
+
+        // 4. Resolve expert user
+        let expertDoc = null;
+        let expertUserId = bookingDetails.expertId;
+        try {
+            expertDoc = await ExpertDetails.findOne({ $or: [{ _id: bookingDetails.expertId }, { userId: bookingDetails.expertId }] }).populate('userId');
+            if (expertDoc?.userId) {
+                expertUserId = expertDoc.userId?._id || expertDoc.userId;
+            }
+        } catch (_) {}
+
+        // 5. Concurrency check & create session with slotLockKey
+        const expertIds = [bookingDetails.expertId, expertDoc?._id, expertDoc?.userId].filter(Boolean);
+        const slotLockKey = buildSlotKey(expertUserId, startTime, endTime);
+
+        const concurrentConflict = await Session.findOne({
+            $or: [
+                { slotLockKey, status: { $nin: ['cancelled'] } },
+                {
+                    expertId: { $in: expertIds },
+                    status: { $in: ['confirmed', 'live', 'upcoming', 'Upcoming', 'pending'] },
+                    startTime: { $lt: endTime },
+                    endTime: { $gt: startTime }
+                }
+            ]
+        });
+
+        if (concurrentConflict) {
+            // Restore wallet funds immediately
+            await restoreWalletDebit({
+                userId: candidateId,
+                amount: sessionFee,
+                originalTransactionId: debitRes.transaction?._id,
+                reason: 'SLOT_CONFLICT_RESTORE',
+                description: 'Restored wallet funds due to slot booking conflict'
+            });
+
+            return res.status(409).json({
+                success: false,
+                slotConflict: true,
+                message: 'This interview slot was just booked by another candidate. Your wallet funds have been restored.'
+            });
+        }
+
+        const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const sessionData = {
+            sessionId,
+            expertId: bookingDetails.expertId,
+            candidateId,
+            startTime,
+            endTime,
+            slotLockKey,
+            topics: bookingDetails.topics || ["General Mock Interview"],
+            price: sessionFee,
+            status: 'confirmed',
+            meetingLink: (expertDoc?.availability?.defaultMeetingLink && /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test(expertDoc.availability.defaultMeetingLink.trim())) ? expertDoc.availability.defaultMeetingLink.trim() : null,
+            duration,
+            level: bookingDetails.level || "Rising Mentor",
+            notes: bookingDetails.notes || "Booked with Mockeefy Wallet"
+        };
+
+        let session = null;
+        try {
+            session = await sessionService.createSession(sessionData);
+        } catch (createErr) {
+            // If duplicate key error: restore wallet
+            await restoreWalletDebit({
+                userId: candidateId,
+                amount: sessionFee,
+                originalTransactionId: debitRes.transaction?._id,
+                reason: 'SLOT_CONFLICT_RESTORE',
+                description: 'Restored wallet funds due to slot booking race condition'
+            });
+
+            return res.status(409).json({
+                success: false,
+                slotConflict: true,
+                message: 'This interview slot was just booked by another candidate. Your wallet funds have been restored.'
+            });
+        }
+
+        // 6. Record payment record
+        const walletPaymentId = `wallet_pay_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+        try {
+            await PaymentRecord.create({
+                paymentId: walletPaymentId,
+                orderId: req.body.orderId || `wallet_ord_${Date.now()}`,
+                userId: candidateId,
+                paymentType: 'wallet',
+                amount: sessionFee,
+                walletAmountDeducted: sessionFee,
+                sessionId: session.sessionId,
+                status: 'verified',
+                paymentCapturedAt: now,
+                metadata: {
+                    bookingId: session.sessionId,
+                    candidateId: String(candidateId),
+                    totalBookingAmount: sessionFee,
+                    walletContribution: sessionFee,
+                    razorpayPayableAmount: 0,
+                    paymentMethod: 'MOCKEEFY_WALLET'
+                }
+            });
+            if (debitRes.transaction?._id) {
+                const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+                await WalletTransaction.findByIdAndUpdate(debitRes.transaction._id, {
+                    sessionId: session.sessionId,
+                    referenceId: session._id,
+                    referenceModel: 'Session',
+                    paymentMethod: 'MOCKEEFY_WALLET',
+                    totalBookingAmount: sessionFee,
+                    walletAmountUsed: sessionFee
+                });
+            }
+        } catch (recErr) {
+            console.warn('[PaymentRecord] Error saving wallet payment record:', recErr.message);
+        }
+
+        // 7. Dispatches notifications & emails
+        const dt = formatSessionDateTime(startTime, endTime);
+        const domainName = expertDoc?.personalInformation?.category || expertDoc?.category || (bookingDetails.topics && bookingDetails.topics[0]) || "Technical Interview";
+        const expertTitle = expertDoc?.professionalDetails?.title || expertDoc?.title || "Interview Expert";
+        const candidateName = bookingDetails.candidateName || req.user?.name || "Candidate";
+        const expertName = expertDoc?.personalInformation?.userName || bookingDetails.expertName || "Interview Expert";
+
+        await createNotification({
+            userId: candidateId,
+            type: 'booking_confirmed',
+            title: 'Interview Booking Confirmed 🎉',
+            message: `Your ${duration}-min ${domainName} interview with ${expertName} (${expertTitle}) is confirmed for ${dt.dateStr} from ${dt.timeSlotStr}. Paid ₹${sessionFee} via Mockeefy Wallet.`,
+            metadata: { sessionId: session.sessionId, link: '/my-sessions', domain: domainName, duration }
+        });
+
+        if (expertUserId) {
+            await createNotification({
+                userId: expertUserId,
+                type: 'booking_confirmed',
+                title: 'New Interview Booking 🎯',
+                message: `New booking: ${candidateName} has booked a ${duration}-min ${domainName} interview with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                metadata: { sessionId: session.sessionId, link: '/dashboard/sessions', domain: domainName, candidateName, duration }
+            });
+        }
+
+        triggerBookingEmails({
+            bookingDetails: { ...bookingDetails, category: domainName },
+            sessionId: session.sessionId,
+            meetingLink: sessionData.meetingLink,
+            paymentId: walletPaymentId,
+            orderId: "WALLET-DEBIT",
+            paymentStatus: "Paid via Mockeefy Wallet",
+            price: sessionFee,
+            candidateUserFallback: req.user
+        }).catch((err) => console.error('[WalletBooking] Email error:', err.message));
+
+        return res.status(200).json({
+            success: true,
+            walletDebited: true,
+            amountDebited: sessionFee,
+            remainingBalance: debitRes.balanceAfter,
+            message: 'Session booked successfully using Mockeefy Wallet',
+            data: session,
+            sessionId: session.sessionId
+        });
+    } catch (error) {
+        console.error('Book With Wallet Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to book session with wallet',
+            error: error.message
+        });
+    }
+};
+
+/* -------------------- Cancel Partial Booking (Restore Wallet Debit) -------------------- */
+export const cancelPartialBooking = async (req, res) => {
+    try {
+        const userId = req.user?._id || req.user?.userId || req.user?.id;
+        const { orderId, walletDebitTxnId } = req.body;
+        if (!orderId && !walletDebitTxnId) {
+            return res.status(400).json({ success: false, message: 'Missing orderId or walletDebitTxnId' });
+        }
+
+        const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+        const Session = (await import('../models/Session.js')).default;
+        const PaymentRecord = (await import('../models/PaymentRecord.js')).default;
+
+        // 1. Race Protection: If session already confirmed for this order, CANNOT cancel!
+        if (orderId) {
+            const confirmedSession = await Session.findOne({
+                $or: [
+                    { 'paymentDetails.orderId': orderId },
+                    { notes: { $regex: orderId } }
+                ],
+                status: { $nin: ['cancelled'] }
+            });
+            if (confirmedSession) {
+                return res.status(409).json({
+                    success: false,
+                    paymentCaptured: true,
+                    message: 'Cannot cancel: session has already been confirmed for this booking.'
+                });
+            }
+
+            // 2. Race Protection: If PaymentRecord already verified or awaiting reconciliation
+            const existingPayment = await PaymentRecord.findOne({
+                orderId,
+                status: { $in: ['verified', 'captured', 'awaiting_reconciliation'] }
+            });
+            if (existingPayment) {
+                return res.status(409).json({
+                    success: false,
+                    paymentCaptured: true,
+                    message: 'Cannot cancel: payment was captured or is awaiting reconciliation.'
+                });
+            }
+
+            // 3. Authoritative gateway check on Razorpay order
+            if (!orderId.startsWith('dummy') && !orderId.startsWith('test')) {
+                try {
+                    const rzClient = getRazorpayClient();
+                    const payments = await rzClient.orders.fetchPayments(orderId);
+                    const capturedPayment = payments.items?.find(p => p.status === 'captured' || p.status === 'authorized');
+                    if (capturedPayment) {
+                        return res.status(409).json({
+                            success: false,
+                            paymentCaptured: true,
+                            paymentId: capturedPayment.id,
+                            message: 'Cannot cancel: payment has been captured by the gateway.'
+                        });
+                    }
+                } catch (rzErr) {
+                    // Gateway error or order not found, continue
+                }
+            }
+        }
+
+        // Find existing debit transaction for this order
+        const debitTxn = await WalletTransaction.findOne({
+            userId,
+            $or: [
+                ...(orderId ? [{ orderId }] : []),
+                ...(walletDebitTxnId ? [{ _id: walletDebitTxnId }] : [])
+            ],
+            type: 'DEBIT',
+            reason: 'INTERVIEW_BOOKING_DEBIT'
+        });
+
+        if (!debitTxn) {
+            return res.status(200).json({
+                success: true,
+                restored: false,
+                message: 'No wallet debit found to restore for this order.'
+            });
+        }
+
+        // Idempotency: Check if already restored
+        const alreadyRestored = await WalletTransaction.findOne({
+            userId,
+            $or: [
+                { referenceId: debitTxn._id },
+                { relatedTransactionId: debitTxn._id }
+            ],
+            type: 'CREDIT',
+            reason: { $regex: /RESTORE/i }
+        });
+
+        if (alreadyRestored) {
+            return res.status(200).json({
+                success: true,
+                alreadyRestored: true,
+                restored: false,
+                message: 'Wallet debit has already been restored.'
+            });
+        }
+
+        // Release slot reservation lock if any
+        if (orderId) {
+            await releaseSlotReservation({ orderId });
+        }
+
+        const restoreRes = await restoreWalletDebit({
+            userId,
+            amount: debitTxn.amount,
+            originalTransactionId: debitTxn._id,
+            reason: 'SLOT_CANCELLED_RESTORE',
+            description: `Restored ₹${debitTxn.amount} wallet funds due to cancelled or failed checkout for order ${orderId || debitTxn._id}`
+        });
+
+        if (restoreRes?.alreadyRestored) {
+            return res.status(200).json({
+                success: true,
+                alreadyRestored: true,
+                restored: false,
+                message: 'Wallet debit has already been restored.'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            restored: true,
+            restoredAmount: debitTxn.amount,
+            balanceAfter: restoreRes.balanceAfter,
+            message: `Restored ₹${debitTxn.amount} to your Mockeefy wallet.`
+        });
+    } catch (err) {
+        console.error('Cancel partial booking error:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+/* -------------------- Trigger Abandoned Wallet Checkout Reconciliation -------------------- */
+export const triggerAbandonedReconciliation = async (req, res) => {
+    try {
+        const { reconcileAbandonedWalletCheckouts } = await import('../services/paymentReconciliationService.js');
+        const results = await reconcileAbandonedWalletCheckouts({ maxAgeMs: 0 });
+        return res.status(200).json({ success: true, results });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
     }
 };

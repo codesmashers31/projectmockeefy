@@ -28,8 +28,53 @@ const walletTransactionSchema = new mongoose.Schema({
   },
   referenceModel: {
     type: String,
-    enum: ['Session', 'PayoutRequest'],
+    enum: ['Session', 'PayoutRequest', 'PaymentRecord', 'WalletTransaction'],
     required: false
+  },
+  paymentId: {
+    type: String,
+    default: null,
+    trim: true,
+    index: true
+  },
+  orderId: {
+    type: String,
+    default: null,
+    trim: true,
+    index: true
+  },
+  reason: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  idempotencyKey: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  sessionId: {
+    type: String,
+    default: null,
+    trim: true,
+    index: true
+  },
+  currency: {
+    type: String,
+    default: 'INR'
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['MOCKEEFY_WALLET', 'RAZORPAY', 'COMBINED', null],
+    default: null
+  },
+  totalBookingAmount: {
+    type: Number,
+    default: null
+  },
+  walletAmountUsed: {
+    type: Number,
+    default: null
   },
   status: {
     type: String,
@@ -48,6 +93,7 @@ const walletTransactionSchema = new mongoose.Schema({
 
 // Performance Indexes (Phase C)
 walletTransactionSchema.index({ userId: 1, createdAt: -1 });
+walletTransactionSchema.index({ walletId: 1, createdAt: -1 });
 walletTransactionSchema.index({ status: 1 });
 
 // Idempotency: ensure at most ONE credit transaction per session reference
@@ -56,6 +102,24 @@ walletTransactionSchema.index(
   {
     unique: true,
     partialFilterExpression: { referenceModel: 'Session', type: 'CREDIT' }
+  }
+);
+
+// Idempotency: ensure at most ONE wallet credit per Razorpay payment ID
+walletTransactionSchema.index(
+  { paymentId: 1, type: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { paymentId: { $type: "string" }, type: 'CREDIT' }
+  }
+);
+
+// Idempotency: ensure at most ONE transaction per idempotency key
+walletTransactionSchema.index(
+  { idempotencyKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idempotencyKey: { $type: "string" } }
   }
 );
 

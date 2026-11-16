@@ -65,7 +65,15 @@ const toObjectId = (id) => {
 };
 
 /* -------------------- getMissingSectionsHelper -------------------- */
+const isExpertActive = (expert) => {
+  const s = String(expert?.status || "").toLowerCase();
+  return s === "active" || s === "approved";
+};
+
 const getMissingSections = (expert, user) => {
+  // Active/Approved experts have already been verified and approved by admin
+  if (isExpertActive(expert)) return [];
+
   const missing = [];
 
   // Personal Info (Source: User)
@@ -87,10 +95,15 @@ const getMissingSections = (expert, user) => {
   const proFilled = pd.title && pd.company && pd.industry && (typeof pd.totalExperience === "number");
   if (!proFilled) missing.push("Professional Details");
 
-  // Skills (Source: Expert)
+  // Skills & Category (Source: Expert)
   const sk = expert.skillsAndExpertise || {};
-  // Check either legacy skills fields OR the new expertSkills array
-  const hasSkills = (sk.domains?.length || sk.tools?.length || sk.languages?.length) || (expert.expertSkills && expert.expertSkills.length > 0);
+  const hasCategory = Boolean(
+    expert.personalInformation?.category ||
+    expert.category ||
+    expert.domain
+  );
+  // Check category, skills fields OR the new expertSkills array OR if already Active
+  const hasSkills = hasCategory || Boolean(sk.domains?.length || sk.tools?.length || sk.languages?.length) || Boolean(expert.expertSkills && expert.expertSkills.length > 0) || isExpertActive(expert);
   if (!hasSkills) missing.push("Skills & Expertise");
 
   // Availability (Source: Expert)
@@ -99,21 +112,34 @@ const getMissingSections = (expert, user) => {
   if (weeklyObj instanceof Map) {
     weeklyObj = Object.fromEntries(weeklyObj);
   }
-  const weeklyHasSlots = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0);
+  const weeklyHasSlots = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0) || isExpertActive(expert);
   if (!weeklyHasSlots) missing.push("Availability");
 
   // Profile Photo (Source: User)
-  if (!user?.profileImage) missing.push("Profile Photo");
+  const hasUserPhoto = user?.profileImage || (user?.name && isExpertActive(expert));
+  if (!hasUserPhoto) missing.push("Profile Photo");
 
   // Verification (Source: Expert)
   const v = expert.verification || {};
-  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url || v.aadhar?.hash);
-  const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
-  if (!verificationFilled) missing.push("Verification Documents");
+  const hasAadhaar = Boolean(
+    v.aadhar?.isVerified ||
+    v.aadhar?.url ||
+    v.aadhar?.hash ||
+    v.aadhar?.number ||
+    v.aadhar?.rawNumber ||
+    v.aadhar?.maskedNumber
+  );
+  const hasCompanyId = Boolean(v.companyId?.url);
+  const verificationFilled = Boolean(
+    hasCompanyId || hasAadhaar || isExpertActive(expert)
+  );
+  if (!isExpertActive(expert) && !verificationFilled) {
+    missing.push("Verification Documents");
+  }
 
   // Service Agreement (Source: Expert) - Mandatory
   const ag = expert.agreement || {};
-  const hasAgreement = Boolean(ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms));
+  const hasAgreement = Boolean((ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms)) || isExpertActive(expert));
   if (!hasAgreement) missing.push("Service Agreement");
 
   return missing;
@@ -121,6 +147,8 @@ const getMissingSections = (expert, user) => {
 
 /* -------------------- computeCompletion -------------------- */
 const computeCompletion = (expert, user) => {
+  if (isExpertActive(expert)) return 100;
+
   let score = 0;
 
   // Personal Info (20%) - From User
@@ -142,9 +170,14 @@ const computeCompletion = (expert, user) => {
   const proFilled = pd.title && pd.company && pd.industry && (typeof pd.totalExperience === "number");
   if (proFilled) score += 15;
 
-  // Skills (15%) - From Expert
+  // Category & Skills (15%) - From Expert
   const sk = expert.skillsAndExpertise || {};
-  const hasSkills = (sk.domains?.length || sk.tools?.length || sk.languages?.length) || (expert.expertSkills && expert.expertSkills.length > 0);
+  const hasCategory = Boolean(
+    expert.personalInformation?.category ||
+    expert.category ||
+    expert.domain
+  );
+  const hasSkills = hasCategory || Boolean(sk.domains?.length || sk.tools?.length || sk.languages?.length) || Boolean(expert.expertSkills && expert.expertSkills.length > 0) || isExpertActive(expert);
   if (hasSkills) score += 15;
 
   // Availability (15%) - From Expert
@@ -153,22 +186,32 @@ const computeCompletion = (expert, user) => {
   if (weeklyObj instanceof Map) {
     weeklyObj = Object.fromEntries(weeklyObj);
   }
-  const weeklyHasSlots = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0);
+  const weeklyHasSlots = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0) || isExpertActive(expert);
   if (weeklyHasSlots) score += 15;
 
   // Profile Photo (5%) - Check both User (source of truth) and Expert (legacy)
-  const hasPhoto = user?.profileImage || expert.profileImage;
-  if (hasPhoto && !hasPhoto.includes('default-avatar.png')) score += 5;
+  const hasPhoto = user?.profileImage || expert.profileImage || (user?.name && isExpertActive(expert));
+  if (hasPhoto && (!hasPhoto.includes || !hasPhoto.includes('default-avatar.png'))) score += 5;
 
   // Verification (10%) - From Expert
   const v = expert.verification || {};
-  const hasAadhaar = Boolean(v.aadhar?.isVerified || v.aadhar?.url || v.aadhar?.hash);
-  const verificationFilled = Boolean(v.companyId?.url && hasAadhaar && v.linkedin);
+  const hasAadhaar = Boolean(
+    v.aadhar?.isVerified ||
+    v.aadhar?.url ||
+    v.aadhar?.hash ||
+    v.aadhar?.number ||
+    v.aadhar?.rawNumber ||
+    v.aadhar?.maskedNumber
+  );
+  const hasCompanyId = Boolean(v.companyId?.url);
+  const verificationFilled = Boolean(
+    hasCompanyId || hasAadhaar || isExpertActive(expert)
+  );
   if (verificationFilled) score += 10;
 
   // Service Agreement (5%) - From Expert
   const ag = expert.agreement || {};
-  const hasAgreement = Boolean(ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms));
+  const hasAgreement = Boolean((ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms)) || isExpertActive(expert));
   if (hasAgreement) score += 5;
 
   return Math.min(score, 100);
@@ -626,6 +669,7 @@ export const getExpertProfile = async (req, res) => {
       expertSkills: expertLean.expertSkills || [],
       availability: expertLean.availability || { sessionDuration: 30, maxPerDay: 1, weekly: {}, breakDates: [] },
       verification: expertLean.verification || {},
+      agreement: expertLean.agreement || {},
       status: expertLean.status || "pending",
       rejectionReason: expertLean.rejectionReason || "",
       verificationRequested: Boolean(expertLean.verificationRequested),
@@ -635,8 +679,8 @@ export const getExpertProfile = async (req, res) => {
       photoUrl: user.profileImage || "",
       originalPhotoUrl: user.originalProfileImage || expertLean.originalProfileImage || user.profileImage || "",
 
-      // Category from Expert (Personal Info legacy)
-      category: expertLean.personalInformation?.category || ""
+      // Category from Expert (Personal Info legacy with fallback to root or skills domain)
+      category: expertLean.personalInformation?.category || expertLean.category || expertLean.domain || (Array.isArray(expertLean.skillsAndExpertise?.domains) && expertLean.skillsAndExpertise.domains[0]) || ""
     };
 
     const completion = computeCompletion(expertLean, user);
@@ -981,13 +1025,25 @@ export const updatePersonalInfo = async (req, res) => {
 
     // 2. Update Expert Profile (Category only)
     if (category !== undefined && category !== null && category !== "") {
-      // Validate: must be an existing category name from Category collection
-      const catDoc = await Category.findOne({ name: category.trim() });
+      // Validate: must be an existing category name from Category collection (case-insensitive)
+      const cleanCat = category.trim();
+      const escapedCat = cleanCat.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const catDoc = await Category.findOne({ name: new RegExp(`^${escapedCat}$`, "i") });
       if (!catDoc) {
         return res.status(400).json({ success: false, message: "Please select a valid category from the list" });
       }
       if (!expert.personalInformation) expert.personalInformation = {};
       expert.personalInformation.category = catDoc.name;
+
+      // Keep skillsAndExpertise.domains in sync with selected category
+      if (!expert.skillsAndExpertise) {
+        expert.skillsAndExpertise = { mode: "Online", domains: [catDoc.name], tools: [], languages: [] };
+      } else if (!Array.isArray(expert.skillsAndExpertise.domains)) {
+        expert.skillsAndExpertise.domains = [catDoc.name];
+      } else if (!expert.skillsAndExpertise.domains.includes(catDoc.name)) {
+        expert.skillsAndExpertise.domains.push(catDoc.name);
+      }
+
       await expert.save({ validateBeforeSave: false });
     }
 
@@ -1131,7 +1187,7 @@ export const getProfessional = async (req, res) => {
     const expert = await ExpertDetails.findOne({ userId: queryUserId });
     if (expert && expert.professionalDetails) return res.status(200).json({ success: true, data: expert.professionalDetails });
 
-    return res.status(200).json({ success: true, data: { title: "", company: "", totalExperience: "", industry: "", level: "Intermediate", previous: [] } });
+    return res.status(200).json({ success: true, data: { title: "", company: "", totalExperience: "", totalExperienceMonths: "0", industry: "", level: "Intermediate", previous: [] } });
   } catch (err) {
     console.error("getProfessional error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -1151,6 +1207,7 @@ export const updateProfessional = async (req, res) => {
       title: professionalDetails.title || "",
       company: professionalDetails.company || "",
       totalExperience: Number(professionalDetails.totalExperience) || 0,
+      totalExperienceMonths: Number(professionalDetails.totalExperienceMonths) || 0,
       industry: professionalDetails.industry || "",
       level: professionalDetails.level || (Array.isArray(professionalDetails.levels) && professionalDetails.levels[0]) || "Rising Mentor",
       levels: Array.isArray(professionalDetails.levels) ? professionalDetails.levels : [professionalDetails.level || "Rising Mentor"],
@@ -1296,6 +1353,91 @@ export const updateSkillsAndExpertise = async (req, res) => {
   }
 };
 
+/* -------------------- updateCategoryAndLevel (Atomic category & level handler) -------------------- */
+export const updateCategoryAndLevel = async (req, res) => {
+  try {
+    const userIdRaw = resolveUserIdFromReq(req);
+    if (!userIdRaw) return res.status(401).json({ success: false, message: "Unauthorized: user id missing" });
+    const queryUserId = toObjectId(userIdRaw);
+
+    const { category, levels } = req.body;
+    if (!category || !String(category).trim()) {
+      return res.status(400).json({ success: false, message: "Category is required" });
+    }
+
+    const cleanCat = String(category).trim();
+    const escapedCat = cleanCat.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const catDoc = await Category.findOne({ name: new RegExp(`^${escapedCat}$`, "i") });
+    if (!catDoc) {
+      return res.status(400).json({ success: false, message: "Please select a valid category from the list" });
+    }
+
+    const selectedLevels = Array.isArray(levels) && levels.length > 0 ? levels : ["Rising Mentor"];
+    const primaryLevel = selectedLevels[0];
+
+    const updateDoc = {
+      $set: {
+        "personalInformation.category": catDoc.name,
+        category: catDoc.name,
+        domain: catDoc.name,
+        "professionalDetails.levels": selectedLevels,
+        "professionalDetails.level": primaryLevel
+      },
+      $addToSet: {
+        "skillsAndExpertise.domains": catDoc.name
+      }
+    };
+
+    const expert = await ExpertDetails.findOneAndUpdate(
+      { userId: queryUserId },
+      updateDoc,
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    const user = await User.findById(queryUserId);
+    const completion = computeCompletion(expert, user);
+    const missingSections = getMissingSections(expert, user);
+
+    syncDataChange({
+      type: "SKILLS_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.skillsAndExpertise
+    });
+    syncDataChange({
+      type: "EXPERIENCE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: expert.professionalDetails
+    });
+    syncDataChange({
+      type: "PERSONAL_INFO_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { category: catDoc.name }
+    });
+    syncDataChange({
+      type: "PROFILE_UPDATED",
+      userId: expert.userId,
+      expertId: expert._id,
+      data: { category: catDoc.name, completion, missingSections }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Category & Level updated successfully",
+      category: catDoc.name,
+      levels: selectedLevels,
+      level: primaryLevel,
+      completion,
+      missingSections
+    });
+  } catch (err) {
+    console.error("updateCategoryAndLevel error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 /* -------------------- getExpertStats -------------------- */
 export const getExpertStats = async (req, res) => {
   try {
@@ -1336,8 +1478,8 @@ export const getExpertStats = async (req, res) => {
         status: 'confirmed',
         startTime: { $gte: startOfDay, $lte: endOfDay }
       })),
-      // Completed for revenue
-      import("../models/Session.js").then(m => m.default.find({ expertId: { $in: expertIdCandidates }, status: 'completed' }, 'price')),
+      // Completed or paid for revenue
+      import("../models/Session.js").then(m => m.default.find({ expertId: { $in: expertIdCandidates }, $or: [{ status: 'completed' }, { payoutCredited: true }] }, 'price payoutAmount payoutCredited status')),
       // Ratings
       import("../models/reviewModel.js").then(m => m.default.find({ expertId: { $in: expertIdCandidates }, reviewerRole: 'candidate' }, 'overallRating')), // Ratings GIVEN to expert
       // Wallet Balance
@@ -1645,18 +1787,29 @@ export const updateAvailability = async (req, res) => {
     }
 
     const formattedAvailability = formatAvailabilityForResponse(expert.availability);
+    clearVerifiedExpertsCache();
 
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: formattedAvailability
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: formattedAvailability }
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
 
     return res.status(200).json({ success: true, message: "Availability updated", data: formattedAvailability });
@@ -1689,17 +1842,30 @@ export const deleteBreakDate = async (req, res) => {
 
     await expert.save();
 
+    clearVerifiedExpertsCache();
+    const formattedAvailability = formatAvailabilityForResponse(expert.availability);
+
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: expert.availability
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: expert.availability }
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
 
     return res.status(200).json({ success: true, message: "Break date removed", data: expert.availability.breakDates });
@@ -1734,17 +1900,30 @@ export const deleteWeeklySlot = async (req, res) => {
     await expert.save();
     const resultSlots = weekly && typeof weekly.get === 'function' ? weekly.get(day) : (weekly ? weekly[day] : []);
 
+    clearVerifiedExpertsCache();
+    const formattedAvailability = formatAvailabilityForResponse(expert.availability);
+
     syncDataChange({
       type: "AVAILABILITY_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: expert.availability
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
     syncDataChange({
       type: "PROFILE_UPDATED",
       userId: expert.userId,
       expertId: expert._id,
-      data: { availability: expert.availability }
+      broadcast: true,
+      data: {
+        expertId: expert._id.toString(),
+        userId: expert.userId ? expert.userId.toString() : undefined,
+        availability: formattedAvailability
+      }
     });
 
     return res.status(200).json({ success: true, message: "Slot removed", data: resultSlots });
@@ -1963,12 +2142,73 @@ export const getRejectedExperts = async (req, res) => {
     return res.status(500).json({ success: false, message: "Internal error" });
   }
 };
-// In-memory cache for verified experts with short TTL (15 seconds) for blazing-fast refresh
+// In-memory cache for verified experts with 5-minute TTL and immediate event-based invalidation
 const verifiedExpertsCache = new Map();
-const VERIFIED_CACHE_TTL_MS = 15000;
+const VERIFIED_CACHE_TTL_MS = 300000;
 
 export const clearVerifiedExpertsCache = () => {
   verifiedExpertsCache.clear();
+};
+
+/* -------------------- Availability Helpers (Asia/Kolkata timezone aware) -------------------- */
+export const getDaySlotsFromWeekly = (weekly, dayName) => {
+  if (!weekly) return [];
+  const entries = weekly instanceof Map ? Array.from(weekly.entries()) : Object.entries(weekly);
+  const targetLower = String(dayName).toLowerCase();
+  const targetShort = targetLower.slice(0, 3);
+
+  for (const [key, slots] of entries) {
+    const kLower = String(key).toLowerCase();
+    const kShort = kLower.slice(0, 3);
+    if (kLower === targetLower || kShort === targetShort) {
+      if (Array.isArray(slots)) return slots;
+    }
+  }
+  return [];
+};
+
+export const computeExpertAvailabilityStatus = (weekly) => {
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const now = new Date();
+  const kolkataShort = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short'
+  }).format(now).toLowerCase();
+
+  const currentIdx = days.indexOf(kolkataShort);
+
+  const todaySlots = getDaySlotsFromWeekly(weekly, kolkataShort);
+  const isAvailableToday = todaySlots.length > 0;
+
+  let isAvailableThisWeek = false;
+  for (const d of days) {
+    if (getDaySlotsFromWeekly(weekly, d).length > 0) {
+      isAvailableThisWeek = true;
+      break;
+    }
+  }
+
+  let activeTime = "Next: Upon Request";
+  if (isAvailableToday) {
+    activeTime = "Available Today";
+  } else if (isAvailableThisWeek) {
+    for (let offset = 1; offset < 7; offset++) {
+      const nextIdx = (currentIdx + offset) % 7;
+      const nextShort = days[nextIdx];
+      if (getDaySlotsFromWeekly(weekly, nextShort).length > 0) {
+        if (offset === 1) {
+          activeTime = "Available Tomorrow";
+        } else {
+          activeTime = `Next: ${dayNamesFull[nextIdx].slice(0, 3)}`;
+        }
+        break;
+      }
+    }
+  }
+
+  return { isAvailableToday, isAvailableThisWeek, activeTime };
 };
 
 /* -------------------- getVerifiedExperts (Active experts only) -------------------- */
@@ -1986,7 +2226,12 @@ export const getVerifiedExperts = async (req, res) => {
     ];
 
     if (category && category !== "all") {
-      pipeline[0].$match["personalInformation.category"] = category;
+      const escapedCategory = category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const categoryRegex = new RegExp(`^${escapedCategory}$`, "i");
+      pipeline[0].$match.$or = [
+        { "personalInformation.category": categoryRegex },
+        { "skillsAndExpertise.domains": categoryRegex }
+      ];
     }
 
     pipeline.push(
@@ -2133,6 +2378,8 @@ export const getVerifiedExperts = async (req, res) => {
         console.error("Price fetch error", e);
       }
 
+      const availStatus = computeExpertAvailabilityStatus(expert.availability?.weekly);
+
       return {
         _id: expert._id,
         userId: expert.userId,
@@ -2142,6 +2389,9 @@ export const getVerifiedExperts = async (req, res) => {
         maxPrice: maxPrice,
         minOriginalPrice: minOriginalPrice,
         maxOriginalPrice: maxOriginalPrice,
+        activeTime: availStatus.activeTime,
+        isAvailableToday: availStatus.isAvailableToday,
+        isAvailableThisWeek: availStatus.isAvailableThisWeek,
         metrics: {
           avgRating: expert.avgRating || 0,
           totalReviews: expert.reviewCount || 0
@@ -2186,7 +2436,10 @@ export const getVerifiedExperts = async (req, res) => {
           allowedDurations: [expert.availability?.sessionDuration === 60 ? 60 : 30],
           maxPerDay: expert.availability?.maxPerDay || 1,
           weekly: expert.availability?.weekly || {},
-          breakDates: expert.availability?.breakDates || []
+          breakDates: expert.availability?.breakDates || [],
+          activeTime: availStatus.activeTime,
+          isAvailableToday: availStatus.isAvailableToday,
+          isAvailableThisWeek: availStatus.isAvailableThisWeek
         },
         verification: expert.verification || {},
         agreement: expert.agreement || {},
@@ -2946,6 +3199,8 @@ export const getExpertAgreement = async (req, res) => {
       success: true,
       agreement: expert.agreement || {},
       expertDetails: {
+        _id: expert._id,
+        id: expert._id,
         name: user?.name || expert.name || "",
         email: user?.email || expert.email || "",
         company: expert.professionalDetails?.company || "",

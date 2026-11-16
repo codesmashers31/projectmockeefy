@@ -1,0 +1,99 @@
+<USER_REQUEST>
+# MOCKEEFY — CRITICAL CERTIFICATE PROGRESS DATA RECONCILIATION & FULLY DYNAMIC DOMAIN PROGRESS FIX
+
+## PRIORITY: CRITICAL — REAL DATABASE DATA ONLY
+
+I have attached the current application screen recording and screenshots.
+
+The certificate progress UI is displaying incorrect interview counts. For example, the candidate has completed approximately 14 IT interviews and received expert feedback, but the certificate progress banner displays:
+
+- IT: 0/3
+- 0 unallocated interviews completed
+- Milestone 2 (Interviews 4–6)
+
+This is incorrect and must be investigated at the database, backend calculation, API, and frontend rendering levels.
+
+I want the entire certificate progress feature to reflect the actual MongoDB data accurately.
+
+**Do not simply change the displayed number from 0 to 14. Investigate the underlying records, attendance evidence, evaluation records, previous certificate allocations, and milestone calculation. The final result must be mathematically and logically correct.**
+
+---
+
+# 1. FIRST: PERFORM A COMPLETE DATABASE RECONCILIATION
+
+Before modifying the frontend, inspect the actual MongoDB records for the authenticated candidate.
+
+Trace:
+
+- `User`
+- `Session`
+- `Meeting`
+- `Review`
+- `Certification`
+- Category records
+- Existing milestone allocations
+- Attendance audit records
+
+Use the actual authenticated candidate ID. Never hardcode Joel's ID or any other user's ID.
+
+For each candidate, retrieve all sessions belonging to that candidate and group them by their actual `categoryId`.
+
+For every session, independently determine:
+
+1. Does the session belong to the authenticated candidate?
+2. Is the session genuinely completed?
+3. Is candidate-specific attendance confirmed?
+4. Does an expert evaluation/review actually exist?
+5. Is the review associated with the correct session?
+6. Is the session already allocated to an issued certificate?
+7. Is the session cancelled, rejected, absent, or a no-show?
+8. Does the session have an administrative attendance approval where required?
+
+Do not coun
+<truncated 10375 bytes>
+sly allocated sessions must not be reused.
+17. Existing issued certificates must remain unchanged.
+18. A newly created active category must work dynamically.
+19. Progress must update after a new qualifying interview receives expert feedback.
+20. Progress must update after a certificate is successfully issued.
+
+Also test API responses against direct MongoDB queries for the same candidate and category.
+
+---
+
+# 11. FINAL VERIFICATION REPORT
+
+Before declaring completion, provide:
+
+1. The actual number of candidate sessions retrieved from MongoDB.
+2. The number of genuinely attended sessions.
+3. The number of completed and evaluated sessions.
+4. The number excluded and the exact reasons.
+5. The number already allocated to issued certificates.
+6. The total eligible count for each category.
+7. The correct next milestone progress for each category.
+8. The actual root cause of the incorrect 0/3 display.
+9. The exact backend and frontend files changed.
+10. Automated test results.
+11. TypeScript and production build results.
+12. Screenshots of the final live browser UI.
+
+**Do not claim that the candidate has 14 eligible interviews unless MongoDB records prove it. Do not claim the issue is fixed based only on frontend code or mocked API responses.**
+
+## FINAL ACCEPTANCE CRITERIA
+
+The application must show the exact number of genuinely attended, completed, and expert-evaluated interviews from MongoDB.
+
+For every category, the progress must accurately represent the candidate's NEXT unallocated three-interview milestone.
+
+If a candidate has at least one qualifying interview in a category, show that category.
+
+If the candidate has zero qualifying interviews in a category, hide it.
+
+No hardcoded data. No fake counts. No misleading milestone labels. No duplicate allocations.
+
+**The actual database is the single source of truth. Verify the final result against MongoDB and the live browser before declaring completion.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-11T15:45:37+05:30.
+</ADDITIONAL_METADATA>

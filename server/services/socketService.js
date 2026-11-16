@@ -214,6 +214,8 @@ export const syncDataChange = ({
     sessionId,
     data,
     toAdmin = false,
+    broadcast = false,
+    toAll = false,
 }) => {
     if (!io) return;
 
@@ -251,5 +253,11 @@ export const syncDataChange = ({
     if (toAdmin) {
         io.to("admin").emit("DATA_SYNC", payload);
         io.to("admin").emit(type.toLowerCase(), data);
+    }
+
+    // 5. Broadcast to all connected clients if requested or for public availability updates
+    if (broadcast || toAll || type === "AVAILABILITY_UPDATED") {
+        io.emit("DATA_SYNC", payload);
+        io.emit(type.toLowerCase(), data);
     }
 };

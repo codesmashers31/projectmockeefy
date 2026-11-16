@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit, Trash2, FolderTree, Tag } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { toast } from 'sonner';
 import { Category, SubCategory } from '../types';
 import { dataService } from '../services/dataService';
 import CategoryForm from './CategoryForm';
 import Modal from './Modal';
-import Toast from './Toast';
-import { Toast as ToastType } from '../types';
 
 const CategoriesManager: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -15,7 +15,6 @@ const CategoriesManager: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'category' | 'subcategory'>('category');
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
-  const [toast, setToast] = useState<ToastType | null>(null);
 
   useEffect(() => {
     loadData();
@@ -26,12 +25,10 @@ const CategoriesManager: React.FC = () => {
     setSubCategories(dataService.getSubCategories());
   };
 
-  const showToast = (message: string, type: ToastType['type']) => {
-    setToast({
-      id: Date.now().toString(),
-      type,
-      message
-    });
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    if (type === 'success') toast.success(message);
+    else if (type === 'error') toast.error(message);
+    else toast.info(message);
   };
 
   // Category handlers
@@ -49,8 +46,17 @@ const CategoriesManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteCategory = (category: Category) => {
-    if (window.confirm(`Are you sure you want to delete "${category.name}"? This will also delete all its subcategories.`)) {
+  const handleDeleteCategory = async (category: Category) => {
+    const result = await Swal.fire({
+      title: 'Delete Category?',
+      text: `Are you sure you want to delete "${category.name}"? This will also delete all its subcategories.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0755E8',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, delete',
+    });
+    if (result.isConfirmed) {
       const success = dataService.deleteCategory(category.id);
       if (success) {
         loadData();
@@ -94,8 +100,17 @@ const CategoriesManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteSubCategory = (subCategory: SubCategory) => {
-    if (window.confirm(`Are you sure you want to delete "${subCategory.name}"?`)) {
+  const handleDeleteSubCategory = async (subCategory: SubCategory) => {
+    const result = await Swal.fire({
+      title: 'Delete Subcategory?',
+      text: `Are you sure you want to delete "${subCategory.name}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0755E8',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, delete',
+    });
+    if (result.isConfirmed) {
       const success = dataService.deleteSubCategory(subCategory.id);
       if (success) {
         loadData();
@@ -287,13 +302,6 @@ const CategoriesManager: React.FC = () => {
           onCancel={() => setIsModalOpen(false)}
         />
       </Modal>
-
-      {toast && (
-        <Toast
-          toast={toast}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 };

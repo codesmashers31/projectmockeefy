@@ -41,6 +41,7 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const WatchMock = lazy(() => import("./pages/WatchMock"));
 const AiInterview = lazy(() => import("./pages/AiInterview"));
+const CandidateWalletPage = lazy(() => import("./pages/CandidateWalletPage"));
 
 // Expert Dashboard Pages
 const DashboardIndex = lazy(() => import("./pages/expert/Index"));
@@ -211,6 +212,7 @@ function AppRoutes() {
               <Route path="/liked-mentors" element={<MySessions key="liked-mentors" initialViewOverride="saved" />} />
               <Route path="/tips" element={<TipsPage />} />
               <Route path="/certificates" element={<CertificatesPage />} />
+              <Route path="/wallet" element={<CandidateWalletPage />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/notifications" element={<Notifications />} />
             </Route>
@@ -265,7 +267,7 @@ export default function App() {
     <>
       <QueryClientProvider client={queryClient}>
         <ResumeProvider>
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="top-right" visibleToasts={3} expand={false} duration={4000} closeButton />
           <AppRoutes />
         </ResumeProvider>
       </QueryClientProvider>

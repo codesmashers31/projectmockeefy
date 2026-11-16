@@ -564,8 +564,8 @@ export const getUserEarningsSummary = async (req, res) => {
             expertIdCandidates.push(expert.userId, expert.userId.toString());
         }
 
-        // Include all completed sessions (legacy used price, new use payoutCredited + payoutAmount)
-        const sessions = await Session.find({ expertId: { $in: expertIdCandidates }, status: 'completed' });
+        // Include all completed or credited sessions (legacy used price, new use payoutCredited + payoutAmount)
+        const sessions = await Session.find({ expertId: { $in: expertIdCandidates }, $or: [{ status: 'completed' }, { payoutCredited: true }] });
         let totalEarnings = sessions.reduce((acc, session) => acc + (session.payoutAmount || session.price || 0), 0);
 
         const settings = await getPayoutSettingsDoc();

@@ -2,6 +2,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import { getAppBaseUrl, getMeetingUrl, getCandidateSessionsUrl, getExpertSessionsUrl } from '../utils/appUrl.js';
+import { enqueueEmail } from './emailOutboxService.js';
+import EmailOutbox from '../models/EmailOutbox.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -248,9 +251,8 @@ export const sendBookingNotificationToExpert = async ({
         formattedTimeSlot = formattedTimeSlot || dt.timeSlotStr;
     }
 
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-    const meetingUrl = meetingLink || `${clientUrl}/live-meeting/${sessionId}`;
-    const dashboardUrl = `${clientUrl}/expert/dashboard`;
+    const meetingUrl = getMeetingUrl(sessionId, meetingLink);
+    const dashboardUrl = getExpertSessionsUrl();
     const resolvedTopics = Array.isArray(topics) ? topics.join(", ") : (topics || "Mock Interview Session");
     const safeAmount = (amountPaid !== undefined && amountPaid !== null) ? Number(amountPaid).toLocaleString("en-IN") : "0";
 
@@ -499,11 +501,37 @@ export const sendBookingNotificationToExpert = async ({
 </html>
     `;
 
-    return sendEmail({
+    if (sessionId) {
+        try {
+            await enqueueEmail({
+                sessionId,
+                recipientType: 'expert',
+                to: expertEmail,
+                subject,
+                html,
+                metadata: { sessionId, expertName, candidateName, formattedDate, formattedTimeSlot, amountPaid }
+            });
+        } catch (oErr) {
+            console.warn('[EmailService] Outbox enqueue error for expert:', oErr.message);
+        }
+    }
+
+    const result = await sendEmail({
         to: expertEmail,
         subject,
         html,
     });
+
+    if (sessionId) {
+        const idempotencyKey = `${sessionId}_expert_booking_confirmed`;
+        if (result) {
+            await EmailOutbox.updateOne({ idempotencyKey }, { $set: { status: 'sent', sentAt: new Date() } }).catch(() => {});
+        } else {
+            await EmailOutbox.updateOne({ idempotencyKey }, { $set: { status: 'failed', lastError: 'Immediate SMTP send returned false' } }).catch(() => {});
+        }
+    }
+
+    return result;
 };
 
 /**
@@ -517,6 +545,7 @@ export const sendBookingNotificationToCandidate = async ({
     timeSlot,
     duration = 60,
     topics,
+    category,
     amountPaid,
     paymentId,
     meetingLink,
@@ -524,10 +553,10 @@ export const sendBookingNotificationToCandidate = async ({
 }) => {
     if (!candidateEmail) return false;
 
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-    const meetingUrl = meetingLink || `${clientUrl}/live-meeting/${sessionId}`;
-    const sessionsUrl = `${clientUrl}/my-sessions`;
+    const meetingUrl = getMeetingUrl(sessionId, meetingLink);
+    const sessionsUrl = getCandidateSessionsUrl();
     const safeAmount = (amountPaid !== undefined && amountPaid !== null) ? Number(amountPaid).toLocaleString("en-IN") : "0";
+    const domainName = category || (Array.isArray(topics) ? topics[0] : topics) || "Mock Interview";
 
     const subject = `🎉 Your Mock Interview with ${expertName} is Confirmed! | Mockeefy`;
 
@@ -557,10 +586,12 @@ export const sendBookingNotificationToCandidate = async ({
               </p>
               
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Domain / Track:</strong> ${domainName}</p>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${date}</p>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Time Slot:</strong> ${timeSlot}</p>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Duration:</strong> ${duration} Minutes</p>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Interview Expert:</strong> ${expertName}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Status:</strong> Confirmed & Scheduled</p>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Amount Paid:</strong> ₹${safeAmount} (Paid)</p>
               </div>
 
@@ -582,11 +613,37 @@ export const sendBookingNotificationToCandidate = async ({
 </html>
     `;
 
-    return sendEmail({
+    if (sessionId) {
+        try {
+            await enqueueEmail({
+                sessionId,
+                recipientType: 'candidate',
+                to: candidateEmail,
+                subject,
+                html,
+                metadata: { sessionId, expertName, candidateName, date, timeSlot, amountPaid }
+            });
+        } catch (oErr) {
+            console.warn('[EmailService] Outbox enqueue error for candidate:', oErr.message);
+        }
+    }
+
+    const result = await sendEmail({
         to: candidateEmail,
         subject,
         html,
     });
+
+    if (sessionId) {
+        const idempotencyKey = `${sessionId}_candidate_booking_confirmed`;
+        if (result) {
+            await EmailOutbox.updateOne({ idempotencyKey }, { $set: { status: 'sent', sentAt: new Date() } }).catch(() => {});
+        } else {
+            await EmailOutbox.updateOne({ idempotencyKey }, { $set: { status: 'failed', lastError: 'Immediate SMTP send returned false' } }).catch(() => {});
+        }
+    }
+
+    return result;
 };
 
 export const notifyReviewReceived = async (expertName, candidateEmail, sessionTopic, reviewData) => {
@@ -644,7 +701,7 @@ export const sendProductUpdateEmail = async ({ expertId, expertEmail, expertName
             return { success: true, suppressed: true };
         }
 
-        const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+        const dashboardUrl = getExpertSessionsUrl();
         const emailSubject = subject || `📢 What's New on Mockeefy: ${announcementTitle || "Product Updates"}`;
         const html = `
 <!DOCTYPE html>
@@ -655,7 +712,7 @@ export const sendProductUpdateEmail = async ({ expertId, expertEmail, expertName
     <p>Hello ${expertName || "Expert"},</p>
     <div style="color: #334155; line-height: 1.6;">${announcementContent || "Check out the latest features and updates designed to elevate your mentoring experience on Mockeefy."}</div>
     <div style="margin-top: 24px; text-align: center;">
-      <a href="${clientUrl}/expert/dashboard" style="background: #0755E8; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Open Expert Dashboard</a>
+      <a href="${dashboardUrl}" style="background: #0755E8; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Open Expert Dashboard</a>
     </div>
     <p style="margin-top: 32px; font-size: 11px; color: #94a3b8; text-align: center;">You received this because Product Updates is enabled in your Expert Settings. You can update your preferences anytime in Settings.</p>
   </div>

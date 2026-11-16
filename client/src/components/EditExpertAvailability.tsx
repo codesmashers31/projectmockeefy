@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import axios from '../lib/axios';
 import { toast } from "sonner";
 import { PrimaryButton } from '../pages/ExpertDashboard';
-import { X, Copy, Plus, Clock, Calendar as CalendarIcon, CheckCircle2, ChevronDown, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Copy, Plus, Clock, Calendar as CalendarIcon, CheckCircle2, ChevronDown, Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import ExpertPageSkeleton from "./ExpertPageSkeleton";
@@ -796,6 +796,7 @@ const EditExpertAvailability = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileState>({
     availability: {
       sessionDuration: 30,
@@ -936,11 +937,10 @@ const EditExpertAvailability = () => {
       }
 
       let newSlotForNextDay: Slot | null = null;
-      const BREAK_DURATION = 30;
       const sortedNext = [...nextDaySlots].sort((a, b) => timeToMinutes(a.from) - timeToMinutes(b.from));
 
-      // Continuous availability sequence starting at 12:30 AM (30 min after midnight) with 30-min break intervals
-      for (let candStart = BREAK_DURATION; candStart + duration <= 1440; candStart += (duration + BREAK_DURATION)) {
+      // Continuous availability sequence starting at 12:00 AM (00:00) with no unintended gap
+      for (let candStart = 0; candStart + duration <= 1440; candStart += duration) {
         const candEnd = candStart + duration;
 
         const overlaps = sortedNext.some((s) => {
@@ -998,8 +998,8 @@ const EditExpertAvailability = () => {
       return;
     }
 
-    const BREAK_DURATION = 30;
-    let candStart = lastEndMin + BREAK_DURATION;
+    // Continuous availability: next slot starts exactly where previous slot ends (no unintended 30-min gap)
+    let candStart = lastEndMin;
     let candEnd = candStart + duration;
 
     let newSlot: Slot | null = null;
@@ -1017,8 +1017,8 @@ const EditExpertAvailability = () => {
     }
 
     if (!newSlot) {
-      // Find earlier gap on current day with 30-min break
-      for (let min = BREAK_DURATION; min + duration <= 1440; min += (duration + BREAK_DURATION)) {
+      // Find earlier gap on current day with exact duration (no artificial 30-min gap)
+      for (let min = 0; min + duration <= 1440; min += duration) {
         const cStart = min;
         const cEnd = min + duration;
         const overlaps = sorted.some((s) => {
@@ -1341,6 +1341,8 @@ const EditExpertAvailability = () => {
       }
       const savedData = res.data.data;
       await queryClient.invalidateQueries({ queryKey: ["expertProfile"] });
+      await queryClient.invalidateQueries({ queryKey: ["allMentorsList"] });
+      await queryClient.invalidateQueries({ queryKey: ["experts-recommended"] });
       toast.success("Meet link auto-saved!");
     } catch (err) {
       console.error("Auto-save Meet link error:", err);
@@ -1356,6 +1358,8 @@ const EditExpertAvailability = () => {
   };
 
   const saveAvailability = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       const maxSessions = Number(profile.availability.maxPerDay);
       if (isNaN(maxSessions) || maxSessions < 1 || maxSessions > 24) {
@@ -1439,12 +1443,16 @@ const EditExpertAvailability = () => {
       }
       const savedData = res.data.data;
       await queryClient.invalidateQueries({ queryKey: ["expertProfile"] });
+      await queryClient.invalidateQueries({ queryKey: ["allMentorsList"] });
+      await queryClient.invalidateQueries({ queryKey: ["experts-recommended"] });
       toast.success("Availability saved successfully!");
       navigate('/dashboard/availability', { state: { savedAvailability: savedData } });
     } catch (err) {
       console.error("Save error:", err);
       const message = (err as any)?.response?.data?.message || "Failed to save availability";
       toast.error(message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1470,9 +1478,9 @@ const EditExpertAvailability = () => {
             >
               Cancel
             </button>
-            <PrimaryButton onClick={saveAvailability}>
-              <CheckCircle2 size={18} className="mr-2" />
-              Save Changes
+            <PrimaryButton onClick={saveAvailability} disabled={isSaving}>
+              {isSaving ? <Loader2 size={18} className="mr-2 animate-spin" /> : <CheckCircle2 size={18} className="mr-2" />}
+              {isSaving ? "Saving..." : "Save Changes"}
             </PrimaryButton>
           </div>
         </div>

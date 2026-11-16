@@ -174,7 +174,8 @@ export default function Sidebar() {
     if (!startTime) return "";
     const date = new Date(startTime);
     if (isNaN(date.getTime())) return "";
-    return date.toLocaleTimeString([], {
+    return date.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -184,22 +185,11 @@ export default function Sidebar() {
     if (!startTime) return "";
     const date = new Date(startTime);
     if (isNaN(date.getTime())) return "";
-    const now = new Date();
-    const isToday =
-      date.getDate() === now.getDate() &&
-      date.getMonth() === now.getMonth() &&
-      date.getFullYear() === now.getFullYear();
-    if (isToday) return "Today";
-
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const isTomorrow =
-      date.getDate() === tomorrow.getDate() &&
-      date.getMonth() === tomorrow.getMonth() &&
-      date.getFullYear() === tomorrow.getFullYear();
-    if (isTomorrow) return "Tomorrow";
-
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const navItems = [
@@ -247,7 +237,7 @@ export default function Sidebar() {
   ];
 
   const profileImg = user?.profileImage || userProfile?.profileImage;
-  const userName = user?.name || userProfile?.personalInfo?.name || "Candidate";
+  const userName = user?.name || userProfile?.name || userProfile?.personalInfo?.name || (user?.email ? user.email.split('@')[0] : "Candidate");
   const userEmail = user?.email || "";
   const initials = userName
     .split(" ")

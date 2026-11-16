@@ -103,8 +103,16 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         }
       }
 
+      const resolvedName =
+        (userData.name && userData.name.trim()) ||
+        (expertData?.name && expertData.name.trim()) ||
+        (expertData?.personalInformation?.userName && expertData.personalInformation.userName.trim()) ||
+        user?.name ||
+        userData.name;
+
       const normalizedUser: User = {
         ...userData,
+        name: resolvedName,
         id: userData.userId || (userData as any)._id || userData.id,
         phone: userData.personalInfo?.phone || (userData as any).phone || userData.phone,
         profileImage: expertData.photoUrl || userData.profileImage || (userData as any).photoUrl,
@@ -135,14 +143,28 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
   const updateUser = (partialUser: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return prev;
-      return {
+      const sanitized: any = {};
+      Object.keys(partialUser).forEach((key) => {
+        const val = (partialUser as any)[key];
+        if (val !== undefined && val !== null && val !== "") {
+          sanitized[key] = val;
+        }
+      });
+      const updated: User = {
         ...prev,
-        ...partialUser,
+        ...sanitized,
         personalInfo: {
           ...prev.personalInfo,
-          ...partialUser.personalInfo,
+          ...(partialUser.personalInfo || {}),
         },
       };
+      if (!updated.name && prev.name) {
+        updated.name = prev.name;
+      }
+      try {
+        localStorage.setItem('mockeefy_user_cache', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
     });
   };
 

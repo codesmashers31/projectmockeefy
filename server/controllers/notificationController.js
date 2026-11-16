@@ -62,8 +62,10 @@ export const markAsRead = async (req, res) => {
                 { isRead: true }
             );
         } else if (Array.isArray(ids) && ids.length > 0) {
+            const mongoose = (await import('mongoose')).default;
+            const validOids = ids.map(id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id);
             await Notification.updateMany(
-                { ...userQuery, _id: { $in: ids } },
+                { ...userQuery, _id: { $in: validOids } },
                 { isRead: true }
             );
         }
@@ -84,33 +86,66 @@ export const markAsRead = async (req, res) => {
     }
 };
 
+// In-flight deduplication cache to handle concurrent Promise.all / rapid double-clicks
+const inFlightNotifications = new Map();
+
 // Helper to create notification (internal use)
 export const createNotification = async ({ userId, type, title, message, metadata }) => {
-    try {
-        if (type === 'product_update' || type === 'marketing') {
-            const ExpertDetails = (await import('../models/expertModel.js')).default;
-            const expert = await ExpertDetails.findOne({ userId }).lean();
-            if (expert && expert.settings?.marketingEmails === false) {
-                console.log(`[Notification] 🔕 Expert ${userId} has disabled product updates. Suppressing notification.`);
-                return null;
-            }
-        }
-
-        const notification = new Notification({
-            userId,
-            type: type || 'system',
-            title,
-            message,
-            metadata
-        });
-        await notification.save();
-        
-        // Emit real-time socket event
-        emitToUser(userId, 'new_notification', notification);
-        
-        return notification;
-    } catch (error) {
-        console.error("Create Notification Error:", error);
-        // Don't throw, just log. Notifications shouldn't break main flow.
+    const dedupeKey = `${userId}_${title}_${metadata?.sessionId || metadata?.idempotencyKey || ''}`;
+    if (inFlightNotifications.has(dedupeKey)) {
+        return inFlightNotifications.get(dedupeKey);
     }
+
+    const executionPromise = (async () => {
+        try {
+            if (type === 'product_update' || type === 'marketing') {
+                const ExpertDetails = (await import('../models/expertModel.js')).default;
+                const expert = await ExpertDetails.findOne({ userId }).lean();
+                if (expert && expert.settings?.marketingEmails === false) {
+                    console.log(`[Notification] 🔕 Expert ${userId} has disabled product updates. Suppressing notification.`);
+                    return null;
+                }
+            }
+
+            // Idempotency: Prevent duplicate notifications for the same event within 10 seconds
+            const tenSecondsAgo = new Date(Date.now() - 10000);
+            const dupQuery = {
+                userId,
+                title,
+                createdAt: { $gte: tenSecondsAgo }
+            };
+            if (metadata?.sessionId) {
+                dupQuery['metadata.sessionId'] = metadata.sessionId;
+            } else if (metadata?.idempotencyKey) {
+                dupQuery['metadata.idempotencyKey'] = metadata.idempotencyKey;
+            }
+            const existing = await Notification.findOne(dupQuery);
+            if (existing) {
+                console.log(`[Notification] 🛡️ Suppressed duplicate notification for user ${userId}: "${title}"`);
+                return existing;
+            }
+
+            const notification = new Notification({
+                userId,
+                type: type || 'system',
+                title,
+                message,
+                metadata
+            });
+            await notification.save();
+            
+            // Emit real-time socket event
+            emitToUser(userId, 'new_notification', notification);
+            
+            return notification;
+        } catch (error) {
+            console.error("Create Notification Error:", error);
+            // Don't throw, just log. Notifications shouldn't break main flow.
+        } finally {
+            inFlightNotifications.delete(dedupeKey);
+        }
+    })();
+
+    inFlightNotifications.set(dedupeKey, executionPromise);
+    return executionPromise;
 };

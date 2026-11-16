@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useDataSync } from "../../context/SocketContext";
 import axios from "../../lib/axios";
 import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 import {
@@ -99,63 +100,68 @@ export default function DashboardIndex() {
   });
   const [sessions, setSessions] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [statsRes, sessionsRes, profileRes] = await Promise.allSettled([
-          axios.get("/api/expert/stats"),
-          axios.get(`/api/sessions/expert/${user?.id || "me"}`),
-          axios.get("/api/expert/profile"),
-        ]);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [statsRes, sessionsRes, profileRes] = await Promise.allSettled([
+        axios.get("/api/expert/stats"),
+        axios.get(`/api/sessions/expert/${user?.id || "me"}`),
+        axios.get("/api/expert/profile"),
+      ]);
 
-        if (statsRes.status === "fulfilled" && statsRes.value.data.success) {
-          const s = statsRes.value.data.data;
-          setStats((prev) => ({
-            ...prev,
-            totalSessions: s.totalSessions ?? 0,
-            upcomingSessions: s.upcomingSessions ?? 0,
-            reportsPending: s.todaysBookings ?? 0,
-            walletBalance: s.walletBalance ?? 0,
-            revenue: s.revenue ?? 0,
-          }));
-        }
-
-        if (profileRes.status === "fulfilled" && profileRes.value.data?.success) {
-          const p = profileRes.value.data.profile || {};
-          const comp = profileRes.value.data.completion ?? null;
-          const missing = profileRes.value.data.missingSections || [];
-          setProfileCompletion(comp);
-          setMissingSections(missing);
-          const currentStatus = p.status || localStorage.getItem("profile_status") || "pending";
-          setProfileStatus(currentStatus);
-          setIsProfileComplete(
-            comp !== null
-              ? comp >= 80 && missing.filter((m: string) => m !== "Availability").length === 0
-              : false
-          );
-        }
-
-        if (sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value.data)) {
-          const now = new Date();
-          const future = sessionsRes.value.data
-            .filter((s: any) => new Date(s.startTime) > now && s.status !== "cancelled")
-            .sort(
-              (a: any, b: any) =>
-                new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-            )
-            .slice(0, 5);
-          setSessions(future);
-        }
-      } catch (error) {
-        console.error("Dashboard data fetch error", error);
-      } finally {
-        setLoading(false);
+      if (statsRes.status === "fulfilled" && statsRes.value.data.success) {
+        const s = statsRes.value.data.data;
+        setStats((prev) => ({
+          ...prev,
+          totalSessions: s.totalSessions ?? 0,
+          upcomingSessions: s.upcomingSessions ?? 0,
+          reportsPending: s.todaysBookings ?? 0,
+          walletBalance: s.walletBalance ?? 0,
+          revenue: s.revenue ?? 0,
+        }));
       }
-    };
 
-    if (user) fetchData();
+      if (profileRes.status === "fulfilled" && profileRes.value.data?.success) {
+        const p = profileRes.value.data.profile || {};
+        const comp = profileRes.value.data.completion ?? null;
+        const missing = profileRes.value.data.missingSections || [];
+        setProfileCompletion(comp);
+        setMissingSections(missing);
+        const currentStatus = p.status || localStorage.getItem("profile_status") || "pending";
+        setProfileStatus(currentStatus);
+        setIsProfileComplete(
+          comp !== null
+            ? comp >= 80 && missing.filter((m: string) => m !== "Availability").length === 0
+            : false
+        );
+      }
+
+      if (sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value.data)) {
+        const now = new Date();
+        const future = sessionsRes.value.data
+          .filter((s: any) => new Date(s.startTime) > now && s.status !== "cancelled")
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+          )
+          .slice(0, 5);
+        setSessions(future);
+      }
+    } catch (error) {
+      console.error("Dashboard data fetch error", error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    if (user) fetchData();
+  }, [user, fetchData]);
+
+  // Real-time synchronization
+  useDataSync(["WALLET_UPDATED", "SESSION_UPDATED", "SESSION_CREATED", "RECONNECTED"], () => {
+    if (user) fetchData();
+  });
 
   const formattedRevenue = `₹${stats.revenue.toLocaleString()}`;
 

@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef, useDeferredValue } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDataSync } from "../context/SocketContext";
 import axios from "../lib/axios";
 import { MentorJobCard, MentorCardSkeleton, MentorProfile } from "../components/MentorJobCard";
 import FindMentorSkeleton from "../components/FindMentorSkeleton";
@@ -261,6 +262,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
     }
   }, [searchParams]);
   const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") || "All");
+  const [emptyCategoryNotice, setEmptyCategoryNotice] = useState<string | null>(null);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedExpRanges, setSelectedExpRanges] = useState<string[]>([]);
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
@@ -327,6 +329,8 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
   };
 
   // Fetch verified active experts from API
+  const queryClient = useQueryClient();
+
   const {
     data: expertsData = [],
     isLoading,
@@ -339,7 +343,27 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
       const response = await axios.get("/api/expert/verified");
       return Array.isArray(response.data) ? response.data : response.data.data || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+  });
+
+  // Real-time synchronization when any mentor availability or session changes
+  useDataSync(
+    ["AVAILABILITY_UPDATED", "PROFILE_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "SESSION_CANCELLED"],
+    () => {
+      queryClient.invalidateQueries({ queryKey: ["allMentorsList"] });
+      refetch();
+    }
+  );
+
+  // Fetch active categories from MongoDB API
+  const { data: dbCategoriesData = [] } = useQuery({
+    queryKey: ["allCategoriesList"],
+    queryFn: async () => {
+      const response = await axios.get("/api/categories");
+      const list = Array.isArray(response.data) ? response.data : response.data.data || [];
+      return list.filter((c: any) => c.status !== "Inactive" && c.isActive !== false);
+    },
+    staleTime: 60 * 1000,
   });
 
   // Map backend experts to MentorProfile
@@ -396,7 +420,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         maxPrice: expert.maxPrice,
         skills,
         experience: exp,
-        activeTime: expert.availability?.nextAvailable || "Available Today",
+        activeTime: expert.activeTime || expert.availability?.activeTime || expert.availability?.nextAvailable || "Available Today",
         totalSessions: expert.metrics?.totalSessions || 15,
         category: cat,
         bio: expert.personalInformation?.bio || "",
@@ -458,25 +482,49 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
     return () => clearInterval(interval);
   }, [location.state, isLoading]);
 
-  // Unique Categories and Companies
+  // Categories and dynamic counts strictly from MongoDB categories and expert relationships
   const categories = useMemo(() => {
     const set = new Set<string>();
+    // First, add all active categories from MongoDB
+    if (Array.isArray(dbCategoriesData)) {
+      dbCategoriesData.forEach((c: any) => {
+        if (c.name?.trim()) set.add(c.name.trim());
+      });
+    }
+    // Also include categories from mentors if any
     allMentors.forEach((m) => {
       if (m.category?.trim()) set.add(m.category.trim());
     });
-    return ["All", ...Array.from(set).sort()];
-  }, [allMentors]);
+    return ["All", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [dbCategoriesData, allMentors]);
 
   const categoryCounts = useMemo(() => {
     const map: Record<string, number> = {};
-    allMentors.forEach((m) => {
-      const cat = m.category?.trim();
-      if (cat) {
-        map[cat] = (map[cat] || 0) + 1;
-      }
+    // Initialize all known categories with 0
+    categories.forEach((cat) => {
+      if (cat !== "All") map[cat] = 0;
     });
+
+    // Count experts matching strictly by primary category or domains
+    allMentors.forEach((m) => {
+      const primaryCat = m.category?.trim();
+      const domains = Array.isArray(m.rawExpert?.skillsAndExpertise?.domains)
+        ? m.rawExpert.skillsAndExpertise.domains
+        : [];
+
+      categories.forEach((cat) => {
+        if (cat === "All") return;
+        const catLower = cat.toLowerCase();
+        const matchesPrimary = primaryCat && primaryCat.toLowerCase() === catLower;
+        const matchesDomain = domains.some((d: string) => d && d.toLowerCase() === catLower);
+        if (matchesPrimary || matchesDomain) {
+          map[cat] = (map[cat] || 0) + 1;
+        }
+      });
+    });
+
     return map;
-  }, [allMentors]);
+  }, [categories, allMentors]);
 
   const uniqueCompanies = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -547,6 +595,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedCategory("All");
+    setEmptyCategoryNotice(null);
     setSelectedCompanies([]);
     setSelectedExpRanges([]);
     setSelectedPriceRanges([]);
@@ -555,6 +604,33 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
     setCurrentPage(1);
     setSearchParams(new URLSearchParams());
   };
+
+  // Automatic Empty Category Fallback with Clear Non-blocking Notification
+  useEffect(() => {
+    if (selectedCategory !== "All" && allMentors.length > 0 && !isLoading) {
+      const selectedCatLower = selectedCategory.toLowerCase().trim();
+      const count = allMentors.filter((m) => {
+        const cat = (m.category || "").toLowerCase().trim();
+        if (cat === selectedCatLower) return true;
+        const domains = Array.isArray(m.rawExpert?.skillsAndExpertise?.domains)
+          ? m.rawExpert.skillsAndExpertise.domains
+          : [];
+        return domains.some((d: string) => d && d.toLowerCase().trim() === selectedCatLower);
+      }).length;
+
+      if (count === 0) {
+        // Fallback to All Tracks
+        const prevCategory = selectedCategory;
+        setSelectedCategory("All");
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("category");
+          return next;
+        });
+        setEmptyCategoryNotice(`No available interview experts were found in ${prevCategory}. Showing all available experts instead.`);
+      }
+    }
+  }, [selectedCategory, allMentors, isLoading, setSearchParams]);
 
   // Reset pagination to page 1 whenever filters change
   useEffect(() => {
@@ -592,57 +668,16 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
     let list = [...allMentors];
     const q = deferredSearch.toLowerCase().trim();
 
-    // 1. Category filter (supports exact matches and track groups)
+    // 1. Strict Category filter (Strict MongoDB category relationship only - no substring or track grouping)
     if (selectedCategory !== "All") {
-      const selectedCatLower = selectedCategory.toLowerCase();
+      const selectedCatLower = selectedCategory.toLowerCase().trim();
       list = list.filter((m) => {
-        const cat = (m.category || "").toLowerCase();
+        const cat = (m.category || "").toLowerCase().trim();
         if (cat === selectedCatLower) return true;
-        if (selectedCatLower.includes("software") || selectedCatLower.includes("web")) {
-          return (
-            cat.includes("software") ||
-            cat.includes("web") ||
-            cat.includes("mobile") ||
-            cat.includes("mern") ||
-            cat.includes("it") ||
-            cat.includes("qa") ||
-            cat.includes("testing")
-          );
-        }
-        if (selectedCatLower.includes("cloud") || selectedCatLower.includes("devops")) {
-          return (
-            cat.includes("cloud") ||
-            cat.includes("devops") ||
-            cat.includes("cyber") ||
-            cat.includes("security") ||
-            cat.includes("database") ||
-            cat.includes("system design")
-          );
-        }
-        if (selectedCatLower.includes("ai") || selectedCatLower.includes("data")) {
-          return (
-            cat.includes("ai") ||
-            cat.includes("data") ||
-            cat.includes("ml") ||
-            cat.includes("learning")
-          );
-        }
-        if (selectedCatLower.includes("product") || selectedCatLower.includes("design")) {
-          return (
-            cat.includes("design") ||
-            cat.includes("agile") ||
-            cat.includes("project") ||
-            cat.includes("business")
-          );
-        }
-        if (selectedCatLower.includes("hr") || selectedCatLower.includes("behavioral")) {
-          return (
-            cat.includes("hr") ||
-            cat.includes("human resources") ||
-            cat.includes("recruit")
-          );
-        }
-        return cat.includes(selectedCatLower) || selectedCatLower.includes(cat);
+        const domains = Array.isArray(m.rawExpert?.skillsAndExpertise?.domains)
+          ? m.rawExpert.skillsAndExpertise.domains
+          : [];
+        return domains.some((d: string) => d && d.toLowerCase().trim() === selectedCatLower);
       });
     }
 
@@ -691,15 +726,22 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
       });
     }
 
-    // 6. Availability Filter
+    // 6. Availability Filter (Strict Asia/Kolkata calculation from backend)
     if (availabilityFilter === "Today") {
-      list = list.filter((m) => m.activeTime?.toLowerCase().includes("today"));
+      list = list.filter((m) => {
+        if (m.rawExpert?.isAvailableToday !== undefined) return m.rawExpert.isAvailableToday;
+        return m.activeTime?.toLowerCase().includes("today");
+      });
     } else if (availabilityFilter === "Week") {
-      list = list.filter(
-        (m) =>
+      list = list.filter((m) => {
+        if (m.rawExpert?.isAvailableThisWeek !== undefined) return m.rawExpert.isAvailableThisWeek;
+        return (
           m.activeTime?.toLowerCase().includes("today") ||
-          m.activeTime?.toLowerCase().includes("week")
-      );
+          m.activeTime?.toLowerCase().includes("week") ||
+          m.activeTime?.toLowerCase().includes("tomorrow") ||
+          m.activeTime?.toLowerCase().includes("next:")
+        );
+      });
     }
 
     // 7. Sort
@@ -746,104 +788,100 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
     sortBy,
   ]);
 
-  // Group filtered mentors into Curated Carousel Tracks
+  // Group mentors into categories strictly based on real MongoDB categories
   const filteredCategoryGroups = useMemo(() => {
-    const definitions = [
-      {
-        id: "software-web",
-        title: "Software & Web Development",
-        subtitle: "Frontend, backend, mobile engineers and system architects.",
-        icon: <Code2 size={16} />,
-        match: (cat: string) => {
-          const c = cat.toLowerCase().trim();
-          return (
-            c.includes("software") ||
-            c.includes("web") ||
-            c.includes("mobile") ||
-            c.includes("mern") ||
-            c.includes("it") ||
-            c.includes("qa") ||
-            c.includes("testing")
-          );
-        },
-      },
-      {
-        id: "cloud-security",
-        title: "Cloud, DevOps & Security",
-        subtitle: "Cloud architects, DevOps leads, system design and cybersecurity.",
-        icon: <Cloud size={16} />,
-        match: (cat: string) => {
-          const c = cat.toLowerCase().trim();
-          return (
-            c.includes("cloud") ||
-            c.includes("devops") ||
-            c.includes("security") ||
-            c.includes("database") ||
-            c.includes("system design")
-          );
-        },
-      },
-      {
-        id: "ai-data",
-        title: "AI & Data Science",
-        subtitle: "Machine learning engineers, AI researchers, and data scientists.",
-        icon: <Brain size={16} />,
-        match: (cat: string) => {
-          const c = cat.toLowerCase().trim();
-          return c.includes("ai") || c.includes("data") || c.includes("ml") || c.includes("learning");
-        },
-      },
-      {
-        id: "product-design",
-        title: "Product, Design & Management",
-        subtitle: "UI/UX product designers, agile project leads, and business strategists.",
-        icon: <Palette size={16} />,
-        match: (cat: string) => {
-          const c = cat.toLowerCase().trim();
-          return (
-            c.includes("design") ||
-            c.includes("agile") ||
-            c.includes("project") ||
-            c.includes("business")
-          );
-        },
-      },
-      {
-        id: "hr-behavioral",
-        title: "HR & Behavioral Prep",
-        subtitle: "Hiring managers and tech recruiters for behavioral & HR rounds.",
-        icon: <Users size={16} />,
-        match: (cat: string) => {
-          const c = cat.toLowerCase().trim();
-          return c.includes("hr") || c.includes("human resources") || c.includes("recruit");
-        },
-      },
-    ];
-
-    const groupedMentors = new Set<string>();
-    const groups = definitions.map((def) => {
-      const mentorsInGroup = filteredMentors.filter((m) => def.match(m.category || ""));
-      mentorsInGroup.forEach((m) => groupedMentors.add(m.id));
-      return {
-        ...def,
-        mentors: mentorsInGroup,
-      };
-    });
-
-    const otherMentors = filteredMentors.filter((m) => !groupedMentors.has(m.id));
-    if (otherMentors.length > 0) {
-      groups.push({
-        id: "other-experts",
-        title: selectedCategory !== "All" ? selectedCategory : "Specialized Interview Experts",
-        subtitle: "Industry leaders and domain specialists across diverse tech domains.",
-        icon: <Sparkles size={16} />,
-        match: () => true,
-        mentors: otherMentors,
+    // If a specific category is selected, render only that category's group
+    if (selectedCategory !== "All") {
+      const matchingMentors = filteredMentors.filter((m) => {
+        const cat = (m.category || "").toLowerCase().trim();
+        const sel = selectedCategory.toLowerCase().trim();
+        if (cat === sel) return true;
+        const domains = Array.isArray(m.rawExpert?.skillsAndExpertise?.domains)
+          ? m.rawExpert.skillsAndExpertise.domains
+          : [];
+        return domains.some((d: string) => d && d.toLowerCase().trim() === sel);
       });
+
+      if (matchingMentors.length === 0) return [];
+
+      return [
+        {
+          id: `cat-${selectedCategory.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+          title: selectedCategory,
+          subtitle: `Verified interview experts specialized in ${selectedCategory}.`,
+          icon: <Sparkles size={16} />,
+          mentors: matchingMentors,
+        },
+      ];
     }
 
-    return groups.filter((g) => g.mentors.length > 0);
-  }, [filteredMentors, selectedCategory]);
+    // When "All Tracks" is selected, group by each real category that has mentors
+    // Derive list of categories in order
+    const orderedCategories = categories.filter((c) => c !== "All");
+
+    const categoryIcons: Record<string, React.ReactNode> = {
+      "IT": <Code2 size={16} />,
+      "Software Development": <Code2 size={16} />,
+      "Web Development": <Code2 size={16} />,
+      "Mobile Development": <Code2 size={16} />,
+      "Full Stack Development (MERN)": <Code2 size={16} />,
+      "DevOps & Cloud": <Cloud size={16} />,
+      "Cybersecurity": <Cloud size={16} />,
+      "Database": <Cloud size={16} />,
+      "System Design": <Cloud size={16} />,
+      "Data Science & ML": <Brain size={16} />,
+      "AI": <Brain size={16} />,
+      "Design": <Palette size={16} />,
+      "Agile & Project Management": <Palette size={16} />,
+      "Business": <Palette size={16} />,
+      "HR": <Users size={16} />,
+      "QA & Testing": <Code2 size={16} />,
+    };
+
+    const categorySubtitles: Record<string, string> = {
+      "IT": "Enterprise systems, solutions architecture, and core IT infrastructure.",
+      "Software Development": "Backend architecture, object-oriented systems, and clean code.",
+      "Web Development": "Modern frontend, responsive UI engineering, and web applications.",
+      "Mobile Development": "Native iOS, Android, and cross-platform mobile engineering.",
+      "Full Stack Development (MERN)": "End-to-end JavaScript stack, Node.js, Express, and React.",
+      "DevOps & Cloud": "Cloud platforms (AWS/GCP/Azure), CI/CD pipelines, and Kubernetes.",
+      "Cybersecurity": "Security operations, penetration testing, and compliance frameworks.",
+      "Database": "Relational, NoSQL, high-throughput database systems, and caching.",
+      "System Design": "Distributed systems, scalability, fault tolerance, and API architecture.",
+      "Data Science & ML": "Data pipelines, predictive modeling, and analytics systems.",
+      "AI": "Artificial intelligence, deep learning, LLMs, and neural networks.",
+      "Design": "User experience, UI design systems, and product ergonomics.",
+      "Agile & Project Management": "Scrum, sprint planning, project delivery, and roadmap strategy.",
+      "Business": "Product-market fit, commercial strategy, and tech business leadership.",
+      "HR": "Tech recruiting, talent acquisition, and behavioral round preparation.",
+      "QA & Testing": "Automated testing, test strategy, performance testing, and QA lead rounds.",
+    };
+
+    const groups: {
+      id: string;
+      title: string;
+      subtitle: string;
+      icon: React.ReactNode;
+      mentors: MentorProfile[];
+    }[] = [];
+
+    orderedCategories.forEach((catName) => {
+      const mentorsInCat = filteredMentors.filter(
+        (m) => (m.category || "").toLowerCase().trim() === catName.toLowerCase().trim()
+      );
+      if (mentorsInCat.length > 0) {
+        groups.push({
+          id: `cat-${catName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+          title: catName,
+          subtitle: categorySubtitles[catName] || `Verified interview experts specialized in ${catName}.`,
+          icon: categoryIcons[catName] || <Sparkles size={16} />,
+          mentors: mentorsInCat,
+        });
+      }
+    });
+
+    return groups;
+  }, [filteredMentors, selectedCategory, categories]);
 
   // Pagination calculations (kept for fallback)
   const totalPages = Math.max(1, Math.ceil(filteredMentors.length / ITEMS_PER_PAGE));
@@ -950,6 +988,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                         type="button"
                         onClick={() => {
                           const newCat = cat;
+                          setEmptyCategoryNotice(null);
                           setSelectedCategory(newCat);
                           setSearchParams((prev) => {
                             const next = new URLSearchParams(prev);
@@ -1231,7 +1270,9 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
               {/* LEFT: Title & Verified Count */}
               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <h1 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight whitespace-nowrap">
-                  Available Interview Experts
+                  {selectedCategory !== "All"
+                    ? `Available Interview Experts — ${selectedCategory}`
+                    : "Available Interview Experts"}
                 </h1>
                 <span className="text-xs sm:text-sm text-slate-500 font-medium whitespace-nowrap">
                   (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"})
@@ -1325,6 +1366,24 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                 </div>
               </div>
             </div>
+
+            {/* Empty Category Fallback Notification (Non-blocking banner) */}
+            {emptyCategoryNotice && (
+              <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs shadow-xs animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                  <span className="font-medium">{emptyCategoryNotice}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEmptyCategoryNotice(null)}
+                  className="p-1 rounded-lg hover:bg-amber-100 text-amber-700 transition-colors cursor-pointer shrink-0"
+                  aria-label="Dismiss notice"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
 
             {/* Active Filter Badges (Shown below the title line when filters are applied) */}
             {activeFilterCount > 0 && (

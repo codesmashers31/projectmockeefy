@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   LayoutDashboard,
   CheckCircle2,
-  AlertCircle,
   Award,
   FileText
 } from "lucide-react";
@@ -63,9 +62,60 @@ export default function ProfilePage() {
 
   // Derived state to check if a specific section is missing
   const isSectionMissing = (tabId: string) => {
+    // If expert is active or profile has reached 100%, none of the sections are missing
+    const isActive = status?.toLowerCase() === "active" || status?.toLowerCase() === "approved" || completion >= 100;
+    if (isActive) return false;
+
+    // Overview is an executive summary view, never an incomplete form section
+    if (tabId === "overview") return false;
+
+    // Category & Level check
+    if (tabId === "tier") {
+      if (profileData?.category || profileData?.personalInformation?.category || !missingSections.includes("Skills & Expertise")) {
+        return false;
+      }
+    }
+
+    // Verification check: if either company ID or aadhaar is present in profileData, verification is complete
+    if (tabId === "verification") {
+      const v = profileData?.verification;
+      const hasCompanyId = Boolean(v?.companyId?.url);
+      const hasAadhaar = Boolean(v?.aadhar?.isVerified || v?.aadhar?.url || v?.aadhar?.hash || v?.aadhar?.number || v?.aadhar?.rawNumber || v?.aadhar?.maskedNumber);
+      if (hasCompanyId || hasAadhaar || !missingSections.includes("Verification Documents")) return false;
+    }
+
+    // Personal Info check
+    if (tabId === "personal") {
+      if ((profileData?.name && (profileData?.mobile || profileData?.personalInfo?.phone || profileData?.phone)) || !missingSections.includes("Personal Information")) {
+        return false;
+      }
+    }
+
+    // Education check
+    if (tabId === "education") {
+      if ((Array.isArray(profileData?.education) && profileData.education.length > 0) || !missingSections.includes("Education")) {
+        return false;
+      }
+    }
+
+    // Professional details check
+    if (tabId === "profession") {
+      if (profileData?.title || profileData?.professionalDetails?.title || profileData?.company || !missingSections.includes("Professional Details")) {
+        return false;
+      }
+    }
+
+    // Service agreement check
+    if (tabId === "agreement") {
+      if (profileData?.agreement?.isSigned || !missingSections.includes("Service Agreement") || isActive) {
+        return false;
+      }
+    }
+
     // Map tab IDs to backend section names
     const sectionMap: Record<string, string> = {
       personal: "Personal Information",
+      tier: "Skills & Expertise",
       education: "Education",
       profession: "Professional Details",
       verification: "Verification Documents",
@@ -73,15 +123,15 @@ export default function ProfilePage() {
     };
 
     const backendName = sectionMap[tabId];
-    if (!backendName) return false; // Overview or unknown
+    if (!backendName) return false;
 
     return missingSections.includes(backendName);
   };
 
   const isTabIncomplete = (tabId: string) => {
-    if (tabId === 'overview') {
-      return missingSections.length > 0;
-    }
+    const isActive = status?.toLowerCase() === "active" || status?.toLowerCase() === "approved" || completion >= 100;
+    if (isActive) return false;
+    if (tabId === 'overview') return false;
     return isSectionMissing(tabId);
   };
 
@@ -157,7 +207,7 @@ export default function ProfilePage() {
       case "personal":
         return <PersonalInfo {...commonProps} isMissing={isSectionMissing('personal')} />;
       case "tier":
-        return <CategoryAndLevelSection {...commonProps} />;
+        return <CategoryAndLevelSection {...commonProps} isMissing={isSectionMissing('tier')} />;
       case "education":
         return <ExpertEducation {...commonProps} isMissing={isSectionMissing('education')} />;
       case "profession":
@@ -194,8 +244,8 @@ export default function ProfilePage() {
 
               <div className={`px-3 py-1.5 text-xs font-semibold rounded-full border inline-flex items-center gap-1.5 ${getStatusColor(status)}`}>
                 <span className={`relative flex h-2 w-2`}>
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'Active' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${status === 'Active' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                 </span>
                 {getStatusLabel(status)}
               </div>
@@ -223,7 +273,7 @@ export default function ProfilePage() {
 
                     <div className="ml-auto shrink-0">
                       {isIncomplete ? (
-                        <AlertCircle className={`w-3.5 h-3.5 ${active === tab.id ? "text-amber-200" : "text-amber-500"}`} />
+                        <div className={`w-2 h-2 rounded-full ${active === tab.id ? "bg-blue-300" : "bg-slate-300"}`} title="Incomplete" />
                       ) : (
                         <CheckCircle2 className={`w-3.5 h-3.5 ${active === tab.id ? "text-emerald-300" : "text-emerald-500"}`} />
                       )}
@@ -247,21 +297,35 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="p-4 mt-auto border-t border-slate-200/80 bg-white/40 backdrop-blur-xs space-y-2">
+              <div className={`p-4 mt-auto border-t border-slate-200/80 backdrop-blur-xs space-y-2 ${
+                completion >= 100 ? "bg-emerald-50/70 border-emerald-200" : "bg-white/40"
+              }`}>
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                  <span>Setup Progress</span>
-                  <span className="text-blue-600 font-extrabold">{completion}%</span>
+                  <span className="flex items-center gap-1.5">
+                    {completion >= 100 && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                    Setup Progress
+                  </span>
+                  <span className={`font-extrabold ${completion >= 100 ? "text-emerald-700" : "text-blue-600"}`}>
+                    {completion}%
+                  </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-200/80 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-500 ease-out"
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                      completion >= 100 ? "bg-emerald-600" : "bg-blue-600"
+                    }`}
                     style={{ width: `${completion}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-medium pt-0.5">
-                  {profileData?.verificationRequested ? (
-                    <span className="text-amber-700 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  {completion >= 100 ? (
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      100% Complete
+                    </span>
+                  ) : profileData?.verificationRequested ? (
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       In Review
                     </span>
                   ) : completion >= 80 && !missingSections.includes("Verification Documents") && !missingSections.includes("Service Agreement") ? (
@@ -274,8 +338,8 @@ export default function ProfilePage() {
                       Target: 80% to verify
                     </span>
                   )}
-                  <span className="text-slate-400 font-normal">
-                    {missingSections.length === 0 ? "Complete" : `${missingSections.length} remaining`}
+                  <span className={`${completion >= 100 ? "text-emerald-700 font-bold" : "text-slate-400 font-normal"}`}>
+                    {completion >= 100 ? "Complete" : missingSections.length === 0 ? "Complete" : `${missingSections.length} remaining`}
                   </span>
                 </div>
               </div>
@@ -304,7 +368,7 @@ export default function ProfilePage() {
                         <tab.icon className="w-3.5 h-3.5" />
                         {tab.label}
                         {isIncomplete ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                         ) : (
                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         )}

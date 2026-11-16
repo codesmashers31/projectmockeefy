@@ -98,7 +98,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             console.log('[SocketProvider] 🔄 Received DATA_SYNC:', payload.type, payload);
             if (!payload?.type) return;
 
-            // Automatically synchronize top-level Auth user state
+            // Automatically synchronize top-level Auth user state without wiping existing name/profile
             if (
                 payload.type === 'PROFILE_UPDATED' ||
                 payload.type === 'USER_UPDATED' ||
@@ -106,18 +106,36 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             ) {
                 const d = payload.data || {};
                 const pi = d.personalInfo || d.personalInformation || {};
-                updateUser({
-                    name: d.name || d.userName,
-                    phone: d.phone || d.mobile || pi.phone || pi.mobile,
-                    profileImage: d.photoUrl || d.profileImage,
-                    personalInfo: {
-                        phone: d.phone || d.mobile || pi.phone || pi.mobile,
-                        city: pi.city,
-                        state: pi.state,
-                        country: pi.country,
-                        bio: pi.bio,
-                    },
-                });
+                const updates: any = {};
+
+                const newName = d.name || d.userName || pi.name || pi.userName;
+                if (newName && typeof newName === 'string' && newName.trim()) {
+                    updates.name = newName.trim();
+                }
+
+                const newPhone = d.phone || d.mobile || pi.phone || pi.mobile;
+                if (newPhone) {
+                    updates.phone = newPhone;
+                }
+
+                const newPhoto = d.photoUrl || d.profileImage || pi.profileImage;
+                if (newPhoto) {
+                    updates.profileImage = newPhoto;
+                }
+
+                const personalUpdates: any = {};
+                if (newPhone) personalUpdates.phone = newPhone;
+                if (pi.city) personalUpdates.city = pi.city;
+                if (pi.state) personalUpdates.state = pi.state;
+                if (pi.country) personalUpdates.country = pi.country;
+                if (pi.bio) personalUpdates.bio = pi.bio;
+                if (Object.keys(personalUpdates).length > 0) {
+                    updates.personalInfo = personalUpdates;
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    updateUser(updates);
+                }
             } else if (payload.type === 'PROFILE_PHOTO_UPDATED') {
                 const photoUrl = payload.data?.photoUrl || payload.data?.profile?.photoUrl;
                 if (photoUrl) {

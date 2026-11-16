@@ -18,7 +18,8 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({ allowedRoles }) 
     }
 
     if (!user) {
-        return <Navigate to="/signin" state={{ from: location }} replace />;
+        const dest = location.pathname + (location.search || "");
+        return <Navigate to={`/signin?returnUrl=${encodeURIComponent(dest)}`} state={{ from: location, returnUrl: dest }} replace />;
     }
 
     const role = user.userType?.toLowerCase();

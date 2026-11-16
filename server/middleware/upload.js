@@ -52,6 +52,15 @@ const cloudUserStorage = createCloudinaryStorage({
 const createLocalDir = (dirPath) => {
   const fullPath = path.join(process.cwd(), dirPath);
   if (!fs.existsSync(fullPath)) fs.mkdirSync(fullPath, { recursive: true });
+
+  // Also ensure mirrored directory exists if running with nested structure
+  const altPath = dirPath.startsWith("server")
+    ? path.join(process.cwd(), dirPath.replace(/^server[\\/]/, ""))
+    : path.join(process.cwd(), "server", dirPath);
+  if (!fs.existsSync(altPath) && fs.existsSync(path.dirname(altPath))) {
+    try { fs.mkdirSync(altPath, { recursive: true }); } catch {}
+  }
+
   return fullPath;
 };
 

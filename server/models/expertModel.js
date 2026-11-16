@@ -102,6 +102,7 @@ const expertSchema = new mongoose.Schema(
       title: { type: String, trim: true },
       company: { type: String, trim: true },
       totalExperience: { type: Number, min: 0 },
+      totalExperienceMonths: { type: Number, min: 0, default: 0 },
       industry: { type: String, trim: true },
       level: {
         type: String,

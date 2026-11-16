@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { toast } from "sonner";
 import {
   Bell,
   Menu,
@@ -39,7 +40,8 @@ interface Notification {
   time: string;
   read?: boolean;
   isRead?: boolean;
-  type: "info" | "success" | "warning" | "error";
+  type: "info" | "success" | "warning" | "error" | "feedback_request";
+  metadata?: any;
 }
 
 export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
@@ -86,8 +88,29 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
 
   // Real-time notification arrival
   useSocketEvent("new_notification", (notification: any) => {
-    const formatted = { ...notification, id: notification._id, read: false };
-    setNotifications((prev) => [formatted, ...prev]);
+    if (!notification) return;
+    const notifId = notification._id || notification.id;
+    const formatted = { ...notification, id: notifId, read: false };
+    setNotifications((prev) => {
+      if (prev.some(n => (n.id || n._id) === notifId)) return prev;
+      return [formatted, ...prev];
+    });
+    const toastKey = notifId ? `notif_${notifId}` : `notif_${notification.title}_${notification.createdAt || Date.now()}`;
+    toast.info(notification.title || "New Notification", {
+      id: String(toastKey),
+      description: notification.message,
+      duration: 4000
+    });
+  });
+
+  useSocketEvent("feedback_requested", (data: any) => {
+    if (!data) return;
+    const toastKey = `feedback_req_${data.sessionId || data._id || Date.now()}`;
+    toast.info("Feedback Requested", {
+      id: toastKey,
+      description: data.message || `${data.candidateName || 'Candidate'} has requested feedback for your session.`,
+      duration: 4000
+    });
   });
 
   // Real-time synchronization when notifications are marked read in another session
@@ -258,6 +281,12 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
                              key={notifId}
                              onClick={() => {
                                if (isItemUnread) markAsRead(notifId);
+                               setIsNotificationsOpen(false);
+                               if (n.metadata?.link) {
+                                 navigate(n.metadata.link);
+                               } else if (n.metadata?.sessionId) {
+                                 navigate(`/dashboard/sessions?sessionId=${n.metadata.sessionId}&action=feedback`);
+                               }
                              }}
                              className={`px-4 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors flex items-start gap-3 relative group ${isItemUnread ? "bg-[#F5F8FF]/80" : ""}`}
                            >
@@ -574,7 +603,7 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
           >
             <div className="hidden md:flex flex-col items-end">
               <p className="text-sm font-semibold text-slate-900 leading-none tracking-tight">
-                {user?.name?.split(" ")[0] || "User"}
+                {user?.name?.split(" ")[0] || (user?.email ? user.email.split('@')[0] : "User")}
               </p>
               <p className="text-[11px] text-slate-500 mt-1">
                 {user?.userType === 'expert' ? "Expert" : user?.userType === 'admin' ? "Admin" : "Member"}

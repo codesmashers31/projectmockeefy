@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from '../lib/axios';
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
+import { useDataSync } from "../context/SocketContext";
 import {
   Camera,
   AlertCircle,
@@ -161,6 +162,24 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     fetchProfile();
   }, [fetchProfile]);
 
+  useDataSync(
+    [
+      "PROFILE_UPDATED",
+      "PERSONAL_INFO_UPDATED",
+      "STATUS_UPDATED",
+      "VERIFICATION_UPDATED",
+      "EDUCATION_UPDATED",
+      "EXPERIENCE_UPDATED",
+      "SKILLS_UPDATED",
+      "AVAILABILITY_UPDATED",
+      "AGREEMENT_UPDATED",
+      "RECONNECTED",
+    ],
+    () => {
+      fetchProfile();
+    }
+  );
+
   const handlePhotoUpload = async (file: File) => {
     if (!file || !user) return;
 
@@ -296,8 +315,15 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     if (isRequested) {
       return {
         label: "Under Review",
-        icon: Clock,
-        color: "text-amber-700 bg-amber-50 border-amber-200",
+        icon: completion >= 100 ? CheckCircle2 : Clock,
+        color: completion >= 100 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-blue-700 bg-blue-50 border-blue-200",
+      };
+    }
+    if (completion >= 100) {
+      return {
+        label: "100% Completed",
+        icon: CheckCircle2,
+        color: "text-emerald-700 bg-emerald-50 border-emerald-200",
       };
     }
     if (isEligible) {
@@ -309,7 +335,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     }
     return {
       label: "In Setup",
-      icon: AlertCircle,
+      icon: Clock,
       color: "text-slate-700 bg-slate-100 border-slate-200",
     };
   };
@@ -331,7 +357,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     {
       id: "tier",
       name: "Category & Level",
-      backendKey: "",
+      backendKey: "Skills & Expertise",
       desc: "Domain category, seniority & rates",
       icon: Award,
       mandatory: false,
@@ -561,53 +587,88 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
             </div>
           ) : profile.verificationRequested && profile.status === "pending" ? (
             /* Application Under Review Card */
-            <div className="bg-gradient-to-br from-amber-50/90 via-amber-50/30 to-slate-50 border border-amber-200 rounded-2xl p-5 shadow-2xs space-y-3">
+            <div className={`bg-gradient-to-br border rounded-2xl p-5 shadow-2xs space-y-3 ${
+              completion >= 100
+                ? "from-emerald-50/90 via-teal-50/30 to-slate-50 border-emerald-200"
+                : "from-blue-50/90 via-indigo-50/30 to-slate-50 border-blue-200"
+            }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-xs">
-                    <Clock className="w-4 h-4" />
+                  <div className={`p-2 text-white rounded-xl shadow-xs ${
+                    completion >= 100 ? "bg-emerald-600" : "bg-blue-600"
+                  }`}>
+                    {completion >= 100 ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-amber-950">Review In Progress</h3>
-                    <p className="text-[11px] text-amber-700 font-medium">Pending Admin Review</p>
+                    <h3 className={`text-sm font-bold ${completion >= 100 ? "text-emerald-950" : "text-blue-950"}`}>Review In Progress</h3>
+                    <p className={`text-[11px] font-medium ${completion >= 100 ? "text-emerald-700" : "text-blue-700"}`}>
+                      {completion}% Completed • Pending Admin Review
+                    </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                  completion >= 100
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                    : "bg-blue-100 text-blue-800 border-blue-200"
+                }`}>
                   In Queue
                 </span>
               </div>
-              <p className="text-xs text-amber-900/80 leading-relaxed font-normal">
+              <p className={`text-xs leading-relaxed font-normal ${completion >= 100 ? "text-emerald-900/80" : "text-blue-900/80"}`}>
                 Your profile is in the admin review queue. Submitted documents and agreement are being validated.
               </p>
-              <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-xs text-amber-800 font-semibold">
-                <span>Verification Queue</span>
-                <span className="text-[11px] text-amber-600 font-medium">Est. 24–48 hours</span>
+              <div className={`pt-2 border-t flex items-center justify-between text-xs font-semibold ${
+                completion >= 100 ? "border-emerald-200/60 text-emerald-800" : "border-blue-200/60 text-blue-800"
+              }`}>
+                <span className="flex items-center gap-1.5">
+                  <Check className={`w-3.5 h-3.5 ${completion >= 100 ? "text-emerald-600" : "text-blue-600"}`} />
+                  Verification Queue
+                </span>
+                <span className={`text-[11px] font-medium ${completion >= 100 ? "text-emerald-700" : "text-blue-700"}`}>Est. 24–48 hours</span>
               </div>
             </div>
           ) : isEligibleForVerification ? (
             /* Ready for Verification CTA Card */
-            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 border border-blue-200 rounded-2xl p-5 shadow-2xs space-y-3">
+            <div className={`bg-gradient-to-br border rounded-2xl p-5 shadow-2xs space-y-3 ${
+              completion >= 100
+                ? "from-emerald-50/90 via-teal-50/40 to-slate-50 border-emerald-200"
+                : "from-blue-50/90 via-indigo-50/40 to-slate-50 border-blue-200"
+            }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
-                    <Sparkles className="w-4 h-4" />
+                  <div className={`p-2 text-white rounded-xl shadow-xs ${
+                    completion >= 100 ? "bg-emerald-600" : "bg-blue-600"
+                  }`}>
+                    {completion >= 100 ? <CheckCircle2 className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-blue-950">Ready for Verification</h3>
-                    <p className="text-[11px] text-blue-700 font-medium">{completion}% Completed • Requirements Met</p>
+                    <h3 className={`text-sm font-bold ${completion >= 100 ? "text-emerald-950" : "text-blue-950"}`}>
+                      {completion >= 100 ? "100% Complete • Ready to Verify" : "Ready for Verification"}
+                    </h3>
+                    <p className={`text-[11px] font-medium ${completion >= 100 ? "text-emerald-700" : "text-blue-700"}`}>
+                      {completion}% Completed • Requirements Met
+                    </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
-                  Eligible
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                  completion >= 100
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                    : "bg-blue-100 text-blue-800 border-blue-200"
+                }`}>
+                  {completion >= 100 ? "100% Done" : "Eligible"}
                 </span>
               </div>
-              <p className="text-xs text-blue-900/80 leading-relaxed font-normal">
-                You have fulfilled all requirements (Score &ge; 80%, Verification Documents, and Service Agreement).
+              <p className={`text-xs leading-relaxed font-normal ${completion >= 100 ? "text-emerald-900/80" : "text-blue-900/80"}`}>
+                You have fulfilled all verification requirements (Score: {completion}%, Verification Documents, and Service Agreement).
               </p>
               <button
                 onClick={handleRequestVerification}
                 disabled={requesting}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-75"
+                className={`w-full py-2.5 px-4 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-75 ${
+                  completion >= 100
+                    ? "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800"
+                    : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+                }`}
               >
                 {requesting ? (
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -837,7 +898,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900">Profile Setup Roadmap</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Complete sections to reach at least 80% completion score and unlock verification.
+                  {missingSections.length === 0
+                    ? "All 8 sections completed. Your profile is ready for admin verification."
+                    : "Complete sections to reach at least 80% completion score and unlock verification."}
                 </p>
               </div>
               <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full w-fit">
@@ -892,7 +955,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
 
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                       {isMissing ? (
-                        <span className={`text-[11px] font-bold ${sec.mandatory ? "text-rose-600" : "text-amber-600"}`}>
+                        <span className={`text-[11px] font-bold ${sec.mandatory ? "text-rose-600" : "text-slate-600"}`}>
                           Action Required
                         </span>
                       ) : (

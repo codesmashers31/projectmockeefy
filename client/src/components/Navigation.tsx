@@ -24,6 +24,7 @@ import {
   Clock,
   CheckCircle2,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -89,6 +90,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
   const [searchQuery, setSearchQuery] = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -125,16 +127,32 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     }
   };
 
+  const fetchWalletBalance = async () => {
+    if (!user) return;
+    try {
+      const res = await axios.get("/api/wallet/balance");
+      if (res.data?.success && res.data.data) {
+        setWalletBalance(res.data.data.availableBalance ?? 0);
+      }
+    } catch (_) {}
+  };
+
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+    fetchWalletBalance();
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchWalletBalance();
+    }, 60000);
     return () => clearInterval(interval);
   }, [user]);
 
   // Real-time notification arrival
   useSocketEvent("new_notification", (notification: any) => {
+    if (!notification) return;
+    const notifId = notification._id || notification.id;
     const formatted: Notification = {
-      _id: notification._id,
+      _id: notifId,
       type: notification.type || "info",
       title: notification.title,
       message: notification.message,
@@ -142,7 +160,10 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
       createdAt: notification.createdAt || new Date().toISOString(),
       metadata: notification.metadata,
     };
-    setNotifications((prev) => [formatted, ...prev]);
+    setNotifications((prev) => {
+      if (prev.some(n => (n._id || (n as any).id) === notifId)) return prev;
+      return [formatted, ...prev];
+    });
     setUnreadCount((prev) => prev + 1);
   });
 
@@ -269,10 +290,11 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
     }
   };
 
-  // Primary navigation links: My Sessions, Certificates, and More
+  // Primary navigation links: My Sessions, Certificates, and Wallet
   const navItems = [
     { name: "My Sessions", href: "/my-sessions" },
     { name: "Certificates", href: "/certificates" },
+    { name: "Wallet", href: "/wallet" },
   ];
 
   const moreItems = [
@@ -283,6 +305,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
 
   const profileMenuItems = [
     { name: "Profile Settings", href: "/profile", icon: <User size={16} /> },
+    { name: "Candidate Wallet", href: "/wallet", icon: <Wallet size={16} /> },
     { name: "My Sessions", href: "/my-sessions", icon: <Compass size={16} /> },
     { name: "Saved Interview Experts", href: "/saved-experts", icon: <Bookmark size={16} /> },
     { name: "Certificates", href: "/certificates", icon: <Award size={16} /> },
@@ -351,6 +374,11 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                     onClick={closeAllDropdowns}
                   >
                     <span>{item.name}</span>
+                    {item.href === "/wallet" && walletBalance !== null && walletBalance > 0 && (
+                      <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                        ₹{walletBalance}
+                      </span>
+                    )}
                     {active && (
                       <span className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[#0755E8] rounded-t-full" />
                     )}
@@ -651,7 +679,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                     </div>
                     <div className="text-left hidden lg:block leading-tight">
                       <p className="text-[13px] font-semibold text-slate-900 leading-tight truncate max-w-[110px]">
-                        {user.name?.split(" ")[0] || "User"}
+                        {user.name?.split(" ")[0] || (user as any).userName || (user?.email ? user.email.split('@')[0] : "User")}
                       </p>
                       <p className="text-[10.5px] font-bold leading-none mt-0.5">
                         {user.isPremium ? (
@@ -724,6 +752,23 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                           {user.isPremium ? `${user.freeInterviewsCount || 0} mocks` : 'Upgrade →'}
                         </Link>
                       </div>
+
+                      {/* Candidate Wallet Card inside dropdown */}
+                      <Link
+                        to="/wallet"
+                        onClick={closeAllDropdowns}
+                        className="mx-2 my-1 p-2.5 rounded-xl bg-blue-50/50 border border-blue-100 flex items-center justify-between hover:bg-blue-100/60 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-md bg-[#0755E8]/10 text-[#0755E8] flex items-center justify-center">
+                            <Wallet size={12} />
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-700">Wallet Balance</span>
+                        </div>
+                        <span className="text-xs font-bold text-[#0755E8]">
+                          ₹{walletBalance !== null ? walletBalance.toLocaleString("en-IN") : "0"}
+                        </span>
+                      </Link>
 
                       <div className="p-1 space-y-0.5">
                         {profileMenuItems.map((item) => (
@@ -845,7 +890,12 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       }`}
                       onClick={closeAllDropdowns}
                     >
-                      {item.name}
+                      <span>{item.name}</span>
+                      {item.href === "/wallet" && walletBalance !== null && walletBalance > 0 && (
+                        <span className="ml-auto px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                          ₹{walletBalance}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

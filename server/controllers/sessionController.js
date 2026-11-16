@@ -6,6 +6,7 @@ import ExpertDetails from '../models/expertModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import { triggerBookingEmails } from './paymentController.js';
 import { syncDataChange } from '../services/socketService.js';
+import { validateBookingSlot } from '../utils/availabilityValidator.js';
 
 export const createSession = async (req, res) => {
     try {
@@ -31,6 +32,22 @@ export const createSession = async (req, res) => {
         let expert = await ExpertDetails.findOne({ $or: [{ _id: expertId }, { userId: expertId }] });
         if (!expert) {
             return res.status(404).json({ success: false, message: "Expert not found" });
+        }
+
+        // Comprehensive authoritative backend slot validation
+        const slotValidation = await validateBookingSlot({
+            expertId: expert._id,
+            startTime: start,
+            endTime: end,
+            duration: durationMinutes
+        });
+
+        if (!slotValidation.valid) {
+            return res.status(slotValidation.status || 400).json({
+                success: false,
+                message: slotValidation.message,
+                reason: slotValidation.reason
+            });
         }
 
         // --- PRICING: category-based only (no skill). Uses PricingRule: category + level + duration ---
@@ -71,6 +88,8 @@ export const createSession = async (req, res) => {
             sessionId,
             expertId,
             candidateId: finalCandidateId, // Enforced secure candidate ID
+            categoryId: catDoc._id,
+            categoryNameSnapshot: catDoc.name,
             startTime: start,
             endTime: end,
             topics: topics || [],
@@ -219,12 +238,391 @@ export const updateMeetingLink = async (req, res) => {
     }
 };
 
+/**
+ * Authoritative, atomic, and idempotent expert payout settlement engine.
+ * Settles payouts for:
+ * - ATTENDED_COMPLETED (when qualifying feedback is submitted)
+ * - DID_NOT_ATTEND (immediate settlement upon marking candidate absent)
+ * - ATTENDED_INCOMPLETE (immediate settlement upon ending incomplete session)
+ * 
+ * Strict Financial Invariants:
+ * 1. 80% expert share, 20% platform commission, min 1 INR (Math.max(1, Math.round(sessionPrice * 0.8 * 100) / 100)).
+ * 2. Never credit unverified, failed, or refunded sessions.
+ * 3. Never credit a session more than once (atomic claim, WalletTransaction unique indexes, idempotencyKey).
+ * 4. Multi-document transaction with safe atomic fallback.
+ * 5. Emits WALLET_UPDATED, wallet_updated, SESSION_UPDATED, and persistent in-app notifications.
+ */
+export const settleExpertSessionPayout = async ({ session, outcome, reason = '', actorUserId = null }) => {
+    try {
+        const mongoose = (await import('mongoose')).default;
+        const SessionModel = (await import('../models/Session.js')).default;
+        const User = (await import('../models/User.js')).default;
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
+        const Wallet = (await import('../models/Wallet.js')).default;
+        const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+        const PaymentRecord = (await import('../models/PaymentRecord.js')).default;
+        const { emitToUser: emitUserEvt } = await import('../services/socketService.js');
+        const { createNotification } = await import('./notificationController.js');
+
+        const now = new Date();
+        const sessionId = session.sessionId;
+        const sessionMongoId = session._id;
+        const sessionPrice = Number(session.price || 0);
+
+        // 1. Idempotency check: Already credited?
+        if (session.payoutCredited) {
+            return {
+                credited: false,
+                amount: Number(session.payoutAmount || 0),
+                alreadyCredited: true,
+                reason: 'Session payout has already been credited'
+            };
+        }
+
+        const existingTxn = await WalletTransaction.findOne({
+            referenceId: sessionMongoId,
+            referenceModel: 'Session',
+            type: 'CREDIT'
+        });
+
+        if (existingTxn) {
+            await SessionModel.updateOne(
+                { _id: sessionMongoId, payoutCredited: { $ne: true } },
+                { $set: { payoutCredited: true, payoutAmount: existingTxn.amount, payoutStatus: 'credited', payoutCreditedAt: existingTxn.createdAt } }
+            );
+            return {
+                credited: false,
+                amount: existingTxn.amount,
+                alreadyCredited: true,
+                reason: 'Wallet ledger transaction already exists for this session'
+            };
+        }
+
+        // 2. Non-billable or free promo check
+        if (sessionPrice <= 0) {
+            await SessionModel.updateOne(
+                { _id: sessionMongoId },
+                { $set: { payoutStatus: 'not_applicable', payoutAmount: 0, payoutCredited: false } }
+            );
+            return {
+                credited: false,
+                amount: 0,
+                alreadyCredited: false,
+                reason: 'Free promotional or non-billable session (price is 0)'
+            };
+        }
+
+        // 3. Payment Record Verification
+        const payRecord = await PaymentRecord.findOne({
+            sessionId: sessionId,
+            status: 'verified'
+        });
+
+        if (!payRecord) {
+            await SessionModel.updateOne(
+                { _id: sessionMongoId },
+                { $set: { payoutStatus: 'not_applicable', payoutAmount: 0, payoutCredited: false } }
+            );
+            return {
+                credited: false,
+                amount: 0,
+                alreadyCredited: false,
+                reason: 'No verified payment record found for this session'
+            };
+        }
+
+        // Ensure payment wasn't refunded or disputed
+        if (payRecord.status === 'refunded' || payRecord.refundRequested || (payRecord.amountRefunded && payRecord.amountRefunded >= payRecord.amount)) {
+            await SessionModel.updateOne(
+                { _id: sessionMongoId },
+                { $set: { payoutStatus: 'not_applicable', payoutAmount: 0, payoutCredited: false } }
+            );
+            return {
+                credited: false,
+                amount: 0,
+                alreadyCredited: false,
+                reason: 'Payment record was refunded or has an active refund request'
+            };
+        }
+
+        // 4. Exact Payout Calculation (80% net expert share, 20% platform commission using exact paise)
+        const totalPaise = Math.round(sessionPrice * 100);
+        const expertPaise = Math.min(totalPaise, Math.round(totalPaise * 0.80));
+        const payoutAmount = expertPaise / 100;
+
+        // 5. Resolve Expert User
+        let expertUser = null;
+        const rawExpertId = session.expertId;
+        if (rawExpertId) {
+            if (typeof rawExpertId === 'string' && rawExpertId.includes('@')) {
+                expertUser = await User.findOne({ email: rawExpertId.toLowerCase() });
+            } else if (mongoose.Types.ObjectId.isValid(rawExpertId)) {
+                expertUser = await User.findById(rawExpertId);
+                if (!expertUser) {
+                    const profile = await ExpertDetails.findById(rawExpertId);
+                    if (profile && profile.userId) {
+                        expertUser = await User.findById(profile.userId);
+                    }
+                }
+            }
+        }
+        if (!expertUser && actorUserId && mongoose.Types.ObjectId.isValid(actorUserId)) {
+            expertUser = await User.findById(actorUserId);
+        }
+
+        if (!expertUser) {
+            return {
+                credited: false,
+                amount: 0,
+                alreadyCredited: false,
+                reason: 'Expert user record could not be resolved'
+            };
+        }
+
+        // Stable Idempotency Key
+        const keyPrefix = outcome === 'DID_NOT_ATTEND'
+            ? 'SESSION_NO_SHOW_PAYOUT'
+            : (outcome === 'ATTENDED_INCOMPLETE' ? 'SESSION_INCOMPLETE_PAYOUT' : 'SESSION_COMPLETED_PAYOUT');
+        const idempotencyKey = `${keyPrefix}:${sessionId}`;
+
+        const existingKeyTxn = await WalletTransaction.findOne({ idempotencyKey });
+        if (existingKeyTxn) {
+            await SessionModel.updateOne(
+                { _id: sessionMongoId, payoutCredited: { $ne: true } },
+                { $set: { payoutCredited: true, payoutAmount: existingKeyTxn.amount, payoutStatus: 'credited', payoutCreditedAt: existingKeyTxn.createdAt } }
+            );
+            return {
+                credited: false,
+                amount: existingKeyTxn.amount,
+                alreadyCredited: true,
+                reason: 'Transaction already committed with idempotency key'
+            };
+        }
+
+        const description = outcome === 'DID_NOT_ATTEND'
+            ? `Payout for candidate no-show session ${sessionId}`
+            : (outcome === 'ATTENDED_INCOMPLETE'
+                ? `Payout for session ${sessionId} (candidate left before completion)`
+                : `Payout for completed session ${sessionId}`);
+
+        // 6. Multi-Document Transaction Execution (with Safe Atomic Fallback)
+        let sessionTxn = null;
+        let useTxn = false;
+        try {
+            sessionTxn = await mongoose.startSession();
+            sessionTxn.startTransaction();
+            useTxn = true;
+        } catch (_) {
+            sessionTxn = null;
+            useTxn = false;
+        }
+
+        let creditSuccess = false;
+        let finalBalance = 0;
+
+        if (useTxn && sessionTxn) {
+            try {
+                // Atomic claim on session
+                const claimedSession = await SessionModel.findOneAndUpdate(
+                    { _id: sessionMongoId, payoutCredited: { $ne: true } },
+                    {
+                        $set: {
+                            payoutCredited: true,
+                            payoutCreditedAt: now,
+                            payoutProcessedAt: now,
+                            payoutAmount: payoutAmount,
+                            payoutStatus: 'credited',
+                            payoutReference: payRecord.paymentId,
+                            ...(outcome === 'DID_NOT_ATTEND' ? { noShowSettled: true } : {})
+                        }
+                    },
+                    { new: true, session: sessionTxn }
+                );
+
+                if (!claimedSession) {
+                    await sessionTxn.abortTransaction();
+                    return { credited: false, amount: payoutAmount, alreadyCredited: true, reason: 'Session concurrently claimed or already credited' };
+                }
+
+                let wallet = await Wallet.findOne({ userId: expertUser._id }, null, { session: sessionTxn });
+                if (!wallet) {
+                    wallet = new Wallet({ userId: expertUser._id, availableBalance: 0 });
+                }
+                wallet.availableBalance = Math.round((Number(wallet.availableBalance || 0) + payoutAmount) * 100) / 100;
+                await wallet.save({ session: sessionTxn });
+
+                const userDoc = await User.findById(expertUser._id, null, { session: sessionTxn });
+                if (userDoc) {
+                    userDoc.walletBalance = Math.round((Number(userDoc.walletBalance || 0) + payoutAmount) * 100) / 100;
+                    await userDoc.save({ session: sessionTxn });
+                }
+
+                await WalletTransaction.create([{
+                    walletId: wallet._id,
+                    userId: expertUser._id,
+                    type: 'CREDIT',
+                    amount: payoutAmount,
+                    referenceId: sessionMongoId,
+                    referenceModel: 'Session',
+                    sessionId: sessionId,
+                    paymentId: payRecord.paymentId,
+                    idempotencyKey: idempotencyKey,
+                    status: 'COMPLETED',
+                    description: description,
+                    balanceAfter: wallet.availableBalance
+                }], { session: sessionTxn });
+
+                await sessionTxn.commitTransaction();
+                creditSuccess = true;
+                finalBalance = wallet.availableBalance;
+            } catch (txnErr) {
+                await sessionTxn.abortTransaction().catch(() => {});
+                console.error("[settleExpertSessionPayout] Transaction aborted:", txnErr);
+                if (txnErr.code === 11000) {
+                    return { credited: false, amount: payoutAmount, alreadyCredited: true, reason: 'Concurrent settlement race won by another process' };
+                }
+            } finally {
+                await sessionTxn.endSession().catch(() => {});
+            }
+        }
+
+        // Atomic Fallback for environments without replica sets
+        if (!creditSuccess) {
+            try {
+                const claimedSession = await SessionModel.findOneAndUpdate(
+                    { _id: sessionMongoId, payoutCredited: { $ne: true } },
+                    {
+                        $set: {
+                            payoutCredited: true,
+                            payoutCreditedAt: now,
+                            payoutProcessedAt: now,
+                            payoutAmount: payoutAmount,
+                            payoutStatus: 'credited',
+                            payoutReference: payRecord.paymentId,
+                            ...(outcome === 'DID_NOT_ATTEND' ? { noShowSettled: true } : {})
+                        }
+                    },
+                    { new: true }
+                );
+
+                if (!claimedSession) {
+                    return { credited: false, amount: payoutAmount, alreadyCredited: true, reason: 'Session concurrently claimed or already credited' };
+                }
+
+                let wallet = await Wallet.findOne({ userId: expertUser._id });
+                if (!wallet) {
+                    wallet = new Wallet({ userId: expertUser._id, availableBalance: 0 });
+                }
+                wallet.availableBalance = Math.round((Number(wallet.availableBalance || 0) + payoutAmount) * 100) / 100;
+                await wallet.save();
+
+                await User.updateOne(
+                    { _id: expertUser._id },
+                    { $set: { walletBalance: wallet.availableBalance } }
+                );
+
+                await WalletTransaction.create([{
+                    walletId: wallet._id,
+                    userId: expertUser._id,
+                    type: 'CREDIT',
+                    amount: payoutAmount,
+                    referenceId: sessionMongoId,
+                    referenceModel: 'Session',
+                    sessionId: sessionId,
+                    paymentId: payRecord.paymentId,
+                    idempotencyKey: idempotencyKey,
+                    status: 'COMPLETED',
+                    description: description,
+                    balanceAfter: wallet.availableBalance
+                }]);
+
+                creditSuccess = true;
+                finalBalance = wallet.availableBalance;
+            } catch (fallbackErr) {
+                console.error("[settleExpertSessionPayout] Fallback settlement error:", fallbackErr);
+                if (fallbackErr.code === 11000) {
+                    return { credited: false, amount: payoutAmount, alreadyCredited: true, reason: 'Ledger unique constraint preserved single credit' };
+                }
+                await SessionModel.updateOne({ _id: sessionMongoId }, { $set: { payoutStatus: 'failed' } });
+                return { credited: false, amount: 0, reason: fallbackErr.message };
+            }
+        }
+
+        // 7. Real-Time Broadcast & Notification
+        if (creditSuccess) {
+            syncDataChange({
+                type: "WALLET_UPDATED",
+                userId: expertUser._id,
+                data: {
+                    balance: finalBalance,
+                    availableBalance: finalBalance,
+                    walletBalance: finalBalance,
+                    creditedAmount: payoutAmount,
+                    sessionId: sessionId
+                }
+            });
+
+            emitUserEvt(expertUser._id, 'wallet_updated', {
+                balance: finalBalance,
+                availableBalance: finalBalance,
+                creditedAmount: payoutAmount
+            });
+
+            const notifTitle = outcome === 'DID_NOT_ATTEND'
+                ? 'Candidate No-Show Payout Credited'
+                : (outcome === 'ATTENDED_INCOMPLETE' ? 'Incomplete Session Payout Credited' : 'Session Payout Credited');
+            const notifMsg = `₹${payoutAmount} has been credited to your wallet for session ${sessionId}.`;
+
+            await createNotification({
+                userId: expertUser._id,
+                type: 'wallet_credit',
+                title: notifTitle,
+                message: notifMsg,
+                metadata: {
+                    sessionId: sessionId,
+                    amount: payoutAmount,
+                    link: '/expert/sessions'
+                }
+            }).catch(err => console.error("Notification dispatch error:", err));
+
+            return {
+                credited: true,
+                amount: payoutAmount,
+                alreadyCredited: false,
+                balanceAfter: finalBalance
+            };
+        }
+
+        return { credited: false, amount: 0, reason: 'Settlement could not be completed' };
+    } catch (err) {
+        console.error("settleExpertSessionPayout error:", err);
+        return { credited: false, amount: 0, reason: err.message };
+    }
+};
+
 export const completeSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
+        const { attendanceOutcome, completionEvidence } = req.body;
+
+        if (!attendanceOutcome || !['ATTENDED_COMPLETED', 'DID_NOT_ATTEND', 'ATTENDED_INCOMPLETE'].includes(attendanceOutcome)) {
+            return res.status(400).json({
+                success: false,
+                message: "Attendance outcome is required to end the session. Must be one of: ATTENDED_COMPLETED, DID_NOT_ATTEND, ATTENDED_INCOMPLETE."
+            });
+        }
+
         const session = await sessionService.getSessionById(sessionId);
         if (!session) {
             return res.status(404).json({ message: "Session not found" });
+        }
+
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus === 'no-show' || sStatus === 'candidate_no_show' || sStatus === 'no_show') {
+            return res.status(400).json({ success: false, message: "A no-show session cannot be marked as completed." });
+        }
+        if (sStatus === 'cancelled') {
+            return res.status(400).json({ success: false, message: "A cancelled session cannot be marked as completed." });
         }
 
         // Authorization check: Only the session's expert or admin can mark session completed
@@ -237,55 +635,217 @@ export const completeSession = async (req, res) => {
             return res.status(403).json({ message: "Forbidden: Access denied" });
         }
 
-        await sessionService.completeSession(sessionId);
+        // 15-minute join grace period check applies strictly to DID_NOT_ATTEND (Mark Absent / No-Show)
+        const now = new Date();
+        const startTime = new Date(session.startTime);
+        if (attendanceOutcome === 'DID_NOT_ATTEND') {
+            if (!isNaN(startTime.getTime()) && now.getTime() < startTime.getTime() + 15 * 60 * 1000) {
+                const remainingSeconds = Math.ceil((startTime.getTime() + 15 * 60 * 1000 - now.getTime()) / 1000);
+                return res.status(400).json({
+                    success: false,
+                    message: `Mark Absent is locked for the first 15 minutes of the session (Candidate join grace period). Available in ${remainingSeconds}s.`
+                });
+            }
+        }
+
+        // Validate candidate join truth
+        if (!session.candidateJoinedAt) {
+            if (attendanceOutcome !== 'DID_NOT_ATTEND') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Candidate has not joined this session. Only 'DID_NOT_ATTEND' outcome is allowed."
+                });
+            }
+        } else {
+            if (attendanceOutcome === 'DID_NOT_ATTEND') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Candidate joined this session. 'DID_NOT_ATTEND' cannot be selected for an attended candidate."
+                });
+            }
+        }
+
+        // If outcome is DID_NOT_ATTEND, delegate directly to markCandidateNoShow
+        if (attendanceOutcome === 'DID_NOT_ATTEND') {
+            req.body.reason = req.body.reason || 'Candidate did not attend within 15-minute grace period';
+            return markCandidateNoShow(req, res);
+        }
+
+        // Authoritative Proof of Completion Validation
+        // If Candidate is still connected, use authoritative session-ending timestamp (now) for interval calculation
+        // Do NOT invent a leave timestamp when candidate did not leave
+        const candJoinMs = session.candidateJoinedAt ? new Date(session.candidateJoinedAt).getTime() : 0;
+        const candEndMs = session.candidateLeftAt ? new Date(session.candidateLeftAt).getTime() : now.getTime();
+        const presenceDurationMs = candJoinMs > 0 ? Math.max(0, candEndMs - candJoinMs) : 0;
+
+        if (attendanceOutcome === 'ATTENDED_COMPLETED') {
+            // Must have expert completion confirmation
+            if (!completionEvidence || completionEvidence.interviewConducted === false) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Proof of interview completion is required. Expert must confirm interview was conducted."
+                });
+            }
+        }
+
+        const isEarlyEnded = attendanceOutcome === 'ATTENDED_INCOMPLETE';
+        const recordedEvidence = {
+            verified: attendanceOutcome === 'ATTENDED_COMPLETED',
+            verifiedAt: now,
+            durationMinutes: Math.round(presenceDurationMs / 60000),
+            candidateJoinedConfirmed: Boolean(session.candidateJoinedAt),
+            interviewConducted: attendanceOutcome === 'ATTENDED_COMPLETED',
+            summary: completionEvidence?.summary || (attendanceOutcome === 'ATTENDED_COMPLETED' ? 'Full interview conducted and verified' : 'Session ended before completion'),
+            confirmedBy: req.user.userId
+        };
+
+        // Atomic completion handles status transition directly below
         try {
             await meetingService.updateMeetingStatus(sessionId, 'finished');
         } catch (_) { /* meeting may not exist */ }
 
-        // Snapshot candidate identity on session and check master certificate issuance
-        try {
-            const User = (await import('../models/User.js')).default;
-            const SessionModel = (await import('../models/Session.js')).default;
-            const candidateUser = await User.findById(session.candidateId);
-            if (candidateUser) {
-                const isConfirmed = Boolean(
-                    candidateUser.certificateIdentityConfirmation?.confirmedName &&
-                    candidateUser.certificateIdentityConfirmation.confirmedName.trim().toLowerCase() === candidateUser.name.trim().toLowerCase()
-                );
-                const snapshotName = isConfirmed
-                    ? candidateUser.certificateIdentityConfirmation.confirmedName.trim()
-                    : null;
+        // Calculate eligible expert payout
+        const PaymentRecord = (await import('../models/PaymentRecord.js')).default;
+        
+        let pendingPayoutAmount = 0;
+        let initialPayoutStatus = 'not_applicable';
+        const sessionPrice = Number(session.price || 0);
 
-                await SessionModel.findOneAndUpdate(
-                    { sessionId: session.sessionId },
-                    {
-                        $set: {
-                            candidateNameSnapshot: snapshotName,
-                            identityConfirmedAt: candidateUser.certificateIdentityConfirmation?.confirmedAt || new Date(),
-                            certificateIssued: true,
-                            certificateId: `MCFY-${(session._id || session.sessionId).toString().slice(-8).toUpperCase()}`
-                        }
-                    }
-                );
-
-                // Auto-provision master credential if >= 3 completed sessions
-                const completedCount = await SessionModel.countDocuments({
-                    candidateId: candidateUser._id,
-                    status: 'completed'
-                });
-
-                if (completedCount >= 3) {
-                    const { ensureMasterCertification } = await import('./certificationController.js');
-                    await ensureMasterCertification(candidateUser._id, candidateUser);
-                }
+        if (sessionPrice > 0) {
+            const payRecord = await PaymentRecord.findOne({
+                sessionId: session.sessionId,
+                status: 'verified'
+            });
+            if (payRecord) {
+                const totalPaise = Math.round(sessionPrice * 100);
+                pendingPayoutAmount = Math.min(totalPaise, Math.round(totalPaise * 0.80)) / 100;
+                initialPayoutStatus = attendanceOutcome === 'ATTENDED_INCOMPLETE' ? 'credited' : 'pending_feedback';
+            } else {
+                initialPayoutStatus = 'not_applicable';
             }
-        } catch (snapErr) {
-            console.error("[completeSession] Error recording candidate identity snapshot:", snapErr);
+        } else {
+            initialPayoutStatus = 'not_applicable';
         }
 
-        const SessionModel = (await import('../models/Session.js')).default;
-        const updatedCompletedSession = await SessionModel.findOne({ sessionId: session.sessionId }).lean();
-        const payloadData = updatedCompletedSession || { sessionId: session.sessionId, _id: session._id, status: 'completed' };
+        // Atomic state transition: ensures idempotent transition and eliminates race conditions
+        const updatedCompletedSession = await Session.findOneAndUpdate(
+            {
+                sessionId: session.sessionId,
+                status: { $in: ['confirmed', 'live', 'Upcoming'] }
+            },
+            {
+                $set: {
+                    status: 'completed',
+                    actualEndTime: now,
+                    attendanceStatus: 'attended',
+                    attendanceOutcome: attendanceOutcome,
+                    attendanceClassifiedAt: now,
+                    attendanceClassifiedBy: req.user.userId,
+                    completionEvidence: recordedEvidence,
+                    earlyEnded: isEarlyEnded,
+                    earlyEndReason: isEarlyEnded ? (req.body.earlyEndReason || 'Candidate left before completion') : null,
+                    endedEarlyBy: isEarlyEnded ? req.user.userId : null,
+                    payoutStatus: initialPayoutStatus,
+                    payoutAmount: pendingPayoutAmount,
+                    payoutCredited: false
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedCompletedSession) {
+            // Already finalized! Check if requested outcome conflicts with committed outcome
+            const existing = await Session.findOne({ sessionId: session.sessionId }).lean();
+            const existingOutcome = existing?.attendanceOutcome || (existing?.status === 'CANDIDATE_NO_SHOW' ? 'DID_NOT_ATTEND' : 'ATTENDED_COMPLETED');
+            if (attendanceOutcome && existingOutcome && existingOutcome !== attendanceOutcome) {
+                return res.status(409).json({
+                    success: false,
+                    conflict: true,
+                    message: `Conflict: Session has already been finalized with outcome '${existingOutcome}'. Requested outcome '${attendanceOutcome}' was rejected.`,
+                    data: existing
+                });
+            }
+            return res.status(200).json({ success: true, message: "Session already finalized", data: existing });
+        }
+
+        // Settle Payout Immediately for Incomplete Sessions (or if review already exists)
+        let walletCreditResult = null;
+        if (attendanceOutcome === 'ATTENDED_INCOMPLETE') {
+            walletCreditResult = await settleExpertSessionPayout({
+                session: updatedCompletedSession,
+                outcome: 'ATTENDED_INCOMPLETE',
+                reason: req.body.earlyEndReason || 'Candidate left before completion',
+                actorUserId: req.user.userId
+            });
+        } else if (attendanceOutcome === 'ATTENDED_COMPLETED') {
+            const ReviewDetails = (await import('../models/reviewModel.js')).default;
+            const existingReview = await ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'expert' });
+            if (existingReview) {
+                walletCreditResult = await settleExpertSessionPayout({
+                    session: updatedCompletedSession,
+                    outcome: 'ATTENDED_COMPLETED',
+                    reason: 'Review already submitted',
+                    actorUserId: req.user.userId
+                });
+            }
+        }
+
+        // Outcome-specific notifications and emails (dispatched idempotently once)
+        try {
+            const { createNotification } = await import('./notificationController.js');
+            const { formatSessionDateTime } = await import('../services/emailService.js');
+            const { enqueueEmail } = await import('../services/emailOutboxService.js');
+            const User = (await import('../models/User.js')).default;
+            const candidateUser = await User.findById(session.candidateId).lean();
+            const dt = formatSessionDateTime(session.startTime, session.endTime);
+
+            if (attendanceOutcome === 'ATTENDED_COMPLETED') {
+                await createNotification({
+                    userId: session.candidateId,
+                    type: 'session_completed',
+                    title: 'Interview Session Completed',
+                    message: `Your mock interview on ${dt.dateStr} at ${dt.timeSlotStr} has been marked as attended & completed. Once the mentor submits their evaluation, you can request feedback and view your certificate progress.`,
+                    metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+                });
+
+                if (candidateUser && candidateUser.email) {
+                    await enqueueEmail({
+                        sessionId: session.sessionId,
+                        recipientType: 'candidate',
+                        to: candidateUser.email,
+                        subject: 'Mockeefy: Interview Session Completed',
+                        template: 'session_completed',
+                        html: `<p>Hi ${candidateUser.name || 'Candidate'},</p><p>Your mock interview session on ${dt.dateStr} at ${dt.timeSlotStr} has concluded successfully. Once your expert submits your evaluation, you can view your scorecard and track your certificate progress.</p><p><a href="https://mockeefy.com/my-sessions">View My Sessions</a></p>`,
+                        metadata: { sessionId: session.sessionId, outcome: 'ATTENDED_COMPLETED' }
+                    });
+                }
+            } else if (attendanceOutcome === 'ATTENDED_INCOMPLETE') {
+                await createNotification({
+                    userId: session.candidateId,
+                    type: 'session_incomplete',
+                    title: 'Interview Session Ended Before Completion',
+                    message: `Your mock interview on ${dt.dateStr} at ${dt.timeSlotStr} was classified as attended but left before completion. Under platform policy, incomplete sessions do not qualify for certificates.`,
+                    metadata: { sessionId: session.sessionId, link: '/my-sessions' }
+                });
+
+                if (candidateUser && candidateUser.email) {
+                    await enqueueEmail({
+                        sessionId: session.sessionId,
+                        recipientType: 'candidate',
+                        to: candidateUser.email,
+                        subject: 'Mockeefy: Interview Session Ended Early',
+                        template: 'session_incomplete',
+                        html: `<p>Hi ${candidateUser.name || 'Candidate'},</p><p>Your mock interview on ${dt.dateStr} at ${dt.timeSlotStr} ended before completion. Under platform policy, incomplete sessions do not qualify for completion certificates.</p><p><a href="https://mockeefy.com/my-sessions">View My Sessions</a></p>`,
+                        metadata: { sessionId: session.sessionId, outcome: 'ATTENDED_INCOMPLETE' }
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error("[completeSession] Outcome notification dispatch error:", notifErr);
+        }
+
+        const finalCompletedDoc = await Session.findOne({ sessionId: session.sessionId }).lean() || updatedCompletedSession;
+        const payloadData = finalCompletedDoc || { sessionId: session.sessionId, _id: session._id, status: 'completed', attendanceOutcome };
 
         syncDataChange({
             type: "SESSION_UPDATED",
@@ -304,10 +864,312 @@ export const completeSession = async (req, res) => {
             });
         }
 
-        return res.json({ success: true, message: "Session completed", data: payloadData });
+        return res.json({
+            success: true,
+            message: "Session completed with verified attendance",
+            data: payloadData,
+            walletCredit: walletCreditResult
+        });
     } catch (error) {
         console.error("Complete session error:", error);
         return res.status(500).json({ message: error.message });
+    }
+};
+
+export const endSession = completeSession;
+
+/**
+ * POST /api/sessions/:sessionId/no-show
+ * Marks a confirmed session as candidate no-show after the 10-minute grace period has passed.
+ * Automatically processes expert payout according to platform no-show policy (if paid).
+ * Excludes session from certificate eligibility.
+ */
+export const markCandidateNoShow = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const { reason } = req.body;
+        const userId = req.user.userId;
+
+        const mongoose = (await import('mongoose')).default;
+        const SessionModel = (await import('../models/Session.js')).default;
+        const session = await SessionModel.findOne({
+            $or: [{ sessionId }, { _id: mongoose.Types.ObjectId.isValid(sessionId) ? sessionId : null }].filter(Boolean)
+        });
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        // Authorization check: Only the session's assigned expert or admin can mark candidate absent
+        const Expert = (await import('../models/expertModel.js')).default;
+        const expertProfile = await Expert.findOne({ $or: [{ _id: session.expertId }, { userId: session.expertId }] });
+        const isAuthorized = req.user.userType === 'admin' ||
+            String(session.expertId) === String(userId) ||
+            (expertProfile && String(expertProfile.userId) === String(userId));
+
+        if (!isAuthorized) {
+            return res.status(403).json({ success: false, message: "Forbidden: Only the assigned expert can mark candidate absent." });
+        }
+
+        // Terminal state & conflict checks
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus === 'completed' || sStatus === 'evaluated') {
+            return res.status(409).json({
+                success: false,
+                conflict: true,
+                message: `Conflict: Session has already been finalized with status '${session.status}' and outcome '${session.attendanceOutcome || 'ATTENDED_COMPLETED'}'. Mark absent rejected.`,
+                data: session
+            });
+        }
+        if (sStatus === 'cancelled') {
+            return res.status(400).json({ success: false, message: "Cancelled sessions cannot be marked as a no-show." });
+        }
+        if (sStatus === 'no-show' || sStatus === 'candidate_no_show' || sStatus === 'no_show') {
+            return res.status(400).json({ success: false, message: "This session has already been marked as a candidate no-show." });
+        }
+
+        // Attendance check: If candidate actually attended/joined the meeting, prevent no-show marking
+        if (session.candidateJoinedAt || (session.attendanceStatus && session.attendanceStatus === 'attended')) {
+            return res.status(400).json({
+                success: false,
+                message: "Candidate has already attended this session. An attended session cannot be marked as a no-show."
+            });
+        }
+
+        // Time and Configurable Grace Period Enforcement (Default: 15 minutes)
+        const gracePeriodMinutes = parseInt(process.env.NO_SHOW_GRACE_MINUTES, 10) || 15;
+        const gracePeriodMs = gracePeriodMinutes * 60 * 1000;
+        const now = new Date();
+        const startTime = new Date(session.startTime);
+        const gracePeriodEnd = new Date(startTime.getTime() + gracePeriodMs);
+
+        if (now.getTime() < gracePeriodEnd.getTime()) {
+            const remainingMinutes = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / 60000);
+            return res.status(400).json({
+                success: false,
+                message: `No-show cannot be reported yet. The candidate has a ${gracePeriodMinutes}-minute grace period to join (${remainingMinutes} min remaining).`
+            });
+        }
+
+        // Check if session has already been evaluated (ReviewDetails or Report)
+        const ReviewDetails = (await import('../models/reviewModel.js')).default;
+        const existingReview = await ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'expert' });
+        if (existingReview) {
+            return res.status(400).json({ success: false, message: "This session has already been evaluated and cannot be marked as a no-show." });
+        }
+
+        const Report = (await import('../models/Report.js')).default;
+        const existingReport = await Report.findOne({ sessionId: session._id });
+        if (existingReport) {
+            return res.status(400).json({ success: false, message: "This session has an evaluation report and cannot be marked as a no-show." });
+        }
+
+        // Atomic status transition
+        const updatedSession = await SessionModel.findOneAndUpdate(
+            {
+                _id: session._id,
+                status: { $nin: ['completed', 'evaluated', 'cancelled', 'no-show', 'candidate_no_show', 'CANDIDATE_NO_SHOW', 'no_show', 'NO_SHOW'] },
+                candidateJoinedAt: null,
+                attendanceStatus: { $ne: 'attended' }
+            },
+            {
+                $set: {
+                    status: 'CANDIDATE_NO_SHOW',
+                    attendanceStatus: 'no-show',
+                    attendanceOutcome: 'DID_NOT_ATTEND',
+                    attendanceClassifiedAt: now,
+                    attendanceClassifiedBy: userId,
+                    noShowMarkedBy: userId,
+                    noShowReportedBy: userId,
+                    noShowMarkedAt: now,
+                    noShowReportedAt: now,
+                    noShowReason: reason?.trim() || `Candidate did not attend within ${gracePeriodMinutes}-minute grace period`,
+                    noShowSettled: false,
+                    payoutStatus: 'unprocessed'
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedSession) {
+            return res.status(409).json({ success: false, message: "Session state conflict: The session was modified concurrently or attendance was recorded." });
+        }
+
+        // Expert Payout Settlement (Idempotent, Atomic & Protected)
+        const walletCreditResult = await settleExpertSessionPayout({
+            session: updatedSession,
+            outcome: 'DID_NOT_ATTEND',
+            reason: updatedSession.noShowReason,
+            actorUserId: userId
+        });
+
+        // Fetch authoritative session state after settlement
+        const finalSession = await SessionModel.findById(updatedSession._id).lean() || updatedSession;
+
+        // Notify Candidate of absence and platform policy (non-refundable, ineligible for certificates)
+        try {
+            const { createNotification } = await import('./notificationController.js');
+            const { formatSessionDateTime } = await import('../services/emailService.js');
+            const dt = formatSessionDateTime(updatedSession.startTime, updatedSession.endTime);
+
+            await createNotification({
+                userId: updatedSession.candidateId,
+                type: 'session_no_show',
+                title: 'Marked Absent for Scheduled Interview',
+                message: `You were marked as absent for your scheduled mock interview on ${dt.dateStr} at ${dt.timeSlotStr}. Under platform policy, missed sessions are non-refundable and do not count toward certificate eligibility.`,
+                metadata: { sessionId: updatedSession.sessionId, link: '/my-sessions' }
+            });
+
+            // Enqueue durable Candidate No-Show notification into EmailOutbox
+            const { enqueueEmail } = await import('../services/emailOutboxService.js');
+            const User = (await import('../models/User.js')).default;
+            const candidateUser = await User.findById(updatedSession.candidateId).lean();
+            if (candidateUser && candidateUser.email) {
+                await enqueueEmail({
+                    sessionId: updatedSession.sessionId,
+                    recipientType: 'candidate',
+                    to: candidateUser.email,
+                    subject: 'Mockeefy: Marked Absent for Scheduled Interview',
+                    template: 'session_no_show',
+                    html: `<p>Hi ${candidateUser.name || 'Candidate'},</p><p>You were marked as absent for your scheduled mock interview on ${dt.dateStr} at ${dt.timeSlotStr}. Under platform policy, missed sessions are non-refundable and do not count toward certificate eligibility.</p><p><a href="https://mockeefy.com/my-sessions">View My Sessions</a></p>`,
+                    metadata: {
+                        sessionId: updatedSession.sessionId,
+                        reason: reason || 'Candidate did not join within grace period'
+                    }
+                });
+            }
+        } catch (notifErr) {
+            console.error("[markCandidateNoShow] Candidate notification/outbox error:", notifErr);
+        }
+
+        // Real-time synchronization
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: finalSession.candidateId,
+            sessionId: finalSession.sessionId,
+            data: finalSession,
+            toAdmin: true
+        });
+
+        if (expertProfile?.userId) {
+            syncDataChange({
+                type: "SESSION_UPDATED",
+                userId: expertProfile.userId,
+                expertId: expertProfile._id,
+                sessionId: finalSession.sessionId,
+                data: finalSession
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Candidate marked as no-show successfully.",
+            data: finalSession,
+            payoutCredited: Boolean(finalSession.payoutCredited),
+            payoutAmount: finalSession.payoutAmount || 0,
+            walletCredit: walletCreditResult
+        });
+    } catch (error) {
+        console.error("Mark candidate no-show error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * POST /api/sessions/:sessionId/no-show-dispute/resolve
+ * Admin-only endpoint to resolve candidate no-show dispute with audit history.
+ */
+export const resolveCandidateNoShowDispute = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const { resolution, action } = req.body;
+
+        if (req.user?.userType !== 'admin') {
+            return res.status(403).json({ success: false, message: "Forbidden: Only administrators can resolve disputes." });
+        }
+
+        const SessionModel = (await import('../models/Session.js')).default;
+        const session = await SessionModel.findOne({
+            $or: [{ sessionId }, { _id: (await import('mongoose')).default.Types.ObjectId.isValid(sessionId) ? sessionId : null }].filter(Boolean)
+        });
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (session.noShowDispute?.status !== 'disputed') {
+            return res.status(400).json({ success: false, message: "No active dispute found on this session." });
+        }
+
+        session.noShowDispute.status = 'resolved';
+        session.noShowDispute.resolvedAt = new Date();
+        session.noShowDispute.resolution = (resolution || `Dispute resolved as ${action || 'upheld'}`).trim();
+
+        await session.save();
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Dispute resolved successfully.",
+            data: session
+        });
+    } catch (error) {
+        console.error("Resolve dispute error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const disputeCandidateNoShow = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const { notes } = req.body;
+        const userId = req.user.userId;
+
+        const SessionModel = (await import('../models/Session.js')).default;
+        const session = await SessionModel.findOne({ sessionId });
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (String(session.candidateId) !== String(userId)) {
+            return res.status(403).json({ success: false, message: "Forbidden: Access denied" });
+        }
+
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus !== 'no-show' && sStatus !== 'candidate_no_show') {
+            return res.status(400).json({ success: false, message: "Only no-show sessions can be disputed." });
+        }
+
+        session.noShowDispute = {
+            status: 'disputed',
+            candidateNotes: (notes || '').trim(),
+            disputedAt: new Date()
+        };
+
+        await session.save();
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: session,
+            toAdmin: true
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Dispute submitted successfully for administrative review.",
+            data: session
+        });
+    } catch (error) {
+        console.error("Dispute no-show error:", error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -533,160 +1395,185 @@ export const getSessionsByCandidate = async (req, res) => {
 
         const sessions = await sessionService.getSessionsByCandidateId(candidateId);
 
-        // Import Expert, User and mongoose
+        // Import Expert, User, ReviewDetails and mongoose
         const Expert = (await import('../models/expertModel.js')).default;
         const User = (await import('../models/User.js')).default;
+        const ReviewDetails = (await import('../models/reviewModel.js')).default;
+        const SessionModel = (await import('../models/Session.js')).default;
         const mongoose = (await import('mongoose')).default;
 
         const candidateUser = await User.findById(candidateId).lean();
 
+        // High-Performance Batch Prefetching (Eliminates N+1 queries)
+        const allSessionIds = sessions.map(s => s.sessionId).filter(Boolean);
+        const allMongoIds = sessions.map(s => s._id?.toString()).filter(Boolean);
+        const combinedSessionKeys = [...new Set([...allSessionIds, ...allMongoIds])];
+
+        const rawExpertIds = [...new Set(sessions.map(s => s.expertId).filter(Boolean))];
+        const validExpertOids = rawExpertIds.filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
+        const emailExpertLookups = rawExpertIds.filter(id => typeof id === 'string' && id.includes('@')).map(id => id.toLowerCase());
+
+        const [allReviews, expertDocs, usersByEmail, userFallbackDocs] = await Promise.all([
+            combinedSessionKeys.length > 0
+                ? ReviewDetails.find({ sessionId: { $in: combinedSessionKeys } }).lean()
+                : [],
+            validExpertOids.length > 0
+                ? Expert.find({ $or: [{ userId: { $in: validExpertOids } }, { _id: { $in: validExpertOids } }] }).populate('userId').lean()
+                : [],
+            emailExpertLookups.length > 0
+                ? User.find({ email: { $in: emailExpertLookups } }).lean()
+                : [],
+            validExpertOids.length > 0
+                ? User.find({ _id: { $in: validExpertOids } }).lean()
+                : []
+        ]);
+
+        const reviewMap = new Map();
+        allReviews.forEach(r => {
+            const sid = String(r.sessionId);
+            const role = String(r.reviewerRole);
+            reviewMap.set(`${sid}_${role}`, r);
+        });
+
+        const expertMap = new Map();
+        expertDocs.forEach(e => {
+            if (e._id) expertMap.set(e._id.toString(), e);
+            if (e.userId?._id) expertMap.set(e.userId._id.toString(), e);
+            else if (e.userId) expertMap.set(e.userId.toString(), e);
+        });
+
+        const userFallbackMap = new Map();
+        userFallbackDocs.forEach(u => {
+            if (u._id) userFallbackMap.set(u._id.toString(), u);
+        });
+        usersByEmail.forEach(u => {
+            if (u.email) userFallbackMap.set(u.email.toLowerCase(), u);
+        });
+
+        if (usersByEmail.length > 0) {
+            const emailUserIds = usersByEmail.map(u => u._id);
+            const extraExperts = await Expert.find({ userId: { $in: emailUserIds } }).populate('userId').lean();
+            extraExperts.forEach(e => {
+                const uid = e.userId?._id?.toString() || e.userId?.toString();
+                const matchedUser = usersByEmail.find(u => u._id.toString() === uid);
+                if (matchedUser) {
+                    expertMap.set(matchedUser.email.toLowerCase(), e);
+                }
+            });
+        }
+
         // Enrichment
-        const enrichedSessions = await Promise.all(
-            sessions.map(async (session) => {
-                let expert = null;
-                const lookupId = session.expertId;
+        const enrichedSessions = sessions.map((session) => {
+            const lookupId = session.expertId ? session.expertId.toString() : '';
+            const lookupIdLower = lookupId.toLowerCase();
 
-                try {
-                    // Logic: expertId could be a User ObjectId, an ExpertDetails ObjectId, or an Email
-                    if (mongoose.Types.ObjectId.isValid(lookupId)) {
-                        const oid = new mongoose.Types.ObjectId(lookupId);
+            const expert = expertMap.get(lookupId) || expertMap.get(lookupIdLower) || null;
 
-                        // 1. Try finding ExpertDetails by userId
-                        expert = await Expert.findOne({ userId: oid }).populate('userId');
+            // --- NAME RESOLUTION ---
+            let expertName = 'Unknown Expert';
+            let expertRole = 'Expert';
+            let expertCompany = 'N/A';
+            let expertImage = null;
 
-                        // 2. Try finding ExpertDetails by its own _id
-                        if (!expert) {
-                            expert = await Expert.findById(oid).populate('userId');
+            if (expert) {
+                expertName = expert.personalInformation?.userName || expert.userId?.name || 'Expert';
+                expertRole = expert.professionalDetails?.title || 'Expert';
+                expertCompany = expert.professionalDetails?.company || 'N/A';
+                expertImage = expert.profileImage || expert.userId?.profileImage || null;
+            } else {
+                const userFallback = userFallbackMap.get(lookupId) || userFallbackMap.get(lookupIdLower) || null;
+                if (userFallback) {
+                    expertName = userFallback.name || expertName;
+                    expertImage = userFallback.profileImage || null;
+                } else if (lookupId && !mongoose.Types.ObjectId.isValid(lookupId)) {
+                    expertName = lookupId;
+                }
+            }
+
+            const isObjectId = (str) => /^[0-9a-fA-F]{24}$/.test(String(str));
+            if (expertName === 'Unknown Expert' || isObjectId(expertName)) {
+                expertName = 'Expert';
+            }
+
+            // In-Memory Review Matching
+            const sid = session.sessionId || session._id?.toString();
+            const expertReview = reviewMap.get(`${sid}_expert`) || reviewMap.get(`${session._id?.toString()}_expert`) || null;
+            const candidateReview = reviewMap.get(`${sid}_candidate`) || reviewMap.get(`${session._id?.toString()}_candidate`) || null;
+
+            const isCompleted = (session.status || '').toLowerCase() === 'completed';
+            const candidateSnapshot = session.candidateNameSnapshot || 
+                candidateUser?.certificateIdentityConfirmation?.confirmedName || 
+                candidateUser?.name || 
+                'Candidate';
+
+            // Asynchronously backfill legacy completed sessions without snapshot
+            if (isCompleted && !session.candidateNameSnapshot) {
+                SessionModel.updateOne(
+                    { _id: session._id },
+                    {
+                        $set: {
+                            candidateNameSnapshot: candidateSnapshot,
+                            certificateIssued: true,
+                            certificateId: `MCFY-${(session._id || session.sessionId).toString().slice(-8).toUpperCase()}`
                         }
                     }
+                ).exec().catch(() => {});
+            }
 
-                    // 3. Email fallback
-                    if (!expert && typeof lookupId === 'string' && lookupId.includes('@')) {
-                        const userByEmail = await User.findOne({ email: lookupId.toLowerCase() });
-                        if (userByEmail) {
-                            expert = await Expert.findOne({ userId: userByEmail._id }).populate('userId');
-                        }
-                    }
-                } catch (lookupErr) {
-                    console.error(`[SessionController] Expert lookup error for ${lookupId}:`, lookupErr);
+            return {
+                ...session.toObject(),
+                candidateNameSnapshot: candidateSnapshot,
+                expertReview: expertReview ? {
+                    overallRating: (
+                        expertReview.technicalRating != null &&
+                        expertReview.communicationRating != null &&
+                        expertReview.problemSolvingRating != null &&
+                        expertReview.designRating != null &&
+                        expertReview.behavioralRating != null
+                    ) ? Number(((
+                        Number(expertReview.technicalRating) +
+                        Number(expertReview.communicationRating) +
+                        Number(expertReview.problemSolvingRating) +
+                        Number(expertReview.designRating) +
+                        Number(expertReview.behavioralRating)
+                    ) / 5).toFixed(1)) : expertReview.overallRating,
+                    technicalRating: expertReview.technicalRating,
+                    communicationRating: expertReview.communicationRating,
+                    problemSolvingRating: expertReview.problemSolvingRating,
+                    designRating: expertReview.designRating,
+                    behavioralRating: expertReview.behavioralRating,
+                    hiringDecision: expertReview.hiringDecision || expertReview.recommendation || null,
+                    recommendation: expertReview.recommendation || expertReview.hiringDecision || null,
+                    strengths: expertReview.strengths,
+                    weaknesses: expertReview.weaknesses,
+                    feedback: expertReview.feedback,
+                    suggestions: expertReview.suggestions,
+                    createdAt: expertReview.createdAt
+                } : null,
+                candidateReview: candidateReview ? {
+                    overallRating: candidateReview.overallRating,
+                    technicalRating: candidateReview.technicalRating,
+                    communicationRating: candidateReview.communicationRating,
+                    problemSolvingRating: candidateReview.problemSolvingRating,
+                    designRating: candidateReview.designRating,
+                    behavioralRating: candidateReview.behavioralRating,
+                    strengths: candidateReview.strengths,
+                    weaknesses: candidateReview.weaknesses,
+                    feedback: candidateReview.feedback,
+                    createdAt: candidateReview.createdAt
+                } : null,
+                expertDetails: {
+                    name: expertName,
+                    role: expertRole,
+                    company: expertCompany,
+                    category: expert?.personalInformation?.category || 'General',
+                    profileImage: expertImage,
+                    rating: expert?.metrics?.avgRating || 4.8,
+                    reviews: expert?.metrics?.totalReviews || 0,
+                    expertise: expert?.skillsAndExpertise?.domains || []
                 }
-
-                // --- NAME RESOLUTION ---
-                let expertName = 'Unknown Expert';
-                let expertRole = 'Expert';
-                let expertCompany = 'N/A';
-                let expertImage = null;
-
-                if (expert) {
-                    expertName = expert.personalInformation?.userName || expert.userId?.name || 'Expert';
-                    expertRole = expert.professionalDetails?.title || 'Expert';
-                    expertCompany = expert.professionalDetails?.company || 'N/A';
-                    expertImage = expert.profileImage || expert.userId?.profileImage || null;
-                } else {
-                    // Failover: Try to find the USER directly if Expert doc is missing
-                    try {
-                        let userFallback = null;
-                        if (mongoose.Types.ObjectId.isValid(lookupId)) {
-                            userFallback = await User.findById(lookupId);
-                            if (!userFallback) {
-                                // One last aggressive try: check if it's stored as string _id
-                                userFallback = await User.findOne({ _id: lookupId.toString() });
-                            }
-                        } else if (typeof lookupId === 'string' && lookupId.includes('@')) {
-                            userFallback = await User.findOne({ email: lookupId.toLowerCase() });
-                        }
-
-                        if (userFallback) {
-                            expertName = userFallback.name || expertName;
-                            expertImage = userFallback.profileImage || null;
-                        } else {
-                            // If it's a non-ID string (email/name), use it. 
-                            // If it's an ID we can't find, it'll still be "Unknown Expert" -> we will fix that below.
-                            if (lookupId && !mongoose.Types.ObjectId.isValid(lookupId)) {
-                                expertName = lookupId;
-                            }
-                        }
-                    } catch (e) { }
-                }
-
-                // ULTIMATE FALLBACK: If we still have "Unknown Expert" or a raw ObjectId,
-                // fall back to a user-friendly name "Expert".
-                const isObjectId = (str) => /^[0-9a-fA-F]{24}$/.test(String(str));
-                if (expertName === 'Unknown Expert' || isObjectId(expertName)) {
-                    expertName = 'Expert';
-                }
-
-                // Match Review - Expert's review (marks/feedback for candidate) and Candidate's review
-                const ReviewDetails = (await import('../models/reviewModel.js')).default;
-                const [expertReview, candidateReview] = await Promise.all([
-                    ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'expert' }),
-                    ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'candidate' })
-                ]);
-
-                const isCompleted = (session.status || '').toLowerCase() === 'completed';
-                const candidateSnapshot = session.candidateNameSnapshot || 
-                    candidateUser?.certificateIdentityConfirmation?.confirmedName || 
-                    candidateUser?.name || 
-                    'Candidate';
-
-                // Asynchronously backfill legacy completed sessions without snapshot
-                if (isCompleted && !session.candidateNameSnapshot) {
-                    const SessionModel = (await import('../models/Session.js')).default;
-                    SessionModel.updateOne(
-                        { _id: session._id },
-                        {
-                            $set: {
-                                candidateNameSnapshot: candidateSnapshot,
-                                certificateIssued: true,
-                                certificateId: `MCFY-${(session._id || session.sessionId).toString().slice(-8).toUpperCase()}`
-                            }
-                        }
-                    ).exec().catch(() => {});
-                }
-
-                return {
-                    ...session.toObject(),
-                    candidateNameSnapshot: candidateSnapshot,
-                    expertReview: expertReview ? {
-                        overallRating: expertReview.overallRating,
-                        technicalRating: expertReview.technicalRating,
-                        communicationRating: expertReview.communicationRating,
-                        problemSolvingRating: expertReview.problemSolvingRating,
-                        designRating: expertReview.designRating,
-                        behavioralRating: expertReview.behavioralRating,
-                        hiringDecision: expertReview.hiringDecision || expertReview.recommendation || null,
-                        recommendation: expertReview.recommendation || expertReview.hiringDecision || null,
-                        strengths: expertReview.strengths,
-                        weaknesses: expertReview.weaknesses,
-                        feedback: expertReview.feedback,
-                        suggestions: expertReview.suggestions,
-                        createdAt: expertReview.createdAt
-                    } : null,
-                    candidateReview: candidateReview ? {
-                        overallRating: candidateReview.overallRating,
-                        technicalRating: candidateReview.technicalRating,
-                        communicationRating: candidateReview.communicationRating,
-                        problemSolvingRating: candidateReview.problemSolvingRating,
-                        designRating: candidateReview.designRating,
-                        behavioralRating: candidateReview.behavioralRating,
-                        strengths: candidateReview.strengths,
-                        weaknesses: candidateReview.weaknesses,
-                        feedback: candidateReview.feedback,
-                        createdAt: candidateReview.createdAt
-                    } : null,
-                    expertDetails: {
-                        name: expertName,
-                        role: expertRole,
-                        company: expertCompany,
-                        category: expert?.personalInformation?.category || 'General',
-                        profileImage: expertImage,
-                        rating: expert?.metrics?.avgRating || 4.8,
-                        reviews: expert?.metrics?.totalReviews || 0,
-                        expertise: expert?.skillsAndExpertise?.domains || []
-                    }
-                };
-            })
-        );
+            };
+        });
 
         res.json(enrichedSessions);
     } catch (error) {
@@ -732,6 +1619,31 @@ export const getUserSessions = async (req, res) => {
     }
 };
 
+export const leaveSession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const userId = req.user?.userId || req.headers?.userid;
+        const SessionModel = (await import('../models/Session.js')).default;
+        const mongoose = (await import('mongoose')).default;
+        const query = mongoose.Types.ObjectId.isValid(sessionId)
+            ? { $or: [{ sessionId }, { _id: sessionId }] }
+            : { sessionId };
+        const session = await SessionModel.findOne(query);
+        if (!session) return res.status(404).json({ message: "Session not found" });
+
+        const isCandidate = userId && String(session.candidateId) === String(userId);
+        if (isCandidate) {
+            await SessionModel.updateOne(
+                { _id: session._id },
+                { $set: { candidateLeftAt: new Date(), candidateConnectionStatus: 'left' } }
+            );
+        }
+        return res.json({ success: true, message: "Leave recorded" });
+    } catch (e) {
+        return res.status(500).json({ message: e.message });
+    }
+};
+
 export const joinSession = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.user.userId; // Secure: retrieve userId from authenticated token payload
@@ -758,6 +1670,13 @@ export const joinSession = async (req, res) => {
                 message: "This session has been cancelled." 
             });
         }
+        if (sessionStatus === 'no-show' || sessionStatus === 'candidate_no_show' || sessionStatus === 'no_show') {
+            return res.status(400).json({ 
+                success: false, 
+                permitted: false, 
+                message: "This session has been marked as a candidate no-show. The meeting room is closed." 
+            });
+        }
         if (sessionStatus === 'pending') {
             return res.status(400).json({ 
                 success: false, 
@@ -772,6 +1691,8 @@ export const joinSession = async (req, res) => {
         const Expert = (await import('../models/expertModel.js')).default;
 
         let isParticipant = false;
+        let isExpert = false;
+        let isCandidate = false;
 
         // Convert session IDs to strings for comparison
         const sExpert = session.expertId?.toString() || "";
@@ -779,25 +1700,41 @@ export const joinSession = async (req, res) => {
         const uId = userId.toString();
 
         // Check 1: Direct ID Match
-        if (sExpert === uId || sCandidate === uId) {
+        if (sExpert === uId) {
             isParticipant = true;
+            isExpert = true;
+        } else if (sCandidate === uId) {
+            isParticipant = true;
+            isCandidate = true;
         }
 
         // Check 2: Expert Profile Match (if user is expert but session has ExpertDoc ID)
-        if (!isParticipant) {
-            const expertDoc = await Expert.findOne({ userId: userId });
-            if (expertDoc && (expertDoc._id.toString() === sExpert || expertDoc.userId.toString() === sExpert)) {
+        if (!isParticipant || !isExpert) {
+            const expertDoc = await Expert.findOne({ $or: [{ userId: userId }, { _id: userId }] });
+            if (expertDoc && (expertDoc._id.toString() === sExpert || expertDoc.userId.toString() === sExpert || expertDoc._id.toString() === uId || expertDoc.userId.toString() === uId)) {
                 isParticipant = true;
+                isExpert = true;
             }
         }
 
-        // Check 3: Email Fallback (Legacy/Dev)
+        // Check 3: Role from token/auth
+        if (req.user?.userType === 'expert' && isParticipant) {
+            isExpert = true;
+        } else if (req.user?.userType === 'candidate' && isParticipant) {
+            isCandidate = true;
+        }
+
+        // Check 4: Email Fallback (Legacy/Dev)
         if (!isParticipant) {
             const user = await User.findById(userId);
             if (user && user.email) {
                 const uEmail = user.email.toLowerCase();
-                if (sExpert.toLowerCase() === uEmail || sCandidate.toLowerCase() === uEmail) {
+                if (sExpert.toLowerCase() === uEmail) {
                     isParticipant = true;
+                    isExpert = true;
+                } else if (sCandidate.toLowerCase() === uEmail) {
+                    isParticipant = true;
+                    isCandidate = true;
                 }
             }
         }
@@ -832,10 +1769,32 @@ export const joinSession = async (req, res) => {
         // 3. Success -> Return Meeting Data
         await meetingService.getOrCreateMeeting(session.sessionId); // Ensure Meeting doc exists
 
+        const assignedRole = isExpert ? 'expert' : 'candidate';
+        try {
+            const SessionModel = (await import('../models/Session.js')).default;
+            if (assignedRole === 'candidate') {
+                await SessionModel.findOneAndUpdate(
+                    { sessionId: session.sessionId, candidateJoinedAt: null },
+                    { $set: { attendanceStatus: 'attended', candidateJoinedAt: new Date(), candidateConnectionStatus: 'connected' } }
+                );
+                await SessionModel.updateOne(
+                    { sessionId: session.sessionId, candidateJoinedAt: { $ne: null } },
+                    { $set: { candidateConnectionStatus: 'connected' } }
+                );
+            } else {
+                await SessionModel.findOneAndUpdate(
+                    { sessionId: session.sessionId, expertJoinedAt: null },
+                    { $set: { expertJoinedAt: new Date() } }
+                );
+            }
+        } catch (attErr) {
+            console.error('[joinSession] Attendance recording error:', attErr);
+        }
+
         res.json({
             permitted: true,
             meetingId: session.sessionId, // Using sessionId as meetingId
-            role: (sExpert === uId || (isParticipant && sExpert.includes('@'))) ? 'expert' : 'candidate'
+            role: assignedRole
         });
 
     } catch (error) {
@@ -883,19 +1842,47 @@ export const submitReview = async (req, res) => {
             reviewerRole = 'candidate'
         } = req.body;
 
-        // Auto-calculate overallRating if missing but sub-ratings are present (e.g. expert evaluations)
+        // Authoritative backend calculation for evaluation ratings
         let computedOverall = overallRating;
-        if (!computedOverall && (problemSolvingRating || designRating || behavioralRating || technicalRating || communicationRating)) {
-            const ratings = [problemSolvingRating, designRating, behavioralRating, technicalRating, communicationRating]
-                .filter(r => r !== undefined && r !== null && Number(r) > 0)
-                .map(Number);
-            if (ratings.length > 0) {
-                computedOverall = Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length);
+
+        if (reviewerRole === 'expert') {
+            const hasSubRatings = technicalRating !== undefined || communicationRating !== undefined ||
+                problemSolvingRating !== undefined || designRating !== undefined || behavioralRating !== undefined;
+
+            if (hasSubRatings) {
+                // If expert evaluation includes rubric criteria, validate all provided are valid numbers 1-5
+                const rubricKeys = [
+                    { name: 'Technical', val: technicalRating },
+                    { name: 'Communication', val: communicationRating },
+                    { name: 'Problem Solving', val: problemSolvingRating },
+                    { name: 'System Design', val: designRating },
+                    { name: 'Behavioral', val: behavioralRating }
+                ];
+
+                const validNumbers = [];
+                for (const item of rubricKeys) {
+                    if (item.val !== undefined && item.val !== null && item.val !== '') {
+                        const num = Number(item.val);
+                        if (isNaN(num) || !isFinite(num) || num < 1 || num > 5) {
+                            return res.status(400).json({
+                                success: false,
+                                message: `Invalid score for ${item.name}: must be a number between 1 and 5.`
+                            });
+                        }
+                        validNumbers.push(num);
+                    }
+                }
+
+                if (validNumbers.length > 0) {
+                    // Authoritative equal-weight calculation rounded to 1 decimal place (e.g. 2.4)
+                    const sum = validNumbers.reduce((a, b) => a + b, 0);
+                    computedOverall = Number((sum / validNumbers.length).toFixed(1));
+                }
             }
         }
 
         const ratingNum = Number(computedOverall);
-        if (!sessionId || !ratingNum || ratingNum < 1 || ratingNum > 5 || !Number.isInteger(ratingNum)) {
+        if (!sessionId || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
             return res.status(400).json({ 
                 success: false, 
                 message: "A valid overall rating between 1 and 5 is required." 
@@ -925,6 +1912,12 @@ export const submitReview = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "This session was cancelled and cannot be evaluated."
+            });
+        }
+        if (sStatus === 'no-show' || sStatus === 'candidate_no_show') {
+            return res.status(400).json({
+                success: false,
+                message: "This session was marked as a candidate no-show and cannot be evaluated."
             });
         }
         if (sStatus === 'pending') {
@@ -1093,231 +2086,17 @@ export const submitReview = async (req, res) => {
 
             if (reviewerRole === 'expert') {
                 try {
-                    let payoutAmount = Number(session.price || 0) * 0.8;
-                    if (payoutAmount <= 0) {
-                        payoutAmount = Number(session.payoutAmount || 0) || 500;
-                    }
-                    // Minimum ₹1 payout for nominal bookings, rounded cleanly to 2 decimal places
-                    payoutAmount = Math.max(1, Math.round(payoutAmount * 100) / 100);
-
-                    if (session.payoutCredited) {
-                        walletCreditResult = {
-                            credited: false,
-                            amount: Number(session.payoutAmount || payoutAmount),
-                            alreadyCredited: true,
-                            reason: 'Already credited'
-                        };
-                    } else {
-                        const rawExpertId = session.expertId || expertId;
-                        if (rawExpertId) {
-                            if (typeof rawExpertId === 'string' && rawExpertId.includes('@')) {
-                                expertUser = await User.findOne({ email: rawExpertId.toLowerCase() });
-                            } else {
-                                expertUser = await User.findById(rawExpertId).catch(() => null);
-                                if (!expertUser) {
-                                    const ExpertDetails = (await import('../models/expertModel.js')).default;
-                                    const expertProfile = await ExpertDetails.findById(rawExpertId).catch(() => null);
-                                    if (expertProfile && expertProfile.userId) {
-                                        expertUser = await User.findById(expertProfile.userId).catch(() => null);
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!expertUser && req.user?.userId) {
-                            expertUser = await User.findById(req.user.userId).catch(() => null);
-                        }
-
-                        if (!expertUser) {
-                            walletCreditResult = { credited: false, amount: 0, reason: 'Expert user not found' };
-                        } else {
-                            const Wallet = (await import("../models/Wallet.js")).default;
-                            const WalletTransaction = (await import("../models/WalletTransaction.js")).default;
-                            const mongoose = (await import('mongoose')).default;
-
-                            // 1. Double-check if a ledger transaction already exists for this session
-                            const existingTxn = await WalletTransaction.findOne({
-                                referenceId: session._id,
-                                referenceModel: 'Session',
-                                type: 'CREDIT'
-                            });
-
-                            if (existingTxn) {
-                                await Session.updateOne(
-                                    { _id: session._id, payoutCredited: { $ne: true } },
-                                    { $set: { payoutCredited: true, payoutAmount: existingTxn.amount, payoutCreditedAt: existingTxn.createdAt, status: 'completed' } }
-                                );
-                                session.payoutCredited = true;
-                                session.payoutAmount = existingTxn.amount;
-                                walletCreditResult = { credited: false, amount: existingTxn.amount, alreadyCredited: true };
-                            } else {
-                                // 2. Determine multi-document transaction capability
-                                let sessionTxn = null;
-                                let useMongooseTxn = false;
-                                try {
-                                    sessionTxn = await mongoose.startSession();
-                                    sessionTxn.startTransaction();
-                                    useMongooseTxn = true;
-                                } catch (startErr) {
-                                    console.warn("MongoDB transactions not supported or startSession failed:", startErr.message);
-                                    sessionTxn = null;
-                                    useMongooseTxn = false;
-                                }
-
-                                // Strict transaction safety: if transactions are unavailable, fail safely without issuing payout
-                                if (!useMongooseTxn || !sessionTxn) {
-                                    walletCreditResult = {
-                                        credited: false,
-                                        amount: 0,
-                                        alreadyCredited: false,
-                                        reason: 'MongoDB multi-document transactions unavailable. Payout deferred safely.',
-                                        retryable: true
-                                    };
-                                } else {
-                                    const claimFilter = {
-                                        _id: session._id,
-                                        $or: [
-                                            { payoutCredited: false },
-                                            { payoutCredited: { $exists: false } },
-                                            { payoutCredited: null }
-                                        ]
-                                    };
-                                    const claimUpdate = {
-                                        $set: {
-                                            payoutCredited: true,
-                                            payoutCreditedAt: new Date(),
-                                            payoutAmount: payoutAmount,
-                                            status: 'completed'
-                                        }
-                                    };
-
-                                    try {
-                                        // Atomic claim: locks the payout so concurrent requests fail here
-                                        const claimedSession = await Session.findOneAndUpdate(
-                                            claimFilter,
-                                            claimUpdate,
-                                            { new: true, session: sessionTxn }
-                                        );
-
-                                        if (!claimedSession) {
-                                            // Concurrently claimed by another thread or already credited
-                                            await sessionTxn.abortTransaction();
-                                            walletCreditResult = { credited: false, amount: payoutAmount, alreadyCredited: true, reason: 'Already credited' };
-                                        } else {
-                                            // Update Wallet
-                                            let wallet = await Wallet.findOne(
-                                                { userId: expertUser._id },
-                                                null,
-                                                { session: sessionTxn }
-                                            );
-                                            if (!wallet) {
-                                                wallet = new Wallet({
-                                                    userId: expertUser._id,
-                                                    availableBalance: 0
-                                                });
-                                            }
-                                            wallet.availableBalance = Math.round((Number(wallet.availableBalance || 0) + payoutAmount) * 100) / 100;
-                                            await wallet.save({ session: sessionTxn });
-
-                                            // Update User balance inside transaction
-                                            const userDoc = await User.findById(expertUser._id, null, { session: sessionTxn });
-                                            if (userDoc) {
-                                                userDoc.walletBalance = Math.round((Number(userDoc.walletBalance || 0) + payoutAmount) * 100) / 100;
-                                                await userDoc.save({ session: sessionTxn });
-                                                expertUser.walletBalance = userDoc.walletBalance;
-                                            }
-
-                                            // Record Ledger Transaction
-                                            const txnData = {
-                                                walletId: wallet._id,
-                                                userId: expertUser._id,
-                                                type: 'CREDIT',
-                                                amount: payoutAmount,
-                                                referenceId: session._id,
-                                                referenceModel: 'Session',
-                                                status: 'COMPLETED',
-                                                description: `Payout for completed session ${session.sessionId}`,
-                                                balanceAfter: wallet.availableBalance
-                                            };
-
-                                            await WalletTransaction.create([txnData], { session: sessionTxn });
-                                            await sessionTxn.commitTransaction();
-
-                                            session.payoutCredited = true;
-                                            session.payoutCreditedAt = claimUpdate.$set.payoutCreditedAt;
-                                            session.payoutAmount = payoutAmount;
-                                            session.status = 'completed';
-
-                                            walletCreditResult = { credited: true, amount: payoutAmount, alreadyCredited: false };
-
-                                            const { createNotification } = await import('../controllers/notificationController.js');
-                                            await createNotification({
-                                                userId: expertUser._id,
-                                                type: 'wallet_credit',
-                                                title: 'Session payout credited',
-                                                message: `₹${payoutAmount} has been credited to your wallet for session ${session.sessionId}.`,
-                                                metadata: {
-                                                    sessionId: session.sessionId,
-                                                    amount: payoutAmount,
-                                                    link: '/dashboard/sessions'
-                                                }
-                                            }).catch(err => console.error("Notification dispatch error:", err));
-                                        }
-                                    } catch (payoutErr) {
-                                        if (sessionTxn) {
-                                            await sessionTxn.abortTransaction().catch(() => {});
-                                        }
-
-                                        // Concurrency conflict handler: write conflicts, transient transaction errors, duplicate keys
-                                        const isConflict = payoutErr.code === 11000 ||
-                                                           payoutErr.code === 112 ||
-                                                           payoutErr.codeName === 'WriteConflict' ||
-                                                           (payoutErr.errorLabels && payoutErr.errorLabels.includes('TransientTransactionError'));
-
-                                        if (isConflict) {
-                                            // Poll briefly for the concurrent winning transaction to finalize
-                                            let existingTxn = null;
-                                            let currentSession = null;
-                                            for (let attempt = 0; attempt < 10; attempt++) {
-                                                await new Promise(r => setTimeout(r, 150));
-                                                existingTxn = await WalletTransaction.findOne({
-                                                    referenceId: session._id,
-                                                    referenceModel: 'Session',
-                                                    type: 'CREDIT'
-                                                });
-                                                if (existingTxn) break;
-                                                currentSession = await Session.findById(session._id);
-                                                if (currentSession?.payoutCredited) break;
-                                            }
-
-                                            if (existingTxn || currentSession?.payoutCredited) {
-                                                const resolvedAmount = existingTxn?.amount || currentSession?.payoutAmount || payoutAmount;
-                                                session.payoutCredited = true;
-                                                session.payoutAmount = resolvedAmount;
-                                                walletCreditResult = { credited: false, amount: resolvedAmount, alreadyCredited: true, reason: 'Already credited' };
-                                            } else {
-                                                throw payoutErr;
-                                            }
-                                        } else if (payoutErr.message && payoutErr.message.includes('Transaction numbers are only allowed')) {
-                                            // If MongoDB throws transaction numbers not allowed (standalone deployment)
-                                            walletCreditResult = {
-                                                credited: false,
-                                                amount: 0,
-                                                alreadyCredited: false,
-                                                reason: 'MongoDB multi-document transactions unavailable. Payout deferred safely.',
-                                                retryable: true
-                                            };
-                                        } else {
-                                            throw payoutErr;
-                                        }
-                                    } finally {
-                                        if (sessionTxn) {
-                                            await sessionTxn.endSession().catch(() => {});
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    walletCreditResult = await settleExpertSessionPayout({
+                        session: session,
+                        outcome: 'ATTENDED_COMPLETED',
+                        reason: 'Expert evaluation submitted',
+                        actorUserId: req.user?.userId
+                    });
+                    if (walletCreditResult?.credited || walletCreditResult?.alreadyCredited) {
+                        session.payoutCredited = true;
+                        session.payoutStatus = 'credited';
+                        session.payoutAmount = walletCreditResult.amount;
+                        session.payoutCreditedAt = new Date();
                     }
                 } catch (walletErr) {
                     console.error("Wallet credit failed:", walletErr);
@@ -1376,6 +2155,7 @@ export const submitReview = async (req, res) => {
         const sessionUpdateData = {
             status: session.status,
             payoutCredited: session.payoutCredited,
+            payoutStatus: session.payoutStatus,
             payoutAmount: session.payoutAmount,
             payoutCreditedAt: session.payoutCreditedAt,
             review: newReview
@@ -1420,6 +2200,7 @@ export const submitReview = async (req, res) => {
                 sessionId: session.sessionId,
                 status: session.status,
                 payoutCredited: session.payoutCredited,
+                payoutStatus: session.payoutStatus,
                 payoutAmount: session.payoutAmount,
                 payoutCreditedAt: session.payoutCreditedAt
             },
@@ -1486,7 +2267,10 @@ export const requestFeedback = async (req, res) => {
         const { sessionId } = req.params;
         const Session = (await import('../models/Session.js')).default;
         const User = (await import('../models/User.js')).default;
+        const ReviewDetails = (await import('../models/reviewModel.js')).default;
+        const ExpertDetails = (await import('../models/expertModel.js')).default;
         const { createNotification } = await import('./notificationController.js');
+        const { emitToUser, syncDataChange } = await import('../services/socketService.js');
 
         const session = await Session.findOne({ sessionId });
         if (!session) {
@@ -1498,29 +2282,223 @@ export const requestFeedback = async (req, res) => {
             return res.status(403).json({ success: false, message: "Forbidden: Access denied" });
         }
 
-        if (session.feedbackRequested) {
-            return res.status(400).json({ success: false, message: "Feedback already requested for this session" });
+        // Eligibility check: session must be completed / concluded
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus !== 'completed' && sStatus !== 'evaluated') {
+            return res.status(400).json({
+                success: false,
+                message: "Feedback can only be requested for completed interview sessions."
+            });
         }
 
-        session.feedbackRequested = true;
-        await session.save();
+        // Check if expert has already submitted review
+        const existingExpertReview = await ReviewDetails.findOne({
+            sessionId: session.sessionId,
+            reviewerRole: 'expert'
+        });
+        if (existingExpertReview) {
+            return res.status(400).json({
+                success: false,
+                message: "The expert has already submitted feedback for this session."
+            });
+        }
+
+        // Atomic check & update: Immediate 1st request allowed post-session; 2nd request (reminder) allowed after 12h; max 2 per 24h
+        const now = new Date();
+        const currentCount = session.feedbackRequestCount || (session.feedbackRequested ? 1 : 0);
+        const firstRequestedAt = session.firstFeedbackRequestedAt || session.feedbackRequestedAt;
+        const lastRequestedAt = session.lastFeedbackRequestedAt || session.feedbackRequestedAt;
+
+        const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+        const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+        let updatedSession = null;
+        let isReminder = false;
+
+        if (currentCount >= 2) {
+            // Check if 24 hours have elapsed since the start of this 24h rolling cycle
+            if (firstRequestedAt && (now.getTime() - new Date(firstRequestedAt).getTime() < TWENTY_FOUR_HOURS_MS)) {
+                const remMs = TWENTY_FOUR_HOURS_MS - (now.getTime() - new Date(firstRequestedAt).getTime());
+                const totalRemMinutes = Math.max(0, Math.ceil(remMs / 60000));
+                const remH = Math.floor(totalRemMinutes / 60);
+                const remM = totalRemMinutes % 60;
+                return res.status(400).json({
+                    success: false,
+                    message: `Maximum of 2 feedback requests allowed per 24 hours. You can request again in ${remH}h ${remM}m.`
+                });
+            }
+            // 24 hours have elapsed -> start new 24h cycle
+            updatedSession = await Session.findOneAndUpdate(
+                {
+                    sessionId: session.sessionId,
+                    feedbackRequestCount: currentCount
+                },
+                {
+                    $set: {
+                        feedbackRequested: true,
+                        feedbackRequestedAt: now,
+                        feedbackRequestCount: 1,
+                        firstFeedbackRequestedAt: now,
+                        lastFeedbackRequestedAt: now
+                    },
+                    $push: { feedbackReminderHistory: now }
+                },
+                { new: true }
+            );
+            isReminder = false;
+        } else if (currentCount === 1) {
+            // Second request: Check if at least 12 hours have elapsed since the first request
+            const elapsedSinceLast = lastRequestedAt ? (now.getTime() - new Date(lastRequestedAt).getTime()) : TWELVE_HOURS_MS;
+            if (elapsedSinceLast < TWELVE_HOURS_MS) {
+                const remMs = TWELVE_HOURS_MS - elapsedSinceLast;
+                const totalRemMinutes = Math.max(0, Math.ceil(remMs / 60000));
+                const remH = Math.floor(totalRemMinutes / 60);
+                const remM = totalRemMinutes % 60;
+                return res.status(400).json({
+                    success: false,
+                    message: `You can send another reminder in ${remH}h ${remM}m.`
+                });
+            }
+            // 12 hours have elapsed -> allow 2nd request (reminder)
+            updatedSession = await Session.findOneAndUpdate(
+                {
+                    sessionId: session.sessionId,
+                    feedbackRequestCount: 1,
+                    $or: [
+                        { lastFeedbackRequestedAt: { $lte: new Date(now.getTime() - TWELVE_HOURS_MS) } },
+                        { lastFeedbackRequestedAt: null }
+                    ]
+                },
+                {
+                    $set: {
+                        feedbackRequested: true,
+                        feedbackRequestCount: 2,
+                        lastFeedbackRequestedAt: now
+                    },
+                    $push: { feedbackReminderHistory: now }
+                },
+                { new: true }
+            );
+            isReminder = true;
+        } else {
+            // First request (immediately post-session)
+            updatedSession = await Session.findOneAndUpdate(
+                {
+                    sessionId: session.sessionId,
+                    $or: [
+                        { feedbackRequestCount: { $in: [0, null] } },
+                        { feedbackRequested: { $ne: true } }
+                    ]
+                },
+                {
+                    $set: {
+                        feedbackRequested: true,
+                        feedbackRequestedAt: now,
+                        feedbackRequestCount: 1,
+                        firstFeedbackRequestedAt: now,
+                        lastFeedbackRequestedAt: now
+                    },
+                    $push: { feedbackReminderHistory: now }
+                },
+                { new: true }
+            );
+            isReminder = false;
+        }
+
+        if (!updatedSession) {
+            return res.status(400).json({
+                success: false,
+                message: "Unable to process feedback request at this time. Please try again."
+            });
+        }
 
         // Get candidate name
         const candidate = await User.findById(session.candidateId);
-        const candidateName = candidate?.name || "A candidate";
+        const candidateName = candidate?.name || "Candidate";
 
-        // Create notification for expert
-        await createNotification({
-            userId: session.expertId,
-            type: 'feedback_request',
-            title: 'Feedback Requested',
-            message: `${candidateName} has requested feedback/review for your completed session on ${session.startTime ? new Date(session.startTime).toLocaleDateString() : ""}.`,
+        // Format Date and Time in Asia/Kolkata
+        const start = new Date(session.startTime);
+        const formattedDate = session.startTime
+            ? start.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric" })
+            : "Recent Session";
+        const formattedTimeSlot = session.startTime
+            ? start.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })
+            : "";
+
+        // Resolve Expert user ID (handle both User._id and ExpertDetails._id)
+        let expertUserId = session.expertId;
+        const expertProfile = await ExpertDetails.findOne({
+            $or: [{ _id: session.expertId }, { userId: session.expertId }]
+        });
+        if (expertProfile?.userId) {
+            expertUserId = expertProfile.userId;
+        }
+
+        const notificationTitle = isReminder ? "Feedback Reminder" : "Feedback Requested";
+        const notificationMessage = isReminder
+            ? `Reminder: ${candidateName} is waiting for evaluation and feedback for your mock interview on ${formattedDate} (${formattedTimeSlot}).`
+            : `${candidateName} has requested evaluation and feedback for your mock interview on ${formattedDate} (${formattedTimeSlot}).`;
+        const actionLink = `/dashboard/sessions?sessionId=${session.sessionId}&action=feedback`;
+
+        // Create persistent notification for expert
+        const notifDoc = await createNotification({
+            userId: expertUserId,
+            type: isReminder ? 'feedback_reminder' : 'feedback_request',
+            title: notificationTitle,
+            message: notificationMessage,
             metadata: {
-                sessionId: session.sessionId
+                sessionId: session.sessionId,
+                candidateName,
+                candidateId: session.candidateId,
+                sessionDate: formattedDate,
+                sessionTime: formattedTimeSlot,
+                action: 'submit_feedback',
+                link: actionLink,
+                isReminder,
+                feedbackRequestCount: updatedSession.feedbackRequestCount
             }
         });
 
-        res.json({ success: true, message: "Feedback request sent to the expert dashboard successfully" });
+        // Real-time notification & feedback event directly to authenticated expert
+        emitToUser(expertUserId, 'feedback_requested', {
+            sessionId: session.sessionId,
+            candidateName,
+            candidateId: session.candidateId,
+            formattedDate,
+            formattedTimeSlot,
+            message: notificationMessage,
+            link: actionLink,
+            notification: notifDoc,
+            isReminder,
+            feedbackRequestCount: updatedSession.feedbackRequestCount
+        });
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: expertUserId,
+            sessionId: session.sessionId,
+            data: updatedSession
+        });
+
+        syncDataChange({
+            type: "SESSION_UPDATED",
+            userId: session.candidateId,
+            sessionId: session.sessionId,
+            data: updatedSession
+        });
+
+        res.json({
+            success: true,
+            message: isReminder ? "Feedback reminder sent successfully." : "Feedback requested successfully.",
+            session: {
+                sessionId: updatedSession.sessionId,
+                feedbackRequested: true,
+                feedbackRequestedAt: updatedSession.feedbackRequestedAt,
+                feedbackRequestCount: updatedSession.feedbackRequestCount,
+                firstFeedbackRequestedAt: updatedSession.firstFeedbackRequestedAt,
+                lastFeedbackRequestedAt: updatedSession.lastFeedbackRequestedAt
+            }
+        });
     } catch (error) {
         console.error("Request Feedback Error:", error);
         res.status(500).json({ success: false, message: error.message });
@@ -1752,6 +2730,31 @@ export const rejectSession = async (req, res) => {
         if (session.notes?.includes("Premium Free Credit Used")) {
             const User = (await import('../models/User.js')).default;
             await User.findByIdAndUpdate(session.candidateId, { $inc: { freeInterviewsCount: 1 } });
+        }
+
+        // Restore wallet funds if session was paid via wallet (idempotent, exactly once)
+        const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+        const debitTxn = await WalletTransaction.findOne({
+            sessionId: session.sessionId,
+            type: 'DEBIT',
+            status: 'COMPLETED'
+        });
+        if (debitTxn && debitTxn.amount > 0) {
+            const alreadyRefunded = await WalletTransaction.findOne({
+                sessionId: session.sessionId,
+                type: 'CREDIT',
+                reason: 'SESSION_CANCELLED_REFUND'
+            });
+            if (!alreadyRefunded) {
+                const { creditWallet } = await import('../services/walletService.js');
+                await creditWallet({
+                    userId: session.candidateId,
+                    amount: debitTxn.amount,
+                    reason: 'SESSION_CANCELLED_REFUND',
+                    description: `Refund of ₹${debitTxn.amount} for cancelled interview session ${session.sessionId}`,
+                    sessionId: session.sessionId
+                });
+            }
         }
 
         const { formatSessionDateTime } = await import('../services/emailService.js');

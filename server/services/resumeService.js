@@ -39,9 +39,15 @@ export async function fetchResumeBuffer(fileUrl) {
     if (fileUrl.startsWith('/') || fileUrl.startsWith('uploads')) {
         try {
             const relativePath = fileUrl.startsWith('/') ? fileUrl.slice(1) : fileUrl;
-            const absolutePath = path.join(process.cwd(), relativePath);
-            if (fs.existsSync(absolutePath)) {
-                return fs.readFileSync(absolutePath);
+            const candidates = [
+                path.join(process.cwd(), relativePath),
+                path.join(process.cwd(), 'server', relativePath),
+                path.join(process.cwd(), '..', relativePath)
+            ];
+            for (const p of candidates) {
+                if (fs.existsSync(p)) {
+                    return fs.readFileSync(p);
+                }
             }
         } catch (fsErr) {
             console.error('[ResumeService] Local file read error:', fsErr?.message || fsErr);

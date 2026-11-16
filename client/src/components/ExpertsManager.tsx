@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, CreditCard as Edit, Trash2, Eye, GraduationCap, Phone, Mail, Building, Star } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { toast } from 'sonner';
 import { Expert } from '../types';
 import { dataService } from '../services/dataService';
 import ExpertForm from './ExpertForm';
 import Modal from './Modal';
-import Toast from './Toast';
-import { Toast as ToastType } from '../types';
 
 const ExpertsManager: React.FC = () => {
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -13,7 +13,7 @@ const ExpertsManager: React.FC = () => {
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'create' | 'edit' | 'view'>('create');
-  const [toast, setToast] = useState<ToastType | null>(null);
+  
 
   useEffect(() => {
     loadData();
@@ -49,8 +49,17 @@ const ExpertsManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteExpert = (expert: Expert) => {
-    if (window.confirm(`Are you sure you want to delete ${expert.name}?`)) {
+  const handleDeleteExpert = async (expert: Expert) => {
+    const res = await Swal.fire({
+      title: 'Delete Expert?',
+      text: `Are you sure you want to delete ${expert.name}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0755E8',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, delete',
+    });
+    if (res.isConfirmed) {
       const success = dataService.deleteExpert(expert.id);
       if (success) {
         loadData();
@@ -77,12 +86,10 @@ const ExpertsManager: React.FC = () => {
     }
   };
 
-  const showToast = (message: string, type: ToastType['type']) => {
-    setToast({
-      id: Date.now().toString(),
-      type,
-      message
-    });
+  const showToast = (message: string, type: string) => {
+    if (type === 'success') toast.success(message);
+    else if (type === 'error') toast.error(message);
+    else toast.info(message);
   };
 
   const getStatusColor = (status: Expert['status']) => {
@@ -274,12 +281,7 @@ const ExpertsManager: React.FC = () => {
         />
       </Modal>
 
-      {toast && (
-        <Toast
-          toast={toast}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
     </div>
   );
 };

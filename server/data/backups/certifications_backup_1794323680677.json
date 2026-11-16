@@ -1,0 +1,93 @@
+[
+  {
+    "_id": "69b3c2f6b336d787ede3edfb",
+    "userId": "69b25001cf55e082674d6ff3",
+    "name": "Mock Interview Completion",
+    "certificateId": "MCK-1773388534763-7C11F5",
+    "type": "completion",
+    "metadata": {
+      "sessionCount": 3
+    },
+    "issueDate": "2026-03-13T07:55:34.766Z",
+    "createdAt": "2026-03-13T07:55:34.768Z",
+    "updatedAt": "2026-11-06T06:59:16.948Z",
+    "__v": 1,
+    "candidateNameSnapshot": "Candidate",
+    "certificateStatus": "ISSUED",
+    "identityConfirmationReference": "REF-LEGACY-1793948356945",
+    "identityConfirmedAt": "2026-03-13T07:55:34.766Z",
+    "qualifyingSessionIds": []
+  },
+  {
+    "_id": "6aee3544d84f82d991e95d9e",
+    "userId": "6ad1fd8b146a0a4e7ca163aa",
+    "name": "Mockeefy Master Interview Excellence Credential",
+    "certificateId": "MCFY-MST-A163AA-2026",
+    "candidateNameSnapshot": "Joel",
+    "identityConfirmedAt": "2026-11-06T20:14:59.809Z",
+    "identityConfirmationReference": "MCFY-IDCONF-1793996099809-E48AE0",
+    "certificateStatus": "ISSUED",
+    "qualifyingSessionIds": [
+      "session-1793352076319-c1ohf3ez5",
+      "session-1793345393129-ayytzd0jn",
+      "session-1793345275522-wrnh1gm4h"
+    ],
+    "issueDate": "2026-11-06T20:15:00.127Z",
+    "type": "master",
+    "metadata": {
+      "sessionCount": 20,
+      "cycle": 6
+    },
+    "createdAt": "2026-11-06T20:15:00.129Z",
+    "updatedAt": "2026-11-06T20:15:00.129Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aed7e7057904abb82f2458a",
+    "userId": "6aed7e7057904abb82f2456e",
+    "name": "Mockeefy Master Interview Excellence Credential",
+    "certificateId": "MCFY-MST-F2456E-2026",
+    "candidateNameSnapshot": "Concurrent Cand",
+    "identityConfirmedAt": "2026-11-06T07:14:56.269Z",
+    "identityConfirmationReference": "REF-CONC-TEST",
+    "certificateStatus": "ISSUED",
+    "qualifyingSessionIds": [
+      "audit-cs1-1793949292669",
+      "audit-cs2-1793949292669",
+      "audit-cs3-1793949292669"
+    ],
+    "issueDate": "2026-11-06T07:14:56.668Z",
+    "type": "master",
+    "metadata": {
+      "sessionCount": 3,
+      "cycle": 1
+    },
+    "createdAt": "2026-11-06T07:14:56.669Z",
+    "updatedAt": "2026-11-06T07:14:56.669Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aed7fca7e5cb7c0b706418c",
+    "userId": "6aed7fca7e5cb7c0b7064170",
+    "name": "Mockeefy Master Interview Excellence Credential",
+    "certificateId": "MCFY-MST-064170-2026",
+    "candidateNameSnapshot": "Concurrent Cand",
+    "identityConfirmedAt": "2026-11-06T07:20:42.267Z",
+    "identityConfirmationReference": "REF-CONC-TEST",
+    "certificateStatus": "ISSUED",
+    "qualifyingSessionIds": [
+      "audit-cs2-1793949638165",
+      "audit-cs3-1793949638165",
+      "audit-cs1-1793949638165"
+    ],
+    "issueDate": "2026-11-06T07:20:42.601Z",
+    "type": "master",
+    "metadata": {
+      "sessionCount": 3,
+      "cycle": 1
+    },
+    "createdAt": "2026-11-06T07:20:42.602Z",
+    "updatedAt": "2026-11-06T07:20:42.602Z",
+    "__v": 0
+  }
+]

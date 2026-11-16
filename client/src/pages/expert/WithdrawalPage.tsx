@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useDataSync } from "../../context/SocketContext";
 import axios from "../../lib/axios";
 import { toast } from "sonner";
 import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
@@ -93,7 +94,7 @@ export default function WithdrawalPage() {
   const [otp, setOtp] = useState('');
   const [addingMethod, setAddingMethod] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const userId = user?.id || user?._id;
@@ -131,13 +132,19 @@ export default function WithdrawalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, fetchData]);
+
+  useDataSync(["WALLET_UPDATED", "SESSION_UPDATED", "RECONNECTED"], () => {
+    if (user) {
+      fetchData();
+    }
+  });
 
   const handleWithdraw = async () => {
     if (summary.currentBalance < minWithdrawalAmount) {

@@ -9,6 +9,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  Briefcase,
   Code2,
   FlaskConical,
   Eye,
@@ -329,93 +330,85 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           </button>
         </div>
 
-        {/* 4. Skills Section */}
+        {/* 4. Professional Domain Section */}
         <div className="space-y-1 sm:space-y-1.5">
-          {/* Header: </> Skills and +14 more → */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 font-bold text-[11px] sm:text-[11.5px] text-[#0B1536]">
-              <Code2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#1865F2] stroke-[2.5]" />
-              <span>Skills</span>
-            </div>
-
-            {/* "+14 more →" link */}
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewProfile(e);
-              }}
-              className="text-[#1865F2] hover:text-[#0C46BC] bg-[#EAF2FE] hover:bg-[#DCEBFE] text-[8.5px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5 transition-colors cursor-pointer"
-            >
-              <span>+{moreSkillsCount} more</span>
-              <span className="text-[8.5px] sm:text-[9px]">→</span>
+              <Briefcase className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#1865F2] stroke-[2.5]" />
+              <span>Professional Domain</span>
             </div>
           </div>
 
-          {/* Skill Pills */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-hidden pt-0.5">
-            {displaySkills.map((skill, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full bg-[#EDF4FF] text-[#1E293B] text-[9.5px] sm:text-[10px] font-semibold border border-[#D8E6FD] shadow-2xs shrink-0 max-w-[48%]"
-              >
-                {getSkillIcon(skill)}
-                <span className="truncate">{skill}</span>
-              </span>
-            ))}
+          {/* Domain Badges */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap pt-0.5">
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EBF3FF] text-[#0755E8] text-[10px] sm:text-[10.5px] font-bold border border-[#BFDBFE] shadow-2xs"
+            >
+              Domain: {mentor.category || "IT"}
+            </span>
+            {Array.isArray(mentor.rawExpert?.skillsAndExpertise?.domains) &&
+              mentor.rawExpert.skillsAndExpertise.domains
+                .filter((d: string) => d && d.toLowerCase() !== (mentor.category || "IT").toLowerCase())
+                .slice(0, 1)
+                .map((domain: string, idx: number) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 text-[9.5px] font-semibold border border-slate-200"
+                  >
+                    {domain}
+                  </span>
+                ))}
           </div>
         </div>
       </div>
 
       {/* Bottom Area: Pricing & Availability + Action Buttons */}
-      <div className="space-y-1.5 sm:space-y-2 pt-0.5 relative z-10">
-        {/* 5. Pricing and Availability + Book Session Button Row */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Compact Pricing & Availability pill */}
-          <div className="flex-1 min-w-0 h-[34px] sm:h-[35px] bg-[#F4F8FE] border border-[#E2ECF9] rounded-xl px-1.5 sm:px-2 flex items-center justify-between gap-0.5 sm:gap-1 overflow-hidden">
-            {/* Calendar Icon + Price */}
-            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-              <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#1865F2] shrink-0" />
-              <span className="text-[11.5px] sm:text-[12.5px] font-extrabold text-[#0B1536] leading-none whitespace-nowrap">
-                ₹{priceNum.toLocaleString("en-IN")}
-              </span>
-              <span className="text-[8px] sm:text-[8.5px] text-[#64748B] font-medium leading-none whitespace-nowrap">
-                / session
-              </span>
-            </div>
-
-            {/* Vertical Separator */}
-            <div className="w-[1px] h-2.5 sm:h-3 bg-[#CBDCF7] shrink-0" />
-
-            {/* Green Online Dot + Available Today */}
-            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 min-w-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shrink-0" />
-              <span className="text-[8.5px] sm:text-[9.5px] font-semibold text-[#0E9D5C] whitespace-nowrap truncate">
-                {mentor.activeTime || "Available Today"}
-              </span>
-            </div>
+      <div className="space-y-2 pt-1 relative z-10 border-t border-slate-100">
+        {/* Pricing and Availability Row: Full width without horizontal squeeze */}
+        <div className="flex items-center justify-between gap-2 px-1">
+          {/* Price */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Calendar className="w-3.5 h-3.5 text-[#1865F2] shrink-0" />
+            <span className="text-[13px] sm:text-[14px] font-extrabold text-[#0B1536] leading-none whitespace-nowrap">
+              ₹{priceNum.toLocaleString("en-IN")}
+            </span>
+            <span className="text-[9px] sm:text-[9.5px] text-[#64748B] font-medium leading-none whitespace-nowrap">
+              / session
+            </span>
           </div>
 
-          {/* Book Session → Prominent Blue Gradient Button */}
+          {/* Availability Status */}
+          <div className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-[#ECFDF5] border border-[#A7F3D0]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shrink-0 animate-pulse" />
+            <span className="text-[10px] sm:text-[10.5px] font-bold text-[#059669] whitespace-nowrap">
+              {mentor.activeTime || "Available Today"}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Buttons Row: Book Session (Prominent) + View Profile */}
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+          {/* View Profile Button (Secondary outline) */}
+          <button
+            type="button"
+            onClick={handleViewProfile}
+            className="w-full h-[34px] sm:h-[35px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 active:scale-[0.99] text-[10px] sm:text-[10.5px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+          >
+            <User className="w-3 h-3 text-slate-600 stroke-[2.2]" />
+            <span>View Profile</span>
+          </button>
+
+          {/* Book Session Button (Primary Blue) */}
           <button
             type="button"
             onClick={handleBookNow}
-            className="group shrink-0 h-[34px] sm:h-[35px] px-2 sm:px-2.5 rounded-xl bg-gradient-to-r from-[#1E6BFE] to-[#0A56E8] hover:from-[#175FEA] hover:to-[#0848C9] active:scale-[0.98] text-white font-bold text-[10px] sm:text-[10.5px] shadow-[0_2px_8px_rgba(24,101,242,0.22)] transition-all flex items-center justify-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="group w-full h-[34px] sm:h-[35px] rounded-xl bg-gradient-to-r from-[#1E6BFE] to-[#0A56E8] hover:from-[#175FEA] hover:to-[#0848C9] active:scale-[0.98] text-white font-bold text-[10.5px] sm:text-[11px] shadow-[0_2px_8px_rgba(24,101,242,0.22)] transition-all flex items-center justify-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white shrink-0" />
+            <Calendar className="w-3 h-3 text-white shrink-0" />
             <span className="whitespace-nowrap">Book Session</span>
-            <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+            <ArrowRight className="w-2.5 h-2.5 text-white shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
           </button>
         </div>
-
-        {/* 6. View Profile Button */}
-        <button
-          type="button"
-          onClick={handleViewProfile}
-          className="w-full h-[34px] sm:h-[35px] rounded-full border-[1.5px] border-[#0755E8] bg-white hover:bg-[#EAF2FF] text-[#0755E8] hover:text-[#0645C7] hover:border-[#0645C7] active:scale-[0.99] text-[10.5px] sm:text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-[0_2px_8px_rgba(7,85,232,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
-        >
-          <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#0755E8] stroke-[2.2]" />
-          <span>View Profile</span>
-        </button>
       </div>
 
       {/* Booking Modal (Step 1 modal view on Book Session) */}

@@ -4,8 +4,8 @@ import { Interview, Category, SubCategory } from '../types';
 import { dataService } from '../services/dataService';
 import InterviewForm from './InterviewForm';
 import Modal from './Modal';
-import Toast from './Toast';
-import { Toast as ToastType } from '../types';
+import Swal from 'sweetalert2';
+import { toast } from 'sonner';
 
 const InterviewsManager: React.FC = () => {
   const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -15,7 +15,7 @@ const InterviewsManager: React.FC = () => {
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'create' | 'edit' | 'view'>('create');
-  const [toast, setToast] = useState<ToastType | null>(null);
+  
 
   useEffect(() => {
     loadData();
@@ -50,8 +50,17 @@ const InterviewsManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteInterview = (interview: Interview) => {
-    if (window.confirm('Are you sure you want to delete this interview?')) {
+  const handleDeleteInterview = async (interview: Interview) => {
+    const res = await Swal.fire({
+      title: 'Delete Interview?',
+      text: 'Are you sure you want to delete this interview?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0755E8',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, delete',
+    });
+    if (res.isConfirmed) {
       const success = dataService.deleteInterview(interview.id);
       if (success) {
         loadData();
@@ -78,12 +87,10 @@ const InterviewsManager: React.FC = () => {
     }
   };
 
-  const showToast = (message: string, type: ToastType['type']) => {
-    setToast({
-      id: Date.now().toString(),
-      type,
-      message
-    });
+  const showToast = (message: string, type: string) => {
+    if (type === 'success') toast.success(message);
+    else if (type === 'error') toast.error(message);
+    else toast.info(message);
   };
 
   const getCategoryName = (categoryId: string) => {
@@ -247,12 +254,7 @@ const InterviewsManager: React.FC = () => {
         />
       </Modal>
 
-      {toast && (
-        <Toast
-          toast={toast}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
     </div>
   );
 };

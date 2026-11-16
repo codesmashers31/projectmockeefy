@@ -18,6 +18,11 @@ export const createReport = async (req, res) => {
             return res.status(404).json({ message: "Session not found or unauthorized" });
         }
 
+        const sStatus = (session.status || '').toLowerCase();
+        if (sStatus === 'no-show' || sStatus === 'candidate_no_show' || sStatus === 'cancelled') {
+            return res.status(400).json({ message: "A cancelled or no-show session cannot be evaluated." });
+        }
+
         // Check if report already exists
         const existingReport = await Report.findOne({ sessionId });
         if (existingReport) {
@@ -45,48 +50,23 @@ export const createReport = async (req, res) => {
 
         await newReport.save();
 
-        // Payout Expert
+        // Payout Expert using single authoritative settlement function
         let walletCreditResult = null;
         try {
-            const payoutAmount = Number(session.price || 0);
-            if (!session.payoutCredited && payoutAmount > 0) {
-                const User = (await import('../models/User.js')).default;
-                const expertUser = await User.findById(expertId);
-                
-                if (expertUser) {
-                    expertUser.walletBalance = Number(expertUser.walletBalance || 0) + payoutAmount;
-                    await expertUser.save();
-
-                    session.payoutCredited = true;
-                    session.payoutCreditedAt = new Date();
-                    session.payoutAmount = payoutAmount;
-                    session.status = 'evaluated';
-                    await session.save();
-
-                    walletCreditResult = { credited: true, amount: payoutAmount };
-
-                    const { createNotification } = await import('./notificationController.js');
-                    await createNotification({
-                        userId: expertUser._id,
-                        type: 'wallet_credit',
-                        title: 'Session payout credited',
-                        message: `₹${payoutAmount} has been credited to your wallet for session.`,
-                        metadata: {
-                            sessionId: session.sessionId || sessionId,
-                            amount: payoutAmount,
-                            link: '/dashboard/earnings'
-                        }
-                    });
-                } else {
-                    walletCreditResult = { credited: false, reason: 'Expert user not found' };
-                }
-            } else {
-                session.status = 'evaluated';
-                await session.save();
-                walletCreditResult = { credited: false, reason: session.payoutCredited ? 'Already credited' : 'Zero amount session' };
-            }
+            const { settleExpertSessionPayout } = await import('./sessionController.js');
+            walletCreditResult = await settleExpertSessionPayout({
+                session,
+                outcome: 'ATTENDED_COMPLETED',
+                reason: 'Report submitted',
+                actorUserId: expertId
+            });
+            session.status = 'evaluated';
+            await session.save();
         } catch (walletErr) {
             console.error("Wallet credit inside createReport failed:", walletErr);
+            walletCreditResult = { credited: false, amount: 0, reason: walletErr.message };
+            session.status = 'evaluated';
+            await session.save();
         }
 
         res.status(201).json({ message: "Report submitted successfully", report: newReport, walletCredit: walletCreditResult });
