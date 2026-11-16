@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
+import { notify } from "../lib/notify";
 import { useSocketEvent, useDataSync } from "../context/SocketContext";
 import MockeefyLogo from "./MockeefyLogo";
 import Avatar from "./ui/avatar";
@@ -165,6 +166,10 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
       return [formatted, ...prev];
     });
     setUnreadCount((prev) => prev + 1);
+
+    // Real-time toast alert with centralized queue and deduplication
+    const toastId = notifId ? `notif_${notifId}` : undefined;
+    notify.info(notification.title || "New Notification", notification.message, toastId);
   });
 
   // Real-time synchronization when notifications are marked read in another session or window

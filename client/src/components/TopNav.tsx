@@ -5,6 +5,7 @@ import axios from '../lib/axios';
 import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { toast } from "sonner";
+import { notify } from "../lib/notify";
 import {
   Bell,
   Menu,
@@ -96,21 +97,17 @@ export default function TopNav({ onOpenSidebar }: { onOpenSidebar?: () => void }
       return [formatted, ...prev];
     });
     const toastKey = notifId ? `notif_${notifId}` : `notif_${notification.title}_${notification.createdAt || Date.now()}`;
-    toast.info(notification.title || "New Notification", {
-      id: String(toastKey),
-      description: notification.message,
-      duration: 4000
-    });
+    notify.info(notification.title || "New Notification", notification.message, String(toastKey));
   });
 
   useSocketEvent("feedback_requested", (data: any) => {
     if (!data) return;
     const toastKey = `feedback_req_${data.sessionId || data._id || Date.now()}`;
-    toast.info("Feedback Requested", {
-      id: toastKey,
-      description: data.message || `${data.candidateName || 'Candidate'} has requested feedback for your session.`,
-      duration: 4000
-    });
+    notify.info(
+      "Feedback Requested",
+      data.message || `${data.candidateName || 'Candidate'} has requested feedback for your session.`,
+      toastKey
+    );
   });
 
   // Real-time synchronization when notifications are marked read in another session

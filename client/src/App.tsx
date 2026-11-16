@@ -267,7 +267,7 @@ export default function App() {
     <>
       <QueryClientProvider client={queryClient}>
         <ResumeProvider>
-          <Toaster richColors position="top-right" visibleToasts={3} expand={false} duration={4000} closeButton />
+          <Toaster richColors position="top-right" visibleToasts={4} expand={true} gap={12} duration={4500} closeButton />
           <AppRoutes />
         </ResumeProvider>
       </QueryClientProvider>
