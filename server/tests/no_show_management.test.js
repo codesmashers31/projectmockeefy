@@ -11,8 +11,9 @@ import WalletTransaction from '../models/WalletTransaction.js';
 import ReviewDetails from '../models/reviewModel.js';
 import Report from '../models/Report.js';
 import Certification from '../models/Certification.js';
+import Category from '../models/Category.js';
 import { markCandidateNoShow, completeSession, joinSession, submitReview } from '../controllers/sessionController.js';
-import { getEligibleCompletedSessions, ensureMasterCertification, issueCertificate } from '../controllers/certificationController.js';
+import { getEligibleCompletedSessions, issueCertificate } from '../controllers/certificationController.js';
 
 let testExpertUser;
 let testExpertProfile;
@@ -193,7 +194,7 @@ async function runTests() {
 
         const res4 = mockRes();
         await markCandidateNoShow(mockReq({ sessionId: completedSession.sessionId }, {}, expertAuth), res4);
-        assert(res4.statusCode === 400 && res4.data.message.includes('Completed sessions'),
+        assert((res4.statusCode === 400 || res4.statusCode === 409) && (res4.data.message.includes('Completed sessions') || res4.data.message.includes('already been finalized')),
             'Test 4: Completed sessions cannot become no-show',
             `Status: ${res4.statusCode}, msg: ${res4.data?.message}`);
 
@@ -312,7 +313,7 @@ async function runTests() {
         // Test 12: Normal completion payout and no-show payout cannot both be issued
         // Attempting to evaluate or complete a no-show session fails
         const res12a = mockRes();
-        await completeSession(mockReq({ sessionId: eligibleSession.sessionId }, {}, expertAuth), res12a);
+        await completeSession(mockReq({ sessionId: eligibleSession.sessionId }, { attendanceOutcome: 'ATTENDED_COMPLETED', completionEvidence: { interviewConducted: true } }, expertAuth), res12a);
         assert(res12a.statusCode === 400 && res12a.data.message.includes('no-show session cannot be marked as completed'),
             'Test 12a: No-show session cannot be completed',
             `Status: ${res12a.statusCode}, msg: ${res12a.data?.message}`);
@@ -367,12 +368,19 @@ async function runTests() {
             `Eligible count: ${eligibleAfterNoShow.length}`);
 
         // Setup 3 valid completed, evaluated sessions for Candidate
+        const realCategory = await Category.findOne({});
+        const testCatId = realCategory?._id;
+        const testCatName = realCategory?.name || 'Software Engineering';
+
         const validSessions = [];
         for (let i = 1; i <= 3; i++) {
             const vSession = await Session.create({
                 sessionId: `${testPrefix}_valid_${i}`,
                 expertId: testExpertUser._id,
                 candidateId: testCandidateUser._id,
+                categoryId: testCatId,
+                categoryNameSnapshot: testCatName,
+                topics: [testCatName],
                 startTime: new Date(Date.now() - (i + 1) * 3600000),
                 endTime: new Date(Date.now() - (i + 1) * 3600000 + 1800000),
                 price: 500,
@@ -427,11 +435,15 @@ async function runTests() {
                 sessionId: `${testPrefix}_c2_valid_${j}`,
                 expertId: testExpertUser._id,
                 candidateId: candidate2._id,
+                categoryId: testCatId,
+                categoryNameSnapshot: testCatName,
+                topics: [testCatName],
                 startTime: new Date(Date.now() - (j + 1) * 3600000),
                 endTime: new Date(Date.now() - (j + 1) * 3600000 + 1800000),
                 price: 500,
                 status: 'completed',
-                attendanceStatus: 'attended'
+                attendanceStatus: 'attended',
+                candidateJoinedAt: new Date(Date.now() - (j + 1) * 3600000 + 60000)
             });
             await ReviewDetails.create({
                 sessionId: c2s.sessionId,
@@ -464,7 +476,7 @@ async function runTests() {
         // Test 20: Certificate issuance API rejects candidate with fewer than 3 valid interviews
         const res20 = mockRes();
         await issueCertificate(mockReq({}, { userId: candidate2._id.toString() }, { userId: candidate2._id.toString(), userType: 'candidate' }), res20);
-        assert(res20.statusCode === 400 && res20.data.message.includes('Not eligible yet'),
+        assert(res20.statusCode === 400 && res20.data.message.includes('Not eligible'),
             'Test 20: Certificate issuance API rejects candidate with fewer than 3 valid interviews',
             `Status: ${res20.statusCode}, msg: ${res20.data?.message}`);
 

@@ -87,9 +87,13 @@ export const getSessionsForUser = async (userId, role) => {
             const candidateName = candidate?.name || (typeof session.candidateId === 'string' ? session.candidateId : 'Candidate');
 
             let expertReview = null;
-            if (role === 'expert') {
+            let candidateReview = null;
+            try {
                 const ReviewDetails = (await import('../models/reviewModel.js')).default;
-                const review = await ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'expert' });
+                const [review, candRev] = await Promise.all([
+                    ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'expert' }),
+                    ReviewDetails.findOne({ sessionId: session.sessionId, reviewerRole: 'candidate' })
+                ]);
                 if (review) {
                     expertReview = {
                         overallRating: (
@@ -115,9 +119,19 @@ export const getSessionsForUser = async (userId, role) => {
                         feedback: review.feedback,
                         suggestions: review.suggestions,
                         strengths: review.strengths,
-                        weaknesses: review.weaknesses
+                        weaknesses: review.weaknesses,
+                        createdAt: review.createdAt
                     };
                 }
+                if (candRev) {
+                    candidateReview = {
+                        overallRating: candRev.overallRating,
+                        feedback: candRev.feedback,
+                        createdAt: candRev.createdAt
+                    };
+                }
+            } catch (revErr) {
+                console.error(`[sessionService] Review enrichment error for ${session.sessionId}:`, revErr);
             }
 
             let candidateResume = null;
@@ -150,6 +164,7 @@ export const getSessionsForUser = async (userId, role) => {
                 expertName,
                 candidateName,
                 expertReview,
+                candidateReview,
                 expertDetails: {
                     name: expertName,
                     role: expert?.professionalDetails?.title || 'Expert',
@@ -317,6 +332,14 @@ export const createSession = async (sessionData, options = {}) => {
         console.error("[createSession] Category resolution warning:", err?.message || err);
     }
 
+    // Atomic Concurrency Protection: Auto-populate slotLockKey if not provided
+    if (!sessionData.slotLockKey && sessionData.expertId && sessionData.startTime && sessionData.endTime) {
+        const eId = sessionData.expertId?._id || sessionData.expertId?.id || sessionData.expertId;
+        const startMs = new Date(sessionData.startTime).getTime();
+        const endMs = new Date(sessionData.endTime).getTime();
+        sessionData.slotLockKey = `${eId}_${startMs}_${endMs}`;
+    }
+
     const session = new Session(sessionData);
     return await session.save(options);
 };
@@ -385,12 +408,15 @@ export const getSessionsByExpertId = async (expertId) => {
             { expertId: { $in: queryIds } },
             { "expert.id": { $in: queryIds } }
         ],
-        status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED'] }
+        status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED', 'rejected', 'Rejected', 'REJECTED', 'declined', 'Declined', 'DECLINED', 'failed', 'Failed', 'FAILED', 'expired', 'Expired', 'EXPIRED'] }
     }).lean();
 };
 
 export const getSessionsByCandidateId = async (candidateId) => {
-    return await Session.find({ candidateId });
+    return await Session.find({
+        candidateId,
+        status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED', 'rejected', 'Rejected', 'REJECTED', 'declined', 'Declined', 'DECLINED', 'failed', 'Failed', 'FAILED', 'expired', 'Expired', 'EXPIRED'] }
+    });
 };
 
 export const seedTestSession = async () => {

@@ -13,6 +13,7 @@ import {
   deletePreviousExperience,
   getSkillsAndExpertise,
   updateSkillsAndExpertise,
+  updateCategoryAndLevel,
   getAvailability,
   updateAvailability,
   deleteBreakDate,
@@ -98,6 +99,7 @@ router.delete("/profession/previous/:idx", deletePreviousExperience);
 
 router.get("/skills", getSkillsAndExpertise);
 router.put("/skills", updateSkillsAndExpertise);
+router.put("/category-level", updateCategoryAndLevel);
 router.put('/myskills', updateMySkills); // Advanced mapping self-service
 
 router.get("/availability", getAvailability);

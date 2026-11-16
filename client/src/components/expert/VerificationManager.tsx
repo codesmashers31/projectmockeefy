@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import axios from '../../lib/axios';
 import { toast } from 'sonner';
 import { useDataSync } from '../../context/SocketContext';
-import { AlertCircle, ExternalLink, FileText, Save, Upload } from 'lucide-react';
-import { compressImage } from '../../lib/imageUtils';
+import { ExternalLink, FileText, Save, Upload, CheckCircle2, Check } from 'lucide-react';
+import { compressImage, getProfileImageUrl } from '../../lib/imageUtils';
 import ExpertPageSkeleton from '../ExpertPageSkeleton';
 
 interface VerificationDocs {
@@ -127,13 +127,32 @@ export default function VerificationManager({ onUpdate }: VerificationManagerPro
 
     if (loading) return <ExpertPageSkeleton variant="form" />;
 
+    const isVerificationComplete = Boolean(
+        verification.companyId?.url ||
+        verification.aadhar?.number ||
+        verification.aadhar?.hash ||
+        verification.aadhar?.rawNumber ||
+        verification.aadhar?.isVerified ||
+        verification.aadhar?.url
+    );
+
     return (
         <div className="w-full">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6 bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4 mb-6 bg-white">
                 <div>
                     <h2 className="text-lg font-bold text-gray-900">Expert Verification</h2>
                     <p className="text-xs text-gray-500 mt-0.5">Manage your work credentials and Aadhaar number.</p>
                 </div>
+                {isVerificationComplete ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs self-start sm:self-auto">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        Verification Documents Complete
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs self-start sm:self-auto">
+                        Verification In Progress
+                    </span>
+                )}
             </div>
 
             <div className="space-y-8">
@@ -162,9 +181,9 @@ export default function VerificationManager({ onUpdate }: VerificationManagerPro
                             <label className="block text-sm font-bold text-gray-700">Company ID / Offer Letter</label>
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${verification.companyId?.url
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-slate-50 text-slate-600 border-slate-200'
                                 }`}>
-                                {verification.companyId?.url ? 'Uploaded' : 'Not uploaded'}
+                                {verification.companyId?.url ? 'Uploaded' : 'Optional / Not uploaded'}
                             </span>
                         </div>
 
@@ -189,7 +208,7 @@ export default function VerificationManager({ onUpdate }: VerificationManagerPro
                                 <div className="space-y-2">
                                     <FileText className="w-10 h-10 text-emerald-600 mx-auto" />
                                     <p className="text-sm font-medium text-gray-900">{verification.companyId.name || 'Document Uploaded'}</p>
-                                    <a href={verification.companyId.url} target="_blank" rel="noreferrer" className="text-xs text-[#004fcb] hover:underline block font-semibold">View Document</a>
+                                    <a href={getProfileImageUrl(verification.companyId.url)} target="_blank" rel="noreferrer" className="text-xs text-[#004fcb] hover:underline block font-semibold">View Document</a>
                                     {isEditing && (
                                         <label htmlFor="company-upload" className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer block mt-2 underline">Replace File</label>
                                     )}
@@ -212,8 +231,8 @@ export default function VerificationManager({ onUpdate }: VerificationManagerPro
                                 </label>
                             ) : (
                                 <div className="space-y-2 py-4">
-                                    <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
-                                    <p className="text-sm font-medium text-gray-500">No document uploaded yet</p>
+                                    <FileText className="w-8 h-8 text-slate-400 mx-auto" />
+                                    <p className="text-sm font-medium text-slate-500">No document uploaded yet</p>
                                 </div>
                             )}
                         </div>
@@ -222,8 +241,10 @@ export default function VerificationManager({ onUpdate }: VerificationManagerPro
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <label htmlFor="aadhaar-number" className="block text-sm font-bold text-gray-700">Aadhaar Number</label>
-                            {verification.aadhar?.number && (
-                                <span className="text-xs font-semibold text-emerald-700">Saved</span>
+                            {(verification.aadhar?.number || verification.aadhar?.hash || verification.aadhar?.rawNumber || verification.aadhar?.isVerified) && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Saved & Verified
+                                </span>
                             )}
                         </div>
                         <input

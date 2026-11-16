@@ -19,108 +19,148 @@ import { v4 as uuidv4 } from 'uuid';
  * Guarantees categoryId and categoryNameSnapshot are populated on every session.
  * Sorted chronologically ascending by startTime (oldest first so milestones consume interviews in sequence).
  */
-export const getEligibleCompletedSessions = async (userId) => {
+export const getEligibleCompletedSessions = async (userId, preloadedCategories = null, preloadedData = null) => {
     try {
         const candidateOid = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
 
-        // Fetch candidate sessions that have completed or evaluated status
-        const candidateSessions = await Session.find({
-            candidateId: candidateOid,
-            status: { $in: ['completed', 'evaluated'] }
-        }).sort({ startTime: 1 });
+        // Fetch candidate sessions for audit and eligibility evaluation (or use preloaded)
+        const candidateSessions = preloadedData?.candidateSessions || await Session.find({
+            candidateId: candidateOid
+        }).sort({ startTime: 1 }).lean();
 
         if (!candidateSessions || candidateSessions.length === 0) {
             return [];
         }
 
-        const sessionIds = candidateSessions.map(s => s.sessionId);
-        const mongoIds = candidateSessions.map(s => s._id);
+        const sessionIds = candidateSessions.map(s => s.sessionId).filter(Boolean);
+        const mongoIds = candidateSessions.map(s => s._id).filter(Boolean);
+        const allQueryIds = [...new Set([...sessionIds, ...mongoIds.map(String)])];
 
-        const [expertReviews, candidateReviews, submittedReports, meetingRecords] = await Promise.all([
-            ReviewDetails.find({
-                sessionId: { $in: sessionIds },
-                reviewerRole: 'expert'
-            }).select('sessionId').lean(),
-            ReviewDetails.find({
-                sessionId: { $in: sessionIds },
-                reviewerRole: 'candidate'
-            }).select('sessionId').lean(),
-            Report.find({
-                sessionId: { $in: mongoIds },
-                status: 'Submitted'
-            }).select('sessionId').lean(),
-            Meeting.find({
-                sessionId: { $in: sessionIds }
-            }).select('sessionId candidateId expertId status activeUsers').lean()
-        ]);
+        const validObjectIds = allQueryIds.filter(id => mongoose.Types.ObjectId.isValid(id));
 
-        const reviewedSessionIds = new Set(expertReviews.map(r => r.sessionId));
-        const candidateReviewedSessionIds = new Set(candidateReviews.map(r => r.sessionId));
-        const reportedSessionIds = new Set(submittedReports.map(r => r.sessionId?.toString()));
+        let reviews = preloadedData?.reviews;
+        let submittedReports = preloadedData?.submittedReports;
+        let meetingRecords = preloadedData?.meetingRecords;
+
+        if (!reviews || !submittedReports || !meetingRecords) {
+            const fetched = await Promise.all([
+                reviews ? Promise.resolve(reviews) : ReviewDetails.find({
+                    sessionId: { $in: allQueryIds }
+                }).select('sessionId reviewerRole').lean(),
+                submittedReports ? Promise.resolve(submittedReports) : Report.find({
+                    sessionId: { $in: validObjectIds },
+                    status: 'Submitted'
+                }).select('sessionId').lean(),
+                meetingRecords ? Promise.resolve(meetingRecords) : Meeting.find({
+                    sessionId: { $in: allQueryIds }
+                }).select('sessionId candidateId expertId status activeUsers').lean()
+            ]);
+            reviews = fetched[0];
+            submittedReports = fetched[1];
+            meetingRecords = fetched[2];
+        }
+
+        const reviewedSessionIds = new Set(reviews.filter(r => r.reviewerRole === 'expert' || r.reviewerRole === 'candidate').map(r => String(r.sessionId)));
+        const candidateReviewedSessionIds = new Set(reviews.filter(r => r.reviewerRole === 'candidate').map(r => String(r.sessionId)));
+        const reportedSessionIds = new Set(submittedReports.map(r => String(r.sessionId)));
         const meetingMap = new Map();
         meetingRecords.forEach(m => {
-            if (m.sessionId) meetingMap.set(m.sessionId, m);
+            if (m.sessionId) meetingMap.set(String(m.sessionId), m);
         });
 
-        // Filter: Must be genuinely evaluated by an expert or have a submitted evaluation report
-        // AND strictly not a no-show, absent, or cancelled
-        // AND requires positively verified candidate attendance using actual candidate-specific records
+        // Filter: Must satisfy 4 distinct conditions:
+        // A. Genuinely completed (not cancelled, not no-show, not absent)
+        // B. Authoritative candidate attendance established (NEVER inferred from feedback alone)
+        // C. Evaluation/feedback submitted (ReviewDetails or Report)
+        // D. Legitimate category/domain in MongoDB
         const seenSessionIds = new Set();
         const eligibleSessions = [];
+        const ineligibleAudits = [];
 
         for (const session of candidateSessions) {
-            const st = (session.status || '').toLowerCase();
-            // Disqualify no-shows and cancellations
-            if (st === 'no-show' || st === 'candidate_no_show' || st === 'no_show' || st === 'cancelled') {
-                continue;
-            }
-            if (session.attendanceStatus === 'absent' || session.attendanceStatus === 'no-show') {
-                continue;
-            }
-
-            // Must have a genuine expert evaluation or submitted report
-            // (Unless it was already allocated to an issued certificate)
-            const hasReview = reviewedSessionIds.has(session.sessionId);
-            const hasReport = reportedSessionIds.has(session._id?.toString());
-            const hasExistingAllocation = Boolean(session.allocatedCertificateId);
-
-            if (!hasReview && !hasReport && !hasExistingAllocation) {
-                continue;
-            }
+            const sid = session.sessionId || session._id.toString();
+            const sidStr = String(session.sessionId || '');
+            const mongoIdStr = String(session._id || '');
 
             // Deduplicate: Each unique session counts at most once
-            const sid = session.sessionId || session._id.toString();
             if (seenSessionIds.has(sid)) {
+                ineligibleAudits.push({ sessionId: sid, reason: 'DUPLICATE_SESSION_ID' });
                 continue;
             }
             seenSessionIds.add(sid);
 
-            // Candidate-Specific Attendance Verification:
+            // Condition A: Session was genuinely completed
+            const st = (session.status || '').toLowerCase();
+            if (st === 'cancelled') {
+                ineligibleAudits.push({ sessionId: sid, reason: 'STATUS_CANCELLED' });
+                continue;
+            }
+            if (st === 'no-show' || st === 'candidate_no_show' || st === 'no_show' || st === 'candidate_absent') {
+                ineligibleAudits.push({ sessionId: sid, reason: 'STATUS_NO_SHOW' });
+                continue;
+            }
+            if (session.attendanceStatus === 'absent' || session.attendanceStatus === 'no-show') {
+                ineligibleAudits.push({ sessionId: sid, reason: 'ATTENDANCE_STATUS_ABSENT' });
+                continue;
+            }
+            if (session.attendanceOutcome === 'DID_NOT_ATTEND') {
+                ineligibleAudits.push({ sessionId: sid, reason: 'OUTCOME_DID_NOT_ATTEND' });
+                continue;
+            }
+            if (session.attendanceOutcome === 'ATTENDED_INCOMPLETE') {
+                ineligibleAudits.push({ sessionId: sid, reason: 'OUTCOME_ATTENDED_INCOMPLETE' });
+                continue;
+            }
+            if (st !== 'completed' && st !== 'evaluated') {
+                ineligibleAudits.push({ sessionId: sid, reason: 'STATUS_NOT_COMPLETED' });
+                continue;
+            }
+
+            // Condition B: Candidate attendance was authoritatively established
+            // Strictly verified using actual candidate-specific attendance records
+            // A feedback or review record ALONE can NEVER establish attendance!
             const isExplicitlyAttended = session.attendanceStatus === 'attended';
             const hasCandidateJoinTimestamp = Boolean(session.candidateJoinedAt);
             const hasAdminAuditApproval = session.attendanceAudit?.decision === 'approved';
-            const hasCandidateReview = candidateReviewedSessionIds.has(session.sessionId);
 
-            const meetingDoc = meetingMap.get(session.sessionId);
-            const hasMeetingWithCandidate = Boolean(
+            const meetingDoc = meetingMap.get(sidStr) || meetingMap.get(mongoIdStr);
+            const hasMeetingAttendance = Boolean(
                 meetingDoc &&
                 String(meetingDoc.candidateId) === String(candidateOid) &&
                 meetingDoc.status === 'finished' &&
                 (
                     (Array.isArray(meetingDoc.activeUsers) && meetingDoc.activeUsers.map(String).includes(String(candidateOid))) ||
-                    Boolean(session.candidateJoinedAt) ||
-                    session.attendanceStatus === 'attended'
+                    Boolean(meetingDoc.candidateJoinedAt)
                 )
             );
 
-            if (isExplicitlyAttended || hasCandidateJoinTimestamp || hasAdminAuditApproval || hasCandidateReview || hasMeetingWithCandidate || hasExistingAllocation) {
-                eligibleSessions.push(session);
+            // Condition C check first for review tracking
+            const hasReview = (sidStr && reviewedSessionIds.has(sidStr)) || (mongoIdStr && reviewedSessionIds.has(mongoIdStr));
+            const hasReport = (mongoIdStr && reportedSessionIds.has(mongoIdStr)) || (sidStr && reportedSessionIds.has(sidStr));
+            const hasEvaluation = hasReview || hasReport;
+
+            const isAttendanceEstablished = isExplicitlyAttended || hasCandidateJoinTimestamp || hasAdminAuditApproval || hasMeetingAttendance;
+            if (!isAttendanceEstablished) {
+                ineligibleAudits.push({
+                    sessionId: sid,
+                    reason: 'MISSING_AUTHORITATIVE_ATTENDANCE',
+                    requiresReview: hasEvaluation
+                });
+                continue;
             }
+
+            if (!hasEvaluation) {
+                ineligibleAudits.push({ sessionId: sid, reason: 'MISSING_EVALUATION_FEEDBACK' });
+                continue;
+            }
+
+            eligibleSessions.push(session);
         }
 
+        // Condition D: Session belongs to the correct certificate domain/category
         // Validate each session's category strictly against actual MongoDB Category collection (Part 4)
         // No defaulting to IT, no inferring from expert personal information, no fake category assignments
-        const allDbCategories = await Category.find({}).lean();
+        const allDbCategories = (Array.isArray(preloadedCategories) && preloadedCategories.length > 0) ? preloadedCategories : await Category.find({}).lean();
         const catByIdMap = new Map();
         const catByNameMap = new Map();
         allDbCategories.forEach(c => {
@@ -129,9 +169,30 @@ export const getEligibleCompletedSessions = async (userId) => {
         });
 
         const validatedEligibleSessions = [];
-        const unresolvableCategorySessions = [];
+
+        // Pre-fetch expert details for sessions to resolve authoritatively if category wasn't stamped directly
+        let expertDocs = preloadedData?.expertDocs;
+        if (!expertDocs) {
+            const expertLookupIds = eligibleSessions
+                .map(s => s.expertId)
+                .filter(Boolean);
+            expertDocs = expertLookupIds.length > 0
+                ? await ExpertDetails.find({
+                    $or: [
+                        { _id: { $in: expertLookupIds.filter(id => mongoose.Types.ObjectId.isValid(id)) } },
+                        { userId: { $in: expertLookupIds.filter(id => mongoose.Types.ObjectId.isValid(id)) } }
+                    ]
+                }).lean()
+                : [];
+        }
+        const expertMap = new Map();
+        expertDocs.forEach(e => {
+            if (e._id) expertMap.set(e._id.toString(), e);
+            if (e.userId) expertMap.set(e.userId.toString(), e);
+        });
 
         for (const s of eligibleSessions) {
+            const sid = s.sessionId || s._id.toString();
             let matchedCat = null;
             if (s.categoryId && catByIdMap.has(s.categoryId.toString())) {
                 matchedCat = catByIdMap.get(s.categoryId.toString());
@@ -139,19 +200,63 @@ export const getEligibleCompletedSessions = async (userId) => {
                 matchedCat = catByNameMap.get(s.categoryNameSnapshot.trim().toLowerCase());
             } else if (s.category && catByNameMap.has(s.category.trim().toLowerCase())) {
                 matchedCat = catByNameMap.get(s.category.trim().toLowerCase());
+            } else if (s.sessionCategory && catByNameMap.has(s.sessionCategory.trim().toLowerCase())) {
+                matchedCat = catByNameMap.get(s.sessionCategory.trim().toLowerCase());
+            } else if (s.expertCategory && catByNameMap.has(s.expertCategory.trim().toLowerCase())) {
+                matchedCat = catByNameMap.get(s.expertCategory.trim().toLowerCase());
+            } else if (s.topic && catByNameMap.has(s.topic.trim().toLowerCase())) {
+                matchedCat = catByNameMap.get(s.topic.trim().toLowerCase());
+            } else if (Array.isArray(s.topics) && s.topics.length > 0) {
+                for (const t of s.topics) {
+                    if (typeof t === 'string' && catByNameMap.has(t.trim().toLowerCase())) {
+                        matchedCat = catByNameMap.get(t.trim().toLowerCase());
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: Resolve authoritative domain from the expert's registered Category
+            // Safeguard: Only allow unambiguous single-domain matching; do not silently infer if ambiguous
+            if (!matchedCat && s.expertId) {
+                const exp = expertMap.get(s.expertId.toString());
+                const expCat = exp?.personalInformation?.category || exp?.category;
+                if (expCat && catByNameMap.has(expCat.trim().toLowerCase())) {
+                    matchedCat = catByNameMap.get(expCat.trim().toLowerCase());
+                } else if (Array.isArray(exp?.skillsAndExpertise?.domains)) {
+                    const validDomains = exp.skillsAndExpertise.domains
+                        .filter(d => typeof d === 'string' && catByNameMap.has(d.trim().toLowerCase()));
+                    if (validDomains.length === 1) {
+                        // Exactly one unambiguous domain
+                        matchedCat = catByNameMap.get(validDomains[0].trim().toLowerCase());
+                    } else if (validDomains.length > 1) {
+                        console.warn(`[getEligibleCompletedSessions] Session ${sid} expert has multiple domains (${validDomains.join(', ')}); requires manual review`);
+                    }
+                }
             }
 
             if (matchedCat) {
                 s.categoryId = matchedCat._id;
                 s.categoryNameSnapshot = matchedCat.name;
                 validatedEligibleSessions.push(s);
+
+                // Persist the resolved category on the session document for future fast lookups
+                if (!s.categoryId || !s.categoryNameSnapshot) {
+                    Session.updateOne(
+                        { _id: s._id },
+                        { $set: { categoryId: matchedCat._id, categoryNameSnapshot: matchedCat.name, category: matchedCat.name } }
+                    ).exec().catch(() => {});
+                }
             } else {
-                // PART 4: Flag for data reconciliation instead of inventing a category
-                unresolvableCategorySessions.push(s);
-                console.warn(`[getEligibleCompletedSessions] Session ${s.sessionId || s._id} missing authoritative category in MongoDB; flagged for reconciliation`);
+                ineligibleAudits.push({
+                    sessionId: sid,
+                    reason: 'CATEGORY_AMBIGUOUS_REQUIRES_REVIEW',
+                    requiresReview: true
+                });
+                console.warn(`[getEligibleCompletedSessions] Session ${sid} missing or ambiguous category in MongoDB; exposed as requiring review`);
             }
         }
 
+        validatedEligibleSessions.ineligibleAudits = ineligibleAudits;
         return validatedEligibleSessions;
     } catch (err) {
         console.error("[getEligibleCompletedSessions] Error:", err);
@@ -169,17 +274,37 @@ export const getDomainMilestoneProgress = async (userId, targetCategoryId = null
     try {
         const candidateOid = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
 
-        // 1. Fetch all active categories from MongoDB
-        const activeCategories = await Category.find({ status: 'Active' }).sort({ name: 1 }).lean();
+        // 1. Fetch candidate sessions first
+        const candidateSessions = await Session.find({
+            candidateId: candidateOid
+        }).sort({ startTime: 1 }).lean();
 
-        // 2. Fetch eligible completed sessions for candidate
-        const eligibleSessions = await getEligibleCompletedSessions(candidateOid);
+        const sessionIds = (candidateSessions || []).map(s => s.sessionId).filter(Boolean);
+        const mongoIds = (candidateSessions || []).map(s => s._id).filter(Boolean);
+        const allQueryIds = [...new Set([...sessionIds, ...mongoIds.map(String)])];
+        const validObjectIds = allQueryIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+        const expertLookupIds = [...new Set((candidateSessions || []).map(s => s.expertId).filter(Boolean).filter(id => mongoose.Types.ObjectId.isValid(id)))];
 
-        // 3. Fetch all issued certificates for candidate
-        const issuedCerts = await Certification.find({
-            userId: candidateOid,
-            certificateStatus: 'ISSUED'
-        }).sort({ milestoneNumber: 1, issueDate: 1 }).lean();
+        // 2. Execute parallel pre-fetching in a single roundtrip
+        const [activeCategories, issuedCerts, reviews, submittedReports, meetingRecords, expertDocs] = await Promise.all([
+            Category.find({ status: 'Active' }).sort({ name: 1 }).lean(),
+            Certification.find({ userId: candidateOid, certificateStatus: 'ISSUED' }).sort({ milestoneNumber: 1, issueDate: 1 }).lean(),
+            allQueryIds.length > 0 ? ReviewDetails.find({ sessionId: { $in: allQueryIds } }).select('sessionId reviewerRole').lean() : Promise.resolve([]),
+            validObjectIds.length > 0 ? Report.find({ sessionId: { $in: validObjectIds }, status: 'Submitted' }).select('sessionId').lean() : Promise.resolve([]),
+            allQueryIds.length > 0 ? Meeting.find({ sessionId: { $in: allQueryIds } }).select('sessionId candidateId expertId status activeUsers').lean() : Promise.resolve([]),
+            expertLookupIds.length > 0 ? ExpertDetails.find({ $or: [{ _id: { $in: expertLookupIds } }, { userId: { $in: expertLookupIds } }] }).lean() : Promise.resolve([])
+        ]);
+
+        const preloadedData = {
+            candidateSessions,
+            reviews,
+            submittedReports,
+            meetingRecords,
+            expertDocs
+        };
+
+        // 3. Process eligible completed sessions with preloaded data (zero extra roundtrips)
+        const eligibleSessions = await getEligibleCompletedSessions(candidateOid, activeCategories, preloadedData);
 
         // Include any categories present in candidate sessions or certs even if inactive
         const allKnownCategoryIds = new Set(activeCategories.map(c => c._id.toString()));
@@ -209,12 +334,11 @@ export const getDomainMilestoneProgress = async (userId, targetCategoryId = null
             }
         });
 
-        const allocatedDocs = await Session.find({
-            candidateId: candidateOid,
-            allocatedCertificateId: { $ne: null }
-        }).select('sessionId').lean();
-        allocatedDocs.forEach(s => {
-            if (s.sessionId) globalAllocatedSessionIds.add(s.sessionId);
+        // Derive allocated session IDs directly from candidateSessions without extra DB query
+        (candidateSessions || []).forEach(s => {
+            if (s.allocatedCertificateId && s.sessionId) {
+                globalAllocatedSessionIds.add(s.sessionId);
+            }
         });
 
         // 4. Calculate domain-specific progress for each category
@@ -299,28 +423,11 @@ export const getDomainMilestoneProgress = async (userId, targetCategoryId = null
             ? categoryProgress.find(cp => cp.categoryId === targetCategoryId.toString())
             : null;
 
-        // Identify completed and evaluated sessions requiring admin review
-        const allCompletedDocs = await Session.find({
-            candidateId: candidateOid,
-            status: { $in: ['completed', 'evaluated'] }
-        }).select('sessionId _id attendanceStatus candidateJoinedAt status').lean();
-
-        const eligibleSidSet = new Set(eligibleSessions.map(s => s.sessionId));
-        const candidateSessionIds = allCompletedDocs.map(s => s.sessionId);
-        const candidateMongoIds = allCompletedDocs.map(s => s._id);
-
-        const [revs, reps] = await Promise.all([
-            ReviewDetails.find({ sessionId: { $in: candidateSessionIds }, reviewerRole: 'expert' }).select('sessionId').lean(),
-            Report.find({ sessionId: { $in: candidateMongoIds }, status: 'Submitted' }).select('sessionId').lean()
-        ]);
-        const revSet = new Set(revs.map(r => r.sessionId));
-        const repSet = new Set(reps.map(r => r.sessionId?.toString()));
-
-        const sessionsRequiringAdminReview = allCompletedDocs.filter(s => {
-            if (eligibleSidSet.has(s.sessionId)) return false;
-            const hasReview = revSet.has(s.sessionId) || repSet.has(s._id?.toString());
-            return hasReview;
-        }).map(s => s.sessionId);
+        // Identify completed and evaluated sessions requiring admin review from pre-computed eligibility audits
+        const audits = eligibleSessions.ineligibleAudits || [];
+        const sessionsRequiringAdminReview = audits
+            .filter(a => a.requiresReview || a.reason === 'CATEGORY_AMBIGUOUS_REQUIRES_REVIEW')
+            .map(a => a.sessionId);
 
         const activeCategoryProgress = categoryProgress.filter(
             cp => (cp.totalQualifyingCount || cp.totalEligibleCount) > 0 || cp.totalIssuedCount > 0
@@ -337,6 +444,8 @@ export const getDomainMilestoneProgress = async (userId, targetCategoryId = null
             activeCategories: activeCategories.map(c => ({ _id: c._id, id: c._id.toString(), name: c.name })),
             targetProgress,
             allocatedSessionIds: Array.from(globalAllocatedSessionIds),
+            eligibleSessionIds: eligibleSessions.map(s => s.sessionId || s._id.toString()),
+            ineligibleAudits: eligibleSessions.ineligibleAudits || [],
             sessionsRequiringAdminReview
         };
     } catch (err) {
@@ -458,6 +567,8 @@ export const getCertificatePreview = async (req, res) => {
                 isIssued: totalIssuedCount > 0,
                 hasConfirmedIdentity,
                 confirmedName: confirmation?.confirmedName || null,
+                eligibleSessionIds: domainProgress.eligibleSessionIds || [],
+                ineligibleAudits: domainProgress.ineligibleAudits || [],
                 categoryProgress: domainProgress.categoryProgress,
                 activeCategoryProgress: domainProgress.activeCategoryProgress,
                 activeDomains: domainProgress.activeCategoryProgress.map(c => ({

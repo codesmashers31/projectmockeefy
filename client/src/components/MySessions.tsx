@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Clock,
   Send,
+  Bell,
   CheckCircle2,
   BadgeCheck,
   AlertCircle,
@@ -68,6 +69,10 @@ type Session = {
   expertReview?: ReviewInfo | null;
   candidateReview?: ReviewInfo | null;
   feedbackRequested?: boolean;
+  feedbackRequestedAt?: string | null;
+  feedbackRequestCount?: number;
+  firstFeedbackRequestedAt?: string | null;
+  lastFeedbackRequestedAt?: string | null;
   allocatedCertificateId?: string | null;
   certificateId?: string | null;
   allocatedMilestone?: number | null;
@@ -207,7 +212,7 @@ function MySessionsSkeletonMobile() {
 /** Session is joinable from startTime until endTime (e.g. 2:00–2:30 → joinable until 2:30). */
 function canJoinSession(session: Session): boolean {
   const st = (session.status || '').toLowerCase();
-  if (['completed', 'cancelled', 'no-show', 'candidate_no_show', 'no_show'].includes(st)) return false;
+  if (['completed', 'cancelled', 'no-show', 'candidate_no_show', 'no_show', 'candidate_absent'].includes(st)) return false;
   const now = new Date();
   const start = session.startTime ? new Date(session.startTime) : null;
   const end = session.endTime ? new Date(session.endTime) : null;
@@ -223,7 +228,7 @@ function getDisplayStatus(session: Session): string {
   if (st === 'pending') return 'Pending';
   if (st === 'completed') return 'Completed';
   if (st === 'cancelled') return 'Cancelled';
-  if (['no-show', 'candidate_no_show', 'no_show'].includes(st)) return 'No-Show';
+  if (['no-show', 'candidate_no_show', 'no_show', 'candidate_absent'].includes(st)) return 'No-Show';
   const now = new Date();
   const end = session.endTime ? new Date(session.endTime) : null;
   const start = session.startTime ? new Date(session.startTime) : null;
@@ -236,7 +241,7 @@ function getDisplayStatus(session: Session): string {
 function getSessionTimeAndCountdown(session: Session, now: Date): { timeLabel: string; countdown: string | null; joinable: boolean } {
   const start = session.startTime ? new Date(session.startTime) : null;
   const end = session.endTime ? new Date(session.endTime) : null;
-  const timeLabel = start ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (session.time || '—');
+  const timeLabel = start ? start.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : (session.time || '—');
   const st = (session.status || '').toLowerCase();
   if (['completed', 'cancelled'].includes(st)) return { timeLabel, countdown: null, joinable: false };
   if (!start) return { timeLabel, countdown: null, joinable: true };
@@ -276,12 +281,13 @@ const SessionCard: React.FC<{
   handleJoin: (s: Session) => void;
   getCompletedCountForCategory: (cat: string) => number;
   navigate: any;
+  requestingFeedbackId?: string | null;
 }> = ({
-  session, now, getDisplayStatus, getSessionTimeAndCountdown, setCertificateModalSession, setReviewModalSession, handleOpenReviewModal, handleRequestFeedback, handleJoin, getCompletedCountForCategory, navigate
+  session, now, getDisplayStatus, getSessionTimeAndCountdown, setCertificateModalSession, setReviewModalSession, handleOpenReviewModal, handleRequestFeedback, handleJoin, getCompletedCountForCategory, navigate, requestingFeedbackId
 }) => {
   const displayStatus = getDisplayStatus(session);
   const { timeLabel, countdown, joinable } = getSessionTimeAndCountdown(session, now);
-  const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const dateStr = session.startTime ? new Date(session.startTime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   const expertProfileUrl = session.expertId ? `/expert-profile/${session.expertId}` : `/book-session?expertId=${session.expertId || ""}`;
 
   return (
@@ -416,7 +422,7 @@ const SessionCard: React.FC<{
                 </div>
               )}
 
-              {/* Row 1, Col 2: Request Feedback / View Feedback / Feedback Requested */}
+              {/* Row 1, Col 2: Request Feedback / View Feedback / Feedback Requested / Send Reminder */}
               {session.expertReview ? (
                 <button
                   type="button"
@@ -426,24 +432,86 @@ const SessionCard: React.FC<{
                   <MessageSquare className="w-3.5 h-3.5 text-[#0755E8] group-hover/view:scale-110 transition-transform shrink-0" />
                   <span className="truncate">View Feedback</span>
                 </button>
-              ) : session.feedbackRequested ? (
-                <button
-                  disabled
-                  className="w-full h-9 px-2.5 sm:px-3 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
-                >
-                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate">Feedback Requested</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleRequestFeedback(session.sessionId)}
-                  className="group/req w-full h-9 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
-                >
-                  <Send className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
-                  <span className="truncate">Request Feedback</span>
-                </button>
-              )}
+              ) : (() => {
+                const reqCount = session.feedbackRequestCount ?? (session.feedbackRequested ? 1 : 0);
+                const firstReqTime = session.firstFeedbackRequestedAt
+                  ? new Date(session.firstFeedbackRequestedAt).getTime()
+                  : (session.feedbackRequestedAt ? new Date(session.feedbackRequestedAt).getTime() : 0);
+                const lastReqTime = session.lastFeedbackRequestedAt
+                  ? new Date(session.lastFeedbackRequestedAt).getTime()
+                  : (session.feedbackRequestedAt ? new Date(session.feedbackRequestedAt).getTime() : 0);
+                const nowTime = now.getTime();
+                const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+                const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+                // Case 0: No requests yet or 24h rolling cycle reset
+                if (reqCount === 0 || (reqCount >= 2 && firstReqTime && (nowTime - firstReqTime >= TWENTY_FOUR_HOURS))) {
+                  return (
+                    <button
+                      type="button"
+                      disabled={requestingFeedbackId === session.sessionId}
+                      onClick={() => handleRequestFeedback(session.sessionId)}
+                      className="group/req w-full h-9 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {requestingFeedbackId === session.sessionId ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0755E8] shrink-0" /> : <Send className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />}
+                      <span className="truncate">{requestingFeedbackId === session.sessionId ? "Requesting..." : "Request Feedback"}</span>
+                    </button>
+                  );
+                }
+
+                // Case 1: First request sent. Next reminder available after 12h
+                if (reqCount === 1) {
+                  const elapsed = lastReqTime ? (nowTime - lastReqTime) : 0;
+                  if (elapsed < TWELVE_HOURS) {
+                    const remMs = TWELVE_HOURS - elapsed;
+                    const totalRemSec = Math.max(0, Math.ceil(remMs / 1000));
+                    const remH = Math.floor(totalRemSec / 3600);
+                    const remM = Math.floor((totalRemSec % 3600) / 60);
+                    const remS = totalRemSec % 60;
+                    const timeStr = remH > 0 ? `${remH}h ${remM}m` : `${remM}m ${remS}s`;
+                    return (
+                      <button
+                        disabled
+                        title={`You can send another reminder in ${remH}h ${remM}m`}
+                        className="w-full h-9 px-2 sm:px-2.5 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate text-[11px]">Reminder in {timeStr}</span>
+                      </button>
+                    );
+                  } else {
+                    // Exactly 12 hours or more elapsed -> automatically enable "Send Reminder" without refresh!
+                    return (
+                      <button
+                        type="button"
+                        disabled={requestingFeedbackId === session.sessionId}
+                        onClick={() => handleRequestFeedback(session.sessionId)}
+                        className="group/rem w-full h-9 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {requestingFeedbackId === session.sessionId ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" /> : <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0 group-hover/rem:scale-110 transition-transform" />}
+                        <span className="truncate">{requestingFeedbackId === session.sessionId ? "Sending..." : "Send Reminder"}</span>
+                      </button>
+                    );
+                  }
+                }
+
+                // Case 2: Max 2 requests sent within current 24-hour cycle
+                const elapsed24 = firstReqTime ? (nowTime - firstReqTime) : 0;
+                const rem24Ms = Math.max(0, TWENTY_FOUR_HOURS - elapsed24);
+                const totalRemMinutes = Math.max(0, Math.ceil(rem24Ms / 60000));
+                const rem24H = Math.floor(totalRemMinutes / 60);
+                const rem24M = totalRemMinutes % 60;
+                return (
+                  <button
+                    disabled
+                    title={`Max 2 requests per 24 hours. Resets in ${rem24H}h ${rem24M}m`}
+                    className="w-full h-9 px-2 sm:px-2.5 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate text-[11px]">Feedback Requested</span>
+                  </button>
+                );
+              })()}
 
               {/* Row 2, Col 1: Certificate */}
               <button
@@ -606,6 +674,8 @@ const MySessions = ({
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [requestingFeedbackId, setRequestingFeedbackId] = useState<string | null>(null);
+  const [joiningSessionId, setJoiningSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialViewOverride) {
@@ -819,7 +889,7 @@ const MySessions = ({
           topic: s.skill || (s.topics && s.topics[0]) || 'Interview Simulation',
           startTime: s.startTime,
           endTime: s.endTime,
-          time: new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(s.startTime).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
           status: (s.status || '').charAt(0).toUpperCase() + (s.status || '').slice(1),
           score: s.expertReview?.overallRating != null ? s.expertReview.overallRating * 20 : undefined,
           expertId: s.expertId,
@@ -831,6 +901,11 @@ const MySessions = ({
           allocatedCertificateId: s.allocatedCertificateId || s.certificateId || null,
           allocatedMilestone: s.allocatedMilestone || null,
           certificateId: s.certificateId || s.allocatedCertificateId || null,
+          feedbackRequested: Boolean(s.feedbackRequested),
+          feedbackRequestedAt: s.feedbackRequestedAt || null,
+          feedbackRequestCount: Number(s.feedbackRequestCount || (s.feedbackRequested ? 1 : 0)),
+          firstFeedbackRequestedAt: s.firstFeedbackRequestedAt || s.feedbackRequestedAt || null,
+          lastFeedbackRequestedAt: s.lastFeedbackRequestedAt || s.feedbackRequestedAt || null,
         }));
         setSessions(mapped);
       }
@@ -923,13 +998,19 @@ const MySessions = ({
   }, [user?.id, user?._id, activeView]);
 
   const handleJoin = (session: Session) => {
-    // Intercept if approaching third qualifying interview and recipient name confirmation is required
-    if (verificationData?.confirmationRequired) {
-      setPendingJoinSession(session);
-      setShowIdentityModal(true);
-      return;
+    if (joiningSessionId) return;
+    setJoiningSessionId(session.sessionId);
+    try {
+      // Intercept if approaching third qualifying interview and recipient name confirmation is required
+      if (verificationData?.confirmationRequired) {
+        setPendingJoinSession(session);
+        setShowIdentityModal(true);
+        return;
+      }
+      navigate(`/live-meeting/${session.sessionId}`, { state: { session } });
+    } finally {
+      setTimeout(() => setJoiningSessionId(null), 1000);
     }
-    navigate(`/live-meeting/${session.sessionId}`, { state: { session } });
   };
 
   const handleIdentityConfirmed = async () => {
@@ -943,18 +1024,30 @@ const MySessions = ({
   };
 
   const handleRequestFeedback = async (sessionId: string) => {
+    if (requestingFeedbackId) return;
+    setRequestingFeedbackId(sessionId);
     try {
       const res = await axios.post(`/api/sessions/${sessionId}/request-feedback`);
       if (res.data.success) {
-        toast.success("Feedback request sent successfully to the expert dashboard!");
+        toast.success(res.data.message || "Feedback requested successfully.");
+        const updated = res.data.session;
         // Update local session status/flag
-        setSessions(prev => prev.map(s => s.sessionId === sessionId ? { ...s, feedbackRequested: true } : s));
+        setSessions(prev => prev.map(s => s.sessionId === sessionId ? {
+          ...s,
+          feedbackRequested: true,
+          feedbackRequestCount: updated?.feedbackRequestCount || (s.feedbackRequestCount || 0) + 1,
+          feedbackRequestedAt: updated?.feedbackRequestedAt || new Date().toISOString(),
+          firstFeedbackRequestedAt: updated?.firstFeedbackRequestedAt || s.firstFeedbackRequestedAt || new Date().toISOString(),
+          lastFeedbackRequestedAt: updated?.lastFeedbackRequestedAt || new Date().toISOString(),
+        } : s));
       } else {
         toast.error(res.data.message || "Failed to request feedback.");
       }
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to request feedback.");
+    } finally {
+      setRequestingFeedbackId(null);
     }
   };
 
@@ -1001,7 +1094,7 @@ const MySessions = ({
       });
 
       if (res.data?.success) {
-        toast.success("Review submitted successfully! Thank you for your feedback.");
+        toast.success("Feedback submitted.");
         setReviewModalSession(null);
         setReviewForm({
           overallRating: 0,
@@ -1175,6 +1268,7 @@ const MySessions = ({
                       handleJoin={handleJoin}
                       getCompletedCountForCategory={getCompletedCountForCategory}
                       navigate={navigate}
+                      requestingFeedbackId={requestingFeedbackId}
                     />
                   ))}
                 </div>
@@ -1318,7 +1412,7 @@ const MySessions = ({
                     <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
                       <div>
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date Issued</p>
-                        <p className="text-xs font-bold text-gray-700 mt-0.5">{new Date(session.startTime!).toLocaleDateString()}</p>
+                        <p className="text-xs font-bold text-gray-700 mt-0.5">{new Date(session.startTime!).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}</p>
                       </div>
                       <button className="px-4 py-2 border border-slate-200 hover:border-blue-600 hover:text-blue-600 text-slate-600 rounded-xl text-xs font-black transition-all flex items-center gap-1 bg-white cursor-pointer shadow-sm">
                         <span>Download PDF</span>
@@ -1544,7 +1638,7 @@ const MySessions = ({
                   <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] flex items-center justify-center"><Award className="w-6 h-6 text-[#0755E8]" /></div>
                   <div>
                     <p className="font-bold text-slate-900">Session with {certificateModalSession.expert}</p>
-                    <p className="text-xs text-slate-500">{certificateModalSession.category} · {certificateModalSession.startTime ? new Date(certificateModalSession.startTime).toLocaleDateString() : ""}</p>
+                    <p className="text-xs text-slate-500">{certificateModalSession.category} · {certificateModalSession.startTime ? new Date(certificateModalSession.startTime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }) : ""}</p>
                   </div>
                 </div>
                 {certificateModalSession.expertReview ? (

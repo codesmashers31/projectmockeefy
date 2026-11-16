@@ -79,7 +79,8 @@ const certificationSchema = new mongoose.Schema({
 
 // Index for fast lookups
 certificationSchema.index({ userId: 1, name: 1 });
+certificationSchema.index({ userId: 1, certificateStatus: 1 });
 certificationSchema.index({ userId: 1, categoryId: 1, milestoneNumber: 1 }, { unique: true, sparse: true });
 certificationSchema.index({ categoryId: 1 });
 
-export default mongoose.model('Certification', certificationSchema);
+export default mongoose.models.Certification || mongoose.model('Certification', certificationSchema);

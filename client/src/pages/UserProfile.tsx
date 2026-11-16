@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2';
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -446,7 +447,16 @@ export default function UserProfile() {
   const handleDeleteResume = async (resumeId: string) => {
     const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
     if (!effectiveUserId && !localStorage.getItem("token")) return;
-    if (!confirm("Are you sure you want to delete this resume?")) return;
+    const confirmDelete = await Swal.fire({
+      title: "Delete Resume?",
+      text: "Are you sure you want to delete this resume?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#0755E8",
+      cancelButtonColor: "#ef4444",
+      confirmButtonText: "Yes, delete",
+    });
+    if (!confirmDelete.isConfirmed) return;
 
     try {
       const res = await axios.delete(`/api/user/resumes/${resumeId}`, {

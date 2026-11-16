@@ -325,6 +325,7 @@ const JobReferral = () => {
                 </div>
 
             </div>
+            </div>
             <Footer />
         </div>
     );

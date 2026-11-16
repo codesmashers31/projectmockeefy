@@ -385,12 +385,12 @@ export default function AgreementPage({ onUpdate }: { onUpdate?: () => void } = 
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900">Expert Service & Compliance Agreement</h1>
-            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
               isSigned && !isRevising
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-slate-100 text-slate-700 border-slate-200'
             }`}>
-              {isSigned && !isRevising ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+              {isSigned && !isRevising ? <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> : <FileText className="w-3.5 h-3.5 text-slate-500" />}
               {isSigned && !isRevising ? 'Signed & Active' : 'Signature Required'}
             </span>
           </div>

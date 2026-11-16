@@ -3,7 +3,7 @@ import { Input, PrimaryButton, SecondaryButton, IconButton } from "../pages/Expe
 import axios from '../lib/axios';
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 interface ExpertEducationProps {
@@ -130,7 +130,11 @@ const ExpertEducation = ({ onUpdate, isMissing }: ExpertEducationProps) => {
                 <div>
                     <h3 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
                         Education
-                        {isMissing && <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Action Required</span>}
+                        {isMissing ? (
+                            <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Action Required</span>
+                        ) : (
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1"><Check className="w-3 h-3 text-emerald-600" /> Completed</span>
+                        )}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">Add degrees and study periods</p>
                 </div>

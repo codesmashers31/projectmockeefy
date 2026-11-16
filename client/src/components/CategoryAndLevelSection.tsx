@@ -3,12 +3,13 @@ import axios from "../lib/axios";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { PrimaryButton } from "../pages/ExpertDashboard";
-import { Award, CheckSquare, Square } from "lucide-react";
+import { Award, CheckSquare, Square, Check } from "lucide-react";
 import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
 interface CategoryAndLevelSectionProps {
   onUpdate?: () => void;
   profileData?: any;
+  isMissing?: boolean;
 }
 
 const AVAILABLE_LEVELS = [
@@ -19,11 +20,11 @@ const AVAILABLE_LEVELS = [
   "FAANG Mentor"
 ];
 
-export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSectionProps) {
+export default function CategoryAndLevelSection({ onUpdate, profileData, isMissing }: CategoryAndLevelSectionProps) {
   const { user } = useAuth();
   
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(profileData?.category || profileData?.personalInformation?.category || "");
   const [selectedLevels, setSelectedLevels] = useState<string[]>(["Rising Mentor"]);
   
   const [loading, setLoading] = useState(true);
@@ -43,7 +44,7 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
       setCategories(catList.filter((c: any) => c.name).map((c: any) => ({ _id: c._id, name: c.name })));
 
       if (personalRes.data.success && personalRes.data.data) {
-        setSelectedCategory(personalRes.data.data.category || "");
+        setSelectedCategory(personalRes.data.data.category || profileData?.category || "");
       }
       if (profRes.data.success && profRes.data.data) {
         const data = profRes.data.data;
@@ -92,34 +93,11 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
     try {
       setSaving(true);
 
-      // 1. Fetch current personal info to merge and update category
-      const personalRes = await axios.get("/api/expert/personalinfo");
-      const existingPersonal = personalRes.data.success ? personalRes.data.data : {};
-      const updatedPersonal = {
-        userName: existingPersonal.userName,
-        mobile: existingPersonal.mobile,
-        gender: existingPersonal.gender,
-        dob: existingPersonal.dob,
-        country: existingPersonal.country,
-        state: existingPersonal.state,
-        city: existingPersonal.city,
-        category: selectedCategory
-      };
-
-      // 2. Fetch current professional details to merge and update levels
-      const profRes = await axios.get("/api/expert/profession");
-      const existingProf = profRes.data.success ? profRes.data.data : {};
-      const updatedProf = {
-        ...existingProf,
-        levels: selectedLevels,
-        level: selectedLevels[0] // Set first selected as the primary level fallback
-      };
-
-      // Save both
-      await Promise.all([
-        axios.put("/api/expert/personalinfo", updatedPersonal),
-        axios.put("/api/expert/profession", { professionalDetails: updatedProf })
-      ]);
+      // Save category & levels via atomic endpoint
+      await axios.put("/api/expert/category-level", {
+        category: selectedCategory,
+        levels: selectedLevels
+      });
 
       toast.success("Category & Level settings saved!");
       setIsEditing(false);
@@ -136,6 +114,8 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
     return <ExpertPageSkeleton variant="form" />;
   }
 
+  const isCompleted = Boolean(selectedCategory);
+
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
@@ -143,7 +123,18 @@ export default function CategoryAndLevelSection({ onUpdate }: CategoryAndLevelSe
           <Award className="w-5 h-5" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-slate-900 tracking-tight">Category & Level</h3>
+          <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Category & Level
+            {isCompleted ? (
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-600" /> Completed
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Action Required
+              </span>
+            )}
+          </h3>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Configure your expertise category and choose your expert levels.</p>
         </div>
       </div>

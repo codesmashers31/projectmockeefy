@@ -82,29 +82,34 @@ export const getTimePartsInTimezone = (date, timezone = 'Asia/Kolkata') => {
  * @param {string} [params.excludeSessionId] - Optional session ID to exclude (for rescheduling)
  * @returns {Promise<{ valid: boolean, error?: string, status?: number, expert?: object }>}
  */
+/**
+ * Mockeefy Universal 10-Minute Booking Cutoff Rule:
+ * Booking is permitted while: currentTime < (scheduledEndTime - 10 minutes)
+ * Booking is rejected when: currentTime >= (scheduledEndTime - 10 minutes)
+ * Candidates are permitted to book an interview even after its scheduled start time,
+ * as long as at least 10 minutes remain before the scheduled end.
+ */
+export const isSlotWithinBookingWindow = (startTime, endTime, currentTime = null) => {
+    const end = new Date(endTime);
+    const now = currentTime ? new Date(currentTime) : new Date();
+    const bookingCutoff = new Date(end.getTime() - 10 * 60 * 1000);
+    return now.getTime() < bookingCutoff.getTime();
+};
+
 export const validateBookingSlot = async ({
     expertId,
     startTime,
     endTime,
     duration,
-    excludeSessionId = null
+    excludeSessionId = null,
+    currentTime = null
 }) => {
     const start = new Date(startTime);
     let end = new Date(endTime);
-    const now = new Date();
+    const now = currentTime ? new Date(currentTime) : new Date();
 
     if (isNaN(start.getTime())) {
-        return { valid: false, error: 'Invalid session start time.', status: 400 };
-    }
-
-    // 1. Future Slot Validation:
-    // Slot start time must be strictly in the future
-    if (start.getTime() <= now.getTime()) {
-        return {
-            valid: false,
-            error: 'Selected time slot has already passed or started. Please choose an upcoming slot.',
-            status: 400
-        };
+        return { valid: false, error: 'Invalid session start time.', message: 'Invalid session start time.', status: 400 };
     }
 
     // Determine duration
@@ -119,6 +124,23 @@ export const validateBookingSlot = async ({
 
     if (isNaN(end.getTime()) || end <= start) {
         end = new Date(start.getTime() + effectiveDuration * 60 * 1000);
+    }
+
+    // 1. Mockeefy Universal 10-Minute Cutoff Validation:
+    // Candidate booking is permitted until 10 minutes before scheduled end time.
+    const bookingCutoff = new Date(end.getTime() - 10 * 60 * 1000);
+    if (now.getTime() >= bookingCutoff.getTime()) {
+        const msg = 'The 10-minute booking cutoff for this interview slot has passed.';
+        return {
+            valid: false,
+            error: msg,
+            message: msg,
+            reason: msg,
+            status: 400,
+            cutoffExpired: true,
+            bookingCutoff,
+            scheduledEndTime: end
+        };
     }
 
     // 2. Expert Lookup

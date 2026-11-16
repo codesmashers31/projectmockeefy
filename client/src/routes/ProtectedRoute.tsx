@@ -1,9 +1,10 @@
 // src/routes/ProtectedRoute.tsx
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -13,5 +14,5 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   }
 
-  return user ? <>{children}</> : <Navigate to="/signin" replace />;
+  return user ? <>{children}</> : <Navigate to="/signin" state={{ from: location }} replace />;
 };

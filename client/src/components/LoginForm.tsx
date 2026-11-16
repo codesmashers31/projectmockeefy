@@ -15,6 +15,9 @@ export const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, googleLogin, user: ctxUser } = useAuth();
+  const searchParams = new URLSearchParams(location.search);
+  const queryReturnUrl = searchParams.get("returnUrl") || searchParams.get("redirect") || (location.state as any)?.returnUrl;
+  const safeReturnUrl = queryReturnUrl && queryReturnUrl.startsWith("/") && !queryReturnUrl.startsWith("//") ? queryReturnUrl : null;
   const from = (location.state as any)?.from?.pathname ? (location.state as any).from : null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +45,15 @@ export const LoginForm = () => {
         return;
       }
       const role = finalUser.userType?.toLowerCase();
-      if (from?.pathname) {
+      if (safeReturnUrl) {
+        if (role === "expert" && safeReturnUrl === "/my-sessions") {
+          navigate("/dashboard/sessions", { replace: true });
+        } else if (role !== "expert" && safeReturnUrl.startsWith("/dashboard")) {
+          navigate("/my-sessions", { replace: true });
+        } else {
+          navigate(safeReturnUrl, { replace: true });
+        }
+      } else if (from?.pathname) {
         navigate(from.pathname + (from.search || ""), { replace: true });
       } else if (role === "admin") {
         navigate("/admin", { replace: true });
@@ -68,7 +79,15 @@ export const LoginForm = () => {
 
       if (isExisting && user) {
         const role = (user.userType || user.role)?.toLowerCase();
-        if (from?.pathname) {
+        if (safeReturnUrl) {
+          if (role === "expert" && safeReturnUrl === "/my-sessions") {
+            navigate("/dashboard/sessions", { replace: true });
+          } else if (role !== "expert" && safeReturnUrl.startsWith("/dashboard")) {
+            navigate("/my-sessions", { replace: true });
+          } else {
+            navigate(safeReturnUrl, { replace: true });
+          }
+        } else if (from?.pathname) {
           navigate(from.pathname + (from.search || ""), { replace: true });
         } else if (role === "admin") {
           navigate("/admin", { replace: true });

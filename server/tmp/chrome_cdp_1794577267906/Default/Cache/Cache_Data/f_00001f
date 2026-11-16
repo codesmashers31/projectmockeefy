@@ -1,0 +1,231 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/CertificatesSkeleton.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=92f38c84"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import { Award, Sparkles } from "/node_modules/.vite/deps/lucide-react.js?v=92f38c84";
+export function CertificatesSkeleton() {
+  return /* @__PURE__ */ jsxDEV("div", { className: "w-full font-sans text-left animate-in fade-in duration-200", children: /* @__PURE__ */ jsxDEV("div", { className: "w-full space-y-6 sm:space-y-8", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#E2E8F0]", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-3.5 min-w-0", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "w-12 h-12 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/30 flex items-center justify-center text-[#0755E8]/40 shrink-0", children: /* @__PURE__ */ jsxDEV(Award, { className: "w-6 h-6 animate-pulse" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 12,
+          columnNumber: 15
+        }, this) }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 11,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "space-y-2 min-w-0", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "h-6 w-48 sm:w-64 rounded-lg bg-slate-200 animate-pulse" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+            lineNumber: 15,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "h-3.5 w-64 sm:w-80 rounded bg-slate-100 animate-pulse" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+            lineNumber: 16,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 14,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 10,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2.5", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-36 rounded-full bg-white border border-[#E2E8F0] animate-pulse" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 20,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-20 rounded-full bg-white border border-[#E2E8F0] animate-pulse" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 21,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 19,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+      lineNumber: 9,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "bg-[#FFFFFF] rounded-2xl border border-[#E2E8F0] p-5 sm:p-6 shadow-[0_4px_20px_rgba(23,43,77,0.06)]", children: /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col lg:flex-row lg:items-center justify-between gap-6", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-start gap-4 min-w-0 flex-1", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "w-12 h-12 rounded-xl bg-[#EAF2FF] border border-[#93B8FF]/30 flex items-center justify-center text-[#0755E8]/40 shrink-0", children: /* @__PURE__ */ jsxDEV(Sparkles, { className: "w-6 h-6 animate-pulse" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 30,
+          columnNumber: 17
+        }, this) }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 29,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "space-y-2 min-w-0 flex-1", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "h-4 w-36 rounded bg-slate-200 animate-pulse" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+            lineNumber: 33,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "h-5 w-72 max-w-full rounded bg-slate-200 animate-pulse" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+            lineNumber: 34,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "h-3.5 w-96 max-w-full rounded bg-slate-100 animate-pulse" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+            lineNumber: 35,
+            columnNumber: 17
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 32,
+          columnNumber: 15
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 28,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "w-full sm:w-48 space-y-2", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "h-3.5 w-full rounded bg-slate-100 animate-pulse" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 39,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-2 w-full rounded-full bg-[#E2E8F0] animate-pulse" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 40,
+          columnNumber: 15
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 38,
+        columnNumber: 13
+      }, this)
+    ] }, void 0, true, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+      lineNumber: 27,
+      columnNumber: 11
+    }, this) }, void 0, false, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+      lineNumber: 26,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "h-9 w-32 rounded-xl bg-[#0755E8]/20 animate-pulse" }, void 0, false, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 47,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "h-9 w-24 rounded-xl bg-white border border-[#E2E8F0] animate-pulse" }, void 0, false, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 48,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "h-9 w-24 rounded-xl bg-white border border-[#E2E8F0] animate-pulse" }, void 0, false, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+        lineNumber: 49,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+      lineNumber: 46,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6", children: [1, 2].map(
+      (i) => /* @__PURE__ */ jsxDEV(
+        "div",
+        {
+          className: "bg-[#FFFFFF] rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 shadow-[0_4px_20px_rgba(23,43,77,0.06)] space-y-4",
+          children: [
+            /* @__PURE__ */ jsxDEV("div", { className: "w-full aspect-[1000/707] rounded-xl bg-[#F5F8FF] border border-[#E2E8F0] flex items-center justify-center", children: /* @__PURE__ */ jsxDEV("div", { className: "w-3/4 h-3/4 rounded-lg bg-slate-200/60 animate-pulse" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+              lineNumber: 60,
+              columnNumber: 17
+            }, this) }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+              lineNumber: 59,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { className: "space-y-2", children: [
+              /* @__PURE__ */ jsxDEV("div", { className: "h-4 w-48 rounded bg-slate-200 animate-pulse" }, void 0, false, {
+                fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+                lineNumber: 63,
+                columnNumber: 17
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { className: "h-3 w-32 rounded bg-slate-100 animate-pulse" }, void 0, false, {
+                fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+                lineNumber: 64,
+                columnNumber: 17
+              }, this)
+            ] }, void 0, true, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+              lineNumber: 62,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { className: "h-16 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] animate-pulse" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+              lineNumber: 66,
+              columnNumber: 15
+            }, this)
+          ]
+        },
+        i,
+        true,
+        {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+          lineNumber: 55,
+          columnNumber: 11
+        },
+        this
+      )
+    ) }, void 0, false, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+      lineNumber: 53,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+    lineNumber: 7,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx",
+    lineNumber: 6,
+    columnNumber: 5
+  }, this);
+}
+_c = CertificatesSkeleton;
+export default CertificatesSkeleton;
+var _c;
+$RefreshReg$(_c, "CertificatesSkeleton");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) {
+  return RefreshRuntime.register(type, "E:/Projects/mockeefy/projectmockeefy/client/src/components/CertificatesSkeleton.tsx " + id);
+}
+function $RefreshSig$() {
+  return RefreshRuntime.createSignatureFunctionForTransform();
+}
+
+//# sourceMappingURL=data:application/json;base64,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U0FBSSxXQUFVLDZHQUNiLGlDQUFDLFNBQUksV0FBVSwwREFBZjtBQUFBO0FBQUE7QUFBQTtBQUFBLG1CQUFxRSxLQUR2RTtBQUFBO0FBQUE7QUFBQTtBQUFBLG1CQUVBO0FBQUEsWUFDQSx1QkFBQyxTQUFJLFdBQVUsYUFDYjtBQUFBLHFDQUFDLFNBQUksV0FBVSxpREFBZjtBQUFBO0FBQUE7QUFBQTtBQUFBLHFCQUE0RDtBQUFBLGNBQzVELHVCQUFDLFNBQUksV0FBVSxpREFBZjtBQUFBO0FBQUE7QUFBQTtBQUFBLHFCQUE0RDtBQUFBLGlCQUY5RDtBQUFBO0FBQUE7QUFBQTtBQUFBLG1CQUdBO0FBQUEsWUFDQSx1QkFBQyxTQUFJLFdBQVUsd0VBQWY7QUFBQTtBQUFBO0FBQUE7QUFBQSxtQkFBbUY7QUFBQTtBQUFBO0FBQUEsUUFWOUVBO0FBQUFBLFFBRFA7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQSxNQVlBO0FBQUEsSUFDRCxLQWZIO0FBQUE7QUFBQTtBQUFBO0FBQUEsV0FnQkE7QUFBQSxPQTlERjtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBK0RBLEtBaEVGO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0FpRUE7QUFFSjtBQUFDQyxLQXJFZUg7QUF1RWhCLGVBQWVBO0FBQXFCLElBQUFHO0FBQUFDLGFBQUFELElBQUEiLCJuYW1lcyI6WyJBd2FyZCIsIlNwYXJrbGVzIiwiQ2VydGlmaWNhdGVzU2tlbGV0b24iLCJtYXAiLCJpIiwiX2MiLCIkUmVmcmVzaFJlZyQiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQ2VydGlmaWNhdGVzU2tlbGV0b24udHN4Il0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBSZWFjdCBmcm9tIFwicmVhY3RcIjtcclxuaW1wb3J0IHsgQXdhcmQsIENoZWNrQ2lyY2xlMiwgRG93bmxvYWQsIFNwYXJrbGVzLCBYIH0gZnJvbSBcImx1Y2lkZS1yZWFjdFwiO1xyXG5cclxuZXhwb3J0IGZ1bmN0aW9uIENlcnRpZmljYXRlc1NrZWxldG9uKCkge1xyXG4gIHJldHVybiAoXHJcbiAgICA8ZGl2IGNsYXNzTmFtZT1cInctZnVsbCBmb250LXNhbnMgdGV4dC1sZWZ0IGFuaW1hdGUtaW4gZmFkZS1pbiBkdXJhdGlvbi0yMDBcIj5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJ3LWZ1bGwgc3BhY2UteS02IHNtOnNwYWNlLXktOFwiPlxyXG4gICAgICAgIHsvKiAxLiBIRUFERVIgU0tFTEVUT04gKi99XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIHNtOmZsZXgtcm93IHNtOml0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW4gZ2FwLTQgcGItNSBib3JkZXItYiBib3JkZXItWyNFMkU4RjBdXCI+XHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0zLjUgbWluLXctMFwiPlxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInctMTIgaC0xMiByb3VuZGVkLTJ4bCBiZy1bI0VBRjJGRl0gYm9yZGVyIGJvcmRlci1bIzkzQjhGRl0vMzAgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgdGV4dC1bIzA3NTVFOF0vNDAgc2hyaW5rLTBcIj5cclxuICAgICAgICAgICAgICA8QXdhcmQgY2xhc3NOYW1lPVwidy02IGgtNiBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwic3BhY2UteS0yIG1pbi13LTBcIj5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImgtNiB3LTQ4IHNtOnctNjQgcm91bmRlZC1sZyBiZy1zbGF0ZS0yMDAgYW5pbWF0ZS1wdWxzZVwiIC8+XHJcbiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTMuNSB3LTY0IHNtOnctODAgcm91bmRlZCBiZy1zbGF0ZS0xMDAgYW5pbWF0ZS1wdWxzZVwiIC8+XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0yLjVcIj5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTggdy0zNiByb3VuZGVkLWZ1bGwgYmctd2hpdGUgYm9yZGVyIGJvcmRlci1bI0UyRThGMF0gYW5pbWF0ZS1wdWxzZVwiIC8+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC04IHctMjAgcm91bmRlZC1mdWxsIGJnLXdoaXRlIGJvcmRlciBib3JkZXItWyNFMkU4RjBdIGFuaW1hdGUtcHVsc2VcIiAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPC9kaXY+XHJcblxyXG4gICAgICAgIHsvKiAyLiBNQVNURVIgQ1JFREVOVElBTCBNSUxFU1RPTkUgU0tFTEVUT04gKi99XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJiZy1bI0ZGRkZGRl0gcm91bmRlZC0yeGwgYm9yZGVyIGJvcmRlci1bI0UyRThGMF0gcC01IHNtOnAtNiBzaGFkb3ctWzBfNHB4XzIwcHhfcmdiYSgyMyw0Myw3NywwLjA2KV1cIj5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBsZzpmbGV4LXJvdyBsZzppdGVtcy1jZW50ZXIganVzdGlmeS1iZXR3ZWVuIGdhcC02XCI+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1zdGFydCBnYXAtNCBtaW4tdy0wIGZsZXgtMVwiPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwidy0xMiBoLTEyIHJvdW5kZWQteGwgYmctWyNFQUYyRkZdIGJvcmRlciBib3JkZXItWyM5M0I4RkZdLzMwIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHRleHQtWyMwNzU1RThdLzQwIHNocmluay0wXCI+XHJcbiAgICAgICAgICAgICAgICA8U3BhcmtsZXMgY2xhc3NOYW1lPVwidy02IGgtNiBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInNwYWNlLXktMiBtaW4tdy0wIGZsZXgtMVwiPlxyXG4gICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTQgdy0zNiByb3VuZGVkIGJnLXNsYXRlLTIwMCBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC01IHctNzIgbWF4LXctZnVsbCByb3VuZGVkIGJnLXNsYXRlLTIwMCBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC0zLjUgdy05NiBtYXgtdy1mdWxsIHJvdW5kZWQgYmctc2xhdGUtMTAwIGFuaW1hdGUtcHVsc2VcIiAvPlxyXG4gICAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJ3LWZ1bGwgc206dy00OCBzcGFjZS15LTJcIj5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImgtMy41IHctZnVsbCByb3VuZGVkIGJnLXNsYXRlLTEwMCBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImgtMiB3LWZ1bGwgcm91bmRlZC1mdWxsIGJnLVsjRTJFOEYwXSBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgey8qIDMuIFRBQlMgU0tFTEVUT04gKi99XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMlwiPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTkgdy0zMiByb3VuZGVkLXhsIGJnLVsjMDc1NUU4XS8yMCBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC05IHctMjQgcm91bmRlZC14bCBiZy13aGl0ZSBib3JkZXIgYm9yZGVyLVsjRTJFOEYwXSBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC05IHctMjQgcm91bmRlZC14bCBiZy13aGl0ZSBib3JkZXIgYm9yZGVyLVsjRTJFOEYwXSBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgey8qIDQuIENBUkRTIEdSSUQgU0tFTEVUT04gKi99XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJncmlkIGdyaWQtY29scy0xIG1kOmdyaWQtY29scy0yIGdhcC01IHNtOmdhcC02XCI+XHJcbiAgICAgICAgICB7WzEsIDJdLm1hcCgoaSkgPT4gKFxyXG4gICAgICAgICAgICA8ZGl2XHJcbiAgICAgICAgICAgICAga2V5PXtpfVxyXG4gICAgICAgICAgICAgIGNsYXNzTmFtZT1cImJnLVsjRkZGRkZGXSByb3VuZGVkLTJ4bCBib3JkZXIgYm9yZGVyLVsjRTJFOEYwXSBwLTQgc206cC01IHNoYWRvdy1bMF80cHhfMjBweF9yZ2JhKDIzLDQzLDc3LDAuMDYpXSBzcGFjZS15LTRcIlxyXG4gICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJ3LWZ1bGwgYXNwZWN0LVsxMDAwLzcwN10gcm91bmRlZC14bCBiZy1bI0Y1RjhGRl0gYm9yZGVyIGJvcmRlci1bI0UyRThGMF0gZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXJcIj5cclxuICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwidy0zLzQgaC0zLzQgcm91bmRlZC1sZyBiZy1zbGF0ZS0yMDAvNjAgYW5pbWF0ZS1wdWxzZVwiIC8+XHJcbiAgICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJzcGFjZS15LTJcIj5cclxuICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC00IHctNDggcm91bmRlZCBiZy1zbGF0ZS0yMDAgYW5pbWF0ZS1wdWxzZVwiIC8+XHJcbiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImgtMyB3LTMyIHJvdW5kZWQgYmctc2xhdGUtMTAwIGFuaW1hdGUtcHVsc2VcIiAvPlxyXG4gICAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC0xNiByb3VuZGVkLXhsIGJnLVsjRjhGQUZDXSBib3JkZXIgYm9yZGVyLVsjRTJFOEYwXSBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICApKX1cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcbiAgICA8L2Rpdj5cclxuICApO1xyXG59XHJcblxyXG5leHBvcnQgZGVmYXVsdCBDZXJ0aWZpY2F0ZXNTa2VsZXRvbjtcclxuIl0sImZpbGUiOiJFOi9Qcm9qZWN0cy9tb2NrZWVmeS9wcm9qZWN0bW9ja2VlZnkvY2xpZW50L3NyYy9jb21wb25lbnRzL0NlcnRpZmljYXRlc1NrZWxldG9uLnRzeCJ9

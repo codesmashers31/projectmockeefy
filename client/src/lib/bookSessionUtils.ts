@@ -194,14 +194,25 @@ export const generateAvailableSlotsForDate = (
     const isToday = kolkataDateStr === todayDateStr;
 
     // Check daily booking limit (maxPerDay) if configured
+    // Consistent with backend availabilityValidator: only active, confirmed/upcoming sessions count against daily limit
     const maxPerDay = Number(availability?.maxPerDay);
     if (maxPerDay > 0) {
+        const seenDayKeys = new Set<string>();
         const dayBookingsCount = (bookedSessions || []).filter((session: any) => {
             const status = (session.status || "").toLowerCase();
-            if (status === "cancelled") return false;
+            // Terminal or cancelled sessions do not block expert's daily bookable capacity
+            if (["cancelled", "rejected", "declined", "failed", "expired"].includes(status)) return false;
+            // Only confirmed/upcoming/pending active sessions count toward daily quota
+            if (!["confirmed", "live", "upcoming", "pending"].includes(status)) return false;
+
             const sStart = new Date(session.startTime);
             if (isNaN(sStart.getTime())) return false;
-            return getKolkataDateString(sStart) === kolkataDateStr;
+            if (getKolkataDateString(sStart) !== kolkataDateStr) return false;
+
+            const key = session.sessionId || session._id || `${sStart.getTime()}`;
+            if (seenDayKeys.has(key)) return false;
+            seenDayKeys.add(key);
+            return true;
         }).length;
 
         if (dayBookingsCount >= maxPerDay) {
@@ -235,9 +246,13 @@ export const generateAvailableSlotsForDate = (
             const slotDate = new Date(`${kolkataDateStr}T${slotStartStr}:00+05:30`);
             const slotEndDate = new Date(slotDate.getTime() + duration * 60 * 1000);
 
-            // If date is TODAY, the slot must be strictly in the future.
-            // If the slot start time has arrived or passed (e.g., at 1:30 PM for a 1:30 PM slot), hide it.
-            if (isToday && slotDate.getTime() <= now.getTime()) {
+            // Mockeefy Universal 10-Minute Booking Cutoff Rule:
+            // Booking is permitted while: currentTime < (scheduledEndTime - 10 minutes)
+            // Booking is rejected when: currentTime >= (scheduledEndTime - 10 minutes)
+            // Candidates are explicitly permitted to book an interview even after its scheduled start time,
+            // as long as at least 10 minutes remain before scheduled end.
+            const bookingCutoff = new Date(slotEndDate.getTime() - 10 * 60 * 1000);
+            if (now.getTime() >= bookingCutoff.getTime()) {
                 currentMinutes += step;
                 continue;
             }
@@ -253,7 +268,8 @@ export const generateAvailableSlotsForDate = (
 
             const isBooked = (bookedSessions || []).some((session: any) => {
                 const status = (session.status || "").toLowerCase();
-                if (status === "cancelled") return false;
+                // Cancelled, rejected, declined, expired, or failed sessions must never block a slot
+                if (["cancelled", "rejected", "declined", "failed", "expired"].includes(status)) return false;
 
                 const sStart = new Date(session.startTime);
                 const sEnd = new Date(session.endTime);

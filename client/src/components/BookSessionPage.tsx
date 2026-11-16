@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ThumbsUp, MessageCircle, Briefcase,
   Share2, Check, ArrowRight, ArrowLeft, Timer, BadgeCheck, Code2, Compass, FileText,
   MessageSquare, AlertCircle, Info, Sparkles, UserCheck, CheckCircle2, CreditCard,
-  ShieldCheck, HelpCircle, Award, RotateCcw, Headphones, X, CheckSquare, Square
+  ShieldCheck, HelpCircle, Award, RotateCcw, Headphones, X, CheckSquare, Square, Wallet
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -369,17 +369,88 @@ export default function BookSessionPage() {
     };
   }, [profile?.id, (existingProfile as any)?._id, (existingProfile as any)?.id, expertId, sessionDuration, selectedLevel, basePrice, expertLevels]);
 
+  // Candidate Mockeefy Wallet Balance (authoritative from MongoDB)
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  type PaymentMethodType = 'MOCKEEFY_WALLET' | 'RAZORPAY' | 'COMBINED';
+  const [userSelectedPaymentMethod, setUserSelectedPaymentMethod] = useState<PaymentMethodType | null>(null);
+
+  const fetchCandidateWallet = useCallback(() => {
+    if (user) {
+      axios.get("/api/wallet/balance").then((res) => {
+        const bal = res.data?.availableBalance ?? res.data?.data?.availableBalance ?? res.data?.balance ?? res.data?.data?.balance ?? 0;
+        setWalletBalance(Number(bal) || 0);
+      }).catch(() => setWalletBalance(0));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchCandidateWallet();
+    }
+  }, [user, fetchCandidateWallet]);
+
+  // Real-time synchronization for wallet updates
+  useDataSync(["WALLET_UPDATED", "RECONNECTED"], (payload) => {
+    if (payload?.data && typeof payload.data.availableBalance === "number") {
+      setWalletBalance(payload.data.availableBalance);
+    } else {
+      fetchCandidateWallet();
+    }
+  });
+
   // Actual session fee for the chosen duration & level
   const sessionFee = levelPrices[selectedLevel] ?? (calculatedPrice > 0 ? calculatedPrice : basePrice);
   const promoDiscount = appliedFreePromo ? sessionFee : 0;
-  const finalPayable = Math.max(0, sessionFee - promoDiscount);
+  const effectiveBookingPrice = Math.max(0, sessionFee - promoDiscount);
+
+  const paymentMethod: PaymentMethodType = useMemo(() => {
+    if (userSelectedPaymentMethod === 'MOCKEEFY_WALLET') {
+      if (walletBalance >= effectiveBookingPrice && effectiveBookingPrice > 0) return 'MOCKEEFY_WALLET';
+      if (walletBalance > 0) return 'COMBINED';
+      return 'RAZORPAY';
+    }
+    if (userSelectedPaymentMethod === 'COMBINED') {
+      if (walletBalance > 0 && walletBalance < effectiveBookingPrice) return 'COMBINED';
+      if (walletBalance >= effectiveBookingPrice && effectiveBookingPrice > 0) return 'MOCKEEFY_WALLET';
+      return 'RAZORPAY';
+    }
+    if (userSelectedPaymentMethod === 'RAZORPAY') {
+      return 'RAZORPAY';
+    }
+    // Default smart selection
+    if (walletBalance >= effectiveBookingPrice && effectiveBookingPrice > 0) return 'MOCKEEFY_WALLET';
+    if (walletBalance > 0) return 'COMBINED';
+    return 'RAZORPAY';
+  }, [userSelectedPaymentMethod, walletBalance, effectiveBookingPrice]);
+
+  const useWalletBalance = paymentMethod === 'MOCKEEFY_WALLET' || paymentMethod === 'COMBINED';
+  const walletDeduction = (useWalletBalance && walletBalance > 0 && !appliedFreePromo)
+    ? Math.min(walletBalance, effectiveBookingPrice)
+    : 0;
+  const finalPayable = paymentMethod === 'MOCKEEFY_WALLET' ? 0 : Math.max(0, effectiveBookingPrice - (paymentMethod === 'COMBINED' ? walletDeduction : 0));
   const displayPrice = finalPayable;
+
+  const setUseWalletBalance = (val: boolean) => {
+    if (val) {
+      if (walletBalance >= effectiveBookingPrice && effectiveBookingPrice > 0) {
+        setUserSelectedPaymentMethod('MOCKEEFY_WALLET');
+      } else if (walletBalance > 0) {
+        setUserSelectedPaymentMethod('COMBINED');
+      } else {
+        setUserSelectedPaymentMethod('RAZORPAY');
+      }
+    } else {
+      setUserSelectedPaymentMethod('RAZORPAY');
+    }
+  };
 
   // Calendar dates in Asia/Kolkata timezone
   const [currentMonth, setCurrentMonth] = useState<Date>(getInitialKolkataMonth);
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
+  const [isSessionsLoading, setIsSessionsLoading] = useState<boolean>(true);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   const [currentTick, setCurrentTick] = useState<number>(() => Date.now());
 
@@ -465,9 +536,13 @@ export default function BookSessionPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const queryClient = useQueryClient();
+  const fetchReqIdRef = useRef(0);
 
   const fetchSessions = useCallback(async () => {
     if (!expertId) return;
+    setIsSessionsLoading(true);
+    setSessionsError(null);
+    const reqId = fetchReqIdRef.current;
     try {
       const candidateUserId = user?.id || user?._id || (user as any)?.userId;
       const [expertRes, candidateRes] = await Promise.allSettled([
@@ -477,19 +552,65 @@ export default function BookSessionPage() {
           : Promise.resolve({ data: [] }),
       ]);
 
-      const allBooked: any[] = [];
-      if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
-        allBooked.push(...expertRes.value.data);
-      }
-      if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
-        allBooked.push(...candidateRes.value.data);
+      if (reqId !== fetchReqIdRef.current) return;
+
+      const expertFailed = expertRes.status === "rejected" || !Array.isArray((expertRes as any).value?.data);
+      const candidateFailed = candidateUserId && (candidateRes.status === "rejected" || !Array.isArray((candidateRes as any).value?.data));
+
+      if (expertFailed || candidateFailed) {
+        console.error("Availability data source failed:", { expertRes, candidateRes });
+        setSessionsError("Unable to load interview slot availability. Please retry.");
+        return;
       }
 
+      const allBooked: any[] = [];
+      const seenSessionKeys = new Set<string>();
+
+      const addUniqueSessions = (sessionsList: any[]) => {
+        for (const s of sessionsList) {
+          if (!s) continue;
+          // Build a normalized deduplication key
+          const key = s.sessionId
+            ? `id:${s.sessionId}`
+            : s._id
+            ? `id:${s._id}`
+            : `time:${new Date(s.startTime).getTime()}_${new Date(s.endTime).getTime()}`;
+          if (!seenSessionKeys.has(key)) {
+            seenSessionKeys.add(key);
+            allBooked.push(s);
+          }
+        }
+      };
+
+      if (expertRes.status === "fulfilled" && Array.isArray(expertRes.value.data)) {
+        addUniqueSessions(expertRes.value.data);
+      }
+      if (candidateRes.status === "fulfilled" && Array.isArray(candidateRes.value.data)) {
+        addUniqueSessions(candidateRes.value.data);
+      }
+
+      setSessionsError(null);
       setBookedSessions(allBooked);
     } catch (err) {
-      console.error("Failed to load booked sessions", err);
+      if (reqId === fetchReqIdRef.current) {
+        console.error("Failed to load booked sessions", err);
+        setSessionsError("Failed to load availability data. Please retry.");
+      }
+    } finally {
+      if (reqId === fetchReqIdRef.current) {
+        setIsSessionsLoading(false);
+      }
     }
   }, [expertId, user?.id, user?._id, (user as any)?.userId]);
+
+  // Synchronously reset on expert change
+  useEffect(() => {
+    fetchReqIdRef.current += 1;
+    setSelectedDateStr("");
+    setSelectedSlot(null);
+    setBookedSessions([]);
+    setIsSessionsLoading(true);
+  }, [expertId]);
 
   useEffect(() => {
     fetchSessions();
@@ -548,9 +669,12 @@ export default function BookSessionPage() {
     fetchReviews();
   }, [expertId]);
 
+  const hasAvailabilityError = Boolean(sessionsError);
+  const isContentLoading = loading || isSessionsLoading || !profile?.availability;
+
   // Compute valid dates for currentMonth that actually have scheduled, available openings
   const dates = useMemo(() => {
-    if (!profile?.availability) return [];
+    if (isContentLoading || hasAvailabilityError || !profile?.availability) return [];
 
     const now = new Date();
     const parts = getKolkataTimeParts(currentMonth);
@@ -565,38 +689,97 @@ export default function BookSessionPage() {
       // Past days cannot be selected
       if (dateStr < todayDateStr) return false;
 
-      // Only show dates where the expert has scheduled timings with remaining available slots
+      // Only show dates where the expert has scheduled timings with at least one genuinely available slot
       const slots = generateAvailableSlotsForDate(date, profile.availability, sessionDuration, bookedSessions, now);
-      return slots.length > 0;
+      return slots.some(s => s.available === true);
     });
-  }, [currentMonth, profile?.availability, sessionDuration, bookedSessions, currentTick]);
+  }, [currentMonth, profile?.availability, sessionDuration, bookedSessions, currentTick, isContentLoading]);
+
+  const userExplicitlySelectedDateRef = useRef<string | null>(null);
 
   // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
   const activeDate = useMemo(() => {
-    if (!dates || dates.length === 0) return null;
     if (selectedDateStr) {
       const found = dates.find(d => getKolkataDateString(d) === selectedDateStr);
       if (found) return found;
     }
+    if (!dates || dates.length === 0) return null;
     return dates[0];
   }, [dates, selectedDateStr]);
 
-  // Synchronize selectedDateStr with available dates
+  const isTodayActive = useMemo(() => {
+    if (!activeDate) return false;
+    return getKolkataDateString(activeDate) === getKolkataDateString(new Date());
+  }, [activeDate]);
+
+  const todayStatus = useMemo(() => {
+    if (isContentLoading || !profile?.availability) return { hasSlots: false, dateStr: "", label: "", isCurrentMonth: false };
+    const now = new Date();
+    const todayStr = getKolkataDateString(now);
+    const todayParts = getKolkataTimeParts(now);
+    const todayDate = new Date(todayParts.year, todayParts.month, todayParts.day, 12, 0, 0);
+    const currentMonthParts = getKolkataTimeParts(currentMonth);
+    const isCurrentMonth = todayParts.year === currentMonthParts.year && todayParts.month === currentMonthParts.month;
+    const slots = generateAvailableSlotsForDate(todayDate, profile.availability, sessionDuration, bookedSessions, now);
+    const hasSlots = slots.some(s => s.available === true);
+    return {
+      hasSlots,
+      dateStr: todayStr,
+      label: todayDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "Asia/Kolkata" }),
+      isCurrentMonth
+    };
+  }, [profile?.availability, currentMonth, sessionDuration, bookedSessions, currentTick, isContentLoading]);
+
+  const nextAvailableDateInfo = useMemo(() => {
+    if (isContentLoading || !profile?.availability || !dates || dates.length === 0) return null;
+    const now = new Date();
+    const todayStr = getKolkataDateString(now);
+    const candidate = dates.find(d => getKolkataDateString(d) > todayStr);
+    if (candidate) {
+      return {
+        date: candidate,
+        dateStr: getKolkataDateString(candidate),
+        label: candidate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "Asia/Kolkata" }),
+      };
+    }
+    return null;
+  }, [profile?.availability, dates, currentTick, isContentLoading]);
+
+  // Synchronize selectedDateStr with available dates without overwriting candidate's explicit selection
   useEffect(() => {
+    if (isContentLoading) return;
     if (dates.length > 0) {
-      const exists = dates.some(d => getKolkataDateString(d) === selectedDateStr);
-      if (!exists) {
-        setSelectedDateStr(getKolkataDateString(dates[0]));
+      if (userExplicitlySelectedDateRef.current) {
+        const stillValid = dates.some(d => getKolkataDateString(d) === userExplicitlySelectedDateRef.current);
+        if (stillValid) {
+          setSelectedDateStr(userExplicitlySelectedDateRef.current);
+          return;
+        }
+      }
+      const now = new Date();
+      const todayStr = getKolkataDateString(now);
+      if (dates.some(d => getKolkataDateString(d) === todayStr)) {
+        if (!selectedDateStr || selectedDateStr !== todayStr) {
+          setSelectedDateStr(todayStr);
+        }
+      } else {
+        const firstAvailStr = getKolkataDateString(dates[0]);
+        if (!selectedDateStr || !dates.some(d => getKolkataDateString(d) === selectedDateStr)) {
+          setSelectedDateStr(firstAvailStr);
+        }
       }
     } else {
       setSelectedDateStr("");
     }
-  }, [dates, selectedDateStr]);
+  }, [dates, isContentLoading, selectedDateStr]);
 
   // If opening page and current month has 0 openings, auto-navigate to the first month with available openings
   const hasAutoSelectedMonth = useRef(false);
   useEffect(() => {
     hasAutoSelectedMonth.current = false;
+    userExplicitlySelectedDateRef.current = null;
+    setSelectedDateStr("");
+    setSelectedSlot(null);
   }, [expertId]);
 
   useEffect(() => {
@@ -613,12 +796,14 @@ export default function BookSessionPage() {
   }, [profile?.availability, sessionDuration, bookedSessions]);
 
   const nextMonth = () => {
+    userExplicitlySelectedDateRef.current = null;
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
     setSelectedDateStr("");
     setSelectedSlot(null);
   };
 
   const prevMonth = () => {
+    userExplicitlySelectedDateRef.current = null;
     const todayKolkata = getKolkataToday();
     const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
     if (prev.getMonth() < todayKolkata.getMonth() && prev.getFullYear() <= todayKolkata.getFullYear()) {
@@ -705,6 +890,7 @@ export default function BookSessionPage() {
 
   // Booking Execution
   const handleProceedBooking = async () => {
+    if (isProcessing) return;
     if (!selectedSlot) {
       toast.error("Please select an available time slot before continuing.");
       const slotsElement = document.getElementById("time-slots-section");
@@ -781,7 +967,8 @@ export default function BookSessionPage() {
       notes: userDiscussionNotes.trim() || "1:1 Live Mock Interview",
     };
 
-    const selectedDateStr = date.toLocaleDateString("en-US", {
+    const selectedDateStr = date.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -809,8 +996,8 @@ export default function BookSessionPage() {
 
       setPaymentStatus("paid");
 
-      // 3. User notification: Toast
-      toast.success(`Meeting Scheduled! Your meeting has been scheduled on ${selectedDateStr} at ${selectedTimeSlot}.`);
+      // 3. User notification: Concise Toast
+      toast.success("Interview booked successfully.");
 
       // 4. Mark confirmed and navigate to /my-sessions
       setBookingFlowState("confirmed");
@@ -859,17 +1046,40 @@ export default function BookSessionPage() {
         return;
       }
 
-      // 3. Paid Standard Checkout: DIRECTLY OPEN RAZORPAY GATEWAY ON THIS SAME PAGE!
+      // 3. Full Wallet Payment (₹0 external payment needed)
+      if (paymentMethod === 'MOCKEEFY_WALLET' && walletBalance >= sessionFee && sessionFee > 0) {
+        setBookingFlowState("confirming");
+        const bookRes = await axios.post("/api/payment/book-with-wallet", {
+          bookingDetails: payload,
+          price: sessionFee,
+          paymentMethod: 'MOCKEEFY_WALLET'
+        });
+        if (bookRes.data?.success) {
+          fetchCandidateWallet();
+          onBookingSuccess("Meeting Scheduled!", `Paid ₹${sessionFee} via Mockeefy Wallet (Remaining: ₹${bookRes.data.remainingBalance ?? 0}).`);
+        } else {
+          setBookingFlowState("selecting");
+          throw new Error(bookRes.data?.message || "Wallet booking failed.");
+        }
+        return;
+      }
+
+      // 4. Paid Standard / Hybrid Checkout: DIRECTLY OPEN RAZORPAY GATEWAY ON THIS SAME PAGE!
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error("Razorpay payment gateway failed to load. Please check your internet connection.");
       }
 
-      // Create order with Razorpay backend
+      const isCombined = paymentMethod === 'COMBINED';
+      // Create order with Razorpay backend and pre-validate slot
       const orderResponse = await axios.post("/api/payment/create-order", {
         amount: sessionFee,
         currency: "INR",
-        receipt: `rcpt_${Date.now()}`
+        receipt: `rcpt_${Date.now()}`,
+        bookingDetails: payload,
+        useWallet: isCombined,
+        paymentMethod: paymentMethod,
+        walletAmount: isCombined ? walletDeduction : 0
       });
 
       if (!orderResponse.data?.success || !orderResponse.data?.order) {
@@ -900,7 +1110,9 @@ export default function BookSessionPage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              paymentType: "booking",
+              paymentType: isCombined ? "hybrid" : "booking",
+              walletDeduction: isCombined ? walletDeduction : 0,
+              useWallet: isCombined,
               user: user,
               bookingDetails: {
                 expertId: profile.id || expertId,
@@ -920,6 +1132,63 @@ export default function BookSessionPage() {
               }
             });
 
+            if (verifyRes.data?.awaitingReconciliation || verifyRes.status === 202) {
+              setBookingFlowState("selecting");
+              Swal.fire({
+                title: "Payment Verification in Progress",
+                html: `
+                  <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #334155;">
+                    <p style="margin-bottom: 12px;">Your payment is being verified with Razorpay. Your money is being tracked securely. You do not need to make another payment. We will update your booking or wallet once verification is complete.</p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                      <p style="margin: 4px 0;"><strong>Payment ID:</strong> <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${verifyRes.data?.paymentId || 'N/A'}</code></p>
+                      <p style="margin: 4px 0;"><strong>Amount Paid:</strong> ₹${displayPrice}</p>
+                    </div>
+                  </div>
+                `,
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonText: "View Wallet",
+                cancelButtonText: "View My Sessions",
+                confirmButtonColor: "#0755E8",
+                cancelButtonColor: "#64748b"
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  navigate("/wallet");
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                  navigate("/my-sessions");
+                }
+              });
+              return;
+            }
+
+            if (verifyRes.data?.walletCredited) {
+              setBookingFlowState("selecting");
+              Swal.fire({
+                title: verifyRes.data.title || "Payment Added to Your Mockeefy Wallet",
+                html: `
+                  <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #334155;">
+                    <p style="margin-bottom: 12px;">${verifyRes.data.message}</p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                      <p style="margin: 4px 0;"><strong>Credited Amount:</strong> ₹${verifyRes.data.amountCredited}</p>
+                      <p style="margin: 4px 0;"><strong>Updated Wallet Balance:</strong> ₹${verifyRes.data.updatedBalance}</p>
+                      <p style="margin: 4px 0; font-size: 11.5px; color: #64748b;"><strong>Wallet Transaction Ref:</strong> <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${verifyRes.data.walletTransactionRef || 'N/A'}</code></p>
+                    </div>
+                  </div>
+                `,
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonText: "View Wallet",
+                cancelButtonText: "Book Another Interview",
+                confirmButtonColor: "#0755E8",
+                cancelButtonColor: "#64748b"
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  navigate("/wallet");
+                }
+              });
+              return;
+            }
+
             if (verifyRes.data?.success) {
               onBookingSuccess("Meeting Scheduled!");
             } else {
@@ -928,10 +1197,71 @@ export default function BookSessionPage() {
           } catch (verifyErr: any) {
             console.error("Payment Verification Error:", verifyErr);
             setBookingFlowState("error");
+
+            if (verifyErr?.response?.data?.awaitingReconciliation || verifyErr?.response?.status === 202) {
+              Swal.fire({
+                title: "Payment Verification in Progress",
+                html: `
+                  <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #334155;">
+                    <p style="margin-bottom: 12px;">Your payment is being verified with Razorpay. Your money is being tracked securely. You do not need to make another payment. We will update your booking or wallet once verification is complete.</p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                      <p style="margin: 4px 0;"><strong>Payment ID:</strong> <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${verifyErr?.response?.data?.paymentId || 'N/A'}</code></p>
+                      <p style="margin: 4px 0;"><strong>Amount Paid:</strong> ₹${displayPrice}</p>
+                    </div>
+                  </div>
+                `,
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonText: "View Wallet",
+                cancelButtonText: "View My Sessions",
+                confirmButtonColor: "#0755E8",
+                cancelButtonColor: "#64748b"
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  navigate("/wallet");
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                  navigate("/my-sessions");
+                }
+              });
+              return;
+            }
+
+            if (verifyErr?.response?.data?.walletCredited) {
+              const d = verifyErr.response.data;
+              Swal.fire({
+                title: d.title || "Payment Added to Your Mockeefy Wallet",
+                html: `
+                  <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #334155;">
+                    <p style="margin-bottom: 12px;">${d.message}</p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                      <p style="margin: 4px 0;"><strong>Credited Amount:</strong> ₹${d.amountCredited}</p>
+                      <p style="margin: 4px 0;"><strong>Updated Wallet Balance:</strong> ₹${d.updatedBalance}</p>
+                      <p style="margin: 4px 0; font-size: 11.5px; color: #64748b;"><strong>Transaction Ref:</strong> <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${d.walletTransactionRef || 'N/A'}</code></p>
+                    </div>
+                  </div>
+                `,
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonText: "View Wallet",
+                cancelButtonText: "Book Another Interview",
+                confirmButtonColor: "#0755E8",
+                cancelButtonColor: "#64748b"
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  navigate("/wallet");
+                } else {
+                  setBookingFlowState("selecting");
+                }
+              });
+              return;
+            }
+
+            const isCutoff = Boolean(verifyErr?.response?.data?.cutoffExpired);
+            const isConflict = Boolean(verifyErr?.response?.data?.slotConflict);
             Swal.fire({
-              title: "Payment Verification Failed",
+              title: isCutoff ? "Booking Cutoff Reached" : (isConflict ? "Slot Unavailable" : "Payment Verification Failed"),
               text: verifyErr?.response?.data?.message || verifyErr.message || "Could not verify payment.",
-              icon: "error"
+              icon: isCutoff || isConflict ? "warning" : "error"
             }).then(() => {
               setBookingFlowState("selecting");
             });
@@ -952,7 +1282,23 @@ export default function BookSessionPage() {
             setIsProcessing(false);
             if (!paymentCompleted) {
               setBookingFlowState("selecting");
-              toast.info("Payment was cancelled. Your slot is still selected.");
+              if (orderResponse.data?.walletDeduction > 0) {
+                axios.post("/api/payment/cancel-partial-booking", {
+                  orderId: order.id,
+                  walletDebitTxnId: orderResponse.data?.walletDebitTxnId
+                }).then((cRes) => {
+                  if (cRes.data?.restored) {
+                    toast.info(`Payment was cancelled. ₹${cRes.data.restoredAmount} restored to your Mockeefy wallet.`);
+                    fetchCandidateWallet();
+                  } else {
+                    toast.info("Payment was cancelled. Your slot is still selected.");
+                  }
+                }).catch(() => {
+                  toast.info("Payment was cancelled. Your slot is still selected.");
+                });
+              } else {
+                toast.info("Payment was cancelled. Your slot is still selected.");
+              }
             }
           }
         }
@@ -1306,8 +1652,37 @@ export default function BookSessionPage() {
               </div>
             </div>
 
+            {todayStatus.isCurrentMonth && !todayStatus.hasSlots && (
+              <div className="mb-3 p-3 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span className="truncate">
+                    No interview slots available today.
+                    {nextAvailableDateInfo ? ` Next available date: ${nextAvailableDateInfo.label}` : " No upcoming slots in this month."}
+                  </span>
+                </div>
+                {nextAvailableDateInfo && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      userExplicitlySelectedDateRef.current = nextAvailableDateInfo.dateStr;
+                      setSelectedDateStr(nextAvailableDateInfo.dateStr);
+                      setSelectedSlot(null);
+                    }}
+                    className={`px-2.5 py-1 text-white font-bold rounded-lg transition-all text-[11px] shrink-0 cursor-pointer shadow-2xs ${
+                      selectedDateStr === nextAvailableDateInfo.dateStr
+                        ? "bg-[#0755E8] hover:bg-blue-700"
+                        : "bg-amber-600 hover:bg-amber-700"
+                    }`}
+                  >
+                    {selectedDateStr === nextAvailableDateInfo.dateStr ? `Viewing slots for ${nextAvailableDateInfo.label}` : `View slots for ${nextAvailableDateInfo.label}`}
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Date Carousel with drag-to-flick, mousewheel, and smooth centering */}
-            {loading || !profile?.availability ? (
+            {isContentLoading ? (
               <div className="flex gap-2 overflow-hidden pb-2 mb-4">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div
@@ -1326,7 +1701,22 @@ export default function BookSessionPage() {
                 onWheel={handleCarouselWheel}
                 className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none select-none cursor-grab active:cursor-grabbing scroll-smooth"
               >
-                {dates.length > 0 ? (
+                {hasAvailabilityError ? (
+                  <div className="w-full py-5 px-4 text-center bg-rose-50/70 rounded-xl border border-rose-200 flex flex-col items-center justify-center gap-2">
+                    <p className="text-xs font-semibold text-rose-800">{sessionsError || "Unable to load interview slot availability."}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSessionsLoading(true);
+                        setSessionsError(null);
+                        fetchSessions();
+                      }}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <span>Retry</span>
+                    </button>
+                  </div>
+                ) : dates.length > 0 ? (
                   dates.map((date) => {
                     const dateStr = getKolkataDateString(date);
                     const isToday = new Date().toDateString() === date.toDateString();
@@ -1337,6 +1727,7 @@ export default function BookSessionPage() {
                         type="button"
                         onClick={(e) => {
                           if (hasDragged.current) return;
+                          userExplicitlySelectedDateRef.current = dateStr;
                           setSelectedDateStr(dateStr);
                           setSelectedSlot(null);
                           setPaymentStatus("not_paid");
@@ -1352,14 +1743,19 @@ export default function BookSessionPage() {
                             : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                         }`}
                       >
-                        <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-                          {isToday ? "TODAY" : date.toLocaleDateString("en-US", { weekday: "short" })}
+                        <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 flex items-center justify-center gap-1">
+                          {isToday && (
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-wide ${isSelected ? "bg-white text-[#0755E8]" : "bg-emerald-100 text-emerald-800 border border-emerald-300"}`}>
+                              TODAY
+                            </span>
+                          )}
+                          {!isToday && date.toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Kolkata" })}
                         </div>
                         <div className="font-extrabold text-lg my-0.5 tabular-nums leading-none">
-                          {date.getDate()}
+                          {date.toLocaleDateString("en-US", { day: "numeric", timeZone: "Asia/Kolkata" })}
                         </div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider opacity-85">
-                          {date.toLocaleDateString("en-US", { month: "short" })}
+                          {date.toLocaleDateString("en-US", { month: "short", timeZone: "Asia/Kolkata" })}
                         </div>
                       </button>
                     );
@@ -1380,7 +1776,38 @@ export default function BookSessionPage() {
             )}
 
             {/* Available Time Slots Header & Grid (or empty month state) */}
-            {dates.length === 0 ? (
+            {isContentLoading ? (
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
+                  <div className="h-4 w-44 bg-slate-200/80 rounded animate-pulse" />
+                  <div className="h-5 w-24 bg-[#EAF2FF] border border-[#93B8FF]/40 rounded-full animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            ) : hasAvailabilityError ? (
+              <div className="py-8 text-center bg-rose-50/60 rounded-xl border-2 border-dashed border-rose-200 flex flex-col items-center justify-center p-4">
+                <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
+                <p className="text-xs sm:text-sm font-bold text-rose-900">Unable to load interview slots</p>
+                <p className="text-xs text-rose-700 mt-0.5 max-w-sm">
+                  {sessionsError || "An error occurred while fetching availability. Please try again."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSessionsLoading(true);
+                    setSessionsError(null);
+                    fetchSessions();
+                  }}
+                  className="mt-3 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>Retry</span>
+                </button>
+              </div>
+            ) : dates.length === 0 ? (
               <div className="py-8 text-center bg-slate-50/60 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4">
                 <Calendar className="w-8 h-8 text-slate-400 mb-2" />
                 <p className="text-xs sm:text-sm font-bold text-slate-800">No time slots scheduled for this month</p>
@@ -1401,7 +1828,7 @@ export default function BookSessionPage() {
                 {/* Available Time Slots Header */}
                 <div className="flex items-center justify-between mb-2.5 pt-1 border-t border-slate-100">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Available Slots for {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
+                    Available Slots for {activeDate ? activeDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "Asia/Kolkata" }) : ""}
                   </span>
                   <span className="text-[11px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full border border-[#93B8FF]/40">
                     {currentSlots.filter(s => s.available).length} slots available
@@ -1409,16 +1836,7 @@ export default function BookSessionPage() {
                 </div>
 
                 {/* Time Slot Grid (Natural flow, non-truncated time ranges) */}
-                {loading || !profile?.availability ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="h-[38px] sm:h-[40px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse"
-                      />
-                    ))}
-                  </div>
-                ) : currentSlots.length > 0 ? (
+                {currentSlots.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
                     {currentSlots.map((slot) => {
                       const isSelected = selectedSlot?.time === slot.time;
@@ -1464,10 +1882,28 @@ export default function BookSessionPage() {
                 ) : (
                   <div className="py-8 text-center bg-slate-50/60 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4">
                     <Calendar className="w-8 h-8 text-slate-400 mb-2" />
-                    <p className="text-xs sm:text-sm font-bold text-slate-800">No time slots available on this day</p>
-                    <p className="text-xs text-slate-500 mt-0.5 max-w-sm">
-                      {profile.name} has no remaining openings for this date. Please select another date from the carousel above.
+                    <p className="text-xs sm:text-sm font-bold text-slate-800">
+                      {isTodayActive ? "No remaining slots available for Today" : "No time slots available on this day"}
                     </p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                      {isTodayActive && nextAvailableDateInfo
+                        ? `All openings for today have passed. Next available date with openings is ${nextAvailableDateInfo.label}.`
+                        : `${profile.name} has no remaining openings for this date. Please select another date from the carousel above.`}
+                    </p>
+                    {isTodayActive && nextAvailableDateInfo && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          userExplicitlySelectedDateRef.current = nextAvailableDateInfo.dateStr;
+                          setSelectedDateStr(nextAvailableDateInfo.dateStr);
+                          setSelectedSlot(null);
+                        }}
+                        className="mt-3 px-3.5 py-1.5 bg-[#0755E8] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <span>Switch to {nextAvailableDateInfo.label}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </>
@@ -1525,13 +1961,277 @@ export default function BookSessionPage() {
                       <span className="tabular-nums">-₹{sessionFee}</span>
                     </div>
                   )}
+
+                  {/* Dedicated Payment Method Selection Section */}
+                  {user && !appliedFreePromo && (
+                    <div className="p-4 bg-gradient-to-br from-slate-50 via-white to-blue-50/30 border border-slate-200/90 rounded-2xl space-y-3 text-left shadow-2xs">
+                      {/* Heading */}
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                            <CreditCard className="w-4 h-4 text-[#0755E8]" />
+                            <span>Choose Payment Method</span>
+                          </h4>
+                          <p className="text-[10.5px] text-slate-500 font-medium">
+                            Select your payment option before confirming your booking
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Available Balance</span>
+                          <span className={`text-xs font-extrabold ${walletBalance > 0 ? "text-emerald-700" : "text-slate-500"}`}>
+                            ₹{walletBalance}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Hidden backward-compatible checkbox for automated scripts expecting #use-mockeefy-wallet-toggle-page */}
+                      <input
+                        type="checkbox"
+                        id="use-mockeefy-wallet-toggle-page"
+                        disabled={walletBalance <= 0}
+                        checked={(paymentMethod === 'MOCKEEFY_WALLET' || paymentMethod === 'COMBINED') && walletBalance > 0}
+                        onChange={(e) => setUseWalletBalance(e.target.checked)}
+                        className="hidden sr-only"
+                      />
+
+                      {/* Payment Method Cards */}
+                      <div className="space-y-2.5">
+
+                        {/* OPTION A: MOCKEEFY WALLET */}
+                        <div
+                          onClick={() => {
+                            if (walletBalance >= sessionFee) {
+                              setUserSelectedPaymentMethod('MOCKEEFY_WALLET');
+                            }
+                          }}
+                          className={`p-3 rounded-xl border transition-all ${
+                            walletBalance >= sessionFee
+                              ? paymentMethod === 'MOCKEEFY_WALLET'
+                                ? "border-[#0755E8] bg-blue-50/50 ring-2 ring-[#0755E8]/20 cursor-pointer shadow-xs"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 cursor-pointer"
+                              : "border-slate-200 bg-slate-50/70 opacity-75 cursor-not-allowed"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <input
+                                type="radio"
+                                id="payment-method-mockeefy-wallet-page"
+                                name="booking-payment-method-page"
+                                disabled={walletBalance < sessionFee}
+                                checked={paymentMethod === 'MOCKEEFY_WALLET'}
+                                onChange={() => setUserSelectedPaymentMethod('MOCKEEFY_WALLET')}
+                                className="mt-1 w-4 h-4 text-[#0755E8] border-slate-300 focus:ring-[#0755E8] cursor-pointer disabled:cursor-not-allowed"
+                              />
+                              <div className="w-7 h-7 rounded-lg bg-blue-600/10 flex items-center justify-center text-[#0755E8] shrink-0 mt-0.5">
+                                <Wallet className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Option A</span>
+                                  <span className="text-xs font-bold text-slate-900">Mockeefy Wallet</span>
+                                  {walletBalance >= sessionFee ? (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      Full Coverage Available
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                      {walletBalance <= 0 ? "Insufficient Mockeefy Wallet Balance (₹0)" : `Insufficient for Full Payment (₹${walletBalance} / ₹${sessionFee})`}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                                  Pay with Mockeefy Wallet — Use Mockeefy Wallet Balance (Internal credits &amp; expert payouts)
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-extrabold text-slate-900">₹{sessionFee}</span>
+                            </div>
+                          </div>
+
+                          {/* Option A Breakdown */}
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
+                            <div className="flex justify-between items-center">
+                              <span>Available Mockeefy wallet balance:</span>
+                              <span className="font-semibold text-slate-800">₹{walletBalance}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Interview booking price:</span>
+                              <span className="font-semibold text-slate-800">₹{sessionFee}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-emerald-700 font-semibold">
+                              <span>Wallet contribution:</span>
+                              <span className="font-bold tabular-nums">
+                                {walletBalance >= sessionFee && paymentMethod === 'MOCKEEFY_WALLET' ? `-₹${sessionFee}` : "₹0"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center font-bold text-slate-900 pt-1 border-t border-slate-200/60">
+                              <span>Remaining payable amount:</span>
+                              <span className="text-xs font-extrabold text-[#0755E8] tabular-nums">
+                                {paymentMethod === 'MOCKEEFY_WALLET' ? "₹0 (Fully Covered)" : `₹${sessionFee}`}
+                              </span>
+                            </div>
+
+                            {walletBalance >= sessionFee ? (
+                              <p className="text-[10.5px] text-emerald-700 font-semibold pt-1">
+                                ✓ Full amount covered by Mockeefy wallet. Instant confirmation without launching Razorpay. Remaining balance: ₹{walletBalance - sessionFee}.
+                              </p>
+                            ) : walletBalance > 0 ? (
+                              <p className="text-[10.5px] text-amber-700 pt-1">
+                                Your wallet balance of ₹{walletBalance} is insufficient for full payment. Select Combined Payment below or use Razorpay.
+                              </p>
+                            ) : (
+                              <p className="text-[10.5px] text-slate-500 pt-1">
+                                Your Mockeefy wallet balance is ₹0. Full payment of ₹{sessionFee} will be processed via Razorpay.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* COMBINED OPTION: PARTIAL WALLET + RAZORPAY (Visible when 0 < walletBalance < sessionFee) */}
+                        {walletBalance > 0 && walletBalance < sessionFee && (
+                          <div
+                            onClick={() => setUserSelectedPaymentMethod('COMBINED')}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                              paymentMethod === 'COMBINED'
+                                ? "border-[#0755E8] bg-blue-50/50 ring-2 ring-[#0755E8]/20 shadow-xs"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <input
+                                  type="radio"
+                                  id="payment-method-combined-page"
+                                  name="booking-payment-method-page"
+                                  checked={paymentMethod === 'COMBINED'}
+                                  onChange={() => setUserSelectedPaymentMethod('COMBINED')}
+                                  className="mt-1 w-4 h-4 text-[#0755E8] border-slate-300 focus:ring-[#0755E8] cursor-pointer"
+                                />
+                                <div className="w-7 h-7 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
+                                  <Wallet className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Combined</span>
+                                    <span className="text-xs font-bold text-slate-900">Partial Wallet + Razorpay</span>
+                                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                      Selectable Method
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                                    Pay ₹{sessionFee - walletBalance} via Razorpay + ₹{walletBalance} Wallet
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-xs font-extrabold text-[#0755E8]">₹{sessionFee - walletBalance} via Razorpay</span>
+                              </div>
+                            </div>
+
+                            {/* Combined Breakdown */}
+                            <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
+                              <div className="flex justify-between items-center">
+                                <span>Interview booking price:</span>
+                                <span className="font-semibold text-slate-800">₹{sessionFee}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-emerald-700 font-semibold">
+                                <span>Mockeefy Wallet contribution:</span>
+                                <span className="font-bold tabular-nums">-₹{walletBalance}</span>
+                              </div>
+                              <div className="flex justify-between items-center font-bold text-slate-900 pt-1 border-t border-slate-200/60">
+                                <span>Remaining payable via Razorpay:</span>
+                                <span className="text-xs font-extrabold text-[#0755E8] tabular-nums">
+                                  ₹{sessionFee - walletBalance}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-blue-700 font-medium pt-1">
+                                ₹{walletBalance} contributed from wallet. Remaining ₹{sessionFee - walletBalance} will be collected via Razorpay.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* OPTION B: RAZORPAY */}
+                        <div
+                          onClick={() => setUserSelectedPaymentMethod('RAZORPAY')}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                            paymentMethod === 'RAZORPAY'
+                              ? "border-[#0755E8] bg-blue-50/50 ring-2 ring-[#0755E8]/20 shadow-xs"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <input
+                                type="radio"
+                                id="payment-method-razorpay-page"
+                                name="booking-payment-method-page"
+                                checked={paymentMethod === 'RAZORPAY'}
+                                onChange={() => setUserSelectedPaymentMethod('RAZORPAY')}
+                                className="mt-1 w-4 h-4 text-[#0755E8] border-slate-300 focus:ring-[#0755E8] cursor-pointer"
+                              />
+                              <div className="w-7 h-7 rounded-lg bg-indigo-600/10 flex items-center justify-center text-[#0755E8] shrink-0 mt-0.5">
+                                <CreditCard className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Option B</span>
+                                  <span className="text-xs font-bold text-slate-900">Razorpay</span>
+                                  <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                                    UPI, Cards, Netbanking
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                                  Pay full booking amount through Razorpay payment gateway
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-extrabold text-slate-900">₹{sessionFee}</span>
+                            </div>
+                          </div>
+
+                          {/* Razorpay Breakdown */}
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
+                            <div className="flex justify-between items-center">
+                              <span>Interview booking price:</span>
+                              <span className="font-semibold text-slate-800">₹{sessionFee}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Wallet contribution:</span>
+                              <span className="font-semibold text-slate-500">₹0 (Wallet untouched)</span>
+                            </div>
+                            <div className="flex justify-between items-center font-bold text-slate-900 pt-1 border-t border-slate-200/60">
+                              <span>Razorpay payable amount:</span>
+                              <span className="text-xs font-extrabold text-[#0755E8] tabular-nums">
+                                ₹{sessionFee}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-1 text-[10px] text-slate-500">
+                              <Shield className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>Supported: UPI (Google Pay, PhonePe, Paytm, BHIM), Credit/Debit Cards, Netbanking &amp; External Wallets</span>
+                            </div>
+                            {walletBalance > 0 && (
+                              <p className="text-[10.5px] text-slate-500 pt-0.5">
+                                Your available ₹{walletBalance} Mockeefy wallet balance will NOT be deducted.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-slate-900 font-bold text-sm pt-2.5 border-t border-slate-100 items-baseline">
                     <div>
                       <span className="text-sm font-bold text-slate-900">Total Payable</span>
                       <span className="block text-[11px] font-normal text-slate-400">All fees &amp; taxes included</span>
                     </div>
-                    <span className={`text-lg font-extrabold tabular-nums ${appliedFreePromo ? "text-emerald-600" : "text-[#0755E8]"}`}>
-                      {appliedFreePromo ? "Free" : `₹${finalPayable}`}
+                    <span className={`text-lg font-extrabold tabular-nums ${appliedFreePromo || (paymentMethod === 'MOCKEEFY_WALLET') ? "text-emerald-600" : "text-[#0755E8]"}`}>
+                      {appliedFreePromo || (paymentMethod === 'MOCKEEFY_WALLET') ? "Free / Covered" : `₹${finalPayable}`}
                     </span>
                   </div>
                 </div>
@@ -1556,14 +2256,18 @@ export default function BookSessionPage() {
                           ? "Confirm Free Booking"
                           : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
                           ? `Book with Credit (${user.freeInterviewsCount} left)`
-                          : `Proceed to Payment — ₹${finalPayable}`}
+                          : paymentMethod === 'MOCKEEFY_WALLET'
+                          ? `Confirm Booking — ₹${sessionFee} from Mockeefy Wallet`
+                          : paymentMethod === 'COMBINED'
+                          ? `Pay ₹${sessionFee - walletBalance} via Razorpay + ₹${walletBalance} Wallet`
+                          : `Proceed to Razorpay — ₹${sessionFee}`}
                       </span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
 
-                {/* Trust and Authenticity Badges */}
+                {/* Trust and Authenticity Badges & Policy Disclosure */}
                 <div className="pt-2 border-t border-slate-100 space-y-1.5 text-[11px] font-medium text-slate-500">
                   <div className="flex items-center gap-1.5">
                     <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -1573,6 +2277,9 @@ export default function BookSessionPage() {
                     <Video className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
                     <span>Direct in-browser 1:1 video room provided on confirmation</span>
                   </div>
+                  <p className="text-[10px] text-slate-400 leading-tight pt-1">
+                    <strong className="text-slate-600">Cutoff Policy:</strong> Payments captured before the 10-minute cutoff confirm your session. Payments captured at or after cutoff are automatically credited to your Mockeefy wallet.
+                  </p>
                 </div>
               </div>
             )}
@@ -1852,7 +2559,7 @@ export default function BookSessionPage() {
                 </div>
                 {selectedDateObj ? (
                   <p className="text-xs font-bold text-slate-900 mt-0.5">
-                    {selectedDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {selectedDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" })}
                   </p>
                 ) : (
                   <p className="text-xs font-semibold text-slate-400 italic mt-0.5">

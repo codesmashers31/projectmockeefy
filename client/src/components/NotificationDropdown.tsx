@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck, X } from 'lucide-react';
 import axios from '../lib/axios';
 
@@ -11,10 +12,12 @@ interface Notification {
     createdAt: string;
     metadata?: {
         link?: string;
+        sessionId?: string;
     };
 }
 
 const NotificationDropdown = () => {
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -23,8 +26,8 @@ const NotificationDropdown = () => {
     const fetchNotifications = async () => {
         try {
             const { data } = await axios.get('/api/notifications');
-            setNotifications(data.notifications);
-            setUnreadCount(data.unreadCount);
+            setNotifications(data.notifications || []);
+            setUnreadCount(data.unreadCount || 0);
         } catch (error) {
             console.error('Failed to fetch notifications', error);
         }
@@ -35,22 +38,35 @@ const NotificationDropdown = () => {
         try {
             await axios.put('/api/notifications/read', { notificationIds: 'all' });
             setUnreadCount(0);
-            // Optimistically update local state
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         } catch (error) {
             console.error('Failed to mark notifications as read', error);
         }
     };
 
+    const handleItemClick = async (notification: Notification) => {
+        if (!notification.isRead) {
+            try {
+                await axios.put('/api/notifications/read', { notificationIds: [notification._id] });
+                setNotifications(prev => prev.map(n => n._id === notification._id ? { ...n, isRead: true } : n));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            } catch (_) {}
+        }
+        setIsOpen(false);
+        const link = notification.metadata?.link;
+        if (link) {
+            if (link.startsWith('http://') || link.startsWith('https://')) {
+                window.location.href = link;
+            } else {
+                navigate(link);
+            }
+        }
+    };
+
     const handleToggle = () => {
         if (!isOpen) {
             setIsOpen(true);
-            fetchNotifications(); // Refresh on open
-            // Mark as read when opening? or maybe just when clicking specific items?
-            // User requirement: "if i click it its read it like that" -> usually implies clicking the bell marks all or clicking item marks item.
-            // Let's mark all as read when opening the dropdown for simplicity, or we can do it explicitly.
-            // Let's keep it manual or auto on open. Common pattern: badge clears on open.
-            markAsRead();
+            fetchNotifications();
         } else {
             setIsOpen(false);
         }
@@ -138,22 +154,20 @@ const NotificationDropdown = () => {
                                 {notifications.map((notification) => (
                                     <li
                                         key={notification._id}
-                                        className={`border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
+                                        onClick={() => handleItemClick(notification)}
+                                        className={`border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/40 font-medium' : ''}`}
                                     >
                                         <div className="p-3">
-                                            <p className="text-sm font-medium text-gray-900 mb-1">{notification.title}</p>
+                                            <p className={`text-sm mb-1 ${!notification.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{notification.title}</p>
                                             <p className="text-xs text-gray-600 leading-snug mb-2">{notification.message}</p>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[10px] text-gray-400">
-                                                    {new Date(notification.createdAt).toLocaleDateString()} {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(notification.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })} {new Date(notification.createdAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                                 {notification.metadata?.link && (
-                                                    <a
-                                                        href={notification.metadata.link}
-                                                        className="text-[10px] font-semibold text-blue-600 hover:underline"
-                                                    >
-                                                        View Details
-                                                    </a>
+                                                    <span className="text-[10px] font-semibold text-blue-600 hover:underline">
+                                                        View Details &rarr;
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>

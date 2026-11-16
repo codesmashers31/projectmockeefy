@@ -1,0 +1,291 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/MySessionsSkeleton.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=92f38c84"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import { Sparkles } from "/node_modules/.vite/deps/lucide-react.js?v=92f38c84";
+export function SessionCardSkeleton() {
+  return /* @__PURE__ */ jsxDEV("article", { className: "relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] p-4 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "space-y-3 flex-1 flex flex-col", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-start justify-between gap-2.5", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-3 min-w-0 flex-1", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-200/80 shimmer-shining shrink-0" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 12,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "min-w-0 flex-1 space-y-1.5", children: [
+            /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-1.5", children: [
+              /* @__PURE__ */ jsxDEV("div", { className: "h-4 w-36 sm:w-44 rounded-md bg-slate-200/80 shimmer-shining" }, void 0, false, {
+                fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+                lineNumber: 16,
+                columnNumber: 17
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { className: "w-4 h-4 rounded-full bg-[#0755E8]/20 shimmer-shining shrink-0" }, void 0, false, {
+                fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+                lineNumber: 17,
+                columnNumber: 17
+              }, this)
+            ] }, void 0, true, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 15,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { className: "h-3 w-28 sm:w-32 rounded-md bg-slate-100 shimmer-shining" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 19,
+              columnNumber: 15
+            }, this)
+          ] }, void 0, true, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 14,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 10,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-6 w-28 sm:w-32 rounded-full bg-[#EAF2FF] shimmer-shining shrink-0" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 24,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 9,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-3 sm:p-3.5 space-y-2.5 mt-1", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between gap-2", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxDEV("div", { className: "h-3.5 w-24 rounded bg-slate-200/80 shimmer-shining" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 31,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("span", { className: "text-slate-300", children: "•" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 32,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { className: "h-3.5 w-16 rounded bg-slate-100 shimmer-shining" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 33,
+              columnNumber: 15
+            }, this)
+          ] }, void 0, true, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 30,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "h-5 w-12 rounded-lg bg-[#EAF2FF] shimmer-shining shrink-0" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 35,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 29,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "pt-2 border-t border-slate-200/60 flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "h-4 w-11 rounded bg-[#EAF2FF] shimmer-shining shrink-0" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 40,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "h-3.5 w-4/5 rounded bg-slate-200/70 shimmer-shining" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 41,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 39,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 28,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+      lineNumber: 7,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "w-full pt-3.5 mt-3.5 border-t border-slate-100 flex items-center justify-between gap-2.5", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-1.5 min-w-0", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "w-2 h-2 rounded-full bg-slate-200 shimmer-shining shrink-0" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 49,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-3 w-44 rounded bg-slate-100 shimmer-shining" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 50,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 48,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-24 rounded-xl bg-[#EAF2FF] shimmer-shining shrink-0" }, void 0, false, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 52,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+      lineNumber: 47,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+    lineNumber: 6,
+    columnNumber: 5
+  }, this);
+}
+_c = SessionCardSkeleton;
+export function MySessionsSkeleton() {
+  return /* @__PURE__ */ jsxDEV("div", { className: "sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-6 md:p-8 overflow-hidden pb-12 font-sans text-left animate-in fade-in duration-200", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" }, void 0, false, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+      lineNumber: 62,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" }, void 0, false, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+      lineNumber: 63,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "w-full space-y-5 sm:space-y-6 relative z-10", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between flex-wrap gap-3 border-b border-slate-200/80 pb-4", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2.5 sm:gap-3 min-w-0", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF]/60 shrink-0", children: /* @__PURE__ */ jsxDEV(Sparkles, { className: "w-4 h-4 sm:w-5 sm:h-5 text-[#0755E8]/40 animate-pulse" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 70,
+            columnNumber: 15
+          }, this) }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 69,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "min-w-0 space-y-1.5", children: [
+            /* @__PURE__ */ jsxDEV("div", { className: "h-5 sm:h-6 w-36 sm:w-44 rounded-lg bg-slate-200/80 shimmer-shining" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 73,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { className: "h-3 sm:h-3.5 w-60 sm:w-72 rounded-md bg-slate-100 shimmer-shining" }, void 0, false, {
+              fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+              lineNumber: 74,
+              columnNumber: 15
+            }, this)
+          ] }, void 0, true, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 72,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 68,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "h-6 w-20 rounded-full bg-[#EAF2FF] shimmer-shining" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 79,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "h-6 w-20 rounded-xl bg-slate-100 shimmer-shining" }, void 0, false, {
+            fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+            lineNumber: 80,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 78,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 67,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-16 rounded-xl bg-[#0755E8]/20 shimmer-shining shrink-0" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 86,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-28 rounded-xl bg-slate-100/90 shimmer-shining shrink-0" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 87,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-28 rounded-xl bg-slate-100/90 shimmer-shining shrink-0" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 88,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "h-8 w-28 rounded-xl bg-slate-100/90 shimmer-shining shrink-0" }, void 0, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 89,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 85,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4.5", children: Array.from({ length: 4 }).map(
+        (_, index) => /* @__PURE__ */ jsxDEV(SessionCardSkeleton, {}, `session-skel-${index}`, false, {
+          fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+          lineNumber: 95,
+          columnNumber: 11
+        }, this)
+      ) }, void 0, false, {
+        fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+        lineNumber: 93,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+      lineNumber: 65,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx",
+    lineNumber: 60,
+    columnNumber: 5
+  }, this);
+}
+_c2 = MySessionsSkeleton;
+export default MySessionsSkeleton;
+var _c, _c2;
+$RefreshReg$(_c, "SessionCardSkeleton");
+$RefreshReg$(_c2, "MySessionsSkeleton");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) {
+  return RefreshRuntime.register(type, "E:/Projects/mockeefy/projectmockeefy/client/src/components/MySessionsSkeleton.tsx " + id);
+}
+function $RefreshSig$() {
+  return RefreshRuntime.createSignatureFunctionForTransform();
+}
+
+//# sourceMappingURL=data:application/json;base64,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LFNBQUksV0FBVSxrRUFBZjtBQUFBO0FBQUE7QUFBQTtBQUFBLGVBQTZFO0FBQUEsV0FKL0U7QUFBQTtBQUFBO0FBQUE7QUFBQSxhQUtBO0FBQUEsTUFHQSx1QkFBQyxTQUFJLFdBQVUsMkNBQ1pDLGdCQUFNQyxLQUFLLEVBQUVDLFFBQVEsRUFBRSxDQUFDLEVBQUVDO0FBQUFBLFFBQUksQ0FBQ0MsR0FBR0MsVUFDakMsdUJBQUMseUJBQXlCLGdCQUFnQkEsS0FBSyxJQUEvQztBQUFBO0FBQUE7QUFBQTtBQUFBLGVBQWtEO0FBQUEsTUFDbkQsS0FISDtBQUFBO0FBQUE7QUFBQTtBQUFBLGFBSUE7QUFBQSxTQWhDRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFdBaUNBO0FBQUEsT0F0Q0Y7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQXVDQTtBQUVKO0FBQUNDLE1BM0NlUDtBQTZDaEIsZUFBZUE7QUFBbUIsSUFBQUQsSUFBQVE7QUFBQUMsYUFBQVQsSUFBQTtBQUFBUyxhQUFBRCxLQUFBIiwibmFtZXMiOlsiU3BhcmtsZXMiLCJTZXNzaW9uQ2FyZFNrZWxldG9uIiwiX2MiLCJNeVNlc3Npb25zU2tlbGV0b24iLCJBcnJheSIsImZyb20iLCJsZW5ndGgiLCJtYXAiLCJfIiwiaW5kZXgiLCJfYzIiLCIkUmVmcmVzaFJlZyQiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiTXlTZXNzaW9uc1NrZWxldG9uLnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgUmVhY3QgZnJvbSBcInJlYWN0XCI7XHJcbmltcG9ydCB7IFNwYXJrbGVzIH0gZnJvbSBcImx1Y2lkZS1yZWFjdFwiO1xyXG5cclxuZXhwb3J0IGZ1bmN0aW9uIFNlc3Npb25DYXJkU2tlbGV0b24oKSB7XHJcbiAgcmV0dXJuIChcclxuICAgIDxhcnRpY2xlIGNsYXNzTmFtZT1cInJlbGF0aXZlIGJnLXdoaXRlIHJvdW5kZWQtMnhsIHNtOnJvdW5kZWQtM3hsIGJvcmRlciBib3JkZXItc2xhdGUtMjAwLzgwIHNoYWRvdy1bMF8ycHhfMTJweF8tNHB4X3JnYmEoMCwwLDAsMC4wNCldIHAtNCBzbTpwLTUgZmxleCBmbGV4LWNvbCBqdXN0aWZ5LWJldHdlZW4gaC1mdWxsIHctZnVsbCB0ZXh0LWxlZnQgYm94LWJvcmRlclwiPlxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cInNwYWNlLXktMyBmbGV4LTEgZmxleCBmbGV4LWNvbFwiPlxyXG4gICAgICAgIHsvKiAxLiBIZWFkZXI6IEF2YXRhciArIEV4cGVydCBOYW1lICYgUm9sZSArIFN0YXR1cyBCYWRnZSAqL31cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtc3RhcnQganVzdGlmeS1iZXR3ZWVuIGdhcC0yLjVcIj5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTMgbWluLXctMCBmbGV4LTFcIj5cclxuICAgICAgICAgICAgey8qIEF2YXRhciBza2VsZXRvbiAqL31cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJ3LTExIGgtMTEgbWluLXctWzQ0cHhdIG1pbi1oLVs0NHB4XSByb3VuZGVkLXhsIGJnLXNsYXRlLTIwMC84MCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtaW4tdy0wIGZsZXgtMSBzcGFjZS15LTEuNVwiPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTEuNVwiPlxyXG4gICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTQgdy0zNiBzbTp3LTQ0IHJvdW5kZWQtbWQgYmctc2xhdGUtMjAwLzgwIHNoaW1tZXItc2hpbmluZ1wiIC8+XHJcbiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInctNCBoLTQgcm91bmRlZC1mdWxsIGJnLVsjMDc1NUU4XS8yMCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC0zIHctMjggc206dy0zMiByb3VuZGVkLW1kIGJnLXNsYXRlLTEwMCBzaGltbWVyLXNoaW5pbmdcIiAvPlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgIHsvKiBTdGF0dXMgb3IgQ291bnRkb3duIEJhZGdlIHBsYWNlaG9sZGVyICovfVxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTYgdy0yOCBzbTp3LTMyIHJvdW5kZWQtZnVsbCBiZy1bI0VBRjJGRl0gc2hpbW1lci1zaGluaW5nIHNocmluay0wXCIgLz5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgey8qIDIuIEludGVncmF0ZWQgU2NoZWR1bGUgJiBEZXRhaWxzIEJveCAqL31cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImJnLVsjRjhGQUZDXSBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMC83MCByb3VuZGVkLTJ4bCBwLTMgc206cC0zLjUgc3BhY2UteS0yLjUgbXQtMVwiPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW4gZ2FwLTJcIj5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMlwiPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC0zLjUgdy0yNCByb3VuZGVkIGJnLXNsYXRlLTIwMC84MCBzaGltbWVyLXNoaW5pbmdcIiAvPlxyXG4gICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cInRleHQtc2xhdGUtMzAwXCI+4oCiPC9zcGFuPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC0zLjUgdy0xNiByb3VuZGVkIGJnLXNsYXRlLTEwMCBzaGltbWVyLXNoaW5pbmdcIiAvPlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTUgdy0xMiByb3VuZGVkLWxnIGJnLVsjRUFGMkZGXSBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcblxyXG4gICAgICAgICAgey8qIFRvcGljIFJvdyAqL31cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwicHQtMiBib3JkZXItdCBib3JkZXItc2xhdGUtMjAwLzYwIGZsZXggaXRlbXMtY2VudGVyIGdhcC0yXCI+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC00IHctMTEgcm91bmRlZCBiZy1bI0VBRjJGRl0gc2hpbW1lci1zaGluaW5nIHNocmluay0wXCIgLz5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTMuNSB3LTQvNSByb3VuZGVkIGJnLXNsYXRlLTIwMC83MCBzaGltbWVyLXNoaW5pbmdcIiAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPC9kaXY+XHJcbiAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgey8qIDMuIEFjdGlvbiBSb3cgKi99XHJcbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwidy1mdWxsIHB0LTMuNSBtdC0zLjUgYm9yZGVyLXQgYm9yZGVyLXNsYXRlLTEwMCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW4gZ2FwLTIuNVwiPlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTEuNSBtaW4tdy0wXCI+XHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInctMiBoLTIgcm91bmRlZC1mdWxsIGJnLXNsYXRlLTIwMCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTMgdy00NCByb3VuZGVkIGJnLXNsYXRlLTEwMCBzaGltbWVyLXNoaW5pbmdcIiAvPlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC04IHctMjQgcm91bmRlZC14bCBiZy1bI0VBRjJGRl0gc2hpbW1lci1zaGluaW5nIHNocmluay0wXCIgLz5cclxuICAgICAgPC9kaXY+XHJcbiAgICA8L2FydGljbGU+XHJcbiAgKTtcclxufVxyXG5cclxuZXhwb3J0IGZ1bmN0aW9uIE15U2Vzc2lvbnNTa2VsZXRvbigpIHtcclxuICByZXR1cm4gKFxyXG4gICAgPGRpdiBjbGFzc05hbWU9XCJzaWRlYmFyLW1haW4tY2FyZCByZWxhdGl2ZSB3LWZ1bGwgcm91bmRlZC0yeGwgc206cm91bmRlZC1bMjhweF0gYm9yZGVyIGJvcmRlci1zbGF0ZS0yMDAvOTAgYmctZ3JhZGllbnQtdG8tYiBmcm9tLVsjRUJGM0ZGXSB2aWEtd2hpdGUgdG8td2hpdGUgcC0zLjUgc206cC02IG1kOnAtOCBvdmVyZmxvdy1oaWRkZW4gcGItMTIgZm9udC1zYW5zIHRleHQtbGVmdCBhbmltYXRlLWluIGZhZGUtaW4gZHVyYXRpb24tMjAwXCI+XHJcbiAgICAgIHsvKiBEZWNvcmF0aXZlIGFtYmllbnQgYmx1ZSBsaWdodGluZyAqL31cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJhYnNvbHV0ZSAtdG9wLTEyIC1yaWdodC0xMiB3LTQ4IGgtNDggcm91bmRlZC1mdWxsIGJnLWdyYWRpZW50LXRvLWJyIGZyb20tYmx1ZS0zMDAvMzUgdmlhLWluZGlnby0yMDAvMjUgdG8tdHJhbnNwYXJlbnQgYmx1ci0zeGwgcG9pbnRlci1ldmVudHMtbm9uZVwiIC8+XHJcbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwiYWJzb2x1dGUgaW5zZXQteC0wIHRvcC0wIGgtMjAgYmctZ3JhZGllbnQtdG8tYiBmcm9tLWJsdWUtMjAwLzI1IHRvLXRyYW5zcGFyZW50IHBvaW50ZXItZXZlbnRzLW5vbmVcIiAvPlxyXG5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJ3LWZ1bGwgc3BhY2UteS01IHNtOnNwYWNlLXktNiByZWxhdGl2ZSB6LTEwXCI+XHJcbiAgICAgICAgey8qIEhlYWRlciBTa2VsZXRvbiAqL31cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiBmbGV4LXdyYXAgZ2FwLTMgYm9yZGVyLWIgYm9yZGVyLXNsYXRlLTIwMC84MCBwYi00XCI+XHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0yLjUgc206Z2FwLTMgbWluLXctMFwiPlxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInctOSBoLTkgc206dy0xMCBzbTpoLTEwIHJvdW5kZWQteGwgYmctWyNFQUYyRkZdIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIGJvcmRlciBib3JkZXItWyM5M0I4RkZdLzYwIHNocmluay0wXCI+XHJcbiAgICAgICAgICAgICAgPFNwYXJrbGVzIGNsYXNzTmFtZT1cInctNCBoLTQgc206dy01IHNtOmgtNSB0ZXh0LVsjMDc1NUU4XS80MCBhbmltYXRlLXB1bHNlXCIgLz5cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibWluLXctMCBzcGFjZS15LTEuNVwiPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC01IHNtOmgtNiB3LTM2IHNtOnctNDQgcm91bmRlZC1sZyBiZy1zbGF0ZS0yMDAvODAgc2hpbW1lci1zaGluaW5nXCIgLz5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImgtMyBzbTpoLTMuNSB3LTYwIHNtOnctNzIgcm91bmRlZC1tZCBiZy1zbGF0ZS0xMDAgc2hpbW1lci1zaGluaW5nXCIgLz5cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0yXCI+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaC02IHctMjAgcm91bmRlZC1mdWxsIGJnLVsjRUFGMkZGXSBzaGltbWVyLXNoaW5pbmdcIiAvPlxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImgtNiB3LTIwIHJvdW5kZWQteGwgYmctc2xhdGUtMTAwIHNoaW1tZXItc2hpbmluZ1wiIC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgey8qIFN0YXR1cyBGaWx0ZXIgVGFicyBTa2VsZXRvbiAqL31cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0xLjUgc206Z2FwLTIgb3ZlcmZsb3cteC1hdXRvIHB5LTEgcHgtMC41IG5vLXNjcm9sbGJhclwiPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTggdy0xNiByb3VuZGVkLXhsIGJnLVsjMDc1NUU4XS8yMCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTggdy0yOCByb3VuZGVkLXhsIGJnLXNsYXRlLTEwMC85MCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTggdy0yOCByb3VuZGVkLXhsIGJnLXNsYXRlLTEwMC85MCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJoLTggdy0yOCByb3VuZGVkLXhsIGJnLXNsYXRlLTEwMC85MCBzaGltbWVyLXNoaW5pbmcgc2hyaW5rLTBcIiAvPlxyXG4gICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICB7LyogU2Vzc2lvbiBDYXJkcyBHcmlkIFNrZWxldG9uICgyIGNvbHVtbnMpICovfVxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZ3JpZCBncmlkLWNvbHMtMSBtZDpncmlkLWNvbHMtMiBnYXAtNC41XCI+XHJcbiAgICAgICAgICB7QXJyYXkuZnJvbSh7IGxlbmd0aDogNCB9KS5tYXAoKF8sIGluZGV4KSA9PiAoXHJcbiAgICAgICAgICAgIDxTZXNzaW9uQ2FyZFNrZWxldG9uIGtleT17YHNlc3Npb24tc2tlbC0ke2luZGV4fWB9IC8+XHJcbiAgICAgICAgICApKX1cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcbiAgICA8L2Rpdj5cclxuICApO1xyXG59XHJcblxyXG5leHBvcnQgZGVmYXVsdCBNeVNlc3Npb25zU2tlbGV0b247XHJcbiJdLCJmaWxlIjoiRTovUHJvamVjdHMvbW9ja2VlZnkvcHJvamVjdG1vY2tlZWZ5L2NsaWVudC9zcmMvY29tcG9uZW50cy9NeVNlc3Npb25zU2tlbGV0b24udHN4In0=

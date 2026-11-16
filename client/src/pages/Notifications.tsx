@@ -160,7 +160,7 @@ const Notifications = () => {
                                             </p>
                                             <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 flex-shrink-0">
                                                 <Clock className="w-3 h-3" />
-                                                {new Date(notification.createdAt).toLocaleDateString()}
+                                                {new Date(notification.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">

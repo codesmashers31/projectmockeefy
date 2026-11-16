@@ -48,6 +48,8 @@ import tipsRoutes from "./routes/tipsRoutes.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
 import hrContactRoutes from "./routes/hrContactRoutes.js";
 import certificationRuleRoutes from "./routes/certificationRuleRoutes.js";
+import { startOutboxWorker } from "./services/emailOutboxService.js";
+import { startPaymentReconciliationWorker } from "./services/paymentReconciliationService.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 
@@ -191,9 +193,17 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/send-otp', authLimiter);
-// serve uploaded images (dev)
-app.use("/uploads/profileImages", express.static(path.join(process.cwd(), "uploads/profileImages")));
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// serve uploaded files (support both root uploads and server/uploads fallback)
+const possibleUploadDirs = [
+  path.join(process.cwd(), "uploads"),
+  path.join(process.cwd(), "server", "uploads"),
+  path.join(process.cwd(), "..", "uploads")
+];
+possibleUploadDirs.forEach((dir) => {
+  if (fs.existsSync(dir)) {
+    app.use("/uploads", express.static(dir));
+  }
+});
 
 // Debug logging endpoint for client error diagnosis
 app.all("/api/debug-log", (req, res) => {
@@ -297,7 +307,17 @@ const PORT = process.env.PORT || 5000;
 //   // });
 // }
 
-httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  try {
+    startOutboxWorker(60000);
+    console.log('[Server] EmailOutbox background retry worker initialized.');
+    startPaymentReconciliationWorker(30000);
+    console.log('[Server] PaymentReconciliation background worker initialized.');
+  } catch (wErr) {
+    console.warn('[Server] Failed to initialize background workers:', wErr.message);
+  }
+});
 
 // Graceful process shutdown handling (Phase C)
 const handleShutdown = async (signal) => {
