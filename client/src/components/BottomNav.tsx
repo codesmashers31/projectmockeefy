@@ -45,12 +45,21 @@ const BottomNav = () => {
     return isPathActive;
   };
 
-  const profileMenuItems = [
-    { name: "My Profile", href: "/profile", icon: <User size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
-    { name: "Settings", href: "/settings", icon: <Settings2 size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
-    { name: "My Resume", href: "/resume", icon: <BookOpen size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
-    { name: "Help & Support", href: "/help", icon: <HelpCircle size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
-  ];
+  const isExpert = user?.userType?.toLowerCase() === "expert";
+
+  const profileMenuItems = isExpert
+    ? [
+        { name: "Expert Profile", href: "/dashboard/profile", icon: <User size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "Expert Dashboard", href: "/dashboard", icon: <Briefcase size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "Sessions", href: "/dashboard/sessions", icon: <Calendar size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "Availability", href: "/dashboard/availability", icon: <Settings2 size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+      ]
+    : [
+        { name: "My Profile", href: "/profile", icon: <User size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "Settings", href: "/settings", icon: <Settings2 size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "My Resume", href: "/resume", icon: <BookOpen size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "Help & Support", href: "/help", icon: <HelpCircle size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
+      ];
 
   return (
     <>
@@ -58,7 +67,7 @@ const BottomNav = () => {
       <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center z-50 lg:hidden pb-safe safe-area-bottom">
 
         <Link
-          to="/my-sessions"
+          to={isExpert ? "/dashboard/sessions" : "/my-sessions"}
           className={`relative flex flex-col items-center justify-center w-full h-16 transition-colors ${isActive('/my-sessions') ? 'text-[#004fcb]' : 'text-gray-500 hover:text-gray-900'}`}
         >
           {isActive('/my-sessions') && (
@@ -150,7 +159,7 @@ const BottomNav = () => {
                       </h3>
                       <p className="text-sm text-gray-500 truncate">{user.email}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-0.5 bg-gray-900 text-white rounded-full font-medium">Premium</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-gray-900 text-white rounded-full font-medium">{isExpert ? "Verified Expert" : "Premium"}</span>
                       </div>
                     </div>
                   </div>

@@ -24,6 +24,7 @@ import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import CertificatesSkeleton from "../components/CertificatesSkeleton";
 import { IdentityConfirmationModal } from "../components/IdentityConfirmationModal";
+import Swal from "sweetalert2";
 import brandLogo from "../assets/logo/mockeefylogo.png";
 import artworkMasterImg from "../assets/certificates/mockeefy_artwork_master.png";
 
@@ -688,7 +689,7 @@ const CertificateModalPreview = ({ children }: { children: React.ReactNode }) =>
 export default function CertificatesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const routeParams = useParams();
   const location = useLocation();
 
@@ -805,6 +806,44 @@ export default function CertificatesPage() {
     });
   }, [previewData, completedSessions]);
 
+  const initialCertQuery = searchParams.get("q") || searchParams.get("search") || "";
+  const [liveCertQuery, setLiveCertQuery] = useState(initialCertQuery);
+
+  useEffect(() => {
+    const q = searchParams.get("q") || searchParams.get("search") || "";
+    setLiveCertQuery(q);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleLiveSearch = (e: any) => {
+      if (typeof e.detail?.query === "string") {
+        setLiveCertQuery(e.detail.query);
+      }
+    };
+    window.addEventListener("nav-search-change", handleLiveSearch);
+    return () => window.removeEventListener("nav-search-change", handleLiveSearch);
+  }, []);
+
+  const certSearchQuery = liveCertQuery.trim().toLowerCase();
+
+  const filteredIssuedCertificates = useMemo(() => {
+    if (!certSearchQuery) return issuedCertificates;
+    return issuedCertificates.filter((cert) => {
+      const certId = (cert.certificateId || cert.id || cert._id || "").toLowerCase();
+      const domain = (cert.categoryNameSnapshot || cert.categoryName || cert.domain || "").toLowerCase();
+      const candidate = (cert.candidateNameSnapshot || "").toLowerCase();
+      const milestone = (cert.milestoneRange || `milestone ${cert.milestoneNumber || ""}`).toLowerCase();
+      const expert = (cert.expertName || "").toLowerCase();
+      return (
+        certId.includes(certSearchQuery) ||
+        domain.includes(certSearchQuery) ||
+        candidate.includes(certSearchQuery) ||
+        milestone.includes(certSearchQuery) ||
+        expert.includes(certSearchQuery)
+      );
+    });
+  }, [issuedCertificates, certSearchQuery]);
+
   const hasAnyIssuedCert = issuedCertificates.length > 0;
   const anyDomainEligible = categoryProgressList.some((cp) => cp.isEligibleForNext);
 
@@ -902,7 +941,7 @@ export default function CertificatesPage() {
   const domainSessions = useMemo(() => {
     if (!selectedDomain) return [];
     const targetCat = selectedDomain.toLowerCase();
-    return sessions.filter((s) => {
+    let list = sessions.filter((s) => {
       const isQualifying = qualifyingSessionIds.has(String(s.sessionId)) || qualifyingSessionIds.has(String(s.id));
       if (isQualifying) return true;
       const cat = (s.category || s.categoryNameSnapshot || "").toLowerCase();
@@ -913,7 +952,26 @@ export default function CertificatesPage() {
         (targetCat.includes("system design") && (s.topic || "").toLowerCase().includes("system design"))
       );
     });
-  }, [sessions, selectedDomain, qualifyingSessionIds]);
+
+    if (certSearchQuery) {
+      list = list.filter((s) => {
+        const expert = (s.expert || "").toLowerCase();
+        const role = (s.role || "").toLowerCase();
+        const company = (s.company || "").toLowerCase();
+        const topic = (s.topic || "").toLowerCase();
+        const cat = (s.category || s.categoryNameSnapshot || "").toLowerCase();
+        return (
+          expert.includes(certSearchQuery) ||
+          role.includes(certSearchQuery) ||
+          company.includes(certSearchQuery) ||
+          topic.includes(certSearchQuery) ||
+          cat.includes(certSearchQuery)
+        );
+      });
+    }
+
+    return list;
+  }, [sessions, selectedDomain, qualifyingSessionIds, certSearchQuery]);
 
   // Fetch all certificate and session data
   const fetchAllData = async () => {
@@ -1310,12 +1368,7 @@ export default function CertificatesPage() {
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{issuedCertificates.length} CREDENTIAL{issuedCertificates.length > 1 ? "S" : ""} ISSUED</span>
                 </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-700 shadow-xs">
-                  <Eye className="w-3.5 h-3.5 text-amber-600" />
-                  <span>PREVIEW MODE</span>
-                </div>
-              )}
+              ) : null}
               <div className="inline-flex items-center px-3 py-1.5 rounded-full border border-[#E2E8F0] bg-white text-xs font-semibold text-[#334155] shadow-xs">
                 Completed: {completedSessions.length} total
               </div>
@@ -1544,12 +1597,7 @@ export default function CertificatesPage() {
                           {currentProg.progressInMilestone}/3 IN PROGRESS
                         </span>
                       )
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold tracking-[0.05em] uppercase bg-amber-50 text-amber-700 border border-amber-300 shadow-2xs whitespace-nowrap shrink-0">
-                        <Eye className="w-3.5 h-3.5 text-amber-600" />
-                        PREVIEW MODE
-                      </span>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Dynamic Progress Details Area */}
@@ -1611,6 +1659,56 @@ export default function CertificatesPage() {
                               <button
                                 type="button"
                                 onClick={() => {
+                                  // Verify all qualifying sessions for this milestone have been rated by candidate
+                                  const unratedQualifying = domainSessions.filter((s) => {
+                                    const isQual =
+                                      qualifyingSessionIds.has(String(s.sessionId)) ||
+                                      qualifyingSessionIds.has(String(s.id));
+                                    return isQual && !s.candidateReview;
+                                  });
+
+                                  const unratedFromProg = (currentProg?.unallocatedSessions || []).filter((s: any) => {
+                                    const matched = sessions.find(
+                                      (sess) => String(sess.sessionId || sess.id) === String(s.sessionId || s._id || s.id)
+                                    );
+                                    return !(matched?.candidateReview || s.candidateReview);
+                                  });
+
+                                  const unratedCount = Math.max(unratedQualifying.length, unratedFromProg.length);
+
+                                  if (unratedCount > 0) {
+                                    Swal.fire({
+                                      icon: "warning",
+                                      title: "Rate the Expert First!",
+                                      html: `
+                                        <div style="font-size: 13.5px; color: #475569; line-height: 1.6; text-align: center;">
+                                          <p style="margin-bottom: 8px;">
+                                            You have completed your <strong>${currentProg?.categoryName || selectedDomain}</strong> milestone, but you have 
+                                            <strong style="color: #d97706;">${unratedCount} unrated interview session${unratedCount > 1 ? "s" : ""}</strong>!
+                                          </p>
+                                          <p style="font-size: 12.5px; color: #64748b;">
+                                            Please go to <strong>My Sessions</strong> and review &amp; rate your expert first before generating your official certificate.
+                                          </p>
+                                        </div>
+                                      `,
+                                      showCancelButton: true,
+                                      confirmButtonText: "⭐ Go & Rate Expert First",
+                                      cancelButtonText: "Cancel",
+                                      confirmButtonColor: "#F59E0B",
+                                      cancelButtonColor: "#94A3B8",
+                                      customClass: {
+                                        popup: "rounded-2xl shadow-xl",
+                                        confirmButton: "rounded-xl font-bold px-4 py-2",
+                                        cancelButton: "rounded-xl font-semibold px-4 py-2",
+                                      },
+                                    }).then((result) => {
+                                      if (result.isConfirmed) {
+                                        navigate("/my-sessions");
+                                      }
+                                    });
+                                    return;
+                                  }
+
                                   setConfirmingCategory(currentProg);
                                   setIsConfirmModalOpen(true);
                                 }}
@@ -1845,36 +1943,84 @@ export default function CertificatesPage() {
             aria-label="My Earned Certificates"
             className="w-full space-y-4 pt-2"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-2xs">
-                  <Award className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-[#0F172A] tracking-tight">
-                    My Earned Certificates
-                  </h2>
-                  <p className="text-xs text-[#64748B]">
-                    Officially conferred credentials with permanent recipient snapshots and verifiable IDs
-                  </p>
-                </div>
-              </div>
-
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{issuedCertificates.length} Conferred</span>
-              </span>
-            </div>
-
             {issuedCertificates.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
-                <p className="text-xs sm:text-sm font-medium text-[#64748B]">
-                  No certificates issued yet. Complete 3 qualifying mock interviews in any domain to earn your first official credential.
+              <div className="rounded-2xl border border-dashed border-red-200 bg-red-50/60 p-6 text-center">
+                <p className="text-xs sm:text-sm font-semibold text-red-600">
+                  <span className="font-bold text-red-600">No certificates issued yet.</span> Complete 3 qualifying mock interviews in any domain to earn your first official credential.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                {issuedCertificates.map((cert) => {
+              <>
+                <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-2xs">
+                      <Award className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-base sm:text-lg font-bold text-[#0F172A] tracking-tight">
+                        My Earned Certificates
+                      </h2>
+                      <p className="text-xs text-[#64748B]">
+                        Officially conferred credentials with permanent recipient snapshots and verifiable IDs
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>
+                      {certSearchQuery
+                        ? `${filteredIssuedCertificates.length} of ${issuedCertificates.length} Conferred`
+                        : `${issuedCertificates.length} Conferred`}
+                    </span>
+                  </span>
+                </div>
+
+                {certSearchQuery && (
+                  <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200 rounded-xl px-4 py-2 text-xs">
+                    <span className="text-slate-700">
+                      Showing certificates matching <span className="font-bold text-[#0755E8]">"{certSearchQuery}"</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = new URLSearchParams(searchParams);
+                        next.delete("q");
+                        next.delete("search");
+                        setSearchParams(next);
+                      }}
+                      className="text-xs font-bold text-[#0755E8] hover:underline cursor-pointer"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+                )}
+
+                {filteredIssuedCertificates.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0755E8] mb-2.5">
+                      <Award className="w-5 h-5 text-[#0755E8]" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-800 mb-1">No Certificates Found</h3>
+                    <p className="text-xs text-[#64748B] max-w-sm mb-4">
+                      No earned certificates matched "{certSearchQuery}". Try searching by domain name, milestone range, or certificate ID.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = new URLSearchParams(searchParams);
+                        next.delete("q");
+                        next.delete("search");
+                        setSearchParams(next);
+                      }}
+                      className="px-4 py-1.5 text-xs font-bold bg-[#0755E8] text-white rounded-lg hover:bg-[#0645C7] transition-all cursor-pointer"
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {filteredIssuedCertificates.map((cert) => {
                   const domainName = cert.categoryNameSnapshot || "Technical";
                   const issueDateDisplay = cert.issueDate
                     ? new Date(cert.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -1970,7 +2116,9 @@ export default function CertificatesPage() {
                 })}
               </div>
             )}
-          </section>
+          </>
+        )}
+      </section>
         </div>
 
         {/* ================================================================== */}

@@ -30,7 +30,7 @@ import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { getProfileImageUrl, compressImage, compressOriginalImage } from "../lib/imageUtils";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import ImageCropperModal from "../components/ImageCropperModal";
 
@@ -48,6 +48,12 @@ interface ResumeItem {
 
 export default function UserProfile() {
   const { user, fetchProfile, updateUser } = useAuth();
+
+  // If logged-in user is an expert, seamlessly redirect to expert dashboard profile
+  if (user?.userType?.toLowerCase() === "expert") {
+    return <Navigate to="/dashboard/profile" replace />;
+  }
+
   const userId = user?.id || user?._id || user?.userId;
 
   // Image Upload & Cropper States

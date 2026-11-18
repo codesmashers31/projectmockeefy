@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import { useDataSync } from "../context/SocketContext";
@@ -55,6 +55,11 @@ interface WalletTxn {
 export default function CandidateWalletPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // If logged-in user is an expert, redirect to expert earnings
+  if (user?.userType?.toLowerCase() === "expert") {
+    return <Navigate to="/dashboard/withdraw" replace />;
+  }
 
   const [wallet, setWallet] = useState<WalletData>({
     availableBalance: 0,
@@ -240,7 +245,7 @@ export default function CandidateWalletPage() {
             <div>
               <h4 className="text-xs font-bold text-slate-900">100% Candidate Money Safety Guarantee</h4>
               <p className="text-[11.5px] text-slate-600 mt-0.5 leading-relaxed">
-                If an interview slot reaches the 10-minute cutoff before your payment is captured, your funds are automatically protected and credited here. You can apply your balance toward any future session booking across Mockeefy.
+                If an interview slot reaches the 10-minute cutoff or is booked concurrently by another candidate before your session confirms, your payment is 100% protected and immediately credited here. You can apply your balance toward any session booking across Mockeefy with instant 1-click checkout.
               </p>
             </div>
           </div>
@@ -353,7 +358,15 @@ export default function CandidateWalletPage() {
 
                         {/* Amount */}
                         <td className="py-3.5 px-5 font-bold">
-                          <span className={isCredit ? "text-emerald-600" : "text-slate-800"}>
+                          <span
+                            className={
+                              t.status === "REVERSED"
+                                ? "text-slate-400 line-through"
+                                : isCredit
+                                ? "text-emerald-600"
+                                : "text-slate-800"
+                            }
+                          >
                             {isCredit ? "+" : "-"}₹{t.amount.toLocaleString("en-IN")}
                           </span>
                         </td>
@@ -392,10 +405,22 @@ export default function CandidateWalletPage() {
 
                         {/* Status */}
                         <td className="py-3.5 px-5 text-right whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
-                            <CheckCircle2 size={12} className="text-emerald-600" />
-                            {t.status === "PENDING" ? "Processing" : "Completed"}
-                          </span>
+                          {t.status === "REVERSED" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200">
+                              <Undo2 size={12} className="text-slate-500" />
+                              Reversed
+                            </span>
+                          ) : t.status === "PENDING" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200">
+                              <Clock size={12} className="text-amber-600" />
+                              Processing
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
+                              <CheckCircle2 size={12} className="text-emerald-600" />
+                              Completed
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );

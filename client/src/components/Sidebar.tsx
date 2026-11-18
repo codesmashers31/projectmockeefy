@@ -199,7 +199,6 @@ export default function Sidebar() {
       path: "/",
       isActive:
         location.pathname === "/" ||
-        location.pathname === "/dashboard" ||
         location.pathname === "/mentors" ||
         location.pathname === "/find-mentor" ||
         location.pathname === "/book-session",
@@ -218,9 +217,9 @@ export default function Sidebar() {
     {
       label: "My Sessions",
       icon: Calendar,
-      path: "/my-sessions",
+      path: user?.userType?.toLowerCase() === "expert" ? "/dashboard/sessions" : "/my-sessions",
       isActive:
-        location.pathname === "/my-sessions" && !location.search.includes("view=saved"),
+        location.pathname === (user?.userType?.toLowerCase() === "expert" ? "/dashboard/sessions" : "/my-sessions") && !location.search.includes("view=saved"),
     },
     {
       label: "Certificates",
@@ -229,10 +228,10 @@ export default function Sidebar() {
       isActive: location.pathname === "/certificates",
     },
     {
-      label: "Profile & Settings",
+      label: user?.userType?.toLowerCase() === "expert" ? "Expert Profile" : "Profile & Settings",
       icon: User,
-      path: "/profile",
-      isActive: location.pathname === "/profile",
+      path: user?.userType?.toLowerCase() === "expert" ? "/dashboard/profile" : "/profile",
+      isActive: location.pathname === (user?.userType?.toLowerCase() === "expert" ? "/dashboard/profile" : "/profile"),
     },
   ];
 

@@ -16,15 +16,39 @@ export async function acquireSlotReservation({ expertId, candidateId, startTime,
   const now = new Date();
   const start = new Date(startTime);
   const end = new Date(endTime);
-  const slotKey = buildSlotKey(expertId, start, end);
   const reservedUntil = new Date(now.getTime() + ttlMinutes * 60 * 1000);
+
+  // Canonical resolution of expert identifiers (User ID vs ExpertDetails ID)
+  let expertUserId = expertId?._id || expertId?.id || expertId;
+  let expertDetailsId = expertId?._id || expertId?.id || expertId;
+  try {
+    const ExpertDetails = (await import('../models/expertModel.js')).default;
+    const mongoose = (await import('mongoose')).default;
+    const q = mongoose.Types.ObjectId.isValid(expertUserId)
+      ? { $or: [{ _id: new mongoose.Types.ObjectId(expertUserId) }, { userId: new mongoose.Types.ObjectId(expertUserId) }] }
+      : { expertID: expertUserId };
+    const expDoc = await ExpertDetails.findOne(q).lean();
+    if (expDoc) {
+      expertDetailsId = expDoc._id;
+      expertUserId = expDoc.userId || expDoc._id;
+    }
+  } catch (_) {}
+
+  const primarySlotKey = buildSlotKey(expertUserId, start, end);
+  const altSlotKey = expertDetailsId && String(expertDetailsId) !== String(expertUserId)
+    ? buildSlotKey(expertDetailsId, start, end)
+    : primarySlotKey;
+  const slotKeys = Array.from(new Set([primarySlotKey, altSlotKey].filter(Boolean)));
 
   // 1. Check if a non-cancelled session already exists for this slot
   const existingSession = await Session.findOne({
     $or: [
-      { slotLockKey: slotKey, status: { $nin: ['cancelled'] } },
       {
-        expertId: expertId?._id || expertId,
+        slotLockKey: { $in: slotKeys },
+        status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED', 'rejected', 'Rejected', 'REJECTED', 'declined', 'Declined', 'DECLINED', 'failed', 'Failed', 'FAILED', 'expired', 'Expired', 'EXPIRED'] }
+      },
+      {
+        expertId: { $in: [expertDetailsId, expertUserId, expertId?._id || expertId].filter(Boolean) },
         status: { $in: ['confirmed', 'live', 'upcoming', 'Upcoming', 'pending'] },
         startTime: { $lt: end },
         endTime: { $gt: start }
@@ -41,11 +65,22 @@ export async function acquireSlotReservation({ expertId, candidateId, startTime,
   }
 
   // 2. Check for active unexpired reservation by another user/order
+  // Safely match both String and ObjectId representations of candidateId
+  let excludeCandidateList = [];
+  try {
+    const mongoose = (await import('mongoose')).default;
+    const candidateOid = mongoose.Types.ObjectId.isValid(candidateId) ? new mongoose.Types.ObjectId(candidateId) : null;
+    const candidateStr = candidateId ? String(candidateId) : null;
+    excludeCandidateList = [candidateOid, candidateStr].filter(Boolean);
+  } catch (_) {
+    excludeCandidateList = [candidateId].filter(Boolean);
+  }
+
   const activeReservation = await SlotReservation.findOne({
-    slotKey,
+    slotKey: { $in: slotKeys },
     status: 'reserved',
     reservedUntil: { $gt: now },
-    candidateId: { $ne: candidateId }
+    candidateId: { $nin: excludeCandidateList }
   });
 
   if (activeReservation) {
@@ -59,14 +94,14 @@ export async function acquireSlotReservation({ expertId, candidateId, startTime,
 
   // 3. Upsert or record reservation for this candidate
   const reservation = await SlotReservation.findOneAndUpdate(
-    { slotKey, candidateId },
+    { slotKey: primarySlotKey, candidateId },
     {
       $set: {
-        expertId: expertId?._id || expertId,
+        expertId: expertDetailsId || expertUserId,
         candidateId,
         startTime: start,
         endTime: end,
-        slotKey,
+        slotKey: primarySlotKey,
         orderId,
         status: 'reserved',
         reservedUntil,
@@ -79,7 +114,7 @@ export async function acquireSlotReservation({ expertId, candidateId, startTime,
   return {
     acquired: true,
     reservation,
-    slotKey,
+    slotKey: primarySlotKey,
     reservedUntil
   };
 }

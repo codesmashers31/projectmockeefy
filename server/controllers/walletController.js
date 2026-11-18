@@ -13,10 +13,17 @@ export const getWalletBalance = async (req, res) => {
 
     const wallet = await getOrCreateWallet(userId);
 
-    // Compute aggregated wallet stats
+    // Compute aggregated wallet stats from permanent ledger
     const transactions = await WalletTransaction.find({
       $or: [{ walletId: wallet._id }, { userId }]
     }).lean();
+
+    // Identify all debit transactions that were restored/cancelled
+    const restoredDebitIds = new Set(
+      transactions
+        .filter(t => t.type === 'CREDIT' && t.referenceId && /RESTORE/i.test(t.reason || ''))
+        .map(t => t.referenceId.toString())
+    );
 
     let totalCredited = 0;
     let totalSpent = 0;
@@ -26,8 +33,16 @@ export const getWalletBalance = async (req, res) => {
     for (const t of transactions) {
       if (t.status === 'COMPLETED') {
         if (t.type === 'CREDIT') {
+          // Skip internal restoration credits so totalCredited reflects real external funds added
+          if (t.reason && /RESTORE/i.test(t.reason)) {
+            continue;
+          }
           totalCredited += Number(t.amount) || 0;
         } else if (t.type === 'DEBIT') {
+          // If this debit was restored/cancelled, do not count it as spent money
+          if (t.status === 'REVERSED' || restoredDebitIds.has(t._id.toString())) {
+            continue;
+          }
           if (t.reason === 'CASH_REFUND_REQUEST' || t.reason?.includes('REFUND')) {
             totalRefunded += Number(t.amount) || 0;
           } else {
@@ -37,6 +52,17 @@ export const getWalletBalance = async (req, res) => {
       } else if (t.status === 'PENDING' && t.type === 'CREDIT') {
         pendingCredits += Number(t.amount) || 0;
       }
+    }
+
+    // Mathematical invariant: Available Balance = Total Credited - Total Spent - Total Refunded
+    const calculatedAvailable = Math.max(0, totalCredited - totalSpent - totalRefunded);
+
+    // Self-heal wallet available balance if any drift existed
+    if (wallet.availableBalance !== calculatedAvailable) {
+      wallet.availableBalance = calculatedAvailable;
+      await wallet.save().catch(() => {});
+      const User = (await import('../models/User.js')).default;
+      await User.findByIdAndUpdate(userId, { $set: { walletBalance: calculatedAvailable } }).catch(() => {});
     }
 
     res.status(200).json({
@@ -80,8 +106,9 @@ export const getWalletTransactions = async (req, res) => {
       });
     }
 
-    const total = await WalletTransaction.countDocuments({ walletId: wallet._id });
-    const transactions = await WalletTransaction.find({ walletId: wallet._id })
+    const query = { $or: [{ walletId: wallet._id }, { userId }] };
+    const total = await WalletTransaction.countDocuments(query);
+    const transactions = await WalletTransaction.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

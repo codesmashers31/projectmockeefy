@@ -46,7 +46,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     location.pathname.startsWith("/profile");
 
   const handleProfileClick = () => {
-    navigate("/profile");
+    navigate(user?.userType?.toLowerCase() === "expert" ? "/dashboard/profile" : "/profile");
   };
 
   const isHomeOrDiscovery =

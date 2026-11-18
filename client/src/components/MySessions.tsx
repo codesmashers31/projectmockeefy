@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import {
   Calendar,
   ChevronRight,
@@ -32,6 +32,7 @@ import { MentorJobCard } from "./MentorJobCard";
 import MySessionsSkeleton, { SessionCardSkeleton } from "./MySessionsSkeleton";
 import { IdentityConfirmationModal } from "./IdentityConfirmationModal";
 import { useCertificateVerification } from "../hooks/useCertificateVerification";
+import Swal from "sweetalert2";
 
 // --- Types ---
 type ReviewInfo = {
@@ -517,6 +518,39 @@ const SessionCard: React.FC<{
               <button
                 type="button"
                 onClick={() => {
+                  // Alert if user hasn't rated the expert yet
+                  if (!session.candidateReview) {
+                    Swal.fire({
+                      icon: "warning",
+                      title: "Rate the Expert First!",
+                      html: `
+                        <div style="font-size: 13.5px; color: #475569; line-height: 1.6; text-align: center;">
+                          <p style="margin-bottom: 8px;">
+                            Please review and rate your expert <strong>${session.expert || "interviewer"}</strong> to unlock and access your certificate!
+                          </p>
+                          <p style="font-size: 12px; color: #64748b;">
+                            Submitting your rating unlocks certificate eligibility and verifies your interview participation.
+                          </p>
+                        </div>
+                      `,
+                      showCancelButton: true,
+                      confirmButtonText: "⭐ Rate Expert Now",
+                      cancelButtonText: "Later",
+                      confirmButtonColor: "#F59E0B",
+                      cancelButtonColor: "#94A3B8",
+                      customClass: {
+                        popup: "rounded-2xl shadow-xl",
+                        confirmButton: "rounded-xl font-bold px-4 py-2",
+                        cancelButton: "rounded-xl font-semibold px-4 py-2",
+                      },
+                    }).then((result) => {
+                      if (result.isConfirmed) {
+                        handleOpenReviewModal(session);
+                      }
+                    });
+                    return;
+                  }
+
                   if (session.allocatedCertificateId) {
                     const targetSessionId = session.sessionId || session.id;
                     const targetCertId = session.allocatedCertificateId;
@@ -533,7 +567,34 @@ const SessionCard: React.FC<{
                       }
                     );
                   } else {
-                    toast.info("Certificate not yet issued for this session. Complete 3 qualifying sessions in the same category to earn your certificate.");
+                    Swal.fire({
+                      icon: "info",
+                      title: "Expert Rated Successfully!",
+                      html: `
+                        <div style="font-size: 13.5px; color: #475569; line-height: 1.6; text-align: center;">
+                          <p style="margin-bottom: 8px;">
+                            You have completed and reviewed this session!
+                          </p>
+                          <p style="font-size: 12.5px; color: #64748b;">
+                            Official certificates are earned when you complete <strong>3 qualifying sessions</strong> in <strong>${session.category || "this domain"}</strong>.
+                          </p>
+                        </div>
+                      `,
+                      showCancelButton: true,
+                      confirmButtonText: "View Certificate Journey",
+                      cancelButtonText: "Close",
+                      confirmButtonColor: "#0755E8",
+                      cancelButtonColor: "#94A3B8",
+                      customClass: {
+                        popup: "rounded-2xl shadow-xl",
+                        confirmButton: "rounded-xl font-bold px-4 py-2",
+                        cancelButton: "rounded-xl font-semibold px-4 py-2",
+                      },
+                    }).then((res) => {
+                      if (res.isConfirmed) {
+                        navigate("/certificates");
+                      }
+                    });
                   }
                 }}
                 className={`w-full h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs min-w-0 ${
@@ -670,6 +731,11 @@ const MySessions = ({
   const searchParams = new URLSearchParams(location.search);
   const initialView = (initialViewOverride || (searchParams.get('view') as any) || 'overview') as any;
 
+  // If logged-in user is an expert viewing sessions (not saved experts), redirect to expert sessions
+  if (user?.userType?.toLowerCase() === "expert" && initialView !== "saved") {
+    return <Navigate to="/dashboard/sessions" replace />;
+  }
+
   const [activeView, setActiveView] = useState(initialView);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -777,25 +843,90 @@ const MySessions = ({
     return sessions.filter(s => (s.status || '').toLowerCase() === 'cancelled').length;
   }, [sessions]);
 
+  const initialSearchQuery = (searchParams.get("q") || searchParams.get("search") || "");
+  const [liveSearchQuery, setLiveSearchQuery] = useState(initialSearchQuery);
+
+  // Sync with URL when location.search changes
+  useEffect(() => {
+    const q = searchParams.get("q") || searchParams.get("search") || "";
+    setLiveSearchQuery(q);
+  }, [location.search]);
+
+  // Sync immediately with real-time navbar typing (0ms instant response)
+  useEffect(() => {
+    const handleLiveSearch = (e: any) => {
+      if (typeof e.detail?.query === "string") {
+        setLiveSearchQuery(e.detail.query);
+      }
+    };
+    window.addEventListener("nav-search-change", handleLiveSearch);
+    return () => window.removeEventListener("nav-search-change", handleLiveSearch);
+  }, []);
+
+  const sessionSearchQuery = liveSearchQuery.trim().toLowerCase();
+  const savedSearchQuery = liveSearchQuery.trim().toLowerCase();
+
   const filteredSessions = useMemo(() => {
-    if (statusFilter === 'all') return sortedSessions;
+    let result = sortedSessions;
     if (statusFilter === 'upcoming') {
-      return sortedSessions.filter(s => {
+      result = sortedSessions.filter(s => {
         const st = (s.status || '').toLowerCase();
         if (['completed', 'cancelled'].includes(st)) return false;
         const end = s.endTime ? new Date(s.endTime) : null;
         if (end && now > end) return false;
         return true;
       });
+    } else if (statusFilter === 'completed') {
+      result = sortedSessions.filter(s => (s.status || '').toLowerCase() === 'completed');
+    } else if (statusFilter === 'cancelled') {
+      result = sortedSessions.filter(s => (s.status || '').toLowerCase() === 'cancelled');
     }
-    if (statusFilter === 'completed') {
-      return sortedSessions.filter(s => (s.status || '').toLowerCase() === 'completed');
+
+    if (sessionSearchQuery) {
+      result = result.filter(s => {
+        const expertName = (s.expert || '').toLowerCase();
+        const role = (s.role || '').toLowerCase();
+        const company = (s.company || '').toLowerCase();
+        const topic = (s.topic || '').toLowerCase();
+        const category = (s.category || '').toLowerCase();
+        const sessionId = (s.sessionId || s.id || '').toLowerCase();
+        return (
+          expertName.includes(sessionSearchQuery) ||
+          role.includes(sessionSearchQuery) ||
+          company.includes(sessionSearchQuery) ||
+          topic.includes(sessionSearchQuery) ||
+          category.includes(sessionSearchQuery) ||
+          sessionId.includes(sessionSearchQuery)
+        );
+      });
     }
-    if (statusFilter === 'cancelled') {
-      return sortedSessions.filter(s => (s.status || '').toLowerCase() === 'cancelled');
-    }
-    return sortedSessions;
-  }, [sortedSessions, statusFilter, now]);
+
+    return result;
+  }, [sortedSessions, statusFilter, now, sessionSearchQuery]);
+
+  const filteredSavedExperts = useMemo(() => {
+    if (!savedSearchQuery) return savedExperts;
+    return savedExperts.filter((expert: any) => {
+      const name = (expert.name || expert.personalInformation?.name || "").toLowerCase();
+      const role = (expert.role || expert.professionalDetails?.currentRole || "").toLowerCase();
+      const company = (expert.company || expert.professionalDetails?.currentCompany || "").toLowerCase();
+      const category = (expert.category || expert.personalInformation?.category || "").toLowerCase();
+      const bio = (expert.bio || expert.professionalDetails?.bio || "").toLowerCase();
+      const skills = Array.isArray(expert.skills)
+        ? expert.skills.join(" ").toLowerCase()
+        : Array.isArray(expert.skillsAndExpertise?.domains)
+        ? expert.skillsAndExpertise.domains.join(" ").toLowerCase()
+        : "";
+      return (
+        name.includes(savedSearchQuery) ||
+        role.includes(savedSearchQuery) ||
+        company.includes(savedSearchQuery) ||
+        category.includes(savedSearchQuery) ||
+        bio.includes(savedSearchQuery) ||
+        skills.includes(savedSearchQuery)
+      );
+    });
+  }, [savedExperts, savedSearchQuery]);
 
   const PAGE_SIZE = 10;
   const [page, setPage] = useState(1);
@@ -1244,6 +1375,28 @@ const MySessions = ({
               })}
             </div>
 
+            {/* If session search query active, show clear search indicator banner */}
+            {sessionSearchQuery && (
+              <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-xl px-4 py-2 text-xs">
+                <span className="text-slate-700">
+                  Showing sessions matching <span className="font-bold text-[#0755E8]">"{sessionSearchQuery}"</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextParams = new URLSearchParams(location.search);
+                    nextParams.delete("q");
+                    nextParams.delete("search");
+                    const queryStr = nextParams.toString();
+                    navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                  }}
+                  className="text-xs font-bold text-[#0755E8] hover:underline cursor-pointer"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+
             {/* List */}
             <div ref={sessionsTopAnchorRef} className="scroll-mt-24">
               {loading ? (
@@ -1353,20 +1506,34 @@ const MySessions = ({
                 </div>
               </div>
               <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10.5px] font-black text-[#0755E8] uppercase tracking-wider">
-                {savedExperts.length} Saved
+                {savedSearchQuery ? `${filteredSavedExperts.length} of ${savedExperts.length} Saved` : `${savedExperts.length} Saved`}
               </span>
             </div>
 
-            {/* List - 2-column grid matching interview experts */}
-            {savedExperts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
-                {savedExperts.map((expert) => (
-                  <div key={expert.expertID || expert.id} className="flex animate-in fade-in duration-300">
-                    <MentorJobCard mentor={expert} />
-                  </div>
-                ))}
+            {/* If search query active, show clear search indicator banner */}
+            {savedSearchQuery && (
+              <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-xl px-4 py-2 text-xs">
+                <span className="text-slate-700">
+                  Showing saved experts matching <span className="font-bold text-[#0755E8]">"{savedSearchQuery}"</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextParams = new URLSearchParams(location.search);
+                    nextParams.delete("q");
+                    nextParams.delete("search");
+                    const queryStr = nextParams.toString();
+                    navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                  }}
+                  className="text-xs font-bold text-[#0755E8] hover:underline cursor-pointer"
+                >
+                  Clear search
+                </button>
               </div>
-            ) : (
+            )}
+
+            {/* List - 2-column grid matching interview experts */}
+            {savedExperts.length === 0 ? (
               <div className="bg-slate-50/50 rounded-2xl border border-slate-200/80 p-12 sm:p-16 text-center flex flex-col items-center shadow-xs">
                 <div className="w-14 h-14 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center mb-3.5 shadow-xs">
                   <Bookmark className="w-7 h-7 text-[#0755E8] fill-[#0755E8]" />
@@ -1381,6 +1548,37 @@ const MySessions = ({
                   <Briefcase className="w-3.5 h-3.5" />
                   <span>Explore Interview Experts</span>
                 </button>
+              </div>
+            ) : filteredSavedExperts.length === 0 ? (
+              <div className="bg-slate-50/50 rounded-2xl border border-slate-200/80 p-12 text-center flex flex-col items-center shadow-xs">
+                <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center mb-3 shadow-xs">
+                  <Bookmark className="w-6 h-6 text-[#0755E8]" />
+                </div>
+                <h3 className="text-gray-900 font-bold text-base mb-1">No Saved Experts Found</h3>
+                <p className="text-gray-500 text-xs font-medium max-w-xs mx-auto">
+                  No saved interview experts matched "{savedSearchQuery}". Try a different name, role, or skill.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextParams = new URLSearchParams(location.search);
+                    nextParams.delete("q");
+                    nextParams.delete("search");
+                    const queryStr = nextParams.toString();
+                    navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                  }}
+                  className="mt-4 px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Clear Search
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
+                {filteredSavedExperts.map((expert) => (
+                  <div key={expert.expertID || expert.id} className="flex animate-in fade-in duration-300">
+                    <MentorJobCard mentor={expert} />
+                  </div>
+                ))}
               </div>
             )}
           </div>

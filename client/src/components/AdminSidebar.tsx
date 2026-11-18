@@ -14,7 +14,8 @@ import {
     Hexagon,
     UserPlus,
     Ban,
-    FileText
+    FileText,
+    Headphones
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import MockeefyLogo from "./MockeefyLogo";
@@ -34,16 +35,28 @@ export type NavItem = {
 export default function AdminSidebar() {
     const { logout } = useAuth();
     const navigate = useNavigate();
-    const [counts, setCounts] = useState<{ pending?: number; verified?: number; rejected?: number }>({});
+    const [counts, setCounts] = useState<{ pending?: number; verified?: number; rejected?: number; supportOpen?: number }>({});
 
     const fetchCounts = useCallback(async () => {
         try {
-            const res = await axios.get('/api/admin/experts/counts');
-            if (res.data?.success && res.data?.data) {
-                setCounts(res.data.data);
+            const [expertsRes, supportRes] = await Promise.allSettled([
+                axios.get('/api/admin/experts/counts'),
+                axios.get('/api/support/admin/counts'),
+            ]);
+
+            const newCounts: { pending?: number; verified?: number; rejected?: number; supportOpen?: number } = {};
+
+            if (expertsRes.status === 'fulfilled' && expertsRes.value.data?.success && expertsRes.value.data?.data) {
+                Object.assign(newCounts, expertsRes.value.data.data);
             }
+
+            if (supportRes.status === 'fulfilled' && supportRes.value.data?.success && supportRes.value.data?.data) {
+                newCounts.supportOpen = supportRes.value.data.data.open ?? 0;
+            }
+
+            setCounts((prev) => ({ ...prev, ...newCounts }));
         } catch (err) {
-            console.error("Failed to fetch expert counts for sidebar:", err);
+            console.error("Failed to fetch sidebar counts:", err);
         }
     }, []);
 
@@ -51,8 +64,16 @@ export default function AdminSidebar() {
         fetchCounts();
     }, [fetchCounts]);
 
-    // Real-time synchronization when any expert status updates
-    useDataSync(["STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "VERIFICATION_UPDATED", "PROFILE_UPDATED", "RECONNECTED"], () => {
+    // Real-time synchronization when any expert status or support ticket updates
+    useDataSync([
+        "STATUS_UPDATED",
+        "EXPERT_STATUS_UPDATED",
+        "VERIFICATION_UPDATED",
+        "PROFILE_UPDATED",
+        "RECONNECTED",
+        "SUPPORT_TICKET_CREATED",
+        "SUPPORT_TICKET_UPDATED",
+    ], () => {
         fetchCounts();
     });
 
@@ -64,6 +85,14 @@ export default function AdminSidebar() {
     const items: NavItem[] = [
         { id: "dashboard", label: "Dashboard", to: "/admin", icon: <LayoutDashboard size={20} />, end: true },
         { id: "sessions", label: "Session Management", to: "/admin/sessions", icon: <ListCheck size={20} /> },
+        {
+            id: "support",
+            label: "Support Tickets",
+            to: "/admin/support",
+            icon: <Headphones size={20} />,
+            badge: counts.supportOpen,
+            badgeVariant: "pending"
+        },
         {
             id: "pending-experts",
             label: "Pending Experts",

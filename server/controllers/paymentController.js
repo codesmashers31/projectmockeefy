@@ -501,6 +501,11 @@ export const triggerBookingEmails = async ({
 };
 
 export const verifyPayment = async (req, res) => {
+    let candidateUserId = null;
+    let authoritativeAmountINR = 0;
+    let walletDeduction = 0;
+    let walletDebitTxnId = null;
+    let sessionConfirmed = false;
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingDetails, user } = req.body;
 
@@ -641,8 +646,8 @@ export const verifyPayment = async (req, res) => {
                     });
                 }
 
-                const authoritativeAmountINR = payment?.amount ? (payment.amount / 100) : (Number(bookingDetails.price) || 0);
-                const candidateUserId = bookingDetails.candidateId || user?.id || user?.userId;
+                authoritativeAmountINR = payment?.amount ? (payment.amount / 100) : (Number(bookingDetails.price) || 0);
+                candidateUserId = bookingDetails.candidateId || user?.id || user?.userId;
 
                 // Extract authoritative evidence with exact gateway response receipt timestamp
                 const evidence = getAuthoritativeCaptureEvidence({
@@ -753,8 +758,8 @@ export const verifyPayment = async (req, res) => {
                 }
 
                 // Case A: Payment was captured strictly before cutoff -> Eligible for Booking!
-                let walletDeduction = Number(req.body.walletDeduction || payment?.notes?.walletDeduction || 0);
-                let walletDebitTxnId = null;
+                walletDeduction = Number(req.body.walletDeduction || payment?.notes?.walletDeduction || 0);
+                walletDebitTxnId = null;
 
                 if (walletDeduction > 0 && candidateUserId) {
                     const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
@@ -792,19 +797,48 @@ export const verifyPayment = async (req, res) => {
                         });
 
                         if (!debitRes.success) {
-                            console.warn(`[PaymentVerification] Wallet debit failed during hybrid checkout: ${debitRes.message}`);
-                            const refund = await executeRefund({
+                            console.warn(`[PaymentVerification] Wallet debit failed during hybrid checkout: ${debitRes.message}. Crediting captured external payment to candidate wallet.`);
+                            const creditRes = await creditWallet({
+                                userId: candidateUserId,
+                                amount: authoritativeAmountINR,
                                 paymentId: razorpay_payment_id,
                                 orderId: razorpay_order_id,
-                                userId: candidateUserId,
-                                reason: 'Wallet balance insufficient at confirmation time'
+                                reason: 'HYBRID_WALLET_DEBIT_FAILED_CREDIT',
+                                description: `Wallet credited: Secondary wallet deduction could not be completed. ₹${authoritativeAmountINR} credited for immediate re-booking.`
                             });
                             await releaseSlotReservation({ orderId: razorpay_order_id });
-                            return res.status(400).json({
+
+                            try {
+                                await PaymentRecord.create({
+                                    paymentId: razorpay_payment_id,
+                                    orderId: razorpay_order_id,
+                                    userId: candidateUserId,
+                                    paymentType: 'booking',
+                                    amount: authoritativeAmountINR,
+                                    status: 'verified',
+                                    walletCredited: true,
+                                    walletTransactionId: creditRes.transaction?._id,
+                                    paymentCapturedAt: capturedAt,
+                                    timestampSource: evidence.timestampSource,
+                                    providerEventTimestamp: evidence.providerEventTimestamp,
+                                    serverReceiptTimestamp: evidence.serverReceiptTimestamp,
+                                    reconciliationStatus: 'verified',
+                                    metadata: {
+                                        capturedAt,
+                                        bookingCutoff,
+                                        reason: 'Wallet balance insufficient during hybrid checkout - amount credited to wallet'
+                                    }
+                                });
+                            } catch (_) {}
+
+                            return res.status(200).json({
                                 success: false,
-                                walletDebitFailed: true,
-                                refundInitiated: refund.success,
-                                message: 'Could not complete booking because wallet balance could not be deducted. External payment has been refunded.'
+                                walletCredited: true,
+                                amountCredited: authoritativeAmountINR,
+                                updatedBalance: creditRes.balanceAfter,
+                                walletTransactionRef: creditRes.transaction?._id,
+                                title: "Payment Added to Your Mockeefy Wallet",
+                                message: `Your payment of ₹${authoritativeAmountINR} has been automatically credited to your Mockeefy wallet for immediate re-booking.`
                             });
                         }
                         walletDebitTxnId = debitRes.transaction?._id;
@@ -830,35 +864,67 @@ export const verifyPayment = async (req, res) => {
                 });
 
                 if (!slotValidation.valid) {
+                    let restoredAmount = 0;
                     if (walletDeduction > 0) {
-                        await restoreWalletDebit({
+                        const restoreRes = await restoreWalletDebit({
                             userId: candidateUserId,
                             amount: walletDeduction,
                             originalTransactionId: walletDebitTxnId,
                             reason: 'SLOT_INVALID_RESTORE',
                             description: 'Restored wallet funds due to slot validation failure'
                         });
+                        if (restoreRes?.success) restoredAmount = walletDeduction;
                     }
 
-                    const refund = await executeRefund({
+                    // Immediately and automatically credit captured payment to candidate wallet for instant re-booking
+                    const creditRes = await creditWallet({
+                        userId: candidateUserId,
+                        amount: authoritativeAmountINR,
                         paymentId: razorpay_payment_id,
                         orderId: razorpay_order_id,
-                        userId: candidateUserId,
-                        reason: slotValidation.error || 'Slot validation failed',
-                        cutoffExpired: Boolean(slotValidation.cutoffExpired),
-                        metadata: { clientPrice: bookingDetails.price }
+                        reason: 'BOOKING_FAILED_CREDIT',
+                        description: `Wallet credited: Slot no longer available (${slotValidation.error || 'Validation failed'}). ₹${authoritativeAmountINR} credited for immediate re-booking.`
                     });
 
                     await releaseSlotReservation({ orderId: razorpay_order_id });
 
-                    return res.status(slotValidation.status || 400).json({
+                    try {
+                        await PaymentRecord.create({
+                            paymentId: razorpay_payment_id,
+                            orderId: razorpay_order_id,
+                            userId: candidateUserId,
+                            paymentType: walletDeduction > 0 ? 'hybrid' : 'booking',
+                            amount: authoritativeAmountINR + walletDeduction,
+                            walletAmountDeducted: walletDeduction,
+                            status: 'verified',
+                            walletCredited: true,
+                            walletTransactionId: creditRes.transaction?._id,
+                            paymentCapturedAt: capturedAt,
+                            timestampSource: evidence.timestampSource,
+                            providerEventTimestamp: evidence.providerEventTimestamp,
+                            serverReceiptTimestamp: evidence.serverReceiptTimestamp,
+                            reconciliationStatus: 'verified',
+                            cutoffExpired: Boolean(slotValidation.cutoffExpired),
+                            metadata: {
+                                capturedAt,
+                                bookingCutoff,
+                                reason: slotValidation.error || 'Slot validation failed'
+                            }
+                        });
+                    } catch (_) {}
+
+                    const totalCreditedBack = authoritativeAmountINR + restoredAmount;
+                    return res.status(200).json({
                         success: false,
-                        cutoffExpired: Boolean(slotValidation.cutoffExpired),
-                        refundInitiated: refund.success,
-                        refundId: refund.refundId,
-                        refundStatus: refund.refundStatus,
-                        refundAmount: refund.refundAmount,
-                        message: slotValidation.error || 'This slot is no longer available. A full refund has been initiated.',
+                        slotConflict: true,
+                        walletCredited: true,
+                        amountCredited: totalCreditedBack,
+                        updatedBalance: creditRes.balanceAfter,
+                        walletTransactionRef: creditRes.transaction?._id,
+                        title: "Payment Added to Your Mockeefy Wallet",
+                        message: slotValidation.error
+                            ? `${slotValidation.error} Your payment of ₹${totalCreditedBack} has been immediately credited to your Mockeefy wallet for instant re-booking!`
+                            : `This interview slot is no longer available. Your payment of ₹${totalCreditedBack} has been immediately credited to your Mockeefy wallet for instant re-booking!`,
                         reason: slotValidation.reason
                     });
                 }
@@ -870,7 +936,7 @@ export const verifyPayment = async (req, res) => {
 
                 const concurrentConflict = await Session.findOne({
                     $or: [
-                        { slotLockKey, status: { $nin: ['cancelled'] } },
+                        { slotLockKey, status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED', 'rejected', 'Rejected', 'REJECTED', 'declined', 'Declined', 'DECLINED', 'failed', 'Failed', 'FAILED', 'expired', 'Expired', 'EXPIRED'] } },
                         {
                             expertId: { $in: expertIds },
                             status: { $in: ['confirmed', 'live', 'upcoming', 'Upcoming', 'pending'] },
@@ -881,36 +947,66 @@ export const verifyPayment = async (req, res) => {
                 });
 
                 if (concurrentConflict) {
-                    console.warn(`[ConcurrencyProtection] Concurrent booking conflict detected for expert ${bookingDetails.expertId} at ${startTime.toISOString()}`);
+                    console.warn(`[ConcurrencyProtection] Concurrent booking conflict detected for expert ${bookingDetails.expertId} at ${startTime.toISOString()}. Crediting candidate wallet for instant re-booking.`);
 
+                    let restoredAmount = 0;
                     if (walletDeduction > 0) {
-                        await restoreWalletDebit({
+                        const restoreRes = await restoreWalletDebit({
                             userId: candidateUserId,
                             amount: walletDeduction,
                             originalTransactionId: walletDebitTxnId,
                             reason: 'SLOT_CONFLICT_RESTORE',
                             description: 'Restored wallet funds due to slot collision'
                         });
+                        if (restoreRes?.success) restoredAmount = walletDeduction;
                     }
 
-                    const refund = await executeRefund({
+                    // Automatically and immediately credit external captured payment to candidate wallet
+                    const creditRes = await creditWallet({
+                        userId: candidateUserId,
+                        amount: authoritativeAmountINR,
                         paymentId: razorpay_payment_id,
                         orderId: razorpay_order_id,
-                        userId: candidateUserId,
-                        reason: 'Slot conflict: Booked concurrently by another candidate',
-                        metadata: { clientPrice: bookingDetails.price }
+                        reason: 'SLOT_CONFLICT_CREDIT',
+                        description: `Wallet credited: Slot booked concurrently by another candidate. ₹${authoritativeAmountINR} credited for immediate re-booking.`
                     });
 
                     await releaseSlotReservation({ orderId: razorpay_order_id });
 
-                    return res.status(409).json({
+                    try {
+                        await PaymentRecord.create({
+                            paymentId: razorpay_payment_id,
+                            orderId: razorpay_order_id,
+                            userId: candidateUserId,
+                            paymentType: walletDeduction > 0 ? 'hybrid' : 'booking',
+                            amount: authoritativeAmountINR + walletDeduction,
+                            walletAmountDeducted: walletDeduction,
+                            status: 'verified',
+                            walletCredited: true,
+                            walletTransactionId: creditRes.transaction?._id,
+                            paymentCapturedAt: capturedAt,
+                            timestampSource: evidence.timestampSource,
+                            providerEventTimestamp: evidence.providerEventTimestamp,
+                            serverReceiptTimestamp: evidence.serverReceiptTimestamp,
+                            reconciliationStatus: 'verified',
+                            metadata: {
+                                capturedAt,
+                                bookingCutoff,
+                                reason: 'Slot conflict: Booked concurrently by another candidate'
+                            }
+                        });
+                    } catch (_) {}
+
+                    const totalCreditedBack = authoritativeAmountINR + restoredAmount;
+                    return res.status(200).json({
                         success: false,
                         slotConflict: true,
-                        refundInitiated: refund.success,
-                        refundId: refund.refundId,
-                        refundStatus: refund.refundStatus,
-                        refundAmount: refund.refundAmount,
-                        message: 'This interview slot was just booked by another candidate. Your payment has been refunded in full.'
+                        walletCredited: true,
+                        amountCredited: totalCreditedBack,
+                        updatedBalance: creditRes.balanceAfter,
+                        walletTransactionRef: creditRes.transaction?._id,
+                        title: "Payment Added to Your Mockeefy Wallet",
+                        message: `This interview slot was just booked by another candidate. Your payment of ₹${totalCreditedBack} has been immediately credited to your Mockeefy wallet for instant re-booking!`
                     });
                 }
 
@@ -940,35 +1036,66 @@ export const verifyPayment = async (req, res) => {
                     session = await sessionService.createSession(sessionData);
                 } catch (sessionErr) {
                     if (sessionErr.code === 11000 || sessionErr.message?.includes('duplicate key') || sessionErr.message?.includes('slotLockKey')) {
-                        console.warn(`[ConcurrencyProtection] Caught duplicate key error (E11000) for slotLockKey: ${slotLockKey}`);
+                        console.warn(`[ConcurrencyProtection] Caught duplicate key error (E11000) for slotLockKey: ${slotLockKey}. Crediting candidate wallet for instant re-booking.`);
 
+                        let restoredAmount = 0;
                         if (walletDeduction > 0) {
-                            await restoreWalletDebit({
+                            const restoreRes = await restoreWalletDebit({
                                 userId: candidateUserId,
                                 amount: walletDeduction,
                                 originalTransactionId: walletDebitTxnId,
                                 reason: 'SLOT_CONFLICT_RESTORE',
                                 description: 'Restored wallet funds due to slot collision'
                             });
+                            if (restoreRes?.success) restoredAmount = walletDeduction;
                         }
 
-                        const refund = await executeRefund({
+                        // Automatically and immediately credit external captured payment to candidate wallet
+                        const creditRes = await creditWallet({
+                            userId: candidateUserId,
+                            amount: authoritativeAmountINR,
                             paymentId: razorpay_payment_id,
                             orderId: razorpay_order_id,
-                            userId: candidateUserId,
-                            reason: 'Slot conflict: Race condition caught by database unique index',
-                            metadata: { clientPrice: bookingDetails.price }
+                            reason: 'SLOT_CONFLICT_CREDIT',
+                            description: `Wallet credited: Slot race condition caught by database unique index. ₹${authoritativeAmountINR} credited for immediate re-booking.`
                         });
+
                         await releaseSlotReservation({ orderId: razorpay_order_id });
 
-                        return res.status(409).json({
+                        try {
+                            await PaymentRecord.create({
+                                paymentId: razorpay_payment_id,
+                                orderId: razorpay_order_id,
+                                userId: candidateUserId,
+                                paymentType: walletDeduction > 0 ? 'hybrid' : 'booking',
+                                amount: authoritativeAmountINR + walletDeduction,
+                                walletAmountDeducted: walletDeduction,
+                                status: 'verified',
+                                walletCredited: true,
+                                walletTransactionId: creditRes.transaction?._id,
+                                paymentCapturedAt: capturedAt,
+                                timestampSource: evidence.timestampSource,
+                                providerEventTimestamp: evidence.providerEventTimestamp,
+                                serverReceiptTimestamp: evidence.serverReceiptTimestamp,
+                                reconciliationStatus: 'verified',
+                                metadata: {
+                                    capturedAt,
+                                    bookingCutoff,
+                                    reason: 'Slot conflict: Race condition caught by database unique index'
+                                }
+                            });
+                        } catch (_) {}
+
+                        const totalCreditedBack = authoritativeAmountINR + restoredAmount;
+                        return res.status(200).json({
                             success: false,
                             slotConflict: true,
-                            refundInitiated: refund.success,
-                            refundId: refund.refundId,
-                            refundStatus: refund.refundStatus,
-                            refundAmount: refund.refundAmount,
-                            message: 'This interview slot was just booked by another candidate. Your payment has been refunded in full.'
+                            walletCredited: true,
+                            amountCredited: totalCreditedBack,
+                            updatedBalance: creditRes.balanceAfter,
+                            walletTransactionRef: creditRes.transaction?._id,
+                            title: "Payment Added to Your Mockeefy Wallet",
+                            message: `This interview slot was just booked by another candidate. Your payment of ₹${totalCreditedBack} has been immediately credited to your Mockeefy wallet for instant re-booking!`
                         });
                     }
                     throw sessionErr;
@@ -1105,6 +1232,7 @@ export const verifyPayment = async (req, res) => {
                     console.error("[BookingPayment] Error in asynchronous triggerBookingEmails:", emailErr);
                 });
 
+                sessionConfirmed = true;
                 return res.status(200).json({
                     success: true,
                     message: 'Payment verified and session created successfully',
@@ -1125,6 +1253,48 @@ export const verifyPayment = async (req, res) => {
         }
     } catch (error) {
         console.error('Razorpay Verify Payment Error:', error);
+
+        // Fail-safe protection: if external payment was captured on Razorpay, guarantee candidate funds are safely credited to wallet
+        if (!sessionConfirmed && candidateUserId && req.body?.razorpay_payment_id && authoritativeAmountINR > 0) {
+            try {
+                if (walletDeduction > 0 && walletDebitTxnId) {
+                    await restoreWalletDebit({
+                        userId: candidateUserId,
+                        amount: walletDeduction,
+                        originalTransactionId: walletDebitTxnId,
+                        reason: 'SYSTEM_ERROR_RESTORE',
+                        description: 'Restored wallet funds due to server error during booking'
+                    }).catch(() => {});
+                }
+
+                const creditRes = await creditWallet({
+                    userId: candidateUserId,
+                    amount: authoritativeAmountINR,
+                    paymentId: req.body.razorpay_payment_id,
+                    orderId: req.body.razorpay_order_id,
+                    reason: 'BOOKING_FAILED_CREDIT',
+                    description: `Wallet credited: Server error encountered during booking. ₹${authoritativeAmountINR} credited for immediate re-booking.`
+                });
+
+                if (req.body.razorpay_order_id) {
+                    await releaseSlotReservation({ orderId: req.body.razorpay_order_id }).catch(() => {});
+                }
+
+                return res.status(200).json({
+                    success: false,
+                    slotConflict: true,
+                    walletCredited: true,
+                    amountCredited: authoritativeAmountINR + (walletDeduction > 0 ? walletDeduction : 0),
+                    updatedBalance: creditRes.balanceAfter,
+                    walletTransactionRef: creditRes.transaction?._id,
+                    title: "Payment Added to Your Mockeefy Wallet",
+                    message: "Your payment was successfully received, but a server error occurred while confirming your interview slot. The full amount has been credited to your Mockeefy wallet for instant re-booking."
+                });
+            } catch (emergencyErr) {
+                console.error('[VerifyPayment] Emergency wallet credit failed:', emergencyErr);
+            }
+        }
+
         res.status(500).json({
             success: false,
             message: 'Failed to verify payment',
@@ -1496,9 +1666,13 @@ export const createFreeSubscription = async (req, res) => {
  * Deducts wallet funds atomically, enforces slot lock, and issues notifications/emails.
  */
 export const bookWithWallet = async (req, res) => {
+    let candidateId = null;
+    let sessionFee = 0;
+    let debitRes = null;
+    let session = null;
     try {
         const rawBooking = req.body.bookingDetails || req.body;
-        const candidateId = rawBooking.candidateId || req.user?.userId || req.user?.id || req.body.userId;
+        candidateId = rawBooking.candidateId || req.user?.userId || req.user?.id || req.body.userId;
         const bookingDetails = { ...rawBooking, candidateId };
 
         if (!bookingDetails?.expertId || !bookingDetails?.candidateId || !bookingDetails?.startTime || !bookingDetails?.endTime) {
@@ -1511,7 +1685,7 @@ export const bookWithWallet = async (req, res) => {
         const startTime = new Date(bookingDetails.startTime);
         const endTime = new Date(bookingDetails.endTime);
         const duration = Number(bookingDetails.duration) || Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000));
-        const sessionFee = Number(bookingDetails.price || req.body.price || 0);
+        sessionFee = Number(bookingDetails.price || req.body.price || 0);
 
         if (sessionFee <= 0) {
             return res.status(400).json({
@@ -1548,7 +1722,7 @@ export const bookWithWallet = async (req, res) => {
         }
 
         // 3. Atomically debit candidate's wallet
-        const debitRes = await debitWallet({
+        debitRes = await debitWallet({
             userId: candidateId,
             amount: sessionFee,
             paymentMethod: 'MOCKEEFY_WALLET',
@@ -1582,7 +1756,7 @@ export const bookWithWallet = async (req, res) => {
 
         const concurrentConflict = await Session.findOne({
             $or: [
-                { slotLockKey, status: { $nin: ['cancelled'] } },
+                { slotLockKey, status: { $nin: ['cancelled', 'Cancelled', 'CANCELLED', 'rejected', 'Rejected', 'REJECTED', 'declined', 'Declined', 'DECLINED', 'failed', 'Failed', 'FAILED', 'expired', 'Expired', 'EXPIRED'] } },
                 {
                     expertId: { $in: expertIds },
                     status: { $in: ['confirmed', 'live', 'upcoming', 'Upcoming', 'pending'] },
@@ -1626,7 +1800,7 @@ export const bookWithWallet = async (req, res) => {
             notes: bookingDetails.notes || "Booked with Mockeefy Wallet"
         };
 
-        let session = null;
+        session = null;
         try {
             session = await sessionService.createSession(sessionData);
         } catch (createErr) {
@@ -1634,7 +1808,7 @@ export const bookWithWallet = async (req, res) => {
             await restoreWalletDebit({
                 userId: candidateId,
                 amount: sessionFee,
-                originalTransactionId: debitRes.transaction?._id,
+                originalTransactionId: debitRes?.transaction?._id,
                 reason: 'SLOT_CONFLICT_RESTORE',
                 description: 'Restored wallet funds due to slot booking race condition'
             });
@@ -1730,6 +1904,22 @@ export const bookWithWallet = async (req, res) => {
         });
     } catch (error) {
         console.error('Book With Wallet Error:', error);
+
+        // Emergency safety: ensure debited wallet funds are safely restored if unexpected exception occurs after debit
+        if (debitRes?.success && !session && candidateId && sessionFee > 0) {
+            try {
+                await restoreWalletDebit({
+                    userId: candidateId,
+                    amount: sessionFee,
+                    originalTransactionId: debitRes.transaction?._id,
+                    reason: 'BOOKING_FAILED_RESTORE',
+                    description: 'Restored wallet funds due to server error during booking'
+                });
+            } catch (restErr) {
+                console.error('[BookWithWallet] Failed to restore wallet funds:', restErr);
+            }
+        }
+
         res.status(500).json({
             success: false,
             message: 'Failed to book session with wallet',
