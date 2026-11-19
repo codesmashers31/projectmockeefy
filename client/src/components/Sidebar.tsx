@@ -17,6 +17,7 @@ import axios from "../lib/axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { formatDisplayName } from "../lib/utils";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { useQuery } from "@tanstack/react-query";
 import { useDataSync } from "../context/SocketContext";
@@ -486,8 +487,8 @@ export default function Sidebar() {
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-slate-900 truncate">
-                {userName}
+              <p className="text-[13px] font-semibold text-slate-900 truncate capitalize">
+                {formatDisplayName(userName)}
               </p>
               <p className="text-[11px] text-slate-400 truncate">
                 {userEmail || "Candidate"}

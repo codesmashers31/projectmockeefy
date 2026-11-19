@@ -32,6 +32,7 @@ import { notify } from "../lib/notify";
 import { useSocketEvent, useDataSync } from "../context/SocketContext";
 import MockeefyLogo from "./MockeefyLogo";
 import Avatar from "./ui/avatar";
+import { formatDisplayName } from "../lib/utils";
 
 interface Notification {
   _id: string;
@@ -757,8 +758,8 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       <Avatar name={user?.name} src={profileImage} className="w-full h-full" />
                     </div>
                     <div className="text-left hidden lg:block leading-tight">
-                      <p className="text-[13px] font-semibold text-slate-900 leading-tight truncate max-w-[110px]">
-                        {user.name?.split(" ")[0] || (user as any).userName || (user?.email ? user.email.split('@')[0] : "User")}
+                      <p className="text-[13px] font-semibold text-slate-900 leading-tight truncate max-w-[160px] capitalize">
+                        {formatDisplayName(user.name || (user as any).userName || (user?.email ? user.email.split('@')[0] : "User"))}
                       </p>
                       <p className="text-[10.5px] font-bold leading-none mt-0.5">
                         {isExpert ? (
@@ -801,8 +802,8 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                         </div>
                         <div className="overflow-hidden">
                           <div className="flex items-center gap-1.5">
-                            <p className="font-semibold text-slate-900 text-xs truncate">
-                              {user.name}
+                            <p className="font-semibold text-slate-900 text-xs truncate capitalize">
+                              {formatDisplayName(user.name)}
                             </p>
                             {user.isPremium && (
                               <Crown size={11} className="text-[#0755E8] shrink-0 fill-current" />

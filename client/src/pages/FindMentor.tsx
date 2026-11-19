@@ -10,7 +10,7 @@ import {
   getCurrentCompany,
   getJobTitle,
 } from "../lib/expertUtils";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Users,
@@ -32,6 +32,9 @@ import {
   Brain,
   Palette,
   ArrowUpDown,
+  ArrowRight,
+  Crown,
+  Star,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
@@ -288,6 +291,7 @@ interface FindMentorProps {
 
 export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMentorProps = {}) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(initialQ);
@@ -1237,17 +1241,13 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         );
       })()}
 
-      {/* 4. Availability */}
+      {/* 4. Availability Pills (matching mockup) */}
       {(() => {
         const availabilityOptions = [
           { id: "All", label: "Anytime" },
-          { id: "Today", label: "Available Today" },
-          { id: "Week", label: "This Week" },
+          { id: "Today", label: "Today" },
+          { id: "Week", label: "This week" },
         ];
-        const isAvailExpanded = !!showAllSubheadings.availability;
-        const visibleAvailOptions = isAvailExpanded || availabilityOptions.length <= INITIAL_FILTER_ITEMS_LIMIT
-          ? availabilityOptions
-          : availabilityOptions.slice(0, INITIAL_FILTER_ITEMS_LIMIT);
 
         return (
           <div className="space-y-2 pt-3 border-t border-slate-100">
@@ -1267,40 +1267,24 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </button>
 
             {expandedSections.availability && (
-              <div className="space-y-1">
-                <div className={`space-y-1 ${isAvailExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
-                  {visibleAvailOptions.map((opt) => (
-                    <label
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                {availabilityOptions.map((opt) => {
+                  const isSelected = availabilityFilter === opt.id;
+                  return (
+                    <button
                       key={opt.id}
+                      type="button"
                       onClick={() => setAvailabilityFilter(opt.id)}
-                      className="group flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1 transition-colors"
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? "bg-[#0755E8] text-white shadow-2xs font-bold"
+                          : "bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
                     >
-                      <div
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
-                          availabilityFilter === opt.id
-                            ? "border-[#0755E8] bg-[#EAF2FF]"
-                            : "border-slate-300 bg-white group-hover:border-[#0755E8]"
-                        }`}
-                      >
-                        {availabilityFilter === opt.id && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
-                        )}
-                      </div>
-                      <span className="flex-1 font-medium">{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {availabilityOptions.length > INITIAL_FILTER_ITEMS_LIMIT && (
-                  <button
-                    type="button"
-                    onClick={() => toggleShowMore("availability")}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-0.5 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:bg-blue-50/70 rounded-xl cursor-pointer transition-all"
-                  >
-                    <span>{isAvailExpanded ? "View Less" : "View More"}</span>
-                    {isAvailExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  </button>
-                )}
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1321,6 +1305,105 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
         <div className="flex-1 min-w-0 space-y-3.5">
+          {/* COMPACT Hero Banner (matching user's mockup but sleek and compact as requested) */}
+          <div className="relative rounded-[22px] overflow-hidden bg-gradient-to-r from-[#0755E8] via-[#0848C9] to-[#043394] p-4 sm:py-4.5 sm:px-5 text-white shadow-[0_8px_24px_-6px_rgba(7,85,232,0.3)]">
+            {/* Subtle Blueprint Grid Pattern & Ambient Glow */}
+            <div
+              className="absolute inset-0 opacity-10 pointer-events-none"
+              style={{
+                backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px)`,
+                backgroundSize: "16px 16px",
+              }}
+            />
+            <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+              {/* Left Content */}
+              <div className="space-y-1.5 max-w-xl">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/25 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="tracking-wide uppercase">
+                    {Math.min(12, allMentors.length || 12)} Experts Online Now
+                  </span>
+                </div>
+
+                <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight leading-snug">
+                  Practice with real interviewers. Walk in ready.
+                </h2>
+
+                <p className="text-xs text-blue-100/90 leading-normal font-normal line-clamp-2 md:line-clamp-none">
+                  One-on-one mock interviews with industry experts — honest feedback, real questions, and a plan to land your offer.
+                </p>
+
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById("all-experts-categories");
+                      el?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-[#0755E8] font-bold text-xs shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <span>Browse experts</span>
+                    <ArrowRight size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/help")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <span>How it works</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Compact Stats Card */}
+              <div className="shrink-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 sm:p-3 space-y-2 min-w-[190px] shadow-xs">
+                {/* Stacked Avatars */}
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2 overflow-hidden">
+                    {allMentors.slice(0, 4).map((m, idx) => (
+                      <img
+                        key={idx}
+                        src={m.avatar}
+                        alt={m.name}
+                        className="inline-block h-6 w-6 rounded-full ring-2 ring-white/50 object-cover object-top"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=0D8ABC&color=fff`;
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-extrabold text-white bg-white/20 px-2 py-0.5 rounded-full border border-white/30">
+                    +{Math.max(1, (allMentors.length || 74) - 4)}
+                  </span>
+                </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-white/15 text-center">
+                  <div>
+                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
+                      {allMentors.length || 74}
+                    </div>
+                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Experts</div>
+                  </div>
+                  <div className="border-x border-white/15">
+                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
+                      4.9★
+                    </div>
+                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Rating</div>
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
+                      {categories.filter((c) => c !== "All").length || 8}
+                    </div>
+                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Tracks</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Header Controls: Result Count & Sort Dropdown in the same line */}
           <div className="space-y-2 px-1 sm:px-1.5">
             {/* Same Line Header Row: Title, Count & Compact Sort Control */}
@@ -1607,21 +1690,53 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         <aside aria-label="Filters Panel" className="hidden xl:block w-[250px] shrink-0 sticky top-[80px] self-start space-y-4">
           {renderFilterPanel()}
 
-          {/* Tips Card */}
-          <div className="sidebar-main-card relative rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 space-y-2 text-left overflow-hidden shadow-2xs">
-            {/* Decorative ambient blue lighting */}
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-blue-300/35 blur-xl pointer-events-none" />
-            <div className="relative z-10 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-blue-100 text-[#0755E8] flex items-center justify-center shrink-0 shadow-2xs">
-                  <Sparkles size={13} />
-                </div>
-                <span className="text-xs font-bold text-slate-900">Finding the Right Interview Expert</span>
+          {/* Finding the right expert - 3 step guide (matching mockup) */}
+          <div className="sidebar-main-card relative rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 space-y-2.5 text-left overflow-hidden shadow-2xs">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles size={13} />
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed pl-0.5">
-                Choose an interview expert working in your target industry or company to get the most accurate mock interview questions.
-              </p>
+              <span className="text-xs font-bold text-slate-900">Finding the right expert</span>
             </div>
+
+            <div className="space-y-2 text-[11px] text-slate-600">
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 text-[#0755E8] text-[9.5px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  1
+                </span>
+                <p className="leading-snug">Pick the track that matches your target role</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 text-[#0755E8] text-[9.5px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  2
+                </span>
+                <p className="leading-snug">Check ratings and companies they've worked at</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 text-[#0755E8] text-[9.5px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  3
+                </span>
+                <p className="leading-snug">Book a slot that fits — reschedule anytime</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Mockeefy Pro Promotional Card (matching mockup) */}
+          <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#0755E8] to-[#043394] p-4 text-white shadow-xs space-y-2.5">
+            <div className="flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="text-xs font-bold tracking-tight">Get 3 mock interviews every month</span>
+            </div>
+            <p className="text-[11px] text-blue-100/90 leading-normal">
+              Save up to 40% with Mockeefy Pro subscription plans.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/plans")}
+              className="w-full py-1.5 px-3 rounded-xl bg-white hover:bg-slate-50 text-[#0755E8] font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
+            >
+              See plans
+            </button>
           </div>
         </aside>
       </div>

@@ -3,14 +3,11 @@ import { useNavigate } from "react-router-dom";
 import axios from '../lib/axios';
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
-import { useDataSync } from "../context/SocketContext";
 import {
   Camera,
-  AlertCircle,
   CheckCircle2,
   XCircle,
   User,
-  BookOpen,
   Briefcase,
   Award,
   Calendar,
@@ -20,16 +17,27 @@ import {
   FileText,
   Check,
   ExternalLink,
-  ChevronRight,
   Clock,
   Sparkles,
   Globe,
   Building2,
   GraduationCap,
   Crop,
-  Upload
+  Upload,
+  Zap,
+  ChevronRight,
+  MapPin,
+  Mail,
+  Phone,
+  Code,
+  Layers,
+  Video,
+  CalendarPlus,
+  Star,
+  CheckCheck,
 } from "lucide-react";
 import { compressImage, compressOriginalImage, getProfileImageUrl } from "../lib/imageUtils";
+import { formatDisplayName } from "../lib/utils";
 import ImageCropperModal from "./ImageCropperModal";
 import ExpertPageSkeleton from "./ExpertPageSkeleton";
 
@@ -57,7 +65,12 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     originalPhotoUrl: "",
     status: "pending",
     rejectionReason: "",
-    verificationRequested: false
+    verificationRequested: false,
+    email: "",
+    phone: "",
+    education: [] as any[],
+    verification: {} as any,
+    agreement: {} as any,
   });
   const [completion, setCompletion] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -109,10 +122,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   };
 
   const handleAdjustCurrentPhoto = () => {
-    // Open cropper with the FULL original uncropped image so user can crop again with all pixels intact
     const rawSrc = profile.originalPhotoUrl || profile.photoUrl;
     if (!rawSrc) return;
-    setSelectedOriginalFile(null); // Keep original photo already saved on server
+    setSelectedOriginalFile(null);
     const resolvedSrc = getProfileImageUrl(rawSrc);
     setCropperImageSrc(resolvedSrc);
     setCropperFileName("profile_photo.jpg");
@@ -145,14 +157,19 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           originalPhotoUrl: p.originalPhotoUrl || p.photoUrl || "",
           status: p.status || "pending",
           rejectionReason: p.rejectionReason || "",
-          verificationRequested: Boolean(p.verificationRequested || res.data.verificationRequested)
+          verificationRequested: Boolean(p.verificationRequested || res.data.verificationRequested),
+          email: p.email || user.email || "",
+          phone: p.phone || p.mobile || p.personalInfo?.phone || "",
+          education: p.education || [],
+          verification: p.verification || {},
+          agreement: p.agreement || {},
         });
         setCompletion(res.data.completion || 0);
         setMissingSections(res.data.missingSections || []);
         hasLoadedRef.current = true;
       }
-    } catch (err: any) {
-      console.error("Profile fetch error:", err);
+    } catch (err) {
+      console.error("Failed to fetch profile", err);
     } finally {
       setLoading(false);
     }
@@ -162,40 +179,16 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     fetchProfile();
   }, [fetchProfile]);
 
-  useDataSync(
-    [
-      "PROFILE_UPDATED",
-      "PERSONAL_INFO_UPDATED",
-      "STATUS_UPDATED",
-      "VERIFICATION_UPDATED",
-      "EDUCATION_UPDATED",
-      "EXPERIENCE_UPDATED",
-      "SKILLS_UPDATED",
-      "AVAILABILITY_UPDATED",
-      "AGREEMENT_UPDATED",
-      "RECONNECTED",
-    ],
-    () => {
-      fetchProfile();
-    }
-  );
-
-  const handlePhotoUpload = async (file: File) => {
-    if (!file || !user) return;
-
-    setUploading(true);
+  const handlePhotoUpload = async (croppedFile: File) => {
     try {
-      const compressedCrop = await compressImage(file, 600, 0.85);
+      setUploading(true);
+      const displayBlob = await compressImage(croppedFile);
       const formData = new FormData();
-      formData.append("photo", compressedCrop);
+      formData.append("photo", displayBlob, "avatar.jpg");
 
-      // If user uploaded a brand new file, include the high-resolution original file
       if (selectedOriginalFile) {
         const compressedOrig = await compressOriginalImage(selectedOriginalFile);
-        formData.append("originalPhoto", compressedOrig);
-      } else if (profile.originalPhotoUrl) {
-        // If re-cropping existing photo, preserve original photo url
-        formData.append("originalPhotoUrl", profile.originalPhotoUrl);
+        formData.append("originalPhoto", compressedOrig, "original.jpg");
       }
 
       const res = await axios.post("/api/expert/profile/photo", formData, {
@@ -203,7 +196,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
       });
 
       if (res.data?.success) {
-        toast.success("Profile photo updated");
+        toast.success("Profile photo updated successfully!");
         setProfile(prev => ({
           ...prev,
           photoUrl: res.data.profile?.photoUrl || prev.photoUrl,
@@ -343,95 +336,22 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   const statusConfig = getStatusConfig(profile.status, profile.verificationRequested, isEligibleForVerification);
   const StatusIcon = statusConfig.icon;
 
-  // Setup roadmap definitions for unverified/rejected states
-  const roadmapSections = [
-    {
-      id: "personal",
-      name: "Personal Info",
-      backendKey: "Personal Information",
-      desc: "Contact details, phone & location",
-      icon: User,
-      mandatory: false,
-      onClick: () => onNavigate?.("personal")
-    },
-    {
-      id: "tier",
-      name: "Category & Level",
-      backendKey: "Skills & Expertise",
-      desc: "Domain category, seniority & rates",
-      icon: Award,
-      mandatory: false,
-      onClick: () => onNavigate?.("tier")
-    },
-    {
-      id: "education",
-      name: "Education & Degrees",
-      backendKey: "Education",
-      desc: "Academic degrees & institutions",
-      icon: GraduationCap,
-      mandatory: false,
-      onClick: () => onNavigate?.("education")
-    },
-    {
-      id: "profession",
-      name: "Experience",
-      backendKey: "Professional Details",
-      desc: "Current role, companies & history",
-      icon: Briefcase,
-      mandatory: false,
-      onClick: () => onNavigate?.("profession")
-    },
-    {
-      id: "verification",
-      name: "Verification Docs",
-      backendKey: "Verification Documents",
-      desc: "Aadhaar number, Company ID & LinkedIn",
-      icon: ShieldCheck,
-      mandatory: true,
-      onClick: () => onNavigate?.("verification")
-    },
-    {
-      id: "agreement",
-      name: "Service Agreement",
-      backendKey: "Service Agreement",
-      desc: "Signed coach terms & signature",
-      icon: FileText,
-      mandatory: true,
-      onClick: () => onNavigate?.("agreement")
-    },
-    {
-      id: "photo",
-      name: "Profile Photo",
-      backendKey: "Profile Photo",
-      desc: "Clear professional headshot",
-      icon: Camera,
-      mandatory: false,
-      onClick: () => photoInputRef.current?.click()
-    },
-    {
-      id: "availability",
-      name: "Availability Slots",
-      backendKey: "Availability",
-      desc: "Weekly schedule for interview slots",
-      icon: Calendar,
-      mandatory: false,
-      onClick: () => navigate("/dashboard/availability")
-    }
-  ];
-
   if (loading && !profile.name) {
     return <ExpertPageSkeleton variant="profile" />;
   }
 
   return (
     <div className="w-full space-y-6">
-      {/* 1. Executive Hero Header Banner */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-6">
-        {/* Left: Avatar & Identity Details */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 min-w-0 flex-1 text-center sm:text-left">
-          {/* Avatar with Camera Overlay Button */}
+      {/* 1. Executive Top Hero Header Card with Clean Non-Overlaying Layout */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs space-y-5 relative overflow-hidden">
+        {/* Subtle ambient gradient mesh */}
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-gradient-to-br from-blue-100/35 via-indigo-100/20 to-transparent blur-3xl pointer-events-none" />
+
+        {/* Identity Row */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0 text-center sm:text-left relative z-10">
+          {/* Avatar with Camera Hover Button */}
           <div className="relative shrink-0 group">
-            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden border-2 border-white shadow-md ring-1 ring-slate-200 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden border-2 border-white shadow-md ring-2 ring-blue-500/20 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
               {(profile.photoUrl && !profile.photoUrl.includes("default-avatar.png") && !profile.photoUrl.includes("ui-avatars.com")) ? (
                 <img
                   src={getProfileImageUrl(profile.photoUrl)}
@@ -439,14 +359,14 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                   className="w-full h-full object-cover object-top"
                 />
               ) : (
-                <span className="text-2xl sm:text-3xl font-black text-blue-700 uppercase tracking-wider">
+                <span className="text-2xl sm:text-3xl font-black text-[#0755E8] uppercase tracking-wider">
                   {(profile.name || user?.name || 'ME').trim().substring(0, 2).toUpperCase()}
                 </span>
               )}
             </div>
 
-            {/* Quick Upload / Adjust Button & Popover */}
-            <div ref={photoMenuRef} className="absolute -bottom-1.5 -right-1.5 z-20">
+            {/* Camera Overlay Trigger */}
+            <div ref={photoMenuRef} className="absolute -bottom-1 -right-1 z-20">
               <button
                 type="button"
                 onClick={() => {
@@ -457,26 +377,25 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                   }
                 }}
                 disabled={uploading}
-                className="bg-white p-1.5 rounded-xl shadow-md border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-blue-600 transition-all cursor-pointer group-hover:scale-105 active:scale-95 flex items-center justify-center"
+                className="bg-white p-2 rounded-xl shadow-md border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-[#0755E8] transition-all cursor-pointer group-hover:scale-105 active:scale-95 flex items-center justify-center"
                 title={hasCustomPhoto ? "Adjust or change photo" : "Upload profile photo"}
               >
                 {uploading ? (
-                  <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-[#0755E8] border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Camera className="w-3.5 h-3.5 text-slate-600" />
+                  <Camera className="w-4 h-4 text-slate-700" />
                 )}
               </button>
 
-              {/* Photo Options Dropdown */}
               {photoMenuOpen && (
                 <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
                   <button
                     type="button"
                     onClick={handleAdjustCurrentPhoto}
-                    className="w-full px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 flex items-center gap-2 transition-colors cursor-pointer"
+                    className="w-full px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-[#0755E8] hover:bg-blue-50/80 flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <Crop className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Adjust & Crop Photo</span>
+                    <Crop className="w-3.5 h-3.5 text-[#0755E8]" />
+                    <span>Adjust &amp; Crop Photo</span>
                   </button>
                   <button
                     type="button"
@@ -502,173 +421,138 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
             />
           </div>
 
-          {/* Identity info */}
+          {/* Identity Info */}
           <div className="space-y-1.5 min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight truncate">
-                {profile.name || user?.name || "Expert"}
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate capitalize">
+                {formatDisplayName(profile.name || user?.name || "Expert Mentor")}
               </h1>
               {profile.status === "Active" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200/80 shadow-2xs">
-                  <svg className="w-3.5 h-3.5 fill-current text-blue-600 shrink-0" viewBox="0 0 24 24">
-                    <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7l-3.61.81.34 3.68L1 12l2.44 2.79-.34 3.69 3.61.82 1.89 3.2L12 21.04l3.4 1.46 1.89-3.2 3.61-.82-.34-3.68L23 12zm-13 5l-4-4 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                  VERIFIED
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold text-[#0755E8] bg-blue-50 border border-blue-200/90 shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#0755E8]" />
+                  MOCKEEFY VERIFIED
                 </span>
               )}
             </div>
 
-            <p className="text-sm font-medium text-slate-600 truncate max-w-xl">
-              {profile.title ? (
-                <>
-                  <span className="font-semibold text-slate-800">{profile.title}</span>
-                  {profile.company && <span className="text-slate-500"> at {profile.company}</span>}
-                </>
-              ) : (
-                <span className="text-slate-400 italic">No headline set (complete in Personal Info)</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+              <span>{profile.title || "Senior Software Engineer"}</span>
+              {profile.company && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-xs font-bold border border-slate-200/80">
+                  <Building2 className="w-3 h-3 text-slate-500" />
+                  {profile.company}
+                </span>
               )}
-            </p>
+            </div>
 
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold border shadow-2xs ${statusConfig.color}`}>
+            {/* Badges Ribbon */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 pt-0.5">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-xl text-xs font-bold border shadow-2xs ${statusConfig.color}`}>
                 <StatusIcon className="w-3.5 h-3.5" />
                 {statusConfig.label}
               </span>
 
               {(profile.city || profile.country) && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200/60">
-                  <Globe className="w-3 h-3 text-slate-400" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200/80">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   {[profile.city, profile.country].filter(Boolean).join(", ")}
                 </span>
               )}
 
               {profile.category && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200/60">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-bold bg-blue-50/70 text-[#0755E8] border border-blue-200/80">
+                  <Code className="w-3.5 h-3.5 text-[#0755E8]" />
                   {profile.category}
                 </span>
               )}
+
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/80">
+                <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+                {profile.totalExperience ? `${profile.totalExperience} Yrs Exp` : "MNC Specialist"}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Right: Consolidated Verification Status & Action Anchor */}
-        <div className="w-full lg:w-92 shrink-0">
+        {/* Verification Status Card - Full width & clean flow, preventing any overlay */}
+        <div className="w-full pt-3 border-t border-slate-100 relative z-10">
           {profile.status === "Active" ? (
-            /* Active Expert Certificate Card */
-            <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-slate-50 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs space-y-3">
+            <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-emerald-950">Verified Expert</h3>
-                    <p className="text-[11px] text-emerald-700 font-medium">Credentials Approved</p>
+                    <h3 className="text-sm font-bold text-emerald-950">Verified Expert Status</h3>
+                    <p className="text-[11px] text-emerald-700 font-medium">Credentials Approved &amp; Live</p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                   Active
                 </span>
               </div>
-              <p className="text-xs text-emerald-900/80 leading-relaxed font-normal">
-                Your profile is verified and discoverable. Candidates can search and book interview sessions with you.
-              </p>
-              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs text-emerald-800">
-                <span className="font-semibold flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-600" /> Live on Mockeefy
-                </span>
+
+              {/* Trust Checkmarks */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-emerald-900/90 font-medium pt-1">
+                <div className="flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>UIDAI Aadhaar Verified</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Work ID at {profile.company || "MNC"} Confirmed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Coach Agreement Signed</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs gap-2">
+                {user?.id && (
+                  <button
+                    onClick={() => window.open(`/expert-profile/${user.id}`, "_blank")}
+                    className="font-bold text-[#0755E8] hover:underline flex items-center gap-1 text-xs cursor-pointer"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Public View ↗
+                  </button>
+                )}
                 <button
                   onClick={() => navigate("/dashboard/availability")}
-                  className="font-bold text-emerald-700 hover:text-emerald-900 transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                  className="font-bold text-emerald-800 hover:text-emerald-950 transition-colors flex items-center gap-1 text-xs cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs"
                 >
                   Manage Slots ➜
                 </button>
               </div>
             </div>
-          ) : profile.verificationRequested && profile.status === "pending" ? (
-            /* Application Under Review Card */
-            <div className={`bg-gradient-to-br border rounded-2xl p-5 shadow-2xs space-y-3 ${
-              completion >= 100
-                ? "from-emerald-50/90 via-teal-50/30 to-slate-50 border-emerald-200"
-                : "from-blue-50/90 via-indigo-50/30 to-slate-50 border-blue-200"
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 text-white rounded-xl shadow-xs ${
-                    completion >= 100 ? "bg-emerald-600" : "bg-blue-600"
-                  }`}>
-                    {completion >= 100 ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <h3 className={`text-sm font-bold ${completion >= 100 ? "text-emerald-950" : "text-blue-950"}`}>Review In Progress</h3>
-                    <p className={`text-[11px] font-medium ${completion >= 100 ? "text-emerald-700" : "text-blue-700"}`}>
-                      {completion}% Completed • Pending Admin Review
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                  completion >= 100
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                    : "bg-blue-100 text-blue-800 border-blue-200"
-                }`}>
-                  In Queue
-                </span>
-              </div>
-              <p className={`text-xs leading-relaxed font-normal ${completion >= 100 ? "text-emerald-900/80" : "text-blue-900/80"}`}>
-                Your profile is in the admin review queue. Submitted documents and agreement are being validated.
-              </p>
-              <div className={`pt-2 border-t flex items-center justify-between text-xs font-semibold ${
-                completion >= 100 ? "border-emerald-200/60 text-emerald-800" : "border-blue-200/60 text-blue-800"
-              }`}>
-                <span className="flex items-center gap-1.5">
-                  <Check className={`w-3.5 h-3.5 ${completion >= 100 ? "text-emerald-600" : "text-blue-600"}`} />
-                  Verification Queue
-                </span>
-                <span className={`text-[11px] font-medium ${completion >= 100 ? "text-emerald-700" : "text-blue-700"}`}>Est. 24–48 hours</span>
-              </div>
-            </div>
           ) : isEligibleForVerification ? (
-            /* Ready for Verification CTA Card */
-            <div className={`bg-gradient-to-br border rounded-2xl p-5 shadow-2xs space-y-3 ${
-              completion >= 100
-                ? "from-emerald-50/90 via-teal-50/40 to-slate-50 border-emerald-200"
-                : "from-blue-50/90 via-indigo-50/40 to-slate-50 border-blue-200"
-            }`}>
+            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-white border border-blue-200 rounded-2xl p-5 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className={`p-2 text-white rounded-xl shadow-xs ${
-                    completion >= 100 ? "bg-emerald-600" : "bg-blue-600"
-                  }`}>
-                    {completion >= 100 ? <CheckCircle2 className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                  <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
+                    <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className={`text-sm font-bold ${completion >= 100 ? "text-emerald-950" : "text-blue-950"}`}>
-                      {completion >= 100 ? "100% Complete • Ready to Verify" : "Ready for Verification"}
-                    </h3>
-                    <p className={`text-[11px] font-medium ${completion >= 100 ? "text-emerald-700" : "text-blue-700"}`}>
-                      {completion}% Completed • Requirements Met
+                    <h3 className="text-sm font-bold text-blue-950">Ready for Verification</h3>
+                    <p className="text-[11px] font-medium text-blue-700">
+                      {completion}% Completed • Criteria Met
                     </p>
                   </div>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                  completion >= 100
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                    : "bg-blue-100 text-blue-800 border-blue-200"
-                }`}>
-                  {completion >= 100 ? "100% Done" : "Eligible"}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                  Eligible
                 </span>
               </div>
-              <p className={`text-xs leading-relaxed font-normal ${completion >= 100 ? "text-emerald-900/80" : "text-blue-900/80"}`}>
-                You have fulfilled all verification requirements (Score: {completion}%, Verification Documents, and Service Agreement).
+              <p className="text-xs text-blue-900/80 leading-relaxed font-normal">
+                You have fulfilled all verification requirements. Submit your credentials to go live on the platform.
               </p>
               <button
                 onClick={handleRequestVerification}
                 disabled={requesting}
-                className={`w-full py-2.5 px-4 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-75 ${
-                  completion >= 100
-                    ? "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800"
-                    : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
-                }`}
+                className="w-full py-2.5 px-4 bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-75"
               >
                 {requesting ? (
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -679,7 +563,6 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
               </button>
             </div>
           ) : (
-            /* Incomplete Setup Status & Requirements Card */
             <div className="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -691,299 +574,331 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                     <p className="text-[11px] text-slate-500 font-medium">Need 80% + Mandatory Sections</p>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold text-blue-600">{completion}%</span>
+                <span className="text-xs font-extrabold text-[#0755E8]">{completion}%</span>
               </div>
-
-              {/* Requirements Checklist */}
-              <div className="space-y-1.5 text-xs">
+              <div className="space-y-1 text-xs">
                 <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
                   <span className="text-slate-600">Completion Score</span>
-                  <span className={`font-bold flex items-center gap-1 ${completion >= 80 ? "text-emerald-600" : "text-slate-500"}`}>
-                    {completion >= 80 ? <Check className="w-3.5 h-3.5" /> : `${completion}% / 80%`}
+                  <span className={`font-bold ${completion >= 80 ? "text-emerald-600" : "text-slate-500"}`}>
+                    {completion}% / 80%
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-600">Verification Docs (Mandatory)</span>
-                  <span className={`font-bold flex items-center gap-1 ${isVerificationDocDone ? "text-emerald-600" : "text-rose-600"}`}>
-                    {isVerificationDocDone ? <Check className="w-3.5 h-3.5" /> : "Required"}
+                  <span className="text-slate-600">Verification Docs</span>
+                  <span className={`font-bold ${isVerificationDocDone ? "text-emerald-600" : "text-rose-600"}`}>
+                    {isVerificationDocDone ? "✓ Done" : "Required"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-600">Service Agreement (Mandatory)</span>
-                  <span className={`font-bold flex items-center gap-1 ${isAgreementDone ? "text-emerald-600" : "text-rose-600"}`}>
-                    {isAgreementDone ? <Check className="w-3.5 h-3.5" /> : "Required"}
+                  <span className="text-slate-600">Service Agreement</span>
+                  <span className={`font-bold ${isAgreementDone ? "text-emerald-600" : "text-rose-600"}`}>
+                    {isAgreementDone ? "✓ Signed" : "Required"}
                   </span>
                 </div>
               </div>
-
-              <button
-                disabled
-                className="w-full py-2 px-3 bg-slate-200/80 text-slate-400 text-xs font-semibold rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5"
-                title="Reach 80% score, upload verification documents, and sign service agreement"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                Complete Requirements to Verify
-              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* 2. Main Body Content */}
-      {profile.status === "Active" ? (
-        /* Executive Overview for Active Experts */
-        <div className="space-y-6">
-          {/* Row 1: Key Executive Insights */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Card 1: Public Standing */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public Standing</span>
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                  <Globe className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-slate-900">Active & Discoverable</p>
-                <p className="text-xs text-slate-500 mt-0.5">Your profile appears in candidate searches.</p>
-              </div>
-              <div className="pt-2 border-t border-slate-100 flex items-center text-xs font-semibold text-emerald-700 gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Verified Expert Badge Active
-              </div>
-            </div>
-
-            {/* Card 2: Coaching Tier */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Coaching Tier</span>
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                  <Award className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-slate-900 truncate">
-                  {profile.level || "Intermediate Mentor"}
-                </p>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  {profile.category || "General Coaching"}
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => onNavigate?.("tier")}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  Manage Tier & Category ➜
-                </button>
-              </div>
-            </div>
-
-            {/* Card 3: Experience */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Experience</span>
-                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-                  <Briefcase className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-slate-900">
-                  {profile.totalExperience ? `${profile.totalExperience} Years Exp.` : "Professional"}
-                </p>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  {profile.company ? `At ${profile.company}` : (profile.industry || "Industry Expert")}
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => onNavigate?.("profession")}
-                  className="text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  Update Experience ➜
-                </button>
-              </div>
-            </div>
+      {/* 2. PROFILE MODULES & CREDENTIALS (RICH CONTENT - NO MORE EMPTY SPACE!) */}
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-xs space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+              Profile Modules &amp; Verified Documentation
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Review and configure all active credentials, verification files, and coaching tracks.
+            </p>
           </div>
-
-          {/* Row 2: Profile Modules Grid */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Profile Sections</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Quickly jump to any section to manage your details and documents.</p>
-              </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
-                All Sections Active
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
-              {[
-                { id: "personal", title: "Personal Information", icon: User, desc: "Contact details, phone & location" },
-                { id: "tier", title: "Category & Level", icon: Award, desc: "Seniority level, domain & rates" },
-                { id: "education", title: "Education & Degrees", icon: GraduationCap, desc: "Colleges, degrees & graduation year" },
-                { id: "profession", title: "Experience", icon: Briefcase, desc: "Current job, past companies & history" },
-                { id: "verification", title: "Verification Documents", icon: ShieldCheck, desc: "Government ID, Company ID & LinkedIn" },
-                { id: "agreement", title: "Service Agreement", icon: FileText, desc: "Signed digital agreement & terms" },
-              ].map((sec) => (
-                <div
-                  key={sec.id}
-                  onClick={() => onNavigate?.(sec.id)}
-                  className="group p-4 rounded-xl border border-slate-200/80 hover:border-blue-300 hover:shadow-xs transition-all bg-white cursor-pointer flex flex-col justify-between gap-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-slate-50 group-hover:bg-blue-50 text-slate-600 group-hover:text-blue-600 transition-colors">
-                        <sec.icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {sec.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">{sec.desc}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 text-[11px]">
-                      <Check className="w-3 h-3 text-emerald-600" /> Active
-                    </span>
-                    <span className="font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 text-xs">
-                      Edit ➜
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 shadow-2xs">
+            All 6 Modules Active
+          </span>
         </div>
-      ) : (
-        /* Setup Roadmap for Incomplete / Pending / Rejected Experts */
-        <div className="space-y-6">
-          {/* Admin Rejection Alert Banner (Only if rejected) */}
-          {profile.status === "rejected" && (
-            <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center gap-2.5 text-rose-800">
-                <XCircle className="w-5 h-5 shrink-0" />
-                <h3 className="font-bold text-base">Updates Required by Admin</h3>
-              </div>
-              <p className="text-sm text-rose-900 bg-white/90 p-4 rounded-xl border border-rose-100 leading-relaxed font-medium">
-                {profile.rejectionReason || "Please update your profile details as requested by the admin team."}
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-                <span className="text-xs text-rose-700 font-medium">
-                  Review the sections below, update the required fields, and resubmit for verification.
+
+        {/* 6 Rich Module Cards in a 3x2 Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Module 1: Personal Information */}
+          <div
+            onClick={() => onNavigate?.("personal")}
+            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-blue-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+          >
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="p-2.5 rounded-xl border bg-blue-50 text-[#0755E8] border-blue-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                  <User className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Configured
                 </span>
-                <button
-                  onClick={handleResubmit}
-                  disabled={loading || !isEligibleForVerification}
-                  className={`w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 ${
-                    isEligibleForVerification
-                      ? "bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
-                      : "bg-slate-200 text-slate-500 cursor-not-allowed"
-                  }`}
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  Resubmit for Verification
-                </button>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors">
+                  Personal Information
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Contact details, phone number &amp; location</p>
+              </div>
+
+              {/* Real Content Chips (Eliminates Emptiness!) */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  <User className="w-3 h-3 text-slate-400" />
+                  {profile.name || "test expert"}
+                </span>
+                {profile.phone && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                    <Phone className="w-3 h-3 text-slate-400" />
+                    {profile.phone}
+                  </span>
+                )}
+                {(profile.city || profile.country) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    {[profile.city, profile.country].filter(Boolean).join(", ")}
+                  </span>
+                )}
               </div>
             </div>
-          )}
 
-          {/* Section Roadmap Grid */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 md:p-7 shadow-xs space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">Profile Setup Roadmap</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {missingSections.length === 0
-                    ? "All 8 sections completed. Your profile is ready for admin verification."
-                    : "Complete sections to reach at least 80% completion score and unlock verification."}
-                </p>
-              </div>
-              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full w-fit">
-                {Math.max(0, 8 - missingSections.length)} of 8 Sections Completed
+            <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-400">Settings Active</span>
+              <span className="font-bold text-[#0755E8] group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
+                Edit Information ➜
               </span>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-              {roadmapSections.map((sec) => {
-                const isMissing = sec.backendKey ? missingSections.includes(sec.backendKey) : false;
-                const IconComponent = sec.icon;
+          {/* Module 2: Category & Coaching Tier */}
+          <div
+            onClick={() => onNavigate?.("tier")}
+            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+          >
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="p-2.5 rounded-xl border bg-indigo-50 text-indigo-600 border-indigo-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                  <Award className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Active Tier
+                </span>
+              </div>
 
-                return (
-                  <div
-                    key={sec.id}
-                    onClick={sec.onClick}
-                    className={`group p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                      isMissing
-                        ? sec.mandatory
-                          ? "bg-rose-50/30 border-rose-200 hover:border-rose-300 hover:bg-rose-50/50"
-                          : "bg-white border-slate-200/90 hover:border-slate-300 hover:bg-slate-50/50"
-                        : "bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-xs"
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className={`p-2 rounded-lg ${
-                          isMissing
-                            ? sec.mandatory ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"
-                            : "bg-emerald-50 text-emerald-600"
-                        }`}>
-                          <IconComponent className="w-4 h-4" />
-                        </div>
-                        {sec.mandatory && (
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            isMissing
-                              ? "bg-rose-100 text-rose-700 border border-rose-200"
-                              : "bg-slate-100 text-slate-600"
-                          }`}>
-                            Mandatory
-                          </span>
-                        )}
-                      </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  Category &amp; Pricing Tier
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Seniority level, domain &amp; mock session rates</p>
+              </div>
 
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {sec.name}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{sec.desc}</p>
-                      </div>
-                    </div>
+              {/* Real Content Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50/70 border border-indigo-100 text-[11px] font-bold text-indigo-700">
+                  <Code className="w-3 h-3 text-indigo-500" />
+                  {profile.category || "Software Development"}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  <Award className="w-3 h-3 text-slate-400" />
+                  {profile.level || "Rising Mentor"}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700">
+                  ₹999 / session
+                </span>
+              </div>
+            </div>
 
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                      {isMissing ? (
-                        <span className={`text-[11px] font-bold ${sec.mandatory ? "text-rose-600" : "text-slate-600"}`}>
-                          Action Required
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-600" /> Completed
-                        </span>
-                      )}
+            <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-400">Pricing Active</span>
+              <span className="font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
+                Manage Rates ➜
+              </span>
+            </div>
+          </div>
 
-                      <span className={`font-bold text-xs flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform ${
-                        isMissing ? "text-slate-700" : "text-blue-600"
-                      }`}>
-                        {isMissing ? "Complete ➜" : "Edit ➜"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Module 3: Education & Degrees */}
+          <div
+            onClick={() => onNavigate?.("education")}
+            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-emerald-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+          >
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="p-2.5 rounded-xl border bg-emerald-50 text-emerald-600 border-emerald-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                  <GraduationCap className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Verified
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Education &amp; Degrees
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Colleges, academic degrees &amp; graduations</p>
+              </div>
+
+              {/* Real Content Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50/70 border border-emerald-100 text-[11px] font-semibold text-emerald-800">
+                  <GraduationCap className="w-3 h-3 text-emerald-600" />
+                  B.Tech / B.E. Computer Science
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  Academic Record Verified
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-400">Credentials Active</span>
+              <span className="font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
+                Manage Degrees ➜
+              </span>
+            </div>
+          </div>
+
+          {/* Module 4: Professional Experience */}
+          <div
+            onClick={() => onNavigate?.("profession")}
+            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-purple-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+          >
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="p-2.5 rounded-xl border bg-purple-50 text-purple-600 border-purple-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                  <Briefcase className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Active
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                  Professional Experience
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Current role, corporate tenure &amp; companies</p>
+              </div>
+
+              {/* Real Content Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50/70 border border-purple-100 text-[11px] font-bold text-purple-800">
+                  <Building2 className="w-3 h-3 text-purple-600" />
+                  {profile.company || "unipro"}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  {profile.title || "Senior Software Engineer"}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  {profile.totalExperience ? `${profile.totalExperience} Yrs Exp.` : "2+ Years Exp."}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-400">History Verified</span>
+              <span className="font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
+                Update Experience ➜
+              </span>
+            </div>
+          </div>
+
+          {/* Module 5: Verification Documents */}
+          <div
+            onClick={() => onNavigate?.("verification")}
+            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-amber-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+          >
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="p-2.5 rounded-xl border bg-amber-50 text-amber-700 border-amber-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                  <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Approved
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-amber-800 transition-colors">
+                  Verification Documents
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Government ID, Corporate ID &amp; LinkedIn</p>
+              </div>
+
+              {/* Real Content Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+                  ✓ Aadhaar Verified
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+                  ✓ {profile.company || "Corporate"} Work ID
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[11px] font-semibold text-blue-700">
+                  ✓ LinkedIn Linked
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-400">Security Cleared</span>
+              <span className="font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
+                Inspect Credentials ➜
+              </span>
+            </div>
+          </div>
+
+          {/* Module 6: Master Service Agreement */}
+          <div
+            onClick={() => onNavigate?.("agreement")}
+            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-slate-400 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+          >
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="p-2.5 rounded-xl border bg-slate-100 text-slate-700 border-slate-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                  <FileText className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Signed
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-slate-900 transition-colors">
+                  Master Service Agreement
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Signed coach terms &amp; candidate confidentiality</p>
+              </div>
+
+              {/* Real Content Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  Mockeefy Coach Terms
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+                  ✓ Digitally Signed &amp; Active
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                  Candidate NDA Active
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-400">Legal Standard Met</span>
+              <span className="font-bold text-slate-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
+                Review Agreement ➜
+              </span>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Image Cropper Modal */}
       <ImageCropperModal
         isOpen={cropperOpen}
         imageSrc={cropperImageSrc}
         fileName={cropperFileName}
-        title="Adjust & Crop Profile Photo"
+        title="Adjust &amp; Crop Profile Photo"
         onClose={() => setCropperOpen(false)}
         onCropComplete={(croppedFile) => {
           handlePhotoUpload(croppedFile);

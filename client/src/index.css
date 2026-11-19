@@ -474,4 +474,20 @@ body.modal-open {
     box-shadow: none !important;
 }
 
+@keyframes wave {
+    0% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(-15%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.animate-wave {
+    animation: wave 10s ease-in-out infinite;
+}
+
 

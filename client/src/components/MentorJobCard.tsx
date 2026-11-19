@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { BookingModal } from "./BookingModal";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { formatDisplayName } from "../lib/utils";
 
 // Types
 export interface MentorProfile {
@@ -132,7 +133,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const roleDisplay = mentor.role || "Web Developer";
   const companyDisplay = mentor.company || "Zoho";
-  const nameDisplay = mentor.name || "Sudhan";
+  const nameDisplay = formatDisplayName(mentor.name || "Sudhan");
   const ratingDisplay = mentor.rating > 0 ? mentor.rating.toFixed(1) : "5.0";
   const reviewsCount = mentor.reviews !== undefined && mentor.reviews !== null ? mentor.reviews : 1;
 
@@ -183,66 +184,26 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#0755E8]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       <div className="space-y-2.5 sm:space-y-3 flex-1 flex flex-col relative z-10">
-        {/* 1. Profile Header */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            {/* Avatar Frame with Online Pulse Dot */}
-            <div className="relative shrink-0">
-              <div className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-[13px] bg-slate-100 ring-2 ring-blue-100/90 group-hover:ring-[#0755E8]/30 transition-all overflow-hidden flex items-center justify-center shadow-2xs">
-                {avatarFailed || !avatarUrl ? (
-                  <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
-                    {initials}
-                  </span>
-                ) : (
-                  <img
-                    src={avatarUrl}
-                    alt={nameDisplay}
-                    className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
-                    onError={() => setAvatarFailed(true)}
-                  />
-                )}
-              </div>
-
-              {/* Glowing Pulse Online Indicator */}
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
-              </span>
-            </div>
-
-            {/* Name & Designation */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <h3
-                  title={nameDisplay}
-                  className="text-[14px] sm:text-[15px] font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors tracking-tight truncate leading-tight"
-                >
-                  {nameDisplay}
-                </h3>
-                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
-                  <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
-                </span>
-              </div>
-
-              {/* Designation: "Senior Agile & Project Management Lead • Google" */}
-              <p className="text-[11px] sm:text-[11.5px] text-slate-500 font-medium leading-snug mt-0.5 truncate">
-                <span>{roleDisplay}</span>
-                {companyDisplay && (
-                  <>
-                    <span className="text-slate-300 font-normal mx-1">•</span>
-                    <span className="text-slate-700 font-semibold">{companyDisplay}</span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
+        {/* 0. Top Badges Row: Top Rated / Verified Badge + Bookmark */}
+        <div className="flex items-center justify-between gap-2">
+          {mentor.rating >= 4.8 ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 border border-amber-200/80 text-amber-700 text-[10px] font-extrabold shadow-2xs">
+              <span>🏆</span>
+              <span>Top rated</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-[10px] font-extrabold shadow-2xs">
+              <BadgeCheck className="w-3.5 h-3.5 text-[#0755E8]" />
+              <span>Verified Expert</span>
+            </span>
+          )}
 
           {/* Bookmark Button */}
           <button
             onClick={toggleSave}
             title={isSaved ? "Remove from Saved Interview Experts" : "Save to Interview Experts"}
             aria-label={isSaved ? "Remove from Saved Interview Experts" : "Save to Interview Experts"}
-            className="w-8 h-8 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50/60 active:scale-95 text-slate-600 hover:text-[#0755E8] hover:border-blue-200 flex items-center justify-center shadow-2xs transition-all shrink-0 cursor-pointer"
+            className="w-7.5 h-7.5 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50/60 active:scale-95 text-slate-600 hover:text-[#0755E8] hover:border-blue-200 flex items-center justify-center shadow-2xs transition-all shrink-0 cursor-pointer"
           >
             <Bookmark
               className={`w-3.5 h-3.5 transition-colors ${
@@ -250,6 +211,59 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
               }`}
             />
           </button>
+        </div>
+
+        {/* 1. Profile Header */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Avatar Frame with Online Pulse Dot */}
+          <div className="relative shrink-0">
+            <div className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-[13px] bg-slate-100 ring-2 ring-blue-100/90 group-hover:ring-[#0755E8]/30 transition-all overflow-hidden flex items-center justify-center shadow-2xs">
+              {avatarFailed || !avatarUrl ? (
+                <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
+                  {initials}
+                </span>
+              ) : (
+                <img
+                  src={avatarUrl}
+                  alt={nameDisplay}
+                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  onError={() => setAvatarFailed(true)}
+                />
+              )}
+            </div>
+
+            {/* Glowing Pulse Online Indicator */}
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
+            </span>
+          </div>
+
+          {/* Name & Designation */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3
+                title={nameDisplay}
+                className="text-[14px] sm:text-[15px] font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors tracking-tight truncate leading-tight capitalize"
+              >
+                {nameDisplay}
+              </h3>
+              <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
+                <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
+              </span>
+            </div>
+
+            {/* Designation: "Senior Agile & Project Management Lead • Google" */}
+            <p className="text-[11px] sm:text-[11.5px] text-slate-500 font-medium leading-snug mt-0.5 truncate">
+              <span>{roleDisplay}</span>
+              {companyDisplay && (
+                <>
+                  <span className="text-slate-300 font-normal mx-1">•</span>
+                  <span className="text-slate-700 font-semibold">{companyDisplay}</span>
+                </>
+              )}
+            </p>
+          </div>
         </div>
 
         {/* 2. Statistics Row: Rating | Experience | Location */}
@@ -298,18 +312,14 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
             >
               Domain: {mentor.category || "IT"}
             </span>
-            {Array.isArray(mentor.rawExpert?.skillsAndExpertise?.domains) &&
-              mentor.rawExpert.skillsAndExpertise.domains
-                .filter((d: string) => d && d.toLowerCase() !== (mentor.category || "IT").toLowerCase())
-                .slice(0, 1)
-                .map((domain: string, idx: number) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 text-[10px] font-semibold border border-slate-200"
-                  >
-                    {domain}
-                  </span>
-                ))}
+            {displaySkills.map((skill, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/70 text-[#0755E8] text-[10px] font-semibold border border-blue-200/60"
+              >
+                {skill}
+              </span>
+            ))}
           </div>
         </div>
       </div>
@@ -319,12 +329,12 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
         {/* Pricing and Availability Row */}
         <div className="flex items-center justify-between gap-2 px-0.5">
           {/* Price */}
-          <div className="flex items-baseline gap-1 shrink-0">
-            <span className="text-[15px] sm:text-[16px] font-black text-slate-900 leading-none">
-              ₹{priceNum.toLocaleString("en-IN")}
+          <div className="flex flex-col shrink-0">
+            <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 leading-none">
+              Per Session
             </span>
-            <span className="text-[10px] sm:text-[10.5px] text-slate-400 font-medium leading-none">
-              / session
+            <span className="text-[15px] sm:text-[16px] font-black text-slate-900 leading-tight mt-0.5">
+              ₹{priceNum.toLocaleString("en-IN")}
             </span>
           </div>
 

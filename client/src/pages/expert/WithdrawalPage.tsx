@@ -94,6 +94,11 @@ export default function WithdrawalPage() {
   const [otp, setOtp] = useState('');
   const [addingMethod, setAddingMethod] = useState(false);
 
+  const formatCurrency = (amount: number) => {
+    const rounded = Math.round((Number(amount || 0) + Number.EPSILON) * 100) / 100;
+    return rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  };
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -305,23 +310,42 @@ export default function WithdrawalPage() {
   }
 
   return (
-    <div className="sidebar-main-card relative w-full max-w-[1400px] mx-auto rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-8 animate-in fade-in duration-200">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-8 animate-in fade-in duration-200">
       {/* Decorative ambient blue lighting */}
       <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
       <div className="relative z-10 space-y-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Earnings & Withdrawals</h1>
-            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full">
-              <Wallet className="w-3 h-3 text-blue-600" />
-              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">Payouts</span>
-            </span>
+      {/* Page Header - Mirroring Candidate Image 1 hierarchy */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+            <Wallet className="w-5 h-5 stroke-[2.2]" />
           </div>
-          <p className="text-sm sm:text-base text-slate-500">Manage your payout methods and withdraw your wallet balance.</p>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Earnings &amp; Withdrawals
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-[#0755E8] border border-blue-200/80">
+                Payouts
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Manage your payout methods, weekly audit schedules, and withdraw your wallet balance.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Header Badges mirroring Image 1's [BOOKINGS] [Total: 8] */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs text-xs font-bold text-slate-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>Balance: ₹{formatCurrency(summary.currentBalance)}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 shadow-2xs text-xs font-bold text-emerald-700">
+            <span>Total Earned: ₹{formatCurrency(summary.totalEarnings)}</span>
+          </span>
         </div>
       </div>
 
@@ -340,11 +364,11 @@ export default function WithdrawalPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-        <div className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-400 hover:ring-1 hover:ring-emerald-400 transition-all duration-300 flex flex-col min-w-0 h-[160px]">
+        <div className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-400 hover:ring-1 hover:ring-emerald-400 transition-all duration-300 flex flex-col min-w-0 min-h-[160px]">
           <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-sm font-medium text-slate-500 mb-2">Available Balance</p>
-              <h3 className="text-3xl font-bold text-slate-900 tracking-tight">₹{summary.currentBalance.toLocaleString()}</h3>
+              <h3 className="text-3xl font-bold text-slate-900 tracking-tight">₹{formatCurrency(summary.currentBalance)}</h3>
             </div>
             <div className="p-3 rounded-xl bg-emerald-100/50 text-emerald-600 shadow-sm group-hover:scale-110 transition-transform duration-300">
               <Wallet className="w-6 h-6" />
@@ -352,22 +376,22 @@ export default function WithdrawalPage() {
           </div>
           <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
             <span className={`text-sm font-medium flex items-center gap-1.5 ${!isEligibleToWithdraw ? 'text-amber-600' : 'text-emerald-600'}`}>
-               {!isEligibleToWithdraw ? <Lock className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />} Min: ₹{minWithdrawalAmount.toLocaleString()}
+               {!isEligibleToWithdraw ? <Lock className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />} Min: ₹{formatCurrency(minWithdrawalAmount)}
                {!isEligibleToWithdraw && (
                  <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded ml-1">Below Min</span>
                )}
             </span>
             <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-               Frozen: ₹{(summary.frozenBalance || 0).toLocaleString()}
+               Frozen: ₹{formatCurrency(summary.frozenBalance || 0)}
             </span>
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 hover:ring-1 hover:ring-blue-400 transition-all duration-300 flex flex-col min-w-0 h-[160px]">
+        <div className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 hover:ring-1 hover:ring-blue-400 transition-all duration-300 flex flex-col min-w-0 min-h-[160px]">
           <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-sm font-medium text-slate-500 mb-2">Total Earnings</p>
-              <h3 className="text-3xl font-bold text-slate-900 tracking-tight">₹{summary.totalEarnings.toLocaleString()}</h3>
+              <h3 className="text-3xl font-bold text-slate-900 tracking-tight">₹{formatCurrency(summary.totalEarnings)}</h3>
             </div>
             <div className="p-3 rounded-xl bg-blue-100/50 text-blue-600 shadow-sm group-hover:scale-110 transition-transform duration-300">
               <ArrowUpRight className="w-6 h-6" />
@@ -380,11 +404,11 @@ export default function WithdrawalPage() {
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 hover:ring-1 hover:ring-amber-400 transition-all duration-300 flex flex-col min-w-0 h-[160px]">
+        <div className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 hover:ring-1 hover:ring-amber-400 transition-all duration-300 flex flex-col min-w-0 min-h-[160px]">
           <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-sm font-medium text-slate-500 mb-2">Pending Payouts</p>
-              <h3 className="text-3xl font-bold text-slate-900 tracking-tight">₹{summary.pendingPayouts.toLocaleString()}</h3>
+              <h3 className="text-3xl font-bold text-slate-900 tracking-tight">₹{formatCurrency(summary.pendingPayouts)}</h3>
             </div>
             <div className="p-3 rounded-xl bg-amber-100/50 text-amber-600 shadow-sm group-hover:scale-110 transition-transform duration-300">
               <Clock className="w-6 h-6" />

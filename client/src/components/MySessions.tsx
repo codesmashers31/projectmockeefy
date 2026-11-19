@@ -4,6 +4,7 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import {
   Calendar,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   Briefcase,
   Award,
@@ -20,14 +21,20 @@ import {
   BadgeCheck,
   AlertCircle,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Search,
+  ArrowRight,
+  Zap,
+  Filter,
+  RotateCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { useDataSync } from "../context/SocketContext";
 import axios from '../lib/axios';
 import { getProfileImageUrl } from "../lib/imageUtils";
-import { formatScoreDisplay } from "../lib/utils";
+import { formatScoreDisplay, formatDisplayName } from "../lib/utils";
 import { MentorJobCard } from "./MentorJobCard";
 import MySessionsSkeleton, { SessionCardSkeleton } from "./MySessionsSkeleton";
 import { IdentityConfirmationModal } from "./IdentityConfirmationModal";
@@ -310,10 +317,10 @@ const SessionCard: React.FC<{
               <div className="flex items-center gap-1.5 min-w-0">
                 <h3
                   onClick={() => session.expertId && navigate(expertProfileUrl)}
-                  className="font-extrabold text-slate-900 text-[15px] sm:text-base truncate group-hover:text-[#0755E8] transition-colors leading-tight cursor-pointer"
+                  className="font-extrabold text-slate-900 text-[15px] sm:text-base truncate group-hover:text-[#0755E8] transition-colors leading-tight cursor-pointer capitalize"
                   title={session.expert}
                 >
-                  {session.expert}
+                  {formatDisplayName(session.expert)}
                 </h3>
                 <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
                   <BadgeCheck className="w-4 h-4 text-[#0755E8] fill-[#0755E8]/15" />
@@ -323,7 +330,9 @@ const SessionCard: React.FC<{
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium truncate mt-0.5">
                 {session.company && (
                   <>
-                    <span className="font-bold text-slate-800 shrink-0">{session.company}</span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 font-bold text-slate-800 text-[11px] shrink-0 border border-slate-200/60 shadow-2xs">
+                      {session.company}
+                    </span>
                     <span className="text-slate-300">•</span>
                   </>
                 )}
@@ -904,29 +913,96 @@ const MySessions = ({
     return result;
   }, [sortedSessions, statusFilter, now, sessionSearchQuery]);
 
-  const filteredSavedExperts = useMemo(() => {
-    if (!savedSearchQuery) return savedExperts;
-    return savedExperts.filter((expert: any) => {
-      const name = (expert.name || expert.personalInformation?.name || "").toLowerCase();
-      const role = (expert.role || expert.professionalDetails?.currentRole || "").toLowerCase();
-      const company = (expert.company || expert.professionalDetails?.currentCompany || "").toLowerCase();
-      const category = (expert.category || expert.personalInformation?.category || "").toLowerCase();
-      const bio = (expert.bio || expert.professionalDetails?.bio || "").toLowerCase();
-      const skills = Array.isArray(expert.skills)
-        ? expert.skills.join(" ").toLowerCase()
-        : Array.isArray(expert.skillsAndExpertise?.domains)
-        ? expert.skillsAndExpertise.domains.join(" ").toLowerCase()
-        : "";
-      return (
-        name.includes(savedSearchQuery) ||
-        role.includes(savedSearchQuery) ||
-        company.includes(savedSearchQuery) ||
-        category.includes(savedSearchQuery) ||
-        bio.includes(savedSearchQuery) ||
-        skills.includes(savedSearchQuery)
-      );
+  const [savedCategoryFilter, setSavedCategoryFilter] = useState("All");
+  const [savedSortBy, setSavedSortBy] = useState("default");
+  const [localSavedSearch, setLocalSavedSearch] = useState("");
+
+  const effectiveSavedSearch = (localSavedSearch || liveSearchQuery).trim().toLowerCase();
+
+  const savedCategories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    savedExperts.forEach((exp: any) => {
+      const cat = exp.category || exp.personalInformation?.category || "General";
+      counts[cat] = (counts[cat] || 0) + 1;
     });
-  }, [savedExperts, savedSearchQuery]);
+    return counts;
+  }, [savedExperts]);
+
+  const availableNowCount = useMemo(() => {
+    return savedExperts.filter((exp: any) => {
+      const active = (exp.activeTime || "").toLowerCase();
+      return active.includes("today") || active.includes("now") || exp.isOnline;
+    }).length;
+  }, [savedExperts]);
+
+  const avgSavedRating = useMemo(() => {
+    if (savedExperts.length === 0) return "5.0";
+    const sum = savedExperts.reduce((acc, curr) => acc + (Number(curr.rating) || 4.9), 0);
+    return (sum / savedExperts.length).toFixed(1);
+  }, [savedExperts]);
+
+  const filteredSavedExperts = useMemo(() => {
+    let list = [...savedExperts];
+
+    // 1. Search Query Filter
+    if (effectiveSavedSearch) {
+      list = list.filter((expert: any) => {
+        const name = (expert.name || expert.personalInformation?.name || "").toLowerCase();
+        const role = (expert.role || expert.professionalDetails?.currentRole || "").toLowerCase();
+        const company = (expert.company || expert.professionalDetails?.currentCompany || "").toLowerCase();
+        const category = (expert.category || expert.personalInformation?.category || "").toLowerCase();
+        const bio = (expert.bio || expert.professionalDetails?.bio || "").toLowerCase();
+        const skills = Array.isArray(expert.skills)
+          ? expert.skills.join(" ").toLowerCase()
+          : Array.isArray(expert.skillsAndExpertise?.domains)
+          ? expert.skillsAndExpertise.domains.join(" ").toLowerCase()
+          : "";
+        return (
+          name.includes(effectiveSavedSearch) ||
+          role.includes(effectiveSavedSearch) ||
+          company.includes(effectiveSavedSearch) ||
+          category.includes(effectiveSavedSearch) ||
+          bio.includes(effectiveSavedSearch) ||
+          skills.includes(effectiveSavedSearch)
+        );
+      });
+    }
+
+    // 2. Track / Category Filter
+    if (savedCategoryFilter !== "All") {
+      list = list.filter((expert: any) => {
+        const cat = (expert.category || expert.personalInformation?.category || "").toLowerCase().trim();
+        return cat === savedCategoryFilter.toLowerCase().trim();
+      });
+    }
+
+    // 3. Sort Order
+    list.sort((a: any, b: any) => {
+      if (savedSortBy === "rating") {
+        return (Number(b.rating) || 0) - (Number(a.rating) || 0);
+      }
+      if (savedSortBy === "price-low") {
+        const priceA = a.minPrice ?? parseInt(String(a.price || 0).replace(/[^\d]/g, ""), 10) ?? 0;
+        const priceB = b.minPrice ?? parseInt(String(b.price || 0).replace(/[^\d]/g, ""), 10) ?? 0;
+        return priceA - priceB;
+      }
+      if (savedSortBy === "price-high") {
+        const priceA = a.minPrice ?? parseInt(String(a.price || 0).replace(/[^\d]/g, ""), 10) ?? 0;
+        const priceB = b.minPrice ?? parseInt(String(b.price || 0).replace(/[^\d]/g, ""), 10) ?? 0;
+        return priceB - priceA;
+      }
+      if (savedSortBy === "experience") {
+        const getExpYears = (m: any) => {
+          const match = String(m.experience || "").match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        return getExpYears(b) - getExpYears(a);
+      }
+      return 0; // Default: Recently Saved
+    });
+
+    return list;
+  }, [savedExperts, effectiveSavedSearch, savedCategoryFilter, savedSortBy]);
 
   const PAGE_SIZE = 10;
   const [page, setPage] = useState(1);
@@ -1268,23 +1344,27 @@ const MySessions = ({
         {/* EXECUTIVE DASHBOARD PANEL - OVERVIEW */}
         {activeView === 'overview' && (
           <div className="space-y-5 sm:space-y-6">
-            {/* Header - simple, flat title row with icon */}
-            <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200/80 pb-4">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#0755E8]" />
+            {/* Clean Executive Header for Bookings Hub */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+                  <Sparkles className="w-5 h-5 text-[#0755E8]" />
                 </div>
-                <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight leading-none truncate">My Bookings</h1>
-                  <p className="text-xs font-semibold text-gray-500 mt-1 truncate">Real-time sessions, countdowns, and expert feedback</p>
+                <div>
+                  <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">
+                    My Bookings
+                  </h1>
+                  <p className="text-xs text-slate-500 font-normal">
+                    Real-time sessions, countdowns, and expert feedback
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10px] font-black text-[#0755E8] uppercase tracking-wider">
-                  Bookings
+                <span className="px-2.5 py-1 rounded-full bg-blue-50/80 border border-blue-200/60 text-[#0755E8] font-bold text-[10px] tracking-wider uppercase">
+                  BOOKINGS
                 </span>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
+                <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs">
                   Total: {sessions.length}
                 </span>
               </div>
@@ -1316,63 +1396,94 @@ const MySessions = ({
               </div>
             )}
 
-            {/* Status Filter Tabs - Modern Segmented Control */}
-            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
-              {[
-                {
-                  id: 'all',
-                  label: 'All',
-                  count: sessions.length,
-                },
-                {
-                  id: 'upcoming',
-                  label: 'Upcoming',
-                  count: upcomingCount,
-                  hasDot: true,
-                },
-                {
-                  id: 'completed',
-                  label: 'Completed',
-                  count: completedCount,
-                },
-                {
-                  id: 'cancelled',
-                  label: 'Cancelled',
-                  count: cancelledCount,
-                },
-              ].map((tab) => {
-                const isActive = statusFilter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setStatusFilter(tab.id as any)}
-                    className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
-                      isActive
-                        ? 'bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25'
-                        : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200 shadow-2xs'
-                    }`}
-                  >
-                    {tab.hasDot && (
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          isActive ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'
-                        }`}
-                      />
-                    )}
-                    <span>{tab.label}</span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-black tabular-nums transition-colors ${
+            {/* Filter Tabs & Quick Search Control Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+              {/* Status Filter Tabs - Modern Segmented Control */}
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
+                {[
+                  {
+                    id: 'all',
+                    label: 'All',
+                    count: sessions.length,
+                  },
+                  {
+                    id: 'upcoming',
+                    label: 'Upcoming',
+                    count: upcomingCount,
+                    hasDot: true,
+                  },
+                  {
+                    id: 'completed',
+                    label: 'Completed',
+                    count: completedCount,
+                  },
+                  {
+                    id: 'cancelled',
+                    label: 'Cancelled',
+                    count: cancelledCount,
+                  },
+                ].map((tab) => {
+                  const isActive = statusFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setStatusFilter(tab.id as any)}
+                      className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                         isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white text-slate-700 shadow-2xs border border-slate-200/60'
+                          ? 'bg-[#0755E8] text-white shadow-xs'
+                          : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200/90 shadow-2xs'
                       }`}
                     >
-                      {tab.count}
-                    </span>
+                      {tab.hasDot && (
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            isActive ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'
+                          }`}
+                        />
+                      )}
+                      <span>{tab.label}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-black tabular-nums transition-colors ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* In-page session search bar */}
+              <div className="relative w-full sm:w-56 shrink-0">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={liveSearchQuery}
+                  onChange={(e) => setLiveSearchQuery(e.target.value)}
+                  placeholder="Filter sessions..."
+                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-blue-100 transition-all"
+                />
+                {liveSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLiveSearchQuery("");
+                      const nextParams = new URLSearchParams(location.search);
+                      nextParams.delete("q");
+                      nextParams.delete("search");
+                      const queryStr = nextParams.toString();
+                      navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                );
-              })}
+                )}
+              </div>
             </div>
 
             {/* If session search query active, show clear search indicator banner */}
@@ -1491,94 +1602,271 @@ const MySessions = ({
 
         {/* SAVED EXPERTS VIEW */}
         {activeView === 'saved' && (
-          <div className="space-y-6">
-            {/* Header - simple, flat title row with icon */}
-            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-4">
+          <div className="space-y-5 sm:space-y-6">
+            {/* Clean Executive Header for Saved Shortlist */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#EAF2FF] flex items-center justify-center border border-[#93B8FF] shrink-0">
-                  <Bookmark className="w-5 h-5 text-[#0755E8] fill-[#0755E8]" />
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+                  <Bookmark className="w-5 h-5 fill-current text-[#0755E8]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Saved Interview Experts</h2>
-                  <p className="text-xs font-semibold text-gray-500 mt-1">
+                  <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">
+                    Saved Interview Experts
+                  </h1>
+                  <p className="text-xs text-slate-500 font-normal">
                     Your shortlisted interview experts. Book a session or view profile anytime.
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full border border-[#93B8FF] bg-[#EAF2FF] text-[10.5px] font-black text-[#0755E8] uppercase tracking-wider">
-                {savedSearchQuery ? `${filteredSavedExperts.length} of ${savedExperts.length} Saved` : `${savedExperts.length} Saved`}
-              </span>
+
+              <div className="flex items-center gap-2">
+                {availableNowCount > 0 && (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold text-xs">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{availableNowCount} Ready</span>
+                  </span>
+                )}
+                <span className="px-3 py-1 rounded-full bg-blue-50/80 border border-blue-200/60 text-[#0755E8] font-black text-[11px] tracking-wide uppercase">
+                  {savedExperts.length} SAVED
+                </span>
+              </div>
             </div>
 
-            {/* If search query active, show clear search indicator banner */}
-            {savedSearchQuery && (
-              <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-xl px-4 py-2 text-xs">
-                <span className="text-slate-700">
-                  Showing saved experts matching <span className="font-bold text-[#0755E8]">"{savedSearchQuery}"</span>
-                </span>
+            {/* Filter Pills, Search & Sort Control Bar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-0.5">
+              {/* Left: Domain / Track Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
+                <button
+                  type="button"
+                  onClick={() => setSavedCategoryFilter("All")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                    savedCategoryFilter === "All"
+                      ? "bg-[#0755E8] text-white shadow-xs"
+                      : "bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>All Tracks</span>
+                  <span
+                    className={`text-[10.5px] px-1.5 py-0.2 rounded-full ${
+                      savedCategoryFilter === "All"
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {savedExperts.length}
+                  </span>
+                </button>
+
+                {Object.entries(savedCategories).map(([category, count]) => {
+                  const isSelected = savedCategoryFilter.toLowerCase() === category.toLowerCase();
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setSavedCategoryFilter(category)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                        isSelected
+                          ? "bg-[#0755E8] text-white shadow-xs"
+                          : "bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span>{category}</span>
+                      <span
+                        className={`text-[10.5px] px-1.5 py-0.2 rounded-full ${
+                          isSelected
+                            ? "bg-white/20 text-white"
+                            : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right: Search & Sort Bar */}
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                {/* In-page search input */}
+                <div className="relative flex-1 md:w-52">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={localSavedSearch}
+                    onChange={(e) => setLocalSavedSearch(e.target.value)}
+                    placeholder="Filter shortlist..."
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-blue-100 transition-all"
+                  />
+                  {localSavedSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setLocalSavedSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort Dropdown */}
+                <div className="relative shrink-0">
+                  <select
+                    value={savedSortBy}
+                    onChange={(e) => setSavedSortBy(e.target.value)}
+                    aria-label="Sort saved interview experts"
+                    className="text-xs font-semibold bg-white border border-slate-200/90 rounded-xl pl-3 pr-7 py-1.5 text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer shadow-2xs appearance-none"
+                  >
+                    <option value="default">Sort: Recently Saved</option>
+                    <option value="rating">Sort: Highest Rating</option>
+                    <option value="price-low">Sort: Price: Low to High</option>
+                    <option value="price-high">Sort: Price: High to Low</option>
+                    <option value="experience">Sort: Most Experience</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* If search or category filter active, show active filter bar */}
+            {(effectiveSavedSearch || savedCategoryFilter !== "All") && (
+              <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-xl px-3.5 py-2 text-xs">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Filter className="w-3.5 h-3.5 text-[#0755E8]" />
+                  <span>
+                    Showing{" "}
+                    <strong className="text-slate-900 font-bold">{filteredSavedExperts.length}</strong> of{" "}
+                    <strong className="text-slate-900 font-bold">{savedExperts.length}</strong> saved experts
+                    {savedCategoryFilter !== "All" && (
+                      <span>
+                        {" "}in <span className="font-bold text-[#0755E8]">"{savedCategoryFilter}"</span>
+                      </span>
+                    )}
+                    {effectiveSavedSearch && (
+                      <span>
+                        {" "}matching <span className="font-bold text-[#0755E8]">"{effectiveSavedSearch}"</span>
+                      </span>
+                    )}
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    const nextParams = new URLSearchParams(location.search);
-                    nextParams.delete("q");
-                    nextParams.delete("search");
-                    const queryStr = nextParams.toString();
-                    navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                    setSavedCategoryFilter("All");
+                    setLocalSavedSearch("");
+                    if (liveSearchQuery) {
+                      const nextParams = new URLSearchParams(location.search);
+                      nextParams.delete("q");
+                      nextParams.delete("search");
+                      const queryStr = nextParams.toString();
+                      navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                    }
                   }}
-                  className="text-xs font-bold text-[#0755E8] hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] cursor-pointer"
                 >
-                  Clear search
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset filters</span>
                 </button>
               </div>
             )}
 
             {/* List - 2-column grid matching interview experts */}
             {savedExperts.length === 0 ? (
-              <div className="bg-slate-50/50 rounded-2xl border border-slate-200/80 p-12 sm:p-16 text-center flex flex-col items-center shadow-xs">
-                <div className="w-14 h-14 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center mb-3.5 shadow-xs">
-                  <Bookmark className="w-7 h-7 text-[#0755E8] fill-[#0755E8]" />
+              <div className="bg-gradient-to-b from-blue-50/40 via-white to-white rounded-2xl border border-slate-200/90 p-10 sm:p-14 text-center flex flex-col items-center shadow-xs">
+                <div className="relative mb-4">
+                  <div className="w-16 h-16 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center shadow-xs">
+                    <Bookmark className="w-8 h-8 text-[#0755E8] fill-[#0755E8]" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
+                    <Sparkles className="w-3 h-3 text-white" />
+                  </div>
                 </div>
-                <h3 className="text-gray-900 font-bold text-base mb-1">No Saved Interview Experts Yet</h3>
-                <p className="text-gray-500 text-xs font-medium max-w-xs mx-auto">Click the bookmark icon on any card to add interview experts to your saved list for quick access.</p>
+                <h3 className="text-gray-900 font-black text-lg mb-1.5">No Saved Interview Experts Yet</h3>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium max-w-md mx-auto leading-relaxed">
+                  Bookmark top interviewers from Google, Amazon, Microsoft and more so you can easily compare rubrics, monitor availability, and schedule sessions in 1 click.
+                </p>
+
+                {/* 3 Value Pillars */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg w-full mt-6 mb-6 text-left">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span>Top 1% Experts</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">Shortlist specialists in Coding, System Design & HR.</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Instant Slots</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">Book available dates without searching again.</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Verified Rubrics</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">Get real company scoring & actionable reports.</p>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => navigate('/find-mentor')}
-                  className="mt-5 px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2"
                 >
-                  <Briefcase className="w-3.5 h-3.5" />
-                  <span>Explore Interview Experts</span>
+                  <Briefcase className="w-4 h-4" />
+                  <span>Browse Verified Interview Experts</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : filteredSavedExperts.length === 0 ? (
-              <div className="bg-slate-50/50 rounded-2xl border border-slate-200/80 p-12 text-center flex flex-col items-center shadow-xs">
+              <div className="bg-slate-50/60 rounded-2xl border border-slate-200/80 p-10 text-center flex flex-col items-center shadow-xs">
                 <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center mb-3 shadow-xs">
                   <Bookmark className="w-6 h-6 text-[#0755E8]" />
                 </div>
-                <h3 className="text-gray-900 font-bold text-base mb-1">No Saved Experts Found</h3>
-                <p className="text-gray-500 text-xs font-medium max-w-xs mx-auto">
-                  No saved interview experts matched "{savedSearchQuery}". Try a different name, role, or skill.
+                <h3 className="text-gray-900 font-bold text-base mb-1">No Matching Saved Experts</h3>
+                <p className="text-gray-500 text-xs font-medium max-w-sm mx-auto">
+                  No shortlisted experts matched your active filters. Try searching for a different name, company, or domain.
                 </p>
                 <button
                   type="button"
                   onClick={() => {
-                    const nextParams = new URLSearchParams(location.search);
-                    nextParams.delete("q");
-                    nextParams.delete("search");
-                    const queryStr = nextParams.toString();
-                    navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                    setSavedCategoryFilter("All");
+                    setLocalSavedSearch("");
+                    if (liveSearchQuery) {
+                      const nextParams = new URLSearchParams(location.search);
+                      nextParams.delete("q");
+                      nextParams.delete("search");
+                      const queryStr = nextParams.toString();
+                      navigate(queryStr ? `${location.pathname}?${queryStr}` : location.pathname);
+                    }
                   }}
-                  className="mt-4 px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  className="mt-4 px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  Clear Search
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Clear Filters</span>
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
-                {filteredSavedExperts.map((expert) => (
-                  <div key={expert.expertID || expert.id} className="flex animate-in fade-in duration-300">
-                    <MentorJobCard mentor={expert} />
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
+                  {filteredSavedExperts.map((expert) => (
+                    <div key={expert.expertID || expert.id} className="flex animate-in fade-in duration-300">
+                      <MentorJobCard mentor={expert} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pro-Tip Ribbon below the grid */}
+                <div className="rounded-2xl p-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white border border-blue-200/70 shadow-2xs flex items-center gap-3 text-left">
+                  <div className="w-9 h-9 rounded-xl bg-white text-[#0755E8] flex items-center justify-center shrink-0 border border-blue-200/80 shadow-2xs">
+                    <Sparkles className="w-4 h-4 text-[#0755E8]" />
                   </div>
-                ))}
+                  <div className="flex-1 text-xs text-slate-700">
+                    <strong className="text-slate-900 font-bold">Mockeefy Shortlist Tip:</strong> Candidates who schedule mock interviews across both technical problem solving and system architecture have an <strong className="text-[#0755E8] font-bold">84% higher placement rate</strong> at tier-1 MNCs.
+                  </div>
+                </div>
               </div>
             )}
           </div>

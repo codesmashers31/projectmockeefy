@@ -4,7 +4,6 @@ import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import { useDataSync } from "../context/SocketContext";
 import { toast } from "sonner";
-import Swal from "sweetalert2";
 import {
   Wallet,
   ArrowDownLeft,
@@ -77,6 +76,11 @@ export default function CandidateWalletPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [filterType, setFilterType] = useState<"ALL" | "CREDIT" | "DEBIT">("ALL");
 
+  const formatCurrency = (val: number) => {
+    const rounded = Math.round((Number(val || 0) + Number.EPSILON) * 100) / 100;
+    return rounded.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  };
+
   const fetchWalletDetails = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
@@ -121,26 +125,32 @@ export default function CandidateWalletPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-20 pt-6">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-xs overflow-hidden font-sans text-left space-y-6 animate-in fade-in duration-200">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+
+      <div className="relative z-10 space-y-6">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-[#0755E8]/10 text-[#0755E8] flex items-center justify-center shadow-xs">
-                <Wallet size={22} className="stroke-[2.2]" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/70">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/80 text-[#0755E8] flex items-center justify-center shadow-2xs shrink-0">
+              <Wallet size={20} className="stroke-[2.2]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Candidate Wallet</h1>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-[#0755E8] border border-blue-200/80">
+                  Credits
+                </span>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Candidate Wallet</h1>
-                <p className="text-xs text-slate-500">
-                  Manage your platform credits and view your interview booking transaction ledger.
-                </p>
-              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Manage your platform credits and view your interview booking transaction ledger.
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
             <button
               onClick={() => fetchWalletDetails(true)}
               disabled={refreshing}
@@ -152,7 +162,7 @@ export default function CandidateWalletPage() {
 
             <Link
               to="/find-mentor"
-              className="px-4 py-2 text-xs font-semibold text-white bg-[#0755E8] hover:bg-[#0645C7] rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-white bg-[#0755E8] hover:bg-[#0645C7] rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <Sparkles size={14} />
               <span>Book an Interview</span>
@@ -161,9 +171,9 @@ export default function CandidateWalletPage() {
         </div>
 
         {/* Balance & Statistics Cards (3-column layout) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Available Balance Card */}
-          <div className="bg-gradient-to-br from-[#0755E8] to-[#043399] rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between">
+          <div className="bg-gradient-to-br from-[#0755E8] to-[#043399] rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between min-h-[160px]">
             <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
             
             <div>
@@ -177,7 +187,7 @@ export default function CandidateWalletPage() {
               </div>
               <div className="mt-3 flex items-baseline gap-1">
                 <span className="text-3xl font-extrabold tracking-tight">
-                  ₹{wallet.availableBalance.toLocaleString("en-IN")}
+                  ₹{formatCurrency(wallet.availableBalance)}
                 </span>
                 <span className="text-xs font-medium text-blue-200 uppercase">INR</span>
               </div>
@@ -192,7 +202,7 @@ export default function CandidateWalletPage() {
           </div>
 
           {/* Total Credited */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between min-h-[160px]">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -204,7 +214,7 @@ export default function CandidateWalletPage() {
               </div>
               <div className="mt-3 flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-slate-900">
-                  ₹{wallet.totalCredited.toLocaleString("en-IN")}
+                  ₹{formatCurrency(wallet.totalCredited)}
                 </span>
               </div>
             </div>
@@ -214,7 +224,7 @@ export default function CandidateWalletPage() {
           </div>
 
           {/* Total Spent */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between min-h-[160px] sm:col-span-2 lg:col-span-1">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -226,7 +236,7 @@ export default function CandidateWalletPage() {
               </div>
               <div className="mt-3 flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-slate-900">
-                  ₹{wallet.totalSpent.toLocaleString("en-IN")}
+                  ₹{formatCurrency(wallet.totalSpent)}
                 </span>
               </div>
             </div>
@@ -315,10 +325,10 @@ export default function CandidateWalletPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto thin-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     <th className="py-3 px-5">Type</th>
                     <th className="py-3 px-5">Amount</th>
                     <th className="py-3 px-5">Description & Reference</th>
@@ -343,7 +353,7 @@ export default function CandidateWalletPage() {
                     return (
                       <tr key={t._id} className="hover:bg-slate-50/60 transition-colors">
                         {/* Type Badge */}
-                        <td className="py-3.5 px-5">
+                        <td className="py-3.5 px-5 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
                               isCredit
@@ -357,7 +367,7 @@ export default function CandidateWalletPage() {
                         </td>
 
                         {/* Amount */}
-                        <td className="py-3.5 px-5 font-bold">
+                        <td className="py-3.5 px-5 font-bold whitespace-nowrap">
                           <span
                             className={
                               t.status === "REVERSED"
@@ -367,12 +377,12 @@ export default function CandidateWalletPage() {
                                 : "text-slate-800"
                             }
                           >
-                            {isCredit ? "+" : "-"}₹{t.amount.toLocaleString("en-IN")}
+                            {isCredit ? "+" : "-"}₹{formatCurrency(t.amount)}
                           </span>
                         </td>
 
                         {/* Description & Reference */}
-                        <td className="py-3.5 px-5 max-w-xs">
+                        <td className="py-3.5 px-5 max-w-xs min-w-[200px]">
                           <p className="font-semibold text-slate-800 line-clamp-1">{t.description}</p>
                           <div className="flex flex-wrap items-center gap-2 mt-1 text-[10.5px] text-slate-500">
                             {t.paymentId && (
@@ -399,8 +409,8 @@ export default function CandidateWalletPage() {
                         </td>
 
                         {/* Balance After */}
-                        <td className="py-3.5 px-5 font-semibold text-slate-700">
-                          ₹{t.balanceAfter.toLocaleString("en-IN")}
+                        <td className="py-3.5 px-5 font-semibold text-slate-700 whitespace-nowrap">
+                          ₹{formatCurrency(t.balanceAfter)}
                         </td>
 
                         {/* Status */}
