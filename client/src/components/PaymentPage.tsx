@@ -258,6 +258,37 @@ const PaymentPage: React.FC = () => {
         }
       };
 
+      if (verifyResponse.data?.walletCredited) {
+        setIsConfirmingMeeting(false);
+        setIsProcessing(false);
+        Swal.fire({
+          title: verifyResponse.data.title || "Payment Added to Your Mockeefy Wallet",
+          html: `
+            <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #334155;">
+              <p style="margin-bottom: 12px;">${verifyResponse.data.message}</p>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                <p style="margin: 4px 0;"><strong>Credited Amount:</strong> ₹${verifyResponse.data.amountCredited}</p>
+                <p style="margin: 4px 0;"><strong>Updated Wallet Balance:</strong> ₹${verifyResponse.data.updatedBalance}</p>
+                <p style="margin: 4px 0; font-size: 11.5px; color: #64748b;"><strong>Wallet Transaction Ref:</strong> <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${verifyResponse.data.walletTransactionRef || 'N/A'}</code></p>
+              </div>
+            </div>
+          `,
+          icon: "info",
+          showCancelButton: true,
+          confirmButtonText: "View Wallet",
+          cancelButtonText: "Book Another Interview",
+          confirmButtonColor: "#0755E8",
+          cancelButtonColor: "#64748b"
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate("/wallet");
+          } else {
+            navigate("/find-mentor");
+          }
+        });
+        return;
+      }
+
       if (verifyResponse.data.success) {
         if (fetchProfile) await fetchProfile();
         setPaymentStatus("success");
@@ -271,6 +302,37 @@ const PaymentPage: React.FC = () => {
       setIsConfirmingMeeting(false);
       setPaymentStatus("error");
       setErrors({ submit: err.message || "Failed to process payment." });
+
+      if (err?.response?.data?.walletCredited) {
+        const d = err.response.data;
+        Swal.fire({
+          title: d.title || "Payment Added to Your Mockeefy Wallet",
+          html: `
+            <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #334155;">
+              <p style="margin-bottom: 12px;">${d.message}</p>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                <p style="margin: 4px 0;"><strong>Credited Amount:</strong> ₹${d.amountCredited}</p>
+                <p style="margin: 4px 0;"><strong>Updated Wallet Balance:</strong> ₹${d.updatedBalance}</p>
+                <p style="margin: 4px 0; font-size: 11.5px; color: #64748b;"><strong>Wallet Transaction Ref:</strong> <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${d.walletTransactionRef || 'N/A'}</code></p>
+              </div>
+            </div>
+          `,
+          icon: "info",
+          showCancelButton: true,
+          confirmButtonText: "View Wallet",
+          cancelButtonText: "Book Another Interview",
+          confirmButtonColor: "#0755E8",
+          cancelButtonColor: "#64748b"
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate("/wallet");
+          } else {
+            navigate("/find-mentor");
+          }
+        });
+        return;
+      }
+
       Swal.fire({
         title: "Error",
         text: err.message || "Failed to process payment.",

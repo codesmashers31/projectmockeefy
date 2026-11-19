@@ -19,7 +19,10 @@ import {
   LayoutDashboard,
   CheckCircle2,
   Award,
-  FileText
+  FileText,
+  ExternalLink,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 // Define the tabs with icons and identifiers
@@ -52,7 +55,6 @@ export default function ProfilePage() {
     setSearchParams({ tab: tabId });
   };
 
-  // showSidebar state removed as it is no longer needed for the new mobile layout
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
@@ -62,21 +64,17 @@ export default function ProfilePage() {
 
   // Derived state to check if a specific section is missing
   const isSectionMissing = (tabId: string) => {
-    // If expert is active or profile has reached 100%, none of the sections are missing
     const isActive = status?.toLowerCase() === "active" || status?.toLowerCase() === "approved" || completion >= 100;
     if (isActive) return false;
 
-    // Overview is an executive summary view, never an incomplete form section
     if (tabId === "overview") return false;
 
-    // Category & Level check
     if (tabId === "tier") {
       if (profileData?.category || profileData?.personalInformation?.category || !missingSections.includes("Skills & Expertise")) {
         return false;
       }
     }
 
-    // Verification check: if either company ID or aadhaar is present in profileData, verification is complete
     if (tabId === "verification") {
       const v = profileData?.verification;
       const hasCompanyId = Boolean(v?.companyId?.url);
@@ -84,35 +82,30 @@ export default function ProfilePage() {
       if (hasCompanyId || hasAadhaar || !missingSections.includes("Verification Documents")) return false;
     }
 
-    // Personal Info check
     if (tabId === "personal") {
       if ((profileData?.name && (profileData?.mobile || profileData?.personalInfo?.phone || profileData?.phone)) || !missingSections.includes("Personal Information")) {
         return false;
       }
     }
 
-    // Education check
     if (tabId === "education") {
       if ((Array.isArray(profileData?.education) && profileData.education.length > 0) || !missingSections.includes("Education")) {
         return false;
       }
     }
 
-    // Professional details check
     if (tabId === "profession") {
       if (profileData?.title || profileData?.professionalDetails?.title || profileData?.company || !missingSections.includes("Professional Details")) {
         return false;
       }
     }
 
-    // Service agreement check
     if (tabId === "agreement") {
       if (profileData?.agreement?.isSigned || !missingSections.includes("Service Agreement") || isActive) {
         return false;
       }
     }
 
-    // Map tab IDs to backend section names
     const sectionMap: Record<string, string> = {
       personal: "Personal Information",
       tier: "Skills & Expertise",
@@ -168,7 +161,7 @@ export default function ProfilePage() {
     }
   }, [user, fetchProfileData]);
 
-  // Synchronize in real time when any profile section is updated in another session or by admin
+  // Synchronize in real time when any profile section is updated
   useDataSync(
     [
       "PROFILE_UPDATED",
@@ -183,7 +176,6 @@ export default function ProfilePage() {
       "RECONNECTED",
     ],
     (payload) => {
-      console.log("[ProfilePage] Real-time DATA_SYNC event received:", payload.type);
       if (payload.type === "STATUS_UPDATED" && payload.data?.status) {
         setStatus(payload.data.status);
         localStorage.setItem("profile_status", payload.data.status);
@@ -192,18 +184,16 @@ export default function ProfilePage() {
     }
   );
 
-  // Handler to refresh data after updates in child components
   const handleUpdate = () => {
     fetchProfileData();
   };
 
   const renderContent = () => {
-    // Pass onUpdate to all children so they can trigger a re-fetch of missing sections
     const commonProps = { onUpdate: handleUpdate, profileData };
 
     switch (active) {
       case "overview":
-        return <ExpertProfileHeader onNavigate={(tab) => { handleTabSelect(tab); }} onRefresh={fetchProfileData} />;
+        return <ExpertProfileHeader onNavigate={(tab) => handleTabSelect(tab)} onRefresh={fetchProfileData} />;
       case "personal":
         return <PersonalInfo {...commonProps} isMissing={isSectionMissing('personal')} />;
       case "tier":
@@ -217,7 +207,7 @@ export default function ProfilePage() {
       case "agreement":
         return <AgreementPage onUpdate={handleUpdate} />;
       default:
-        return <ExpertProfileHeader onNavigate={(tab) => { handleTabSelect(tab); }} onRefresh={fetchProfileData} />;
+        return <ExpertProfileHeader onNavigate={(tab) => handleTabSelect(tab)} onRefresh={fetchProfileData} />;
     }
   };
 
@@ -226,169 +216,144 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="h-full">
-      <div className="sidebar-main-card relative rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] h-full flex flex-col overflow-hidden animate-in fade-in duration-200">
-        {/* Decorative ambient blue lighting */}
-        <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-6 animate-in fade-in duration-200">
+      {/* Decorative ambient blue lighting */}
+      <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
-        <div className="flex-1 flex min-h-0">
-          {/* LEFT SIDEBAR - Fixed Width on Desktop, Hidden on Mobile */}
-          <div className="hidden lg:flex w-64 border-r border-slate-200/80 bg-transparent flex-col shrink-0 overflow-y-auto thin-scrollbar transition-all relative z-10">
-            {/* <div className="p-6 border-b border-gray-100 bg-white text-center">
-              <div className="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-3xl mb-3 shadow-inner">
-                {user?.name?.[0]?.toUpperCase() || "E"}
-              </div>
-              <h2 className="font-bold text-gray-900 truncate px-2">{user?.name}</h2>
-              <p className="text-sm text-gray-500 mb-3">{user?.email}</p>
+      {/* Content Layer */}
+      <div className="relative z-10 space-y-6">
+      {/* 1. Page Title & Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1 border-b border-slate-200/80">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Expert Profile &amp; Mentorship Hub
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-xs font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {status === "Active" ? "Verified Mentor" : `${completion}% Complete`}
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            Manage your executive credentials, coaching tracks, hourly pricing, and verified background details.
+          </p>
+        </div>
 
-              <div className={`px-3 py-1.5 text-xs font-semibold rounded-full border inline-flex items-center gap-1.5 ${getStatusColor(status)}`}>
-                <span className={`relative flex h-2 w-2`}>
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                </span>
-                {getStatusLabel(status)}
-              </div>
-            </div> */}
+        <div className="flex items-center gap-2.5">
+          {user?.id && (
+            <button
+              onClick={() => window.open(`/expert-profile/${user.id}`, "_blank")}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-blue-50/80 border border-blue-200/90 text-[#0755E8] text-xs sm:text-sm font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+              title="Preview how candidates view your profile"
+            >
+              <ExternalLink className="w-4 h-4 text-[#0755E8]" />
+              Preview Public Profile
+            </button>
+          )}
+        </div>
+      </div>
 
-            {/* Navigation Links */}
-            <div className="pt-6 lg:pt-8 px-4 pb-4 space-y-1.5">
+      {/* 2. Main Executive 2-Column Layout */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Navigation Card */}
+        <aside className="w-full lg:w-60 shrink-0 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs p-3.5 sm:p-4 flex flex-col justify-between space-y-3 lg:space-y-4">
+          <div className="space-y-2 lg:space-y-3">
+            <div className="px-2 pt-1 pb-2 border-b border-slate-100 flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                PROFILE SECTIONS
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0755E8] border border-blue-100">
+                {TABS.length} MODULES
+              </span>
+            </div>
+
+            {/* Tab navigation pills - horizontal scrollable on mobile, vertical stack on desktop */}
+            <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-1.5 pb-2 lg:pb-0 thin-scrollbar -mx-1 px-1">
               {TABS.map((tab) => {
                 const isIncomplete = isTabIncomplete(tab.id);
+                const isActive = active === tab.id;
 
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => {
-                      setActive(tab.id);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                      active === tab.id
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
-                        : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
+                    onClick={() => handleTabSelect(tab.id)}
+                    className={`flex items-center gap-2 lg:gap-3 px-3 sm:px-3.5 py-2 lg:py-2.5 text-xs sm:text-sm font-bold rounded-xl lg:rounded-2xl transition-all cursor-pointer text-left shrink-0 lg:w-full ${
+                      isActive
+                        ? "bg-[#0755E8] text-white shadow-sm shadow-[#0755E8]/25"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/60 lg:border-transparent"
                     }`}
                   >
-                    <tab.icon className={`w-4 h-4 shrink-0 ${active === tab.id ? "text-white" : "text-slate-400"}`} />
-                    <span className="truncate">{tab.label}</span>
+                    <tab.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                    <span className="whitespace-nowrap lg:truncate flex-1">{tab.label}</span>
 
-                    <div className="ml-auto shrink-0">
+                    <div className="shrink-0">
                       {isIncomplete ? (
-                        <div className={`w-2 h-2 rounded-full ${active === tab.id ? "bg-blue-300" : "bg-slate-300"}`} title="Incomplete" />
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                          isActive ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          Setup
+                        </span>
                       ) : (
-                        <CheckCircle2 className={`w-3.5 h-3.5 ${active === tab.id ? "text-emerald-300" : "text-emerald-500"}`} />
+                        <CheckCircle2 className={`w-3.5 h-3.5 lg:w-4 lg:h-4 ${isActive ? "text-emerald-200" : "text-emerald-500"}`} />
                       )}
                     </div>
                   </button>
                 );
               })}
             </div>
+          </div>
 
-            {/* Profile Status Widget - Bottom of Sidebar */}
+          {/* Bottom Mentor Status Card */}
+          <div className="pt-3 border-t border-slate-100">
             {status === "Active" ? (
-              <div className="p-4 mt-auto border-t border-slate-200/80 bg-emerald-50/50 backdrop-blur-xs">
+              <div className="bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/90 rounded-2xl p-3.5 space-y-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-emerald-950 truncate">Verified Expert</p>
-                    <p className="text-[11px] text-emerald-700 font-medium">Profile is live & active</p>
+                    <p className="text-xs font-bold text-emerald-950 truncate">Verified Mentor</p>
+                    <p className="text-[11px] text-emerald-700 font-medium">100% Discoverable</p>
                   </div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-emerald-200/60 font-semibold text-emerald-800">
+                  <span>MNC Credentials Live</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
               </div>
             ) : (
-              <div className={`p-4 mt-auto border-t border-slate-200/80 backdrop-blur-xs space-y-2 ${
-                completion >= 100 ? "bg-emerald-50/70 border-emerald-200" : "bg-white/40"
-              }`}>
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                  <span className="flex items-center gap-1.5">
-                    {completion >= 100 && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                    Setup Progress
-                  </span>
-                  <span className={`font-extrabold ${completion >= 100 ? "text-emerald-700" : "text-blue-600"}`}>
-                    {completion}%
-                  </span>
+                  <span>Profile Progress</span>
+                  <span className="text-[#0755E8] font-black">{completion}%</span>
                 </div>
-                <div className="h-1.5 w-full bg-slate-200/80 rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ease-out ${
-                      completion >= 100 ? "bg-emerald-600" : "bg-blue-600"
-                    }`}
+                    className="h-full bg-[#0755E8] rounded-full transition-all duration-500"
                     style={{ width: `${completion}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] font-medium pt-0.5">
-                  {completion >= 100 ? (
-                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      100% Complete
-                    </span>
-                  ) : profileData?.verificationRequested ? (
-                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      In Review
-                    </span>
-                  ) : completion >= 80 && !missingSections.includes("Verification Documents") && !missingSections.includes("Service Agreement") ? (
-                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Ready to verify
-                    </span>
-                  ) : (
-                    <span className="text-slate-500">
-                      Target: 80% to verify
-                    </span>
-                  )}
-                  <span className={`${completion >= 100 ? "text-emerald-700 font-bold" : "text-slate-400 font-normal"}`}>
-                    {completion >= 100 ? "Complete" : missingSections.length === 0 ? "Complete" : `${missingSections.length} remaining`}
-                  </span>
-                </div>
+                <p className="text-[11px] text-slate-500">
+                  {completion >= 80 ? "Ready for verification" : "Target: 80% to request review"}
+                </p>
               </div>
             )}
           </div>
+        </aside>
 
-          {/* RIGHT CONTENT AREA - Flexible */}
-          <div className="flex-1 overflow-y-auto thin-scrollbar bg-transparent flex flex-col relative z-10">
-            <div className="pt-6 lg:pt-8 px-5 lg:px-8 pb-8 w-full max-w-5xl">
-
-              {/* Mobile Tab Navigation */}
-              <div className="lg:hidden mb-6 overflow-x-auto no-scrollbar pb-2">
-                <div className="flex items-center gap-2">
-                  {TABS.map((tab) => {
-                    const isIncomplete = isTabIncomplete(tab.id);
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabSelect(tab.id)}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
-                          active === tab.id
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/20'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <tab.icon className="w-3.5 h-3.5" />
-                        {tab.label}
-                        {isIncomplete ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                        ) : (
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {active === "overview" ? (
-                renderContent()
-              ) : (
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 sm:p-8">
-                  {renderContent()}
-                </div>
-              )}
+        {/* Right Content Area */}
+        <main className="flex-1 min-w-0 w-full">
+          {active === "overview" ? (
+            renderContent()
+          ) : (
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 animate-in fade-in duration-150">
+              {renderContent()}
             </div>
-          </div>
-        </div>
+          )}
+        </main>
       </div>
     </div>
+  </div>
   );
 }

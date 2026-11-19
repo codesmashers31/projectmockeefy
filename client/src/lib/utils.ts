@@ -17,3 +17,19 @@ export function formatScoreDisplay(score: number | string | null | undefined): s
   if (isNaN(num) || !isFinite(num)) return "N/A";
   return Number.isInteger(num) ? String(num) : String(Number(num.toFixed(1)));
 }
+
+/**
+ * Capitalizes the first letter of each word in a user's display name cleanly:
+ * "test expert" -> "Test Expert"
+ * "testuser" -> "Testuser"
+ * "joel peter" -> "Joel Peter"
+ */
+export function formatDisplayName(name?: string | null, fallback = "User"): string {
+  if (!name || typeof name !== "string") return fallback;
+  const trimmed = name.trim();
+  if (!trimmed) return fallback;
+  return trimmed
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}

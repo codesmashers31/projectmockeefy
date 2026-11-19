@@ -42,6 +42,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const WatchMock = lazy(() => import("./pages/WatchMock"));
 const AiInterview = lazy(() => import("./pages/AiInterview"));
 const CandidateWalletPage = lazy(() => import("./pages/CandidateWalletPage"));
+const HelpSupportPage = lazy(() => import("./pages/HelpSupportPage"));
 
 // Expert Dashboard Pages
 const DashboardIndex = lazy(() => import("./pages/expert/Index"));
@@ -72,6 +73,7 @@ const SkillManagement = lazy(() => import("./pages/admin/SkillManagement"));
 const BookingSearch = lazy(() => import("./pages/admin/BookingSearch"));
 const PayoutManagement = lazy(() => import("./pages/admin/PayoutManagement"));
 const AdminAgreements = lazy(() => import("./pages/admin/AdminAgreements"));
+const SupportTickets = lazy(() => import("./pages/admin/SupportTickets"));
 const CategoriesPanel = lazy(() => import("./components/CategoriesPanel"));
 
 const queryClient = new QueryClient();
@@ -187,6 +189,7 @@ function AppRoutes() {
           <Route path="/return-policy" element={<ReturnPolicy />} />
           <Route path="/shipping-policy" element={<ShippingPolicy />} />
           <Route path="/plans" element={<SubscriptionPlans />} />
+          <Route path="/help" element={<DashboardLayout><HelpSupportPage /></DashboardLayout>} />
 
           {/* PUBLIC & SHARED AVAILABLE EXPERT PROFILE ROUTES */}
           <Route path="/expert-profile/:expertId" element={<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>} />
@@ -207,14 +210,15 @@ function AppRoutes() {
               <Route path="/resume-builder" element={<ResumeBuilderPage />} />
               <Route path="/mentors" element={<MentorsRedirect />} />
               <Route path="/find-mentor" element={<MentorsRedirect />} />
-              <Route path="/my-sessions" element={<MySessions key="my-sessions" />} />
+              <Route path="/my-sessions" element={user?.userType?.toLowerCase() === 'expert' ? <Navigate to="/dashboard/sessions" replace /> : <MySessions key="my-sessions" />} />
               <Route path="/saved-experts" element={<MySessions key="saved-experts" initialViewOverride="saved" />} />
               <Route path="/liked-mentors" element={<MySessions key="liked-mentors" initialViewOverride="saved" />} />
               <Route path="/tips" element={<TipsPage />} />
               <Route path="/certificates" element={<CertificatesPage />} />
-              <Route path="/wallet" element={<CandidateWalletPage />} />
-              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/wallet" element={user?.userType?.toLowerCase() === 'expert' ? <Navigate to="/dashboard/withdraw" replace /> : <CandidateWalletPage />} />
+              <Route path="/profile" element={user?.userType?.toLowerCase() === 'expert' ? <Navigate to="/dashboard/profile" replace /> : <UserProfile />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/help" element={<HelpSupportPage />} />
             </Route>
           </Route>
 
@@ -231,6 +235,7 @@ function AppRoutes() {
               <Route path="agreement" element={<AgreementPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="help" element={<HelpSupportPage />} />
             </Route>
           </Route>
 
@@ -250,6 +255,7 @@ function AppRoutes() {
               <Route path="certifications" element={<CertificationRules />} />
               <Route path="pricing" element={<PricingRules />} />
               <Route path="hr-contacts" element={<HrContacts />} />
+              <Route path="support" element={<SupportTickets />} />
               <Route path="payouts" element={<PayoutManagement />} />
               <Route path="skills" element={<SkillManagement />} />
             </Route>

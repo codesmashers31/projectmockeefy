@@ -963,6 +963,20 @@ export const issueCertificate = async (req, res) => {
             });
         }
 
+        // Verify candidate has reviewed and rated expert for all 3 qualifying sessions
+        const candidateReviews = await ReviewDetails.find({
+            sessionId: { $in: sessionIdsToAllocate },
+            reviewerRole: 'candidate'
+        }).select('sessionId').lean();
+        const candidateReviewedSet = new Set(candidateReviews.map(r => String(r.sessionId)));
+        const unratedCount = sessionIdsToAllocate.filter(sid => !candidateReviewedSet.has(String(sid))).length;
+        if (unratedCount > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Please review and rate your expert for all milestone sessions before generating your certificate. (${unratedCount} unrated session${unratedCount > 1 ? 's' : ''})`
+            });
+        }
+
         const userSuffix = user._id.toString().slice(-6).toUpperCase();
         const year = new Date().getFullYear();
         const catSlug = targetCategoryProgress.categoryName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || 'GEN';

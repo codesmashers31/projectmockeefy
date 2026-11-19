@@ -1,8 +1,8 @@
 // --- Google Meet only: no socket, no WebRTC ---
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Clock, Copy, ExternalLink, HelpCircle, LogOut, PhoneOff, CheckCircle2, AlertTriangle, Star, X, User, Briefcase, CalendarDays, Timer, ChevronLeft, Loader2, UserX, Lock, Check, UserCheck, ShieldAlert } from 'lucide-react';
+import { Clock, Copy, ExternalLink, HelpCircle, LogOut, PhoneOff, CheckCircle2, AlertTriangle, Star, X, User, Briefcase, CalendarDays, Timer, ChevronLeft, Loader2, UserX, Lock, Check, UserCheck, ShieldAlert, ShieldCheck, Video, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { useSocket, useDataSync } from '../context/SocketContext';
@@ -262,6 +262,23 @@ const GoogleMeetOnlyMeeting = ({
   const endAt = resolvedSession?.endTime ? new Date(resolvedSession.endTime) : null;
   const durationMins = startAt && endAt ? Math.max(1, Math.round((endAt.getTime() - startAt.getTime()) / 60000)) : null;
 
+  const isBeforeStart = startAt ? nowTick < startAt.getTime() : false;
+  const isAfterEnd = sessionEndTime ? nowTick > sessionEndTime : false;
+  const isLiveNow = !isBeforeStart && !isAfterEnd;
+
+  const timeToStartStr = useMemo(() => {
+    if (!startAt || nowTick >= startAt.getTime()) return null;
+    const diffMs = startAt.getTime() - nowTick;
+    const diffSec = Math.floor(diffMs / 1000);
+    const days = Math.floor(diffSec / 86400);
+    const hours = Math.floor((diffSec % 86400) / 3600);
+    const mins = Math.floor((diffSec % 3600) / 60);
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m ${diffSec % 60}s`;
+  }, [startAt, nowTick]);
+
   const handleSaveMeetLink = async () => {
     const link = meetLinkInputValue.trim();
     if (!link || !/meet\.google\.com/i.test(link)) {
@@ -512,77 +529,90 @@ const GoogleMeetOnlyMeeting = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 py-6 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto space-y-5">
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <MockeefyLogo className="w-11 h-11 shrink-0" />
-              <div>
-                <p className="text-xs font-black tracking-wide uppercase text-slate-400">Mockeefy Live Session</p>
-                <h1 className="text-base sm:text-lg font-bold text-slate-900">Google Meet Interview Room</h1>
-              </div>
+        {/* Unified Executive Header */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <MockeefyLogo className="w-8 h-8" />
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onLeave}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold"
-              >
-                <ChevronLeft size={14} />
-                Back
-              </button>
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold capitalize bg-blue-50 border border-blue-200 text-blue-700">
-                {activeRole || 'participant'}
-              </span>
+            <div className="min-w-0 leading-tight">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                  Google Meet Interview Room
+                </h1>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
+                  isTimerEnded
+                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                    : isLiveNow
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/90"
+                    : "bg-blue-50 text-[#0755E8] border border-blue-200/80"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    isTimerEnded ? "bg-rose-500" : isLiveNow ? "bg-emerald-500 animate-pulse" : "bg-[#0755E8]"
+                  }`} />
+                  <span>{isTimerEnded ? "Session Concluded" : isLiveNow ? "Live In Progress" : "Scheduled Session"}</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                Session ID: <span className="font-mono text-slate-700 font-semibold">{meetingId}</span>
+                <button
+                  type="button"
+                  onClick={copyMeetingId}
+                  className="ml-2 text-[#0755E8] hover:text-[#0645C7] text-[11px] font-bold cursor-pointer inline-flex items-center gap-1 transition-colors"
+                  title="Copy Session ID"
+                >
+                  <Copy size={11} />
+                  <span>Copy ID</span>
+                </button>
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Header */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">
-                <Clock size={16} className="text-slate-500" />
-                <span className="font-mono text-sm text-slate-700">Meeting: {meetingId.slice(0, 20)}...</span>
-                <button onClick={copyMeetingId} className="p-1 hover:bg-slate-200 rounded" aria-label="Copy">
-                  <Copy size={14} />
-                </button>
-              </div>
-              {remainingSeconds != null && (
-                <span className="text-sm text-slate-600 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200">
-                  {remainingSeconds <= 0 ? "Time's up" : `Ends in ${formatTimer(remainingSeconds)}`}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
             <button
+              type="button"
+              onClick={onLeave}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+            >
+              <ChevronLeft size={14} />
+              <span>Back</span>
+            </button>
+            <span className="px-3 py-2 rounded-xl text-xs font-bold capitalize bg-slate-100 border border-slate-200 text-slate-700">
+              {activeRole || 'participant'}
+            </span>
+            <button
+              type="button"
               onClick={handleClickEndOrLeave}
               disabled={completing}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-sm font-medium text-white"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50 whitespace-nowrap"
             >
-              {activeRole === 'expert' ? <PhoneOff size={18} /> : <LogOut size={18} />}
-              {activeRole === 'expert' ? 'End meeting' : 'Leave'}
+              {activeRole === 'expert' ? <PhoneOff size={14} /> : <LogOut size={14} />}
+              <span>{activeRole === 'expert' ? 'End Interview' : 'Leave Room'}</span>
             </button>
           </div>
         </div>
 
+        {/* Timer Ended Alert Banner */}
         {isTimerEnded && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 animate-pulse">
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 animate-pulse shadow-2xs">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-rose-700">
+              <div className="flex items-center gap-2.5 text-rose-700">
                 <AlertTriangle size={18} />
-                <span className="text-sm font-semibold">Session timer ended. Please close the call and submit candidate feedback.</span>
+                <span className="text-xs sm:text-sm font-bold">
+                  Session timer ended. Please conclude the call and submit candidate feedback.
+                </span>
               </div>
               {canReviewCandidate && (
                 <button
                   type="button"
                   onClick={() => setShowReviewModal(true)}
-                  className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs"
                 >
                   Review Candidate
                 </button>
               )}
               {activeRole === 'expert' && expertReviewSubmitted && (
-                <span className="px-3 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Candidate review submitted
                 </span>
               )}
@@ -590,162 +620,372 @@ const GoogleMeetOnlyMeeting = ({
           </div>
         )}
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">Interview Details</h2>
-            <span className="px-2.5 py-1 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200">
-              Session ID: {meetingId}
+        {/* Main Live Meeting Action Card */}
+        <div className="relative rounded-[24px] bg-gradient-to-br from-white via-white to-blue-50/40 border border-slate-200/90 p-6 sm:p-8 shadow-xs overflow-hidden text-left">
+          {/* Subtle atmospheric ambient glow */}
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blue-200/25 blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 space-y-6">
+            {/* Top row: Video Call Status & Timer Badge */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#0755E8] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                  <Video className="w-6 h-6 stroke-[2.2]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">
+                      Google Meet Live Room
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowMeetHelp(true)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                      title="Google Meet Help & FAQ"
+                    >
+                      <HelpCircle size={16} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 font-normal mt-0.5">
+                    1-on-1 verified video meeting conducted via Google Meet with real-time feedback.
+                  </p>
+                </div>
+              </div>
+
+              {/* Real-time Schedule / Timer Pill */}
+              <div className="flex items-center gap-2">
+                {isBeforeStart ? (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200/80 text-[#0755E8] text-xs font-bold shadow-2xs">
+                    <Clock size={14} className="text-[#0755E8]" />
+                    <span>Starts in {timeToStartStr}</span>
+                  </div>
+                ) : isLiveNow ? (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-bold shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Live • Ends in {formatTimer(remainingSeconds || 0)}</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+                    <AlertTriangle size={14} className="text-amber-600" />
+                    <span>Session Concluded</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Launch & Control Actions */}
+            <div className="space-y-4">
+              {activeRole === 'expert' ? (
+                <>
+                  {isGoogleMeetUrl ? (
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <span className="text-xs sm:text-sm font-bold text-slate-800">
+                            Google Meet link is active. Candidate can join now.
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleJoinWithGoogleMeet}
+                            className="px-5 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <ExternalLink size={14} />
+                            <span>Open in Google Meet</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowMeetLinkInput(true); setMeetLinkInputValue(googleMeetLink || ''); }}
+                            className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                          >
+                            Change Link
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : showMeetLinkInput ? (
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-3">
+                      <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+                        Paste Google Meet Link
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-2.5">
+                        <input
+                          type="url"
+                          placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                          value={meetLinkInputValue}
+                          onChange={(e) => setMeetLinkInputValue(e.target.value)}
+                          className="flex-1 min-w-0 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs sm:text-sm font-semibold placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-blue-100 transition-all"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveMeetLink}
+                            disabled={savingMeetLink}
+                            className="px-5 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap"
+                          >
+                            {savingMeetLink ? 'Saving...' : 'Save Link'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowMeetLinkInput(false); setMeetLinkInputValue(''); }}
+                            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">Add Google Meet Link</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Create a meeting in Google Meet, copy its link, and save it here for the candidate.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowMeetLinkInput(true)}
+                          className="px-4 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                        >
+                          Paste Meet Link
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleJoinWithGoogleMeet}
+                          className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                        >
+                          Create New Meet
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Candidate View */
+                <div className="space-y-4">
+                  {isGoogleMeetUrl ? (
+                    <div className="flex flex-col items-center justify-center text-center p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-3.5">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/90 text-xs font-bold shadow-2xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Google Meet Link Ready</span>
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-black text-slate-900">
+                        Your 1-on-1 Mock Interview Call is Ready
+                      </h3>
+                      <p className="text-xs text-slate-500 max-w-md leading-relaxed font-normal">
+                        Click below to open the video call in a new Google Meet tab. Keep this Mockeefy tab open to track your remaining time and access session rubrics.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={handleJoinWithGoogleMeet}
+                        className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#0755E8] to-[#0440BD] hover:from-[#0645C7] hover:to-[#033496] active:bg-[#053BA8] text-white text-sm sm:text-base font-black rounded-xl shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer inline-flex items-center justify-center gap-2.5 mt-2"
+                      >
+                        <ExternalLink className="w-5 h-5 stroke-[2.2]" />
+                        <span>Open in Google Meet and Join</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col items-center justify-center text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0755E8] flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900">Waiting for Expert to Share Meet Link</h4>
+                      <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                        The interview expert will add the Google Meet link shortly before your scheduled start time.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={fetchMeetingLinkOnce}
+                        className="px-4 py-2 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                      >
+                        Refresh Link
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Micro disclaimer footer */}
+            <div className="pt-2 flex items-center justify-center gap-2 text-xs text-slate-500 text-center font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>This session uses Google Meet for high-fidelity video &amp; screen sharing.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Matchup & Details Card */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-5 text-left">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                Interview Participants &amp; Track
+              </h3>
+              <p className="text-xs text-slate-500 font-normal mt-0.5">
+                Verified session details and technical domain focus.
+              </p>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-bold text-[#0755E8] bg-blue-50 border border-blue-200/70 shadow-2xs">
+              {topicLabel}
             </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <CalendarDays size={14} />
-                <span className="text-xs font-semibold">Date</span>
+          {/* Candidate & Expert Matchup Grid */}
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            {/* Candidate Card */}
+            <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-white to-white p-4.5 shadow-2xs">
+              <div className="flex items-center justify-between mb-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100/70 text-[#0755E8] text-[10.5px] font-black uppercase tracking-wider">
+                  <User size={12} />
+                  <span>Candidate</span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Mock Interviewee</span>
               </div>
-              <p className="text-sm font-bold text-slate-900">{startAt ? startAt.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] text-[#0755E8] font-black text-base flex items-center justify-center shrink-0 border border-blue-200 shadow-2xs">
+                  {candidateName.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-black text-slate-900 truncate">{candidateName}</h4>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">
+                    {resolvedSession?.candidateDetails?.email || 'Email not available'}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Clock size={14} />
-                <span className="text-xs font-semibold">Time</span>
+
+            {/* Expert Card */}
+            <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-white to-white p-4.5 shadow-2xs">
+              <div className="flex items-center justify-between mb-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100/70 text-emerald-800 text-[10.5px] font-black uppercase tracking-wider">
+                  <Briefcase size={12} />
+                  <span>Interview Expert</span>
+                </div>
+                {expertCompany !== 'N/A' && (
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-emerald-200 text-slate-800 font-bold text-[11px] shadow-2xs">
+                    {expertCompany}
+                  </span>
+                )}
               </div>
-              <p className="text-sm font-bold text-slate-900">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 font-black text-base flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
+                  {expertName.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-black text-slate-900 truncate">{expertName}</h4>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">
+                    {expertRole} {expertCompany !== 'N/A' ? `• ${expertCompany}` : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 Specifications Cards */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-1">
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <CalendarDays size={14} className="text-[#0755E8]" />
+                <span className="text-xs font-bold text-slate-700">Date</span>
+              </div>
+              <p className="text-sm font-black text-slate-900">
+                {startAt ? startAt.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <Clock size={14} className="text-[#0755E8]" />
+                <span className="text-xs font-bold text-slate-700">Scheduled Time</span>
+              </div>
+              <p className="text-sm font-black text-slate-900">
                 {startAt ? startAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : '--:--'}
                 {' - '}
                 {endAt ? endAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : '--:--'}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Timer size={14} />
-                <span className="text-xs font-semibold">Duration</span>
-              </div>
-              <p className="text-sm font-bold text-slate-900">{durationMins ? `${durationMins} mins` : 'N/A'}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Briefcase size={14} />
-                <span className="text-xs font-semibold">Topic</span>
-              </div>
-              <p className="text-sm font-bold text-slate-900 line-clamp-1">{topicLabel}</p>
-            </div>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <User size={15} className="text-blue-700" />
-                <p className="text-xs font-black tracking-wide uppercase text-blue-700">Candidate</p>
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <Timer size={14} className="text-[#0755E8]" />
+                <span className="text-xs font-bold text-slate-700">Duration</span>
               </div>
-              <p className="text-sm font-bold text-slate-900">{candidateName}</p>
-              <p className="text-xs text-slate-600 mt-1">{resolvedSession?.candidateDetails?.email || 'Email not available'}</p>
+              <p className="text-sm font-black text-slate-900">
+                {durationMins ? `${durationMins} mins` : '30 mins'}
+              </p>
             </div>
 
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Briefcase size={15} className="text-emerald-700" />
-                <p className="text-xs font-black tracking-wide uppercase text-emerald-700">Expert</p>
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <Briefcase size={14} className="text-[#0755E8]" />
+                <span className="text-xs font-bold text-slate-700">Topic</span>
               </div>
-              <p className="text-sm font-bold text-slate-900">{expertName}</p>
-              <p className="text-xs text-slate-600 mt-1">{expertRole} {expertCompany !== 'N/A' ? `- ${expertCompany}` : ''}</p>
+              <p className="text-sm font-black text-slate-900 truncate" title={topicLabel}>
+                {topicLabel}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Google Meet section */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 shadow-sm">
-          <div className="flex flex-col gap-5">
-            <div className="flex items-center gap-2">
-              <ExternalLink className="w-5 h-5 text-blue-600" />
-              <span className="text-lg font-semibold text-slate-900">Google Meet</span>
-              <button type="button" onClick={() => setShowMeetHelp(true)} className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100">
-                <HelpCircle size={18} />
-              </button>
-            </div>
-
+        {/* Quick Instructions & Live Guidelines */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs text-left space-y-4">
+          <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <span>Interview Guidelines &amp; Quick Tips</span>
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {activeRole === 'expert' ? (
               <>
-                {isGoogleMeetUrl ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">Link saved. Candidate can join now.</span>
-                    <button type="button" onClick={handleJoinWithGoogleMeet} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">
-                      Open in Google Meet
-                    </button>
-                    <button type="button" onClick={() => { setShowMeetLinkInput(true); setMeetLinkInputValue(googleMeetLink || ''); }} className="text-sm text-slate-500 hover:text-slate-900">
-                      Change link
-                    </button>
-                  </div>
-                ) : showMeetLinkInput ? (
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="url"
-                      placeholder="Paste Google Meet link here (https://meet.google.com/xxx-xxxx-xxx)"
-                      value={meetLinkInputValue}
-                      onChange={(e) => setMeetLinkInputValue(e.target.value)}
-                      className="flex-1 min-w-0 px-4 py-3 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 outline-none"
-                    />
-                    <div className="flex gap-2">
-                      <button type="button" onClick={handleSaveMeetLink} disabled={savingMeetLink} className="px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50">
-                        {savingMeetLink ? 'Saving...' : 'Save link'}
-                      </button>
-                      <button type="button" onClick={() => { setShowMeetLinkInput(false); setMeetLinkInputValue(''); }} className="px-4 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button type="button" onClick={() => setShowMeetLinkInput(true)} className="px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">
-                      Paste Meet link
-                    </button>
-                    <button type="button" onClick={handleJoinWithGoogleMeet} className="px-4 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200">
-                      Create new Meet
-                    </button>
-                    <span className="text-sm text-slate-500">Create a meeting, copy the link, then paste and save it here.</span>
-                  </div>
-                )}
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 shadow-2xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600 leading-snug">
+                    <strong className="text-slate-800 font-bold block mb-0.5">Google Meet Setup</strong>
+                    Create a Google Meet link and save it above before the interview starts.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 shadow-2xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600 leading-snug">
+                    <strong className="text-slate-800 font-bold block mb-0.5">Microphone &amp; Screen</strong>
+                    Use "Open in Google Meet" to verify your mic and screen sharing setup.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 shadow-2xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600 leading-snug">
+                    <strong className="text-slate-800 font-bold block mb-0.5">Ending &amp; Feedback</strong>
+                    End the meeting and submit candidate scorecard once the round is completed.
+                  </p>
+                </div>
               </>
             ) : (
               <>
-                {isGoogleMeetUrl ? (
-                  <button type="button" onClick={handleJoinWithGoogleMeet} className="w-full sm:w-auto px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-center">
-                    Open in Google Meet and Join
-                  </button>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-slate-600">Waiting for expert to add Meet link.</span>
-                    <button type="button" onClick={fetchMeetingLinkOnce} className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium border border-slate-200">
-                      Refresh link
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <p className="text-sm text-slate-600">
-            This session uses Google Meet only. Open the link above to join the video call in a new tab.
-          </p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-3">Quick Instructions</h3>
-          <div className="space-y-2.5 text-sm text-slate-600">
-            {activeRole === 'expert' ? (
-              <>
-                <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Create a Google Meet link and save it here before interview starts.</p>
-                <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Use "Open in Google Meet" to verify your mic/camera setup.</p>
-                <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />End the meeting only after the interview is fully completed.</p>
-              </>
-            ) : (
-              <>
-                <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Wait for the expert to share a Google Meet link.</p>
-                <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Click "Open in Google Meet and Join" once the button appears.</p>
-                <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />Keep this page open for session timer and controls.</p>
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 shadow-2xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600 leading-snug">
+                    <strong className="text-slate-800 font-bold block mb-0.5">Join When Ready</strong>
+                    Click "Open in Google Meet and Join" to enter the video interview in a new tab.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 shadow-2xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600 leading-snug">
+                    <strong className="text-slate-800 font-bold block mb-0.5">Keep Controller Open</strong>
+                    Keep this Mockeefy control room open in the background to track session time.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 shadow-2xs flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600 leading-snug">
+                    <strong className="text-slate-800 font-bold block mb-0.5">Evaluation &amp; Rubrics</strong>
+                    Your interviewer will provide verbal feedback and submit written rubrics after the call.
+                  </p>
+                </div>
               </>
             )}
           </div>

@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { mapExpertToProfile, Profile } from "../lib/bookSessionUtils";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { formatDisplayName } from "../lib/utils";
 import { BookingModal } from "../components/BookingModal";
 import { useAuth } from "../context/AuthContext";
 
@@ -333,6 +334,12 @@ export default function ExpertProfilePage() {
     ? profile.levels
     : [profile.level || "Rising Mentor"];
 
+  const hasReviews = reviews.length > 0 || (profile.reviews && profile.reviews > 0);
+  const displayRating = hasReviews ? (profile.rating > 0 ? profile.rating.toFixed(1) : "5.0") : "5.0";
+  const displayReviewCount = hasReviews ? (reviews.length || profile.reviews) : 0;
+  const cleanPrice = profile.price ? parseInt(profile.price.replace(/[^\d]/g, ""), 10) || 499 : 499;
+  const originalPrice = Math.max(cleanPrice + 500, Math.round((cleanPrice * 1.4) / 100) * 100 - 1);
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 pb-20 px-3 sm:px-6 font-sans text-left">
       {/* 1. Header Navigation & Breadcrumbs */}
@@ -346,7 +353,7 @@ export default function ExpertProfilePage() {
               navigate("/find-mentor");
             }
           }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:shadow-xs"
         >
           <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
           <span>Back to Interview Experts</span>
@@ -361,126 +368,152 @@ export default function ExpertProfilePage() {
             Interview Experts
           </Link>
           <span className="text-slate-300">/</span>
-          <span className="text-[#0755E8] font-bold truncate max-w-[200px]">
-            {profile.name}
+          <span className="text-[#0755E8] font-bold truncate max-w-[200px] capitalize">
+            {formatDisplayName(profile.name)}
           </span>
         </nav>
       </div>
 
-      {/* 2. Hero Profile Card */}
-      <div className="relative bg-gradient-to-b from-[#F0F5FF]/90 via-[#F8FAFF] to-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs overflow-hidden">
-        {/* Ambient background glow */}
-        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-200/30 blur-3xl pointer-events-none" />
+      {/* 2. Executive Hero Profile Card */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#EBF3FF] via-[#F8FAFF] to-white border border-slate-200/90 p-5 sm:p-7 shadow-xs">
+        {/* Ambient atmospheric glows */}
+        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-indigo-200/20 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
-          {/* Avatar and Identity */}
-          <div className="flex flex-row items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-            <div className="relative shrink-0">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden p-0.5">
-                <img
-                  src={avatarUrl}
-                  alt={profile.name}
-                  className="w-full h-full object-cover object-top rounded-lg"
-                  onError={(e) => {
-                    e.currentTarget.src = getProfileImageUrl(null);
-                  }}
-                />
-              </div>
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#0E9D5C] text-white flex items-center justify-center border-2 border-white shadow-2xs" title="Verified Expert">
-                <Check className="w-3 h-3 stroke-[3]" />
-              </span>
-            </div>
-
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 tracking-tight leading-snug">
-                  {profile.name}
-                </h1>
-                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
-                  <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10.5px] font-semibold">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Verified Mentor
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10.5px] font-semibold">
-                  {profile.category || "IT"}
+        <div className="relative z-10 space-y-4">
+          {/* Main Top Row: Avatar + Info + Actions */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            {/* Left: Avatar + Details */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 min-w-0 flex-1">
+              {/* Avatar with Verified Beacon */}
+              <div className="relative shrink-0 self-start sm:self-auto">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white border-2 border-slate-200/90 shadow-sm overflow-hidden p-0.5">
+                  <img
+                    src={avatarUrl}
+                    alt={profile.name}
+                    className="w-full h-full object-cover object-top rounded-xl"
+                    onError={(e) => {
+                      e.currentTarget.src = getProfileImageUrl(null);
+                    }}
+                  />
+                </div>
+                <span
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#0E9D5C] text-white flex items-center justify-center border-2 border-white shadow-xs"
+                  title="Verified Expert"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </span>
               </div>
 
-              <p className="text-xs sm:text-[13px] font-medium text-slate-600 leading-snug">
-                {profile.role}
-                {profile.company && (
-                  <span className="text-slate-500 font-normal"> at <strong className="text-slate-800 font-semibold">{profile.company}</strong></span>
-                )}
-              </p>
-
-              {/* Badges / Quick stats */}
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-medium text-slate-600 flex-wrap pt-0.5">
-                <div className="flex items-center gap-1 text-amber-700 font-semibold bg-amber-50/90 px-2 py-0.5 rounded-md border border-amber-200/50">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
-                  <span>{profile.rating.toFixed(1)}</span>
-                  <span className="text-slate-400 font-normal">({reviews.length || profile.reviews})</span>
+              {/* Identity & Badges */}
+              <div className="space-y-1.5 min-w-0 flex-1">
+                {/* Name + Verified Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug capitalize">
+                    {formatDisplayName(profile.name)}
+                  </h1>
+                  <BadgeCheck className="w-5 h-5 text-white fill-[#0755E8] shrink-0" title="Verified Expert" />
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-2xs">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Verified Mentor
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200 text-xs font-bold shadow-2xs">
+                    {profile.category || "IT"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Accepting Bookings
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-1 text-slate-700 bg-white/90 px-2 py-0.5 rounded-md border border-slate-200/70">
-                  <Briefcase className="w-3 h-3 text-blue-600 shrink-0" />
-                  <span>{profile.experience}</span>
+                {/* Role & Company */}
+                <div className="text-xs sm:text-sm font-semibold text-slate-600 flex items-center gap-2 flex-wrap">
+                  <span>{profile.role}</span>
+                  {profile.company && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-xs shadow-2xs">
+                        <span className="w-4 h-4 rounded bg-[#0755E8] text-white flex items-center justify-center text-[10px] font-black">
+                          {profile.company[0].toUpperCase()}
+                        </span>
+                        <span>{profile.company}</span>
+                      </span>
+                    </>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-1 text-slate-700 bg-white/90 px-2 py-0.5 rounded-md border border-slate-200/70">
-                  <Video className="w-3 h-3 text-indigo-600 shrink-0" />
-                  <span>1:1 Live Video</span>
-                </div>
-
-                {profile.location && (
-                  <div className="flex items-center gap-1 text-slate-500">
-                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span className="truncate max-w-[140px] sm:max-w-none">{profile.location}</span>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
 
-          {/* Action CTAs */}
-          <div className="flex flex-row md:flex-col items-center sm:items-stretch gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
-            <button
-              type="button"
-              onClick={() => setIsBookingModalOpen(true)}
-              className="flex-1 md:flex-none h-10 px-4 sm:px-5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#0537A0] text-white text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all cursor-pointer active:scale-98 inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
-            >
-              <Calendar className="w-4 h-4 shrink-0" />
-              <span>Book Mock Interview</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-0.5 shrink-0" />
-            </button>
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2.5 shrink-0 self-stretch sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setIsBookingModalOpen(true)}
+                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#0537A0] text-white text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Book Mock Interview</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
 
-            <div className="flex items-center gap-2 w-auto md:w-full shrink-0">
               <button
                 type="button"
                 onClick={toggleSave}
-                className={`h-10 px-3 sm:px-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap flex-1 shrink-0 ${
+                className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
                   isSaved
                     ? "bg-rose-50 text-rose-600 border-rose-200 shadow-2xs"
-                    : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90"
+                    : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 shadow-2xs"
                 }`}
-                title={isSaved ? "Saved in wishlist" : "Save expert to wishlist"}
+                title={isSaved ? "Saved to wishlist" : "Save expert to wishlist"}
               >
-                <Bookmark className={`w-3.5 h-3.5 shrink-0 ${isSaved ? "fill-current" : ""}`} />
+                <Bookmark className={`w-4 h-4 ${isSaved ? "fill-rose-500 text-rose-500" : ""}`} />
                 <span>{isSaved ? "Saved" : "Save"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleShare}
-                className="h-10 px-3 sm:px-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center justify-center gap-1.5 whitespace-nowrap flex-1 shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center justify-center gap-1.5"
                 title="Share expert profile"
               >
-                <Share2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <Share2 className="w-4 h-4 text-slate-500" />
                 <span>Share</span>
               </button>
             </div>
+          </div>
+
+          {/* Meta Stats Strip */}
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-medium text-slate-600 flex-wrap pt-3 border-t border-slate-200/80">
+            {hasReviews ? (
+              <div className="flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50/90 px-3 py-1 rounded-xl border border-amber-200/60 shadow-2xs">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <span>{displayRating}</span>
+                <span className="text-slate-500 font-normal">({displayReviewCount} {displayReviewCount === 1 ? 'review' : 'reviews'})</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-emerald-800 font-bold bg-emerald-50/90 px-3 py-1 rounded-xl border border-emerald-200/60 shadow-2xs">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <span>5.0</span>
+                <span className="text-emerald-700 font-normal">(Verified Expert)</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1.5 text-slate-700 bg-white px-3 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
+              <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="font-semibold">{profile.experience} Experience</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-slate-700 bg-white px-3 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
+              <Video className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="font-semibold">1:1 Live Video</span>
+            </div>
+
+            {profile.location && (
+              <div className="flex items-center gap-1.5 text-slate-600 bg-white px-3 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>{profile.location}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -490,71 +523,137 @@ export default function ExpertProfilePage() {
         {/* Left / Main Details (2 cols) */}
         <div className="lg:col-span-2 space-y-6">
           {/* About Section */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-3.5">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <span>About {profile.name}</span>
-            </h2>
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0755E8] flex items-center justify-center border border-blue-100">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span>About {profile.name}</span>
+              </h2>
+              <span className="text-xs font-semibold text-slate-400">Verified Mentor Profile</span>
+            </div>
+
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
               {bioText}
             </p>
 
-            {/* What to expect checklist */}
-            <div className="pt-3 border-t border-slate-100">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5">
-                What you will get in this mock interview
+            {/* What you will get in this mock interview */}
+            <div className="pt-2">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>What You Will Get In This Mock Interview</span>
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
-                <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>Real-world technical &amp; behavioral question sets tailored to your target company</span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/60 via-slate-50/50 to-white border border-blue-100/80 shadow-2xs hover:shadow-xs transition-all space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                    <span className="w-6 h-6 rounded-lg bg-blue-100 text-[#0755E8] flex items-center justify-center text-xs">
+                      🎯
+                    </span>
+                    <span>Targeted Company Questions</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                    Real-world technical &amp; behavioral question sets tailored to your target company's hiring bar.
+                  </p>
                 </div>
-                <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>Live coding &amp; system architecture problem-solving evaluation</span>
+
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/60 via-slate-50/50 to-white border border-indigo-100/80 shadow-2xs hover:shadow-xs transition-all space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                    <span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+                      💻
+                    </span>
+                    <span>Live Coding &amp; System Design</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                    Real-time code execution, complexity analysis, and whiteboard architecture evaluation in live sandbox.
+                  </p>
                 </div>
-                <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>Verbal debrief + actionable written performance scorecard</span>
+
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/60 via-slate-50/50 to-white border border-emerald-100/80 shadow-2xs hover:shadow-xs transition-all space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                    <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                      📊
+                    </span>
+                    <span>Actionable Written Scorecard</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                    Verbal debrief plus permanent written scoring on problem solving, code quality, and communication.
+                  </p>
                 </div>
-                <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>Resume, GitHub &amp; project portfolio review with insider tips</span>
+
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/60 via-slate-50/50 to-white border border-amber-100/80 shadow-2xs hover:shadow-xs transition-all space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                    <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs">
+                      📑
+                    </span>
+                    <span>Resume &amp; GitHub Critique</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                    Line-by-line portfolio, GitHub, and resume review with insider tips from active tech interviewers.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Supported Mentorship Levels */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-3.5">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Award className="w-4 h-4 text-indigo-600" />
-              <span>Mentorship Levels Offered</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Choose the tier that matches your career level and target preparation depth.
-            </p>
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    Mentorship Levels Offered
+                  </h2>
+                  <p className="text-xs text-slate-500 leading-tight">
+                    Choose the tier that matches your career level and target preparation depth.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               {expertLevels.map((lvl) => (
                 <div
                   key={lvl}
-                  className="bg-gradient-to-br from-blue-50/50 via-slate-50/50 to-white rounded-2xl border border-blue-100/80 p-3.5 flex items-center justify-between gap-3 shadow-2xs"
+                  className="relative bg-gradient-to-br from-blue-50/40 via-white to-white rounded-2xl border border-slate-200/90 hover:border-blue-300 p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-3 group"
                 >
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-900 block">
-                      {lvl}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block">
-                      1:1 Live Simulation &amp; Evaluation
-                    </span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[10.5px] font-bold">
+                        {lvl}
+                      </span>
+                      <span className="text-xs font-black text-slate-900">
+                        ₹{cleanPrice}
+                      </span>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                      1:1 Mock Interview &amp; Evaluation
+                    </h3>
+
+                    <ul className="text-[11px] text-slate-600 space-y-1 pt-1">
+                      <li className="flex items-center gap-1.5">
+                        <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                        <span>Full 45-60 min live interactive session</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                        <span>Personalized rubric report scorecard</span>
+                      </li>
+                    </ul>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => setIsBookingModalOpen(true)}
-                    className="px-3 py-1.5 rounded-lg bg-[#EAF2FF] hover:bg-[#D5E5FF] text-[#0755E8] text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+                    className="w-full py-2 px-3 rounded-xl bg-[#EAF2FF] hover:bg-[#0755E8] text-[#0755E8] hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 group-hover:shadow-xs active:scale-98"
                   >
-                    Select
+                    <span>Select Tier &amp; Book</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ))}
@@ -562,24 +661,28 @@ export default function ExpertProfilePage() {
           </div>
 
           {/* Skills & Expertise */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500" />
-              <span>Skills &amp; Domain Expertise</span>
-            </h2>
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <span>Skills &amp; Domain Expertise</span>
+              </h2>
+            </div>
 
             {profile.skills && profile.skills.length > 0 && (
               <div>
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-                  Technical Skills &amp; Tools
+                <span className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-2.5">
+                  Technical Problem Solving &amp; Tools
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {profile.skills.map((skill, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-slate-50 to-blue-50/30 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs hover:border-blue-300 transition-colors"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
                       {skill}
                     </span>
                   ))}
@@ -588,17 +691,18 @@ export default function ExpertProfilePage() {
             )}
 
             {profile.languages && profile.languages.length > 0 && (
-              <div className="pt-2 border-t border-slate-100">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-slate-400" />
-                  Spoken Languages
+              <div className="pt-3 border-t border-slate-100">
+                <span className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-2.5 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Spoken Languages</span>
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {profile.languages.map((lang, idx) => (
                     <span
                       key={idx}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold shadow-2xs"
                     >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       {lang}
                     </span>
                   ))}
@@ -609,32 +713,39 @@ export default function ExpertProfilePage() {
 
           {/* Experience & Career History */}
           {previousJobs && previousJobs.length > 0 && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-3.5">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-blue-600" />
-                <span>Work Experience</span>
-              </h2>
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0755E8] flex items-center justify-center border border-blue-100">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <span>Work Experience</span>
+                </h2>
+                <span className="text-xs font-semibold text-slate-400">Verified History</span>
+              </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 pt-1">
                 {previousJobs.map((job, idx) => (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-3"
+                    className="p-4 rounded-2xl bg-gradient-to-r from-slate-50/90 via-white to-slate-50/50 border border-slate-200/80 flex items-start gap-3.5 shadow-2xs"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0 shadow-2xs">
+                    <div className="w-10 h-10 rounded-xl bg-[#0755E8] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
                       {job.company ? job.company[0].toUpperCase() : "W"}
                     </div>
-                    <div className="min-w-0 space-y-0.5">
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                        {job.title || "Software Engineer"}
-                      </h3>
-                      <p className="text-xs text-slate-600 font-medium">
-                        {job.company || "Company"}
+                    <div className="min-w-0 space-y-1 flex-1">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-sm font-black text-slate-900">
+                          {job.title || "Software Engineer"}
+                        </h3>
                         {job.start && (
-                          <span className="text-slate-400 font-normal">
-                            {" "}• {job.start} {job.end ? `- ${job.end}` : "- Present"}
+                          <span className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                            {job.start} {job.end ? `- ${job.end}` : "- Present"}
                           </span>
                         )}
+                      </div>
+                      <p className="text-xs text-[#0755E8] font-bold">
+                        {job.company || "Company"}
                       </p>
                       {job.description && (
                         <p className="text-xs text-slate-500 pt-1 leading-relaxed">
@@ -650,32 +761,39 @@ export default function ExpertProfilePage() {
 
           {/* Education */}
           {educationList && educationList.length > 0 && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-3.5">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-emerald-600" />
-                <span>Education &amp; Credentials</span>
-              </h2>
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <span>Education &amp; Credentials</span>
+                </h2>
+                <span className="text-xs font-semibold text-slate-400">Verified Academics</span>
+              </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 pt-1">
                 {educationList.map((edu, idx) => (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-3"
+                    className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/40 via-white to-slate-50/50 border border-slate-200/80 flex items-start gap-3.5 shadow-2xs"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-emerald-600 font-bold text-xs shrink-0 shadow-2xs">
-                      <GraduationCap className="w-4 h-4" />
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                      <GraduationCap className="w-5 h-5" />
                     </div>
-                    <div className="min-w-0 space-y-0.5">
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                        {edu.degree || "Degree"} {edu.field ? `in ${edu.field}` : ""}
-                      </h3>
-                      <p className="text-xs text-slate-600 font-medium">
-                        {edu.institution || "University"}
+                    <div className="min-w-0 space-y-1 flex-1">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-sm font-black text-slate-900">
+                          {edu.degree || "Degree"} {edu.field ? `in ${edu.field}` : ""}
+                        </h3>
                         {edu.end && (
-                          <span className="text-slate-400 font-normal">
-                            {" "}• Class of {edu.end}
+                          <span className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                            Class of {edu.end}
                           </span>
                         )}
+                      </div>
+                      <p className="text-xs text-emerald-800 font-bold">
+                        {edu.institution || "University"}
                       </p>
                     </div>
                   </div>
@@ -685,30 +803,32 @@ export default function ExpertProfilePage() {
           )}
 
           {/* Candidate Reviews */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-blue-600" />
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0755E8] flex items-center justify-center border border-blue-100">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
                 <span>Candidate Reviews ({reviews.length})</span>
               </h2>
-              <div className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60">
-                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                <span>{profile.rating.toFixed(1)} rating</span>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200/60 shadow-2xs">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>{displayRating} rating</span>
               </div>
             </div>
 
             {reviewsLoading ? (
-              <div className="py-6 text-center text-xs text-slate-400">Loading reviews...</div>
+              <div className="py-8 text-center text-xs text-slate-400">Loading reviews...</div>
             ) : reviews.length > 0 ? (
               <div className="space-y-3 pt-1">
                 {reviews.map((rev) => (
                   <div
                     key={rev.id}
-                    className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 space-y-2"
+                    className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 space-y-2 hover:bg-slate-50 transition-colors shadow-2xs"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-[#0755E8] text-white font-black text-xs flex items-center justify-center shrink-0">
                           {rev.name ? rev.name[0].toUpperCase() : "C"}
                         </div>
                         <div>
@@ -735,7 +855,7 @@ export default function ExpertProfilePage() {
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-700 leading-relaxed italic">
                       "{rev.comment}"
                     </p>
 
@@ -746,10 +866,24 @@ export default function ExpertProfilePage() {
                 ))}
               </div>
             ) : (
-              <div className="py-8 text-center bg-slate-50/50 rounded-2xl border border-slate-100">
-                <Star className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
-                <p className="text-xs font-bold text-slate-700">No reviews published yet</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Be the first candidate to book a session and leave a review!</p>
+              <div className="py-8 px-4 text-center bg-gradient-to-b from-blue-50/30 to-slate-50/50 rounded-2xl border border-slate-200/80 space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF] flex items-center justify-center mx-auto text-[#0755E8] shadow-xs">
+                  <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-black text-slate-900">Be the First Verified Reviewer</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                  Book a 1:1 mock interview with {profile.name}. Receive an actionable scorecard and share your candid feedback to help future candidates!
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsBookingModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Book Session &amp; Review First</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -757,70 +891,95 @@ export default function ExpertProfilePage() {
 
         {/* Right Sticky Booking Sidebar (1 col) */}
         <div className="space-y-6">
-          <div className="sticky top-24 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-5 text-left">
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                Session Investment
-              </span>
-              <div className="flex items-baseline gap-1.5 pt-1">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900">
-                  ₹{profile.price ? profile.price.replace(/[^\d]/g, "") || "499" : "499"}
-                </span>
-                <span className="text-xs font-semibold text-slate-500">/ starting tier</span>
+          <div className="sticky top-24 bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden text-left">
+            <div className="p-5 sm:p-6 space-y-5">
+              {/* Session Investment Price Header */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-black text-[#0755E8] uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+                    SESSION INVESTMENT
+                  </span>
+                  <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Available Slots Open
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2 pt-1">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                    ₹{cleanPrice}
+                  </span>
+                  <span className="text-sm font-bold text-slate-400 line-through">
+                    ₹{originalPrice}
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                    Save 30%
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                  Per 1:1 comprehensive mock interview with full rubric report
+                </p>
               </div>
-            </div>
 
-            {/* Quick Benefits list */}
-            <div className="space-y-2.5 pt-2 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                Session Highlights
-              </span>
-              <ul className="space-y-2 text-xs text-slate-600 font-medium">
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 stroke-[2.5]" />
-                  <span>1:1 Live Interactive Video Mock Interview</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 stroke-[2.5]" />
-                  <span>Real Coding &amp; System Design Practice</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 stroke-[2.5]" />
-                  <span>Instant Performance Scorecard &amp; Feedback</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 stroke-[2.5]" />
-                  <span>Flexible 30 or 60 minute slot lengths</span>
-                </li>
-              </ul>
-            </div>
+              {/* Session Highlights */}
+              <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+                  What's Included:
+                </span>
+                <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>1:1 Live Interactive Video Mock Interview</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Real Coding Sandbox &amp; Architecture Practice</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Instant Written Rubric Scorecard &amp; Feedback</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#0755E8] shrink-0 mt-0.5" />
+                    <span>Flexible 30 or 60 minute slot lengths</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>Free Rescheduling up to 2 hours prior</span>
+                  </li>
+                </ul>
+              </div>
 
-            {/* Action buttons */}
-            <div className="space-y-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsBookingModalOpen(true)}
-                className="w-full py-3 px-4 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#0537A0] text-white text-xs sm:text-sm font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Select Date &amp; Time Slot</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {/* Primary and Secondary Action Buttons */}
+              <div className="space-y-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBookingModalOpen(true)}
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#0537A0] text-white text-sm font-black shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Select Date &amp; Time Slot</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
 
-              <button
-                type="button"
-                onClick={toggleSave}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Bookmark className={`w-3.5 h-3.5 ${isSaved ? "fill-rose-500 text-rose-500" : ""}`} />
-                <span>{isSaved ? "Saved to Wishlist" : "Save for Later"}</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={toggleSave}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Bookmark className={`w-3.5 h-3.5 ${isSaved ? "fill-rose-500 text-rose-500" : ""}`} />
+                  <span>{isSaved ? "Saved to Wishlist" : "Save to Shortlist"}</span>
+                </button>
+              </div>
 
-            {/* Trust badge */}
-            <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>100% Satisfaction &amp; Verified Expert Protection</span>
+              {/* Guarantee & Money Back Policy */}
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <div className="flex items-start gap-2 text-[11px] text-slate-600">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-slate-800 font-bold">100% Candidate Money Safety:</strong> If an expert fails to attend, your funds are immediately refunded to your wallet.
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

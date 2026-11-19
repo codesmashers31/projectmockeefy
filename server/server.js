@@ -32,6 +32,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import userAdminRoutes from './routes/userAdminRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
 
 
 import categoryRoutes from "./routes/categoryRoutes.js";
@@ -246,6 +247,7 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/hr-contacts', hrContactRoutes);
 app.use('/api/certification-rules', certificationRuleRoutes);
+app.use('/api/support', supportRoutes);
 
 // Dynamic Sitemap for Search Engine Crawlers (Respects allowSearchEngines & publicProfile)
 app.get('/sitemap.xml', async (req, res) => {

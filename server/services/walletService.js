@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Wallet from '../models/Wallet.js';
 import WalletTransaction from '../models/WalletTransaction.js';
 import User from '../models/User.js';
+import { syncDataChange, emitToUser } from './socketService.js';
 
 /**
  * Get or create a wallet for any user (Candidate or Expert).
@@ -104,6 +105,25 @@ export async function creditWallet({
 
     await User.findByIdAndUpdate(uId, { $set: { walletBalance: wallet.availableBalance } }, { session }).catch(() => {});
 
+    // Real-time synchronization across candidate's active tabs and admin dashboard
+    syncDataChange({
+      type: 'WALLET_UPDATED',
+      userId: uId,
+      data: {
+        availableBalance: wallet.availableBalance,
+        currency: wallet.currency || 'INR',
+        transaction: txn,
+        action: 'CREDIT',
+        amount: numAmount
+      },
+      toAdmin: true
+    });
+    emitToUser(uId, 'WALLET_UPDATED', {
+      availableBalance: wallet.availableBalance,
+      currency: wallet.currency || 'INR',
+      transaction: txn
+    });
+
     return {
       success: true,
       wallet,
@@ -202,6 +222,25 @@ export async function debitWallet({
 
   await User.findByIdAndUpdate(uId, { $set: { walletBalance: wallet.availableBalance } }, { session }).catch(() => {});
 
+  // Real-time synchronization across candidate's active tabs and admin dashboard
+  syncDataChange({
+    type: 'WALLET_UPDATED',
+    userId: uId,
+    data: {
+      availableBalance: wallet.availableBalance,
+      currency: wallet.currency || 'INR',
+      transaction: txn,
+      action: 'DEBIT',
+      amount: numAmount
+    },
+    toAdmin: true
+  });
+  emitToUser(uId, 'WALLET_UPDATED', {
+    availableBalance: wallet.availableBalance,
+    currency: wallet.currency || 'INR',
+    transaction: txn
+  });
+
   return {
     success: true,
     wallet,
@@ -276,7 +315,35 @@ export async function restoreWalletDebit({
     txn = await WalletTransaction.create(txnData);
   }
 
+  // Mark original debit as REVERSED so ledger accurately reflects the cancellation
+  if (originalTransactionId) {
+    await WalletTransaction.findByIdAndUpdate(
+      originalTransactionId,
+      { $set: { status: 'REVERSED' } },
+      { session }
+    ).catch(() => {});
+  }
+
   await User.findByIdAndUpdate(uId, { $set: { walletBalance: wallet.availableBalance } }, { session }).catch(() => {});
+
+  // Real-time synchronization across candidate's active tabs and admin dashboard
+  syncDataChange({
+    type: 'WALLET_UPDATED',
+    userId: uId,
+    data: {
+      availableBalance: wallet.availableBalance,
+      currency: wallet.currency || 'INR',
+      transaction: txn,
+      action: 'RESTORE',
+      amount: numAmount
+    },
+    toAdmin: true
+  });
+  emitToUser(uId, 'WALLET_UPDATED', {
+    availableBalance: wallet.availableBalance,
+    currency: wallet.currency || 'INR',
+    transaction: txn
+  });
 
   return {
     success: true,

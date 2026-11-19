@@ -25,12 +25,15 @@ import {
   Pencil,
   Mail,
   Check,
+  BadgeCheck,
+  Sparkles,
+  Award,
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { getProfileImageUrl, compressImage, compressOriginalImage } from "../lib/imageUtils";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import ImageCropperModal from "../components/ImageCropperModal";
 
@@ -48,6 +51,12 @@ interface ResumeItem {
 
 export default function UserProfile() {
   const { user, fetchProfile, updateUser } = useAuth();
+
+  // If logged-in user is an expert, seamlessly redirect to expert dashboard profile
+  if (user?.userType?.toLowerCase() === "expert") {
+    return <Navigate to="/dashboard/profile" replace />;
+  }
+
   const userId = user?.id || user?._id || user?.userId;
 
   // Image Upload & Cropper States
@@ -128,6 +137,11 @@ export default function UserProfile() {
   }, [candidateSessions]);
 
   const completedCount = completedSessions.length;
+
+  // Active default resume
+  const defaultResume = useMemo(() => {
+    return resumes.find((r) => r.isDefault) || resumes[0] || null;
+  }, [resumes]);
 
   // Handle Profile Image Selection (Opens Cropper Modal)
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -493,133 +507,201 @@ export default function UserProfile() {
       <div className="w-full space-y-6 relative z-10">
 
         {/* 1. Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-slate-200/80 pb-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-              Profile &amp; Resumes
-            </h1>
-            <p className="text-xs sm:text-[13px] font-medium text-slate-500 mt-0.5">
-              Update your photo and manage multiple resumes for technical mock interviews.
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+              <UserIcon className="w-5 h-5 text-[#0755E8]" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                Profile &amp; Resumes
+              </h1>
+              <p className="text-xs sm:text-[13px] font-normal text-slate-500 mt-0.5">
+                Update your candidate details, active profile photo, and tailored interview resumes.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/90 text-[11px] sm:text-xs font-semibold shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/90 text-xs font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>
                 {isLoadingSessions ? "..." : `${completedCount} ${completedCount === 1 ? "Interview Finished" : "Interviews Finished"}`}
               </span>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[11px] sm:text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200/80 text-xs font-bold">
               <ShieldCheck className="w-3.5 h-3.5 text-[#0755E8]" />
               <span>Verified Candidate</span>
             </span>
           </div>
         </div>
 
-        {/* 2. SECTION 1: PROFILE PHOTO UPDATE */}
-        <section className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
-            
-            {/* Avatar & User Details */}
-            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-              <div className="relative group shrink-0">
-                <div onClick={openEditProfileModal} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border border-slate-200 overflow-hidden shadow-xs flex items-center justify-center shrink-0 cursor-pointer hover:border-[#0755E8]/60 transition-all" title="Click to edit profile">
-                  {hasPhoto ? (
-                    <img
-                      src={currentPhoto!}
-                      alt={user?.name || "Profile Photo"}
-                      className="w-full h-full object-cover object-top rounded-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#EAF2FF] text-[#0755E8] font-bold text-lg sm:text-xl flex items-center justify-center select-none">
-                      {initials}
-                    </div>
-                  )}
+        {/* 2. SECTION 1: CANDIDATE PROFILE IDENTITY & METRICS CARD */}
+        <section className="relative rounded-[22px] bg-gradient-to-br from-white via-white to-blue-50/40 border border-slate-200/90 p-5 sm:p-6 shadow-xs overflow-hidden">
+          {/* Ambient soft glow */}
+          <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-blue-200/20 blur-3xl pointer-events-none" />
 
-                  {isUploadingImage && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center text-white">
-                      <Loader2 className="w-5 h-5 animate-spin" />
+          <div className="relative z-10 space-y-5">
+            {/* Top row: Avatar + Info + Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              
+              {/* Avatar & User Details */}
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="relative group shrink-0">
+                  <div
+                    onClick={openEditProfileModal}
+                    className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-white border-2 border-slate-200/80 overflow-hidden shadow-xs flex items-center justify-center shrink-0 cursor-pointer hover:border-[#0755E8] transition-all group-hover:shadow-md"
+                    title="Click to edit profile & photo"
+                  >
+                    {hasPhoto ? (
+                      <img
+                        src={currentPhoto!}
+                        alt={user?.name || "Profile Photo"}
+                        className="w-full h-full object-cover object-top rounded-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-[#EAF2FF] text-[#0755E8] font-black text-xl sm:text-2xl flex items-center justify-center select-none">
+                        {initials}
+                      </div>
+                    )}
+
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center text-white rounded-xl">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                    )}
+
+                    {/* Subtle hover overlay prompt */}
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded-xl">
+                      <Camera className="w-5 h-5 drop-shadow" />
                     </div>
-                  )}
+                  </div>
+
+                  {/* Camera Quick Badge */}
+                  <button
+                    type="button"
+                    onClick={openEditProfileModal}
+                    disabled={isUploadingImage}
+                    className="absolute -bottom-1 -right-1 w-6.5 h-6.5 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center shadow-xs border-2 border-white transition-all active:scale-90 cursor-pointer"
+                    title="Edit profile photo and name"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                {/* Camera Quick Button */}
+                <div className="min-w-0 flex-1 leading-snug space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">
+                      {user?.name || "Candidate Name"}
+                    </h2>
+                    <span title="Verified Candidate" className="inline-flex items-center shrink-0">
+                      <BadgeCheck className="w-5 h-5 text-white fill-[#0755E8]" />
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0755E8] text-[10.5px] font-black uppercase tracking-wider">
+                      Candidate Profile
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium truncate">
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{user?.email || "candidate@mockeefy.com"}</span>
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-500">Visible to Interview Experts</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0 pt-1 sm:pt-0">
                 <button
                   type="button"
                   onClick={openEditProfileModal}
-                  disabled={isUploadingImage}
-                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center shadow-xs border-2 border-white transition-all active:scale-90 cursor-pointer"
-                  title="Edit profile photo and name"
+                  className="h-10 px-4 sm:px-5 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#053BA8] text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
+                  title="Edit your display name and profile photo"
                 >
-                  <Camera className="w-3 h-3" />
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Edit Profile</span>
                 </button>
-              </div>
-
-              <div className="min-w-0 flex-1 leading-snug">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">
-                  {user?.name || "Candidate Name"}
-                </h2>
-                <p className="text-xs sm:text-[13px] font-medium text-slate-500 truncate mt-0.5">
-                  {user?.email || "candidate@mockeefy.com"}
-                </p>
-                <div className="mt-1.5 flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-[#0755E8] text-[10.5px] font-bold uppercase tracking-tight">
-                    Candidate Profile
-                  </span>
-                  <span className="text-[11px] sm:text-xs text-slate-400 font-medium">
-                    Visible to interview experts
-                  </span>
-                  <span className="text-slate-300 hidden sm:inline">•</span>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10.5px] font-bold">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    <span>
-                      {isLoadingSessions ? "..." : `${completedCount} ${completedCount === 1 ? "Interview Finished" : "Interviews Finished"}`}
-                    </span>
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Action Button: Edit Profile */}
-            <div className="flex items-center gap-2 shrink-0 sm:self-center pt-1 sm:pt-0">
-              <button
-                type="button"
-                onClick={openEditProfileModal}
-                className="h-9 sm:h-9.5 px-4 sm:px-5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
-                title="Edit your display name and profile photo"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                <span>Edit Profile</span>
-              </button>
+            {/* Bottom 3-Card Metrics Ribbon */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+              {/* Stat 1: Interviews Finished */}
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-black text-slate-900 leading-none">
+                    {isLoadingSessions ? "..." : `${completedCount} Mock ${completedCount === 1 ? "Interview" : "Interviews"}`}
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-medium mt-1">Completed &amp; Evaluated</div>
+                </div>
+              </div>
+
+              {/* Stat 2: Active Resume */}
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0755E8] flex items-center justify-center shrink-0 border border-blue-100">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-black text-slate-900 leading-none truncate">
+                    {defaultResume ? (defaultResume.title || defaultResume.fileName || "Default Resume") : (resumes.length > 0 ? "1 Uploaded" : "No Resume Uploaded")}
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-medium mt-1">
+                    {defaultResume ? "Active for live sessions" : "Upload your resume below"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stat 3: Candidate Verification */}
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-black text-slate-900 leading-none">
+                    100% Verified
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-medium mt-1">
+                    Certificate name verified
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* 2. SECTION 2: MULTI-RESUME UPLOAD & MANAGEMENT */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div className="flex items-center gap-2.5">
-              <FileCheck className="w-5 h-5 text-[#0755E8]" />
-              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-none">
-                Resumes
-              </h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-xs font-black">
-                {resumes.length}
-              </span>
+        {/* 3. SECTION 2: RESUMES & PORTFOLIO */}
+        <section className="space-y-5">
+          <div className="flex items-center justify-between gap-3 pb-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+                <FileCheck className="w-5 h-5 text-[#0755E8]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-none">
+                    Resumes
+                  </h2>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-xs font-black">
+                    {resumes.length}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                  Upload role-specific resumes for technical, coding, or behavioral mock interviews.
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Upload Dropzone Box & Staging Card */}
           <form
             onSubmit={handleUploadResume}
-            className={`relative rounded-2xl transition-all overflow-hidden ${
-              isDragging
-                ? "border-2 border-[#0755E8] bg-[#F0F5FF]/70 shadow-[0_4px_24px_-4px_rgba(7,85,232,0.18)]"
-                : selectedFile
-                ? "border-2 border-[#93B8FF]/80 bg-white shadow-xs"
-                : "border-2 border-dashed border-slate-300 hover:border-[#0755E8]/70 bg-gradient-to-b from-[#f8faff] via-white to-white hover:from-[#F0F5FF]/30 shadow-xs"
-            }`}
+            className="relative"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -633,38 +715,40 @@ export default function UserProfile() {
             />
 
             {!selectedFile ? (
-              /* State 1: Fresh Drag & Drop Zone */
+              /* State 1: Fresh Clean Drag & Drop Zone */
               <div
                 onClick={() => resumeInputRef.current?.click()}
-                className="p-8 sm:p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
+                className={`w-full rounded-2xl border-2 transition-all p-8 sm:p-10 flex flex-col items-center justify-center text-center cursor-pointer group shadow-2xs ${
+                  isDragging
+                    ? "border-[#0755E8] bg-[#F0F5FF]/70 shadow-[0_4px_24px_-4px_rgba(7,85,232,0.18)]"
+                    : "border-dashed border-slate-300 hover:border-[#0755E8] bg-white hover:bg-blue-50/20"
+                }`}
               >
-                {/* Upload Icon with smooth hover float & ambient glow */}
-                <div className="relative mb-3.5">
+                <div className="relative mb-3">
                   <div className="absolute inset-0 rounded-2xl bg-[#0755E8]/20 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
-                  <div className="relative w-14 h-14 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/60 flex items-center justify-center text-[#0755E8] shadow-2xs group-hover:scale-110 group-hover:bg-[#0755E8] group-hover:text-white transition-all duration-200">
-                    <Upload className="w-6 h-6 stroke-[2.2]" />
+                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/60 flex items-center justify-center text-[#0755E8] shadow-2xs group-hover:scale-105 group-hover:bg-[#0755E8] group-hover:text-white transition-all duration-200">
+                    <Upload className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
                   </div>
                 </div>
 
                 <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-[#0755E8] transition-colors">
                   Drag &amp; drop your resume here, or <span className="underline decoration-[#0755E8]/40 decoration-2 underline-offset-4">browse files</span>
                 </h3>
-                <p className="text-xs text-slate-500 font-medium mt-1.5 max-w-md">
+                <p className="text-xs text-slate-500 font-normal mt-1 max-w-md">
                   Upload your latest tailored resume for technical, coding, or behavioral mock interviews.
                 </p>
 
-                {/* Formats Pills */}
-                <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
-                  <span className="px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80 text-[10.5px] font-black uppercase tracking-wider shadow-2xs">
+                <div className="flex items-center gap-2 mt-3.5 flex-wrap justify-center">
+                  <span className="px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80 text-[10px] font-black uppercase tracking-wider shadow-2xs">
                     PDF
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[10.5px] font-black uppercase tracking-wider shadow-2xs">
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[10px] font-black uppercase tracking-wider shadow-2xs">
                     DOC
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0755E8] border border-blue-200/80 text-[10.5px] font-black uppercase tracking-wider shadow-2xs">
+                  <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/80 text-[10px] font-black uppercase tracking-wider shadow-2xs">
                     DOCX
                   </span>
-                  <span className="text-[11px] text-slate-400 font-semibold">• Max 10MB</span>
+                  <span className="text-[11px] text-slate-400 font-medium">• Max 10MB</span>
                 </div>
               </div>
             ) : (
@@ -817,7 +901,8 @@ export default function UserProfile() {
                 ))}
               </div>
             ) : resumes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {resumes.map((resume) => {
                   const dateStr = resume.updatedAt
                     ? new Date(resume.updatedAt).toLocaleDateString(undefined, {
@@ -975,6 +1060,17 @@ export default function UserProfile() {
                     </div>
                   );
                 })}
+              </div>
+
+                {/* Pro-Tip Ribbon below the grid */}
+                <div className="rounded-2xl p-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white border border-blue-200/70 shadow-2xs flex items-center gap-3 text-left">
+                  <div className="w-9 h-9 rounded-xl bg-white text-[#0755E8] flex items-center justify-center shrink-0 border border-blue-200/80 shadow-2xs">
+                    <Sparkles className="w-4 h-4 text-[#0755E8]" />
+                  </div>
+                  <div className="flex-1 text-xs text-slate-700">
+                    <strong className="text-slate-900 font-bold">Interview Preparation Tip:</strong> Your active default resume is automatically shared with interviewers during live mock sessions. Tailoring your resume to your target role helps experts provide more precise evaluation scores.
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="bg-gradient-to-b from-[#f0f5ff]/30 via-white to-white rounded-2xl border border-dashed border-slate-200 p-8 text-center flex flex-col items-center">

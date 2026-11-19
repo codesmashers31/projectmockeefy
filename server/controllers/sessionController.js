@@ -2718,7 +2718,7 @@ export const rejectSession = async (req, res) => {
 
         const updatedSession = await Session.findOneAndUpdate(
             { _id: session._id, status: { $nin: ['completed', 'cancelled'] } },
-            { $set: { status: 'cancelled' } },
+            { $set: { status: 'cancelled', slotLockKey: null } },
             { new: true }
         );
 
@@ -2853,8 +2853,11 @@ export const rescheduleSession = async (req, res) => {
             return res.status(409).json({ success: false, message: "The selected time slot conflicts with an existing booking" });
         }
 
+        const { buildSlotKey } = await import('../services/slotReservationService.js');
+        const expertUserId = expertDoc?.userId?._id || expertDoc?.userId || session.expertId;
         session.startTime = newStart;
         session.endTime = newEnd;
+        session.slotLockKey = buildSlotKey(expertUserId, newStart, newEnd);
         await session.save();
 
         const { formatSessionDateTime } = await import('../services/emailService.js');
@@ -2870,7 +2873,6 @@ export const rescheduleSession = async (req, res) => {
             metadata: { sessionId: session.sessionId, link: '/my-sessions' }
         });
 
-        const expertUserId = expertDoc?.userId || session.expertId;
         await createNotification({
             userId: expertUserId,
             type: 'session_rescheduled',

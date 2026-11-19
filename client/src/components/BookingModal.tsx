@@ -244,6 +244,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
+  const formatPrice = (val: number) => {
+    const rounded = Math.round((Number(val || 0) + Number.EPSILON) * 100) / 100;
+    return rounded.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  };
+
   // Authoritative candidate wallet balance retrieval
   const fetchCandidateWallet = useCallback(() => {
     if (user) {
@@ -2217,7 +2222,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <div className="text-right">
                       <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Available Balance</span>
                       <span className={`text-xs font-extrabold ${walletBalance > 0 ? "text-emerald-700" : "text-slate-500"}`}>
-                        ₹{walletBalance}
+                        ₹{formatPrice(walletBalance)}
                       </span>
                     </div>
                   </div>
@@ -2274,7 +2279,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 </span>
                               ) : (
                                 <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                  {walletBalance <= 0 ? "Insufficient Mockeefy Wallet Balance (₹0)" : `Insufficient for Full Payment (₹${walletBalance} / ₹${displayPrice})`}
+                                  {walletBalance <= 0 ? "Insufficient Mockeefy Wallet Balance (₹0)" : `Insufficient for Full Payment (₹${formatPrice(walletBalance)} / ₹${formatPrice(displayPrice)})`}
                                 </span>
                               )}
                             </div>
@@ -2284,7 +2289,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="text-xs font-extrabold text-slate-900">₹{displayPrice}</span>
+                          <span className="text-xs font-extrabold text-slate-900">₹{formatPrice(displayPrice)}</span>
                         </div>
                       </div>
 
@@ -2292,36 +2297,36 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
                         <div className="flex justify-between items-center">
                           <span>Available Mockeefy wallet balance:</span>
-                          <span className="font-semibold text-slate-800">₹{walletBalance}</span>
+                          <span className="font-semibold text-slate-800">₹{formatPrice(walletBalance)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span>Interview booking price:</span>
-                          <span className="font-semibold text-slate-800">₹{displayPrice}</span>
+                          <span className="font-semibold text-slate-800">₹{formatPrice(displayPrice)}</span>
                         </div>
                         <div className="flex justify-between items-center text-emerald-700 font-semibold">
                           <span>Wallet contribution:</span>
                           <span className="font-bold tabular-nums">
-                            {walletBalance >= displayPrice && paymentMethod === 'MOCKEEFY_WALLET' ? `-₹${displayPrice}` : "₹0"}
+                            {walletBalance >= displayPrice && paymentMethod === 'MOCKEEFY_WALLET' ? `-₹${formatPrice(displayPrice)}` : "₹0"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center font-bold text-slate-900 pt-1 border-t border-slate-200/60">
                           <span>Remaining payable amount:</span>
                           <span className="text-xs font-extrabold text-[#0755E8] tabular-nums">
-                            {paymentMethod === 'MOCKEEFY_WALLET' ? "₹0 (Fully Covered)" : `₹${displayPrice}`}
+                            {paymentMethod === 'MOCKEEFY_WALLET' ? "₹0 (Fully Covered)" : `₹${formatPrice(displayPrice)}`}
                           </span>
                         </div>
 
                         {walletBalance >= displayPrice ? (
                           <p className="text-[10.5px] text-emerald-700 font-semibold pt-1">
-                            ✓ Full amount covered by Mockeefy wallet. Instant confirmation without launching Razorpay. Remaining balance: ₹{walletBalance - displayPrice}.
+                            ✓ Full amount covered by Mockeefy wallet. Instant confirmation without launching Razorpay. Remaining balance: ₹{formatPrice(walletBalance - displayPrice)}.
                           </p>
                         ) : walletBalance > 0 ? (
                           <p className="text-[10.5px] text-amber-700 pt-1">
-                            Your wallet balance of ₹{walletBalance} is insufficient for full payment. Select Combined Payment below or use Razorpay.
+                            Your wallet balance of ₹{formatPrice(walletBalance)} is insufficient for full payment. Select Combined Payment below or use Razorpay.
                           </p>
                         ) : (
                           <p className="text-[10.5px] text-slate-500 pt-1">
-                            Your Mockeefy wallet balance is ₹0. Full payment of ₹{displayPrice} will be processed via Razorpay.
+                            Your Mockeefy wallet balance is ₹0. Full payment of ₹{formatPrice(displayPrice)} will be processed via Razorpay.
                           </p>
                         )}
                       </div>
@@ -2359,12 +2364,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 </span>
                               </div>
                               <p className="text-[11px] text-slate-600 font-medium mt-0.5">
-                                Pay ₹{displayPrice - walletBalance} via Razorpay + ₹{walletBalance} Wallet
+                                Pay ₹{formatPrice(displayPrice - walletBalance)} via Razorpay + ₹{formatPrice(walletBalance)} Wallet
                               </p>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-xs font-extrabold text-[#0755E8]">₹{displayPrice - walletBalance} via Razorpay</span>
+                            <span className="text-xs font-extrabold text-[#0755E8]">₹{formatPrice(displayPrice - walletBalance)} via Razorpay</span>
                           </div>
                         </div>
 
@@ -2372,24 +2377,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         <div className="mt-2.5 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
                           <div className="flex justify-between items-center">
                             <span>Available Mockeefy wallet balance:</span>
-                            <span className="font-semibold text-slate-800">₹{walletBalance}</span>
+                            <span className="font-semibold text-slate-800">₹{formatPrice(walletBalance)}</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span>Interview booking price:</span>
-                            <span className="font-semibold text-slate-800">₹{displayPrice}</span>
+                            <span className="font-semibold text-slate-800">₹{formatPrice(displayPrice)}</span>
                           </div>
                           <div className="flex justify-between items-center text-emerald-700 font-semibold">
                             <span>Mockeefy Wallet contribution:</span>
-                            <span className="font-bold tabular-nums">-₹{walletBalance}</span>
+                            <span className="font-bold tabular-nums">-₹{formatPrice(walletBalance)}</span>
                           </div>
                           <div className="flex justify-between items-center font-bold text-slate-900 pt-1 border-t border-slate-200/60">
                             <span>Remaining payable via Razorpay:</span>
                             <span className="text-xs font-extrabold text-[#0755E8] tabular-nums">
-                              ₹{displayPrice - walletBalance}
+                              ₹{formatPrice(displayPrice - walletBalance)}
                             </span>
                           </div>
                           <p className="text-[10.5px] text-blue-700 font-medium pt-1">
-                            ₹{walletBalance} contributed from wallet. Remaining ₹{displayPrice - walletBalance} will be collected via Razorpay.
+                            ₹{formatPrice(walletBalance)} contributed from wallet. Remaining ₹{formatPrice(displayPrice - walletBalance)} will be collected via Razorpay.
                           </p>
                         </div>
                       </div>
@@ -2457,7 +2462,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         </div>
                         {walletBalance > 0 && (
                           <p className="text-[10.5px] text-slate-500 pt-0.5">
-                            Your available ₹{walletBalance} Mockeefy wallet balance will NOT be deducted.
+                            Your available ₹{formatPrice(walletBalance)} Mockeefy wallet balance will NOT be deducted.
                           </p>
                         )}
                       </div>
@@ -2504,10 +2509,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     : user?.isPremium && ((user.freeInterviewsCount ?? 0) > 0)
                     ? `Book with Credit (${user.freeInterviewsCount} left)`
                     : paymentMethod === 'MOCKEEFY_WALLET'
-                    ? `Confirm Booking — ₹${displayPrice} from Mockeefy Wallet`
+                    ? `Confirm Booking — ₹${formatPrice(displayPrice)} from Mockeefy Wallet`
                     : paymentMethod === 'COMBINED'
-                    ? `Pay ₹${displayPrice - walletBalance} via Razorpay + ₹${walletBalance} Wallet`
-                    : `Confirm & Allocate Meeting — ₹${displayPrice}`}
+                    ? `Pay ₹${formatPrice(displayPrice - walletBalance)} via Razorpay + ₹${formatPrice(walletBalance)} Wallet`
+                    : `Confirm & Allocate Meeting — ₹${formatPrice(displayPrice)}`}
                 </span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>

@@ -7,8 +7,6 @@ import {
   BadgeCheck,
   ArrowRight,
   Calendar,
-  ChevronDown,
-  ChevronUp,
   Briefcase,
   Code2,
   FlaskConical,
@@ -19,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { BookingModal } from "./BookingModal";
 import { getProfileImageUrl } from "../lib/imageUtils";
+import { formatDisplayName } from "../lib/utils";
 
 // Types
 export interface MentorProfile {
@@ -59,7 +58,6 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   const navigate = useNavigate();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [isBioExpanded, setIsBioExpanded] = useState(false);
 
   const mentorId = mentor.expertID || mentor.id || (mentor as any)._id;
 
@@ -135,7 +133,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const roleDisplay = mentor.role || "Web Developer";
   const companyDisplay = mentor.company || "Zoho";
-  const nameDisplay = mentor.name || "Sudhan";
+  const nameDisplay = formatDisplayName(mentor.name || "Sudhan");
   const ratingDisplay = mentor.rating > 0 ? mentor.rating.toFixed(1) : "5.0";
   const reviewsCount = mentor.reviews !== undefined && mentor.reviews !== null ? mentor.reviews : 1;
 
@@ -148,11 +146,6 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   })();
 
   const locationDisplay = mentor.location || "Chennai";
-
-  const bioText =
-    mentor.bio && mentor.bio.trim().length > 10
-      ? mentor.bio
-      : `${expDisplay} of experience in ${roleDisplay}${companyDisplay ? ` at ${companyDisplay}` : ""}. Focuses on technical mock interviews and...`;
 
   const skillsList =
     mentor.skills && mentor.skills.length > 0
@@ -183,230 +176,201 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
       data-expert-name={mentor.name}
       onClick={handleCardClick}
       aria-label={`Interview expert profile for ${nameDisplay}`}
-      className="group relative bg-white rounded-[20px] sm:rounded-[22px] border border-[#E2ECF9] hover:border-[#1865F2]/50 shadow-[0_2px_12px_-4px_rgba(20,40,90,0.05)] hover:shadow-[0_8px_24px_-6px_rgba(24,101,242,0.12)] transition-all duration-200 p-2.5 sm:p-3 flex flex-col justify-between gap-2 sm:gap-2.5 h-full w-full cursor-pointer text-left box-border overflow-hidden scroll-mt-28"
+      className="group relative bg-white rounded-[22px] border border-slate-200/80 hover:border-[#0755E8]/50 shadow-[0_2px_12px_-4px_rgba(20,40,90,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(7,85,232,0.14)] hover:-translate-y-1 transition-all duration-300 p-3 sm:p-3.5 flex flex-col justify-between gap-2.5 sm:gap-3 h-full w-full cursor-pointer text-left box-border overflow-hidden scroll-mt-28"
     >
-      {/* Decorative ambient blue wave in bottom-right corner matching reference */}
-      <div className="absolute -bottom-3 -right-3 w-16 h-14 bg-gradient-to-tl from-[#D8E8FD]/35 to-transparent rounded-br-[20px] sm:rounded-br-[22px] pointer-events-none -z-0" />
+      {/* Decorative ambient blue wave in bottom-right corner */}
+      <div className="absolute -bottom-3 -right-3 w-20 h-16 bg-gradient-to-tl from-blue-100/40 via-indigo-50/20 to-transparent rounded-br-[22px] pointer-events-none -z-0" />
+      {/* Subtle top ambient glow */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#0755E8]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-      <div className="space-y-2 sm:space-y-2.5 flex-1 flex flex-col relative z-10">
-        {/* 1. Profile Header */}
-        <div className="flex items-start justify-between gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-            {/* Avatar Frame with Spark Accents & Online Dot */}
-            <div className="relative shrink-0">
-              {/* Three blue spark rays on top-left of avatar container */}
-              <div className="absolute -top-1 -left-1 w-3 h-3 pointer-events-none select-none text-[#2563EB]">
-                <svg viewBox="0 0 16 16" fill="none" className="w-full h-full stroke-current" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="2" y1="9" x2="0.5" y2="9" />
-                  <line x1="3.5" y1="4.5" x2="1.5" y2="2.5" />
-                  <line x1="9" y1="2" x2="9" y2="0.5" />
-                </svg>
-              </div>
-
-              {/* Glowing light-blue border wrapper with rounded square corners */}
-              <div className="p-0.5 rounded-[14px] border-2 border-[#D3E4FF] bg-white shadow-2xs">
-                <div className="w-[40px] h-[40px] sm:w-[42px] sm:h-[42px] rounded-[11px] bg-slate-100 overflow-hidden flex items-center justify-center">
-                  {avatarFailed || !avatarUrl ? (
-                    <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#1865F2] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
-                      {initials}
-                    </span>
-                  ) : (
-                    <img
-                      src={avatarUrl}
-                      alt={nameDisplay}
-                      className="w-full h-full object-cover object-top"
-                      onError={() => setAvatarFailed(true)}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Online Green Indicator Dot at bottom right of frame */}
-              <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-[#10B981] border-2 border-white shadow-2xs" />
-            </div>
-
-            {/* Name & Designation */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1 min-w-0">
-                <h3
-                  title={nameDisplay}
-                  className="text-[13.5px] sm:text-[14.5px] font-bold text-[#0B1536] tracking-tight truncate leading-tight"
-                >
-                  {nameDisplay}
-                </h3>
-                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
-                  <BadgeCheck className="w-3.5 h-3.5 text-white fill-[#1865F2]" />
-                </span>
-              </div>
-
-              {/* Designation: "Web Developer • Zoho" */}
-              <p className="text-[10.5px] sm:text-[11px] text-[#475569] font-medium leading-snug mt-0.5 truncate">
-                <span>{roleDisplay}</span>
-                {companyDisplay && (
-                  <>
-                    <span className="text-slate-400 font-normal mx-1">•</span>
-                    <span className="text-[#334155]">{companyDisplay}</span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
+      <div className="space-y-2.5 sm:space-y-3 flex-1 flex flex-col relative z-10">
+        {/* 0. Top Badges Row: Top Rated / Verified Badge + Bookmark */}
+        <div className="flex items-center justify-between gap-2">
+          {mentor.rating >= 4.8 ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 border border-amber-200/80 text-amber-700 text-[10px] font-extrabold shadow-2xs">
+              <span>🏆</span>
+              <span>Top rated</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-[10px] font-extrabold shadow-2xs">
+              <BadgeCheck className="w-3.5 h-3.5 text-[#0755E8]" />
+              <span>Verified Expert</span>
+            </span>
+          )}
 
           {/* Bookmark Button */}
           <button
             onClick={toggleSave}
             title={isSaved ? "Remove from Saved Interview Experts" : "Save to Interview Experts"}
             aria-label={isSaved ? "Remove from Saved Interview Experts" : "Save to Interview Experts"}
-            className="w-7 h-7 rounded-lg border border-[#E2ECF9] bg-white hover:bg-slate-50 text-[#0B1536] flex items-center justify-center shadow-2xs transition-colors shrink-0 cursor-pointer"
+            className="w-7.5 h-7.5 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50/60 active:scale-95 text-slate-600 hover:text-[#0755E8] hover:border-blue-200 flex items-center justify-center shadow-2xs transition-all shrink-0 cursor-pointer"
           >
             <Bookmark
-              className={`w-3 h-3 transition-colors ${
-                isSaved ? "fill-[#1865F2] text-[#1865F2]" : "text-[#0B1536] stroke-[2]"
+              className={`w-3.5 h-3.5 transition-colors ${
+                isSaved ? "fill-[#0755E8] text-[#0755E8]" : "text-slate-600 stroke-[2.2]"
               }`}
             />
           </button>
         </div>
 
-        {/* 2. Statistics Row: Rating | Experience | Location in one horizontal row */}
-        <div className="w-full bg-[#F4F8FE] rounded-full py-0.5 sm:py-1 px-2 sm:px-2.5 border border-[#E6EFFD] flex items-center justify-between text-[10px] sm:text-[10.5px] text-[#0B1536]">
-          {/* Rating: ⭐ 5.0 (1) */}
-          <div className="flex items-center gap-0.5 sm:gap-1 font-bold shrink-0">
-            <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-amber-400 text-amber-400 shrink-0" />
-            <span className="font-extrabold text-[#0B1536]">
+        {/* 1. Profile Header */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Avatar Frame with Online Pulse Dot */}
+          <div className="relative shrink-0">
+            <div className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-[13px] bg-slate-100 ring-2 ring-blue-100/90 group-hover:ring-[#0755E8]/30 transition-all overflow-hidden flex items-center justify-center shadow-2xs">
+              {avatarFailed || !avatarUrl ? (
+                <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
+                  {initials}
+                </span>
+              ) : (
+                <img
+                  src={avatarUrl}
+                  alt={nameDisplay}
+                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  onError={() => setAvatarFailed(true)}
+                />
+              )}
+            </div>
+
+            {/* Glowing Pulse Online Indicator */}
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
+            </span>
+          </div>
+
+          {/* Name & Designation */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3
+                title={nameDisplay}
+                className="text-[14px] sm:text-[15px] font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors tracking-tight truncate leading-tight capitalize"
+              >
+                {nameDisplay}
+              </h3>
+              <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
+                <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
+              </span>
+            </div>
+
+            {/* Designation: "Senior Agile & Project Management Lead • Google" */}
+            <p className="text-[11px] sm:text-[11.5px] text-slate-500 font-medium leading-snug mt-0.5 truncate">
+              <span>{roleDisplay}</span>
+              {companyDisplay && (
+                <>
+                  <span className="text-slate-300 font-normal mx-1">•</span>
+                  <span className="text-slate-700 font-semibold">{companyDisplay}</span>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* 2. Statistics Row: Rating | Experience | Location */}
+        <div className="w-full bg-slate-50/90 group-hover:bg-blue-50/25 rounded-xl py-1 sm:py-1.5 px-2.5 border border-slate-200/70 flex items-center justify-between text-[10.5px] sm:text-[11px] text-slate-700 transition-colors">
+          {/* Rating */}
+          <div className="flex items-center gap-1 font-bold shrink-0">
+            <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+            <span className="font-extrabold text-slate-900">
               {ratingDisplay}
             </span>
-            <span className="text-[#64748B] font-normal text-[8.5px] sm:text-[9px]">
+            <span className="text-slate-400 font-normal text-[9.5px]">
               ({reviewsCount})
             </span>
           </div>
 
-          <div className="w-[1px] h-2.5 bg-[#CBDCF7] shrink-0" />
+          <div className="w-[1px] h-3 bg-slate-200 shrink-0" />
 
-          {/* Experience: 📅 5 yrs */}
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 font-semibold text-[#0B1536]">
-            <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#1865F2] shrink-0" />
+          {/* Experience */}
+          <div className="flex items-center gap-1 shrink-0 font-semibold text-slate-700">
+            <Calendar className="w-3 h-3 text-[#0755E8] shrink-0" />
             <span>{expDisplay}</span>
           </div>
 
-          <div className="w-[1px] h-2.5 bg-[#CBDCF7] shrink-0" />
+          <div className="w-[1px] h-3 bg-slate-200 shrink-0" />
 
-          {/* Location: 📍 Chennai */}
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 font-semibold text-[#0B1536] min-w-0">
-            <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#1865F2] shrink-0" />
-            <span className="truncate max-w-[65px] sm:max-w-[78px]">{locationDisplay}</span>
+          {/* Location */}
+          <div className="flex items-center gap-1 shrink-0 font-semibold text-slate-700 min-w-0">
+            <MapPin className="w-3 h-3 text-[#0755E8] shrink-0" />
+            <span className="truncate max-w-[70px] sm:max-w-[85px]">{locationDisplay}</span>
           </div>
         </div>
 
-        {/* 3. Bio Section: subtle light-blue container, blue vertical accent on left, expand/collapse arrow on right */}
-        <div className="bg-[#F2F6FE] rounded-xl p-1.5 sm:p-2 px-2 sm:px-2.5 border border-[#E4EDFC] flex items-center justify-between gap-1.5 min-h-[38px] sm:min-h-[40px]">
-          {/* Slim blue vertical accent */}
-          <div className="w-[2.5px] self-stretch min-h-[22px] rounded-full bg-[#1865F2] shrink-0" />
-
-          {/* Bio Text */}
-          <p
-            className={`text-[10px] sm:text-[10.5px] text-[#334155] leading-snug font-normal flex-1 transition-all ${
-              isBioExpanded ? "" : "line-clamp-2"
-            }`}
-          >
-            {bioText}
-          </p>
-
-          {/* Expand / Collapse Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsBioExpanded(!isBioExpanded);
-            }}
-            title={isBioExpanded ? "Collapse bio" : "Expand bio"}
-            aria-label={isBioExpanded ? "Collapse bio" : "Expand bio"}
-            className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-[#E2ECFC] hover:bg-[#D5E3FA] text-[#334155] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-          >
-            {isBioExpanded ? (
-              <ChevronUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#1E293B] stroke-[2.2]" />
-            ) : (
-              <ChevronDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#1E293B] stroke-[2.2]" />
-            )}
-          </button>
-        </div>
-
-        {/* 4. Professional Domain Section */}
-        <div className="space-y-1 sm:space-y-1.5">
+        {/* Professional Domain Section */}
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 font-bold text-[11px] sm:text-[11.5px] text-[#0B1536]">
-              <Briefcase className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#1865F2] stroke-[2.5]" />
+            <div className="flex items-center gap-1 font-bold text-[11px] sm:text-[11.5px] text-slate-800">
+              <Briefcase className="w-3.5 h-3.5 text-[#0755E8] stroke-[2.5]" />
               <span>Professional Domain</span>
             </div>
           </div>
 
           {/* Domain Badges */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap pt-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EBF3FF] text-[#0755E8] text-[10px] sm:text-[10.5px] font-bold border border-[#BFDBFE] shadow-2xs"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold border border-[#BFDBFE] shadow-2xs"
             >
               Domain: {mentor.category || "IT"}
             </span>
-            {Array.isArray(mentor.rawExpert?.skillsAndExpertise?.domains) &&
-              mentor.rawExpert.skillsAndExpertise.domains
-                .filter((d: string) => d && d.toLowerCase() !== (mentor.category || "IT").toLowerCase())
-                .slice(0, 1)
-                .map((domain: string, idx: number) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 text-[9.5px] font-semibold border border-slate-200"
-                  >
-                    {domain}
-                  </span>
-                ))}
+            {displaySkills.map((skill, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/70 text-[#0755E8] text-[10px] font-semibold border border-blue-200/60"
+              >
+                {skill}
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Bottom Area: Pricing & Availability + Action Buttons */}
-      <div className="space-y-2 pt-1 relative z-10 border-t border-slate-100">
-        {/* Pricing and Availability Row: Full width without horizontal squeeze */}
-        <div className="flex items-center justify-between gap-2 px-1">
+      <div className="space-y-2.5 pt-2 relative z-10 border-t border-slate-100">
+        {/* Pricing and Availability Row */}
+        <div className="flex items-center justify-between gap-2 px-0.5">
           {/* Price */}
-          <div className="flex items-center gap-1 shrink-0">
-            <Calendar className="w-3.5 h-3.5 text-[#1865F2] shrink-0" />
-            <span className="text-[13px] sm:text-[14px] font-extrabold text-[#0B1536] leading-none whitespace-nowrap">
-              ₹{priceNum.toLocaleString("en-IN")}
+          <div className="flex flex-col shrink-0">
+            <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 leading-none">
+              Per Session
             </span>
-            <span className="text-[9px] sm:text-[9.5px] text-[#64748B] font-medium leading-none whitespace-nowrap">
-              / session
+            <span className="text-[15px] sm:text-[16px] font-black text-slate-900 leading-tight mt-0.5">
+              ₹{priceNum.toLocaleString("en-IN")}
             </span>
           </div>
 
           {/* Availability Status */}
-          <div className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-[#ECFDF5] border border-[#A7F3D0]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shrink-0 animate-pulse" />
-            <span className="text-[10px] sm:text-[10.5px] font-bold text-[#059669] whitespace-nowrap">
+          <div className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 shadow-2xs">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[10.5px] font-bold text-emerald-700 whitespace-nowrap">
               {mentor.activeTime || "Available Today"}
             </span>
           </div>
         </div>
 
-        {/* Action Buttons Row: Book Session (Prominent) + View Profile */}
+        {/* Action Buttons Row */}
         <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-          {/* View Profile Button (Secondary outline) */}
+          {/* View Profile Button */}
           <button
             type="button"
             onClick={handleViewProfile}
-            className="w-full h-[34px] sm:h-[35px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 active:scale-[0.99] text-[10px] sm:text-[10.5px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="w-full h-[35px] sm:h-[36px] rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <User className="w-3 h-3 text-slate-600 stroke-[2.2]" />
+            <User className="w-3.5 h-3.5 text-slate-500 stroke-[2.2]" />
             <span>View Profile</span>
           </button>
 
-          {/* Book Session Button (Primary Blue) */}
+          {/* Book Session Button */}
           <button
             type="button"
             onClick={handleBookNow}
-            className="group w-full h-[34px] sm:h-[35px] rounded-xl bg-gradient-to-r from-[#1E6BFE] to-[#0A56E8] hover:from-[#175FEA] hover:to-[#0848C9] active:scale-[0.98] text-white font-bold text-[10.5px] sm:text-[11px] shadow-[0_2px_8px_rgba(24,101,242,0.22)] transition-all flex items-center justify-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="group w-full h-[35px] sm:h-[36px] rounded-xl bg-gradient-to-r from-[#0755E8] to-[#0440B3] hover:from-[#0645C7] hover:to-[#033496] active:scale-[0.98] text-white font-bold text-[11px] shadow-[0_3px_10px_rgba(7,85,232,0.25)] hover:shadow-[0_6px_18px_rgba(7,85,232,0.35)] transition-all flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <Calendar className="w-3 h-3 text-white shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-white shrink-0" />
             <span className="whitespace-nowrap">Book Session</span>
-            <ArrowRight className="w-2.5 h-2.5 text-white shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+            <ArrowRight className="w-3 h-3 text-white shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
           </button>
         </div>
       </div>
@@ -445,9 +409,6 @@ export const MentorCardSkeleton = () => (
 
       {/* 2. Stats Pill Skeleton */}
       <div className="h-5 sm:h-5.5 w-full bg-[#F4F8FE] border border-[#E6EFFD] rounded-full shimmer-shining" />
-
-      {/* 3. Bio Box Skeleton */}
-      <div className="h-8.5 sm:h-9.5 w-full bg-[#F2F6FE] border border-[#E4EDFC] rounded-xl shimmer-shining" />
 
       {/* 4. Skills Skeleton */}
       <div className="space-y-1">

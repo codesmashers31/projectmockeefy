@@ -10,7 +10,7 @@ import {
   getCurrentCompany,
   getJobTitle,
 } from "../lib/expertUtils";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Users,
@@ -32,6 +32,9 @@ import {
   Brain,
   Palette,
   ArrowUpDown,
+  ArrowRight,
+  Crown,
+  Star,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
@@ -53,6 +56,50 @@ interface MentorCategoryScrollRowProps {
   mentors: MentorProfile[];
 }
 
+const getCategoryBadgeStyle = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("ai") || t.includes("data") || t.includes("machine learning")) {
+    return {
+      iconBg: "bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xs shadow-indigo-500/20",
+      badge: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
+    };
+  }
+  if (t.includes("agile") || t.includes("project") || t.includes("management")) {
+    return {
+      iconBg: "bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-xs shadow-blue-500/20",
+      badge: "bg-blue-50 text-blue-700 border-blue-200/80",
+    };
+  }
+  if (t.includes("software") || t.includes("web") || t.includes("stack") || t.includes("it")) {
+    return {
+      iconBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xs shadow-emerald-500/20",
+      badge: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+    };
+  }
+  if (t.includes("cloud") || t.includes("devops") || t.includes("system") || t.includes("database")) {
+    return {
+      iconBg: "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-xs shadow-sky-500/20",
+      badge: "bg-sky-50 text-sky-700 border-sky-200/80",
+    };
+  }
+  if (t.includes("cyber") || t.includes("security")) {
+    return {
+      iconBg: "bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xs shadow-rose-500/20",
+      badge: "bg-rose-50 text-rose-700 border-rose-200/80",
+    };
+  }
+  if (t.includes("business") || t.includes("product") || t.includes("hr")) {
+    return {
+      iconBg: "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xs shadow-amber-500/20",
+      badge: "bg-amber-50 text-amber-700 border-amber-200/80",
+    };
+  }
+  return {
+    iconBg: "bg-gradient-to-br from-[#0755E8] to-[#0440B3] text-white shadow-xs shadow-blue-500/20",
+    badge: "bg-[#EAF2FF] text-[#0755E8] border-blue-200/80",
+  };
+};
+
 function MentorCategoryScrollRow({
   id,
   title,
@@ -63,6 +110,7 @@ function MentorCategoryScrollRow({
   const rowRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const catStyle = getCategoryBadgeStyle(title);
 
   // Mouse drag-to-scroll state
   const isDragging = useRef(false);
@@ -164,10 +212,10 @@ function MentorCategoryScrollRow({
   if (!mentors || mentors.length === 0) return null;
 
   return (
-    <div id={`track-${id}`} className="space-y-2.5 scroll-mt-24 group/section">
+    <div id={`track-${id}`} className="space-y-3 scroll-mt-24 group/section">
       <div className="flex items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="w-8 h-8 rounded-xl bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className={`w-8 h-8 rounded-xl ${catStyle.iconBg} flex items-center justify-center shrink-0`}>
             {icon}
           </div>
           <div className="min-w-0 flex-1">
@@ -175,10 +223,10 @@ function MentorCategoryScrollRow({
               <h3 className="text-[15px] sm:text-[17px] font-bold text-slate-900 tracking-tight leading-snug m-0 truncate">
                 {title}
               </h3>
-              <span className="text-[10px] sm:text-[10.5px] font-bold text-[#0755E8] bg-[#EAF2FF] px-2 py-0.5 rounded-full shrink-0">
+              <span className={`text-[10px] sm:text-[10.5px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${catStyle.badge}`}>
                 {mentors.length}
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-[10.5px] font-bold text-slate-600 select-none shadow-2xs">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-[10.5px] font-semibold text-slate-500 select-none shadow-2xs">
                 <Hand size={11} className="text-[#0755E8]" />
                 <span>Drag to scroll</span>
               </span>
@@ -196,18 +244,18 @@ function MentorCategoryScrollRow({
             onClick={() => handleScroll("left")}
             disabled={!canScrollLeft}
             aria-label={`Previous ${title}`}
-            className="w-7.5 h-7.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
+            className="w-8 h-8 rounded-full border border-slate-200/90 bg-white hover:bg-[#0755E8] hover:text-white hover:border-[#0755E8] active:scale-95 disabled:opacity-25 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 disabled:active:scale-100 text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
           >
-            <ChevronLeft size={15} />
+            <ChevronLeft size={16} />
           </button>
           <button
             type="button"
             onClick={() => handleScroll("right")}
             disabled={!canScrollRight}
             aria-label={`Next ${title}`}
-            className="w-7.5 h-7.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-25 disabled:hover:bg-white text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
+            className="w-8 h-8 rounded-full border border-slate-200/90 bg-white hover:bg-[#0755E8] hover:text-white hover:border-[#0755E8] active:scale-95 disabled:opacity-25 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 disabled:active:scale-100 text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-2xs disabled:cursor-not-allowed"
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
@@ -243,6 +291,7 @@ interface FindMentorProps {
 
 export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMentorProps = {}) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(initialQ);
@@ -261,6 +310,17 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
       setSelectedCategory("All");
     }
   }, [searchParams]);
+
+  // Sync live search from top navigation in real-time as user types
+  useEffect(() => {
+    const handleLiveSearch = (e: any) => {
+      if (typeof e.detail?.query === "string") {
+        setSearchQuery(e.detail.query);
+      }
+    };
+    window.addEventListener("nav-search-change", handleLiveSearch);
+    return () => window.removeEventListener("nav-search-change", handleLiveSearch);
+  }, []);
   const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") || "All");
   const [emptyCategoryNotice, setEmptyCategoryNotice] = useState<string | null>(null);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
@@ -909,11 +969,13 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         <div className="pb-3 border-b border-slate-100 space-y-2">
           {/* Main Title Row: Filters title & Clear all */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <SlidersHorizontal className="w-4 h-4 text-[#0755E8]" />
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#EAF2FF] text-[#0755E8] flex items-center justify-center shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </div>
               <h2 className="text-sm font-bold text-slate-900 m-0">Filters</h2>
               {activeFilterCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-[#0755E8] text-white text-[10.5px] font-bold shadow-2xs">
                   {activeFilterCount}
                 </span>
               )}
@@ -927,8 +989,8 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                 Clear all
               </button>
             ) : (
-              <span className="text-[11px] font-extrabold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                {allMentors.length} Interview Experts
+              <span className="text-[11px] font-extrabold text-[#0755E8] bg-[#EAF2FF] border border-blue-200/60 px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-2xs">
+                {allMentors.length} Experts
               </span>
             )}
           </div>
@@ -997,18 +1059,18 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                             return next;
                           });
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 cursor-pointer text-left ${
+                        className={`w-full group flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 cursor-pointer text-left ${
                           isSelected
-                            ? "bg-[#0755E8] text-white font-bold shadow-xs"
-                            : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                            ? "bg-gradient-to-r from-[#0755E8] to-[#0440B3] text-white font-bold shadow-xs shadow-blue-500/20"
+                            : "text-slate-700 hover:text-[#0755E8] hover:bg-blue-50/50 font-medium"
                         }`}
                       >
                         <span className="truncate pr-1">{cat === "All" ? "All Tracks" : cat}</span>
                         <span
-                          className={`text-[11px] px-1.5 py-0.2 rounded-full shrink-0 ${
+                          className={`text-[11px] px-1.5 py-0.2 rounded-full shrink-0 transition-colors ${
                             isSelected
                               ? "bg-white/20 text-white font-bold"
-                              : "text-slate-400 bg-slate-100"
+                              : "text-slate-400 bg-slate-100 group-hover:bg-blue-100/70 group-hover:text-[#0755E8]"
                           }`}
                         >
                           {count}
@@ -1073,13 +1135,13 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       <label
                         key={item.id}
                         onClick={() => toggleExpRange(item.id)}
-                        className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                        className="group flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1 transition-colors"
                       >
                         <div
-                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                          className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-all ${
                             checked
-                              ? "bg-[#0755E8] border-[#0755E8] text-white"
-                              : "border-slate-300 bg-white"
+                              ? "bg-[#0755E8] border-[#0755E8] text-white shadow-2xs"
+                              : "border-slate-300 bg-white group-hover:border-[#0755E8]"
                           }`}
                         >
                           {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
@@ -1145,13 +1207,13 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       <label
                         key={item.id}
                         onClick={() => togglePriceRange(item.id)}
-                        className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                        className="group flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1 transition-colors"
                       >
                         <div
-                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                          className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-all ${
                             checked
-                              ? "bg-[#0755E8] border-[#0755E8] text-white"
-                              : "border-slate-300 bg-white"
+                              ? "bg-[#0755E8] border-[#0755E8] text-white shadow-2xs"
+                              : "border-slate-300 bg-white group-hover:border-[#0755E8]"
                           }`}
                         >
                           {checked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
@@ -1179,17 +1241,13 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         );
       })()}
 
-      {/* 4. Availability */}
+      {/* 4. Availability Pills (matching mockup) */}
       {(() => {
         const availabilityOptions = [
           { id: "All", label: "Anytime" },
-          { id: "Today", label: "Available Today" },
-          { id: "Week", label: "This Week" },
+          { id: "Today", label: "Today" },
+          { id: "Week", label: "This week" },
         ];
-        const isAvailExpanded = !!showAllSubheadings.availability;
-        const visibleAvailOptions = isAvailExpanded || availabilityOptions.length <= INITIAL_FILTER_ITEMS_LIMIT
-          ? availabilityOptions
-          : availabilityOptions.slice(0, INITIAL_FILTER_ITEMS_LIMIT);
 
         return (
           <div className="space-y-2 pt-3 border-t border-slate-100">
@@ -1209,40 +1267,24 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </button>
 
             {expandedSections.availability && (
-              <div className="space-y-1">
-                <div className={`space-y-1 ${isAvailExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
-                  {visibleAvailOptions.map((opt) => (
-                    <label
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                {availabilityOptions.map((opt) => {
+                  const isSelected = availabilityFilter === opt.id;
+                  return (
+                    <button
                       key={opt.id}
+                      type="button"
                       onClick={() => setAvailabilityFilter(opt.id)}
-                      className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-1"
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? "bg-[#0755E8] text-white shadow-2xs font-bold"
+                          : "bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
                     >
-                      <div
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
-                          availabilityFilter === opt.id
-                            ? "border-[#0755E8]"
-                            : "border-slate-300 bg-white"
-                        }`}
-                      >
-                        {availabilityFilter === opt.id && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#0755E8]" />
-                        )}
-                      </div>
-                      <span className="flex-1 font-medium">{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {availabilityOptions.length > INITIAL_FILTER_ITEMS_LIMIT && (
-                  <button
-                    type="button"
-                    onClick={() => toggleShowMore("availability")}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-0.5 text-xs font-bold text-[#0755E8] hover:text-[#0645C7] hover:bg-blue-50/70 rounded-xl cursor-pointer transition-all"
-                  >
-                    <span>{isAvailExpanded ? "View Less" : "View More"}</span>
-                    {isAvailExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  </button>
-                )}
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1263,19 +1305,122 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
       <div className="flex items-start gap-5 lg:gap-6 w-full">
         {/* CENTER COLUMN: All Experts Content */}
         <div className="flex-1 min-w-0 space-y-3.5">
+          {/* COMPACT Hero Banner (matching user's mockup but sleek and compact as requested) */}
+          <div className="relative rounded-[22px] overflow-hidden bg-gradient-to-r from-[#0755E8] via-[#0848C9] to-[#043394] p-4 sm:py-4.5 sm:px-5 text-white shadow-[0_8px_24px_-6px_rgba(7,85,232,0.3)]">
+            {/* Subtle Blueprint Grid Pattern & Ambient Glow */}
+            <div
+              className="absolute inset-0 opacity-10 pointer-events-none"
+              style={{
+                backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px)`,
+                backgroundSize: "16px 16px",
+              }}
+            />
+            <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+              {/* Left Content */}
+              <div className="space-y-1.5 max-w-xl">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/25 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="tracking-wide uppercase">
+                    {Math.min(12, allMentors.length || 12)} Experts Online Now
+                  </span>
+                </div>
+
+                <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight leading-snug">
+                  Practice with real interviewers. Walk in ready.
+                </h2>
+
+                <p className="text-xs text-blue-100/90 leading-normal font-normal line-clamp-2 md:line-clamp-none">
+                  One-on-one mock interviews with industry experts — honest feedback, real questions, and a plan to land your offer.
+                </p>
+
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById("all-experts-categories");
+                      el?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-[#0755E8] font-bold text-xs shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <span>Browse experts</span>
+                    <ArrowRight size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/help")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <span>How it works</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Compact Stats Card */}
+              <div className="shrink-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 sm:p-3 space-y-2 min-w-[190px] shadow-xs">
+                {/* Stacked Avatars */}
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2 overflow-hidden">
+                    {allMentors.slice(0, 4).map((m, idx) => (
+                      <img
+                        key={idx}
+                        src={m.avatar}
+                        alt={m.name}
+                        className="inline-block h-6 w-6 rounded-full ring-2 ring-white/50 object-cover object-top"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=0D8ABC&color=fff`;
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-extrabold text-white bg-white/20 px-2 py-0.5 rounded-full border border-white/30">
+                    +{Math.max(1, (allMentors.length || 74) - 4)}
+                  </span>
+                </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-white/15 text-center">
+                  <div>
+                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
+                      {allMentors.length || 74}
+                    </div>
+                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Experts</div>
+                  </div>
+                  <div className="border-x border-white/15">
+                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
+                      4.9★
+                    </div>
+                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Rating</div>
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
+                      {categories.filter((c) => c !== "All").length || 8}
+                    </div>
+                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Tracks</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Header Controls: Result Count & Sort Dropdown in the same line */}
           <div className="space-y-2 px-1 sm:px-1.5">
             {/* Same Line Header Row: Title, Count & Compact Sort Control */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
               {/* LEFT: Title & Verified Count */}
-              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
                 <h1 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight whitespace-nowrap">
                   {selectedCategory !== "All"
                     ? `Available Interview Experts — ${selectedCategory}`
                     : "Available Interview Experts"}
                 </h1>
-                <span className="text-xs sm:text-sm text-slate-500 font-medium whitespace-nowrap">
-                  (<span className="text-[#0755E8] font-bold">{filteredMentors.length}</span> verified {filteredMentors.length === 1 ? "interview expert" : "interview experts"})
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0755E8] font-bold text-xs border border-blue-200/80 shadow-2xs whitespace-nowrap">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0755E8]"></span>
+                  </span>
+                  <span>{filteredMentors.length} Verified</span>
                 </span>
               </div>
 
@@ -1308,10 +1453,10 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       aria-haspopup="listbox"
                       aria-expanded={isSortOpen}
                       onClick={() => setIsSortOpen((prev) => !prev)}
-                      className={`inline-flex items-center gap-2 bg-white border text-xs font-semibold rounded-full py-1.5 pl-3 pr-2.5 shadow-2xs transition-all cursor-pointer select-none ${
+                      className={`inline-flex items-center gap-2 bg-white border text-xs font-semibold rounded-full py-1.5 pl-3.5 pr-2.5 shadow-2xs transition-all cursor-pointer select-none ${
                         isSortOpen
-                          ? "border-[#0755E8] text-[#0755E8] ring-2 ring-[#0755E8]/15"
-                          : "border-slate-200/90 text-slate-800 hover:border-slate-300 hover:bg-slate-50/50"
+                          ? "border-[#0755E8] text-[#0755E8] ring-2 ring-[#0755E8]/15 shadow-sm"
+                          : "border-slate-200 text-slate-800 hover:border-blue-300 hover:text-[#0755E8] hover:bg-blue-50/20"
                       }`}
                     >
                       <span>
@@ -1545,19 +1690,53 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         <aside aria-label="Filters Panel" className="hidden xl:block w-[250px] shrink-0 sticky top-[80px] self-start space-y-4">
           {renderFilterPanel()}
 
-          {/* Tips Card */}
-          <div className="sidebar-main-card relative rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 space-y-2 text-left overflow-hidden">
-            {/* Decorative ambient blue lighting */}
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-blue-300/35 blur-xl pointer-events-none" />
-            <div className="relative z-10 space-y-2">
-              <div className="flex items-center gap-1.5 text-[#0755E8]">
-                <Sparkles size={14} />
-                <span className="text-xs font-bold text-slate-900">Finding the Right Interview Expert</span>
+          {/* Finding the right expert - 3 step guide (matching mockup) */}
+          <div className="sidebar-main-card relative rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 space-y-2.5 text-left overflow-hidden shadow-2xs">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles size={13} />
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Choose an interview expert working in your target industry or company to get the most accurate mock interview questions.
-              </p>
+              <span className="text-xs font-bold text-slate-900">Finding the right expert</span>
             </div>
+
+            <div className="space-y-2 text-[11px] text-slate-600">
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 text-[#0755E8] text-[9.5px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  1
+                </span>
+                <p className="leading-snug">Pick the track that matches your target role</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 text-[#0755E8] text-[9.5px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  2
+                </span>
+                <p className="leading-snug">Check ratings and companies they've worked at</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-blue-100 text-[#0755E8] text-[9.5px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  3
+                </span>
+                <p className="leading-snug">Book a slot that fits — reschedule anytime</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Mockeefy Pro Promotional Card (matching mockup) */}
+          <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#0755E8] to-[#043394] p-4 text-white shadow-xs space-y-2.5">
+            <div className="flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="text-xs font-bold tracking-tight">Get 3 mock interviews every month</span>
+            </div>
+            <p className="text-[11px] text-blue-100/90 leading-normal">
+              Save up to 40% with Mockeefy Pro subscription plans.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/plans")}
+              className="w-full py-1.5 px-3 rounded-xl bg-white hover:bg-slate-50 text-[#0755E8] font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
+            >
+              See plans
+            </button>
           </div>
         </aside>
       </div>
