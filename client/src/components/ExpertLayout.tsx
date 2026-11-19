@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import SideNav from "./SideNav";
 import TopNav from "./TopNav";
-import Footer from "./Footer";
-import { LayoutGrid, Calendar, CalendarDays, Wallet, User, ArrowUp } from "lucide-react";
+import { LayoutGrid, Calendar, CalendarDays, Wallet, User } from "lucide-react";
 
 export default function ExpertLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -28,9 +27,9 @@ export default function ExpertLayout() {
         <TopNav onOpenSidebar={() => setSidebarOpen(true)} showLogo={true} />
       </header>
 
-      {/* Main Layout Container - matching candidate max-w-[1440px] centered container */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-24 lg:pb-16">
-        <div className="flex items-start gap-5 lg:gap-6 w-full">
+      {/* Main Layout Container - matching candidate max-w-[1400px] centered container */}
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-3 sm:px-5 lg:px-6 pt-4 pb-20 lg:pb-12 text-[13.5px]">
+        <div className="flex items-start gap-3.5 lg:gap-4.5 w-full">
           {/* Left Floating Sidebar Navigation */}
           <SideNav isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -113,49 +112,6 @@ export default function ExpertLayout() {
           <span>Profile</span>
         </button>
       </div>
-
-      {/* Modern SaaS Footer */}
-      <Footer showAppBanner={false} maxWidth="max-w-[1440px]" />
-      <BackToTopButton />
     </div>
   );
 }
-
-const BackToTopButton = () => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const toggleVisibility = () => {
-      if (window.scrollY > 300) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
-    };
-    window.addEventListener("scroll", toggleVisibility);
-    return () => window.removeEventListener("scroll", toggleVisibility);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={scrollToTop}
-      className={`fixed bottom-16 lg:bottom-6 right-5 z-40 p-3 rounded-full bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white shadow-lg shadow-[#0755E8]/30 hover:shadow-xl hover:shadow-[#0755E8]/45 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#93B8FF] focus:ring-offset-2 active:scale-95 transition-all duration-200 cursor-pointer group ${
-        isVisible
-          ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-          : "opacity-0 translate-y-4 scale-75 pointer-events-none"
-      }`}
-      aria-label="Back to top"
-      title="Back to top"
-    >
-      <ArrowUp className="w-4 h-4 stroke-[2.5] transition-transform duration-200 group-hover:-translate-y-0.5" />
-    </button>
-  );
-};

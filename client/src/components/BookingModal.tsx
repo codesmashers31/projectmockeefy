@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   X, Calendar, Clock, Shield, Check, ArrowRight,
   ChevronLeft, ChevronRight, BadgeCheck, CheckSquare, Square,
-  ChevronDown, ChevronUp, Award, Sparkles, Wallet, CreditCard
+  Award, Sparkles, Wallet, CreditCard
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "sonner";
@@ -292,30 +292,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     if (isOpen) {
       setBookingFlowState("selecting");
       setSelectedLevel("");
-      setIsLevelDropdownOpen(false);
     }
   }, [isOpen]);
 
   // Mentor Tier Level Selection (starts as "" so selecting field shows "Select one option")
   const [selectedLevel, setSelectedLevel] = useState<string>("");
-  const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState<boolean>(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const modalDialogRef = useRef<HTMLDivElement>(null);
   const modalBodyRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsLevelDropdownOpen(false);
-      }
-    };
-    if (isLevelDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isLevelDropdownOpen]);
 
   const [levelPrices, setLevelPrices] = useState<Record<string, number>>(() => {
     const prof = initialProfile as any;
@@ -758,7 +741,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // Keep selectedLevel strictly within this mentor's supported levels if one is chosen
   useEffect(() => {
-    if (expertLevels.length > 0 && selectedLevel !== "" && !expertLevels.includes(selectedLevel)) {
+    if (expertLevels.length > 0 && (!selectedLevel || !expertLevels.includes(selectedLevel))) {
       setSelectedLevel(expertLevels[0]);
     }
   }, [expertLevels, selectedLevel]);
@@ -1183,7 +1166,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     if (!selectedLevel) {
       toast.error("Please select an expert level before proceeding.");
-      setIsLevelDropdownOpen(true);
       return;
     }
 
@@ -1200,6 +1182,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           navigate("/signin", { state: { returnUrl: `/book-session?expertId=${expertId}` } });
         }
       });
+      return;
+    }
+
+    const currentUserId = String(user?.id || (user as any)?._id || (user as any)?.userId || "");
+    const expertTarget = String(targetExpertId || profile?.id || "");
+    if (currentUserId && expertTarget && currentUserId === expertTarget) {
+      toast.error("You cannot book an interview session with yourself.");
       return;
     }
 
@@ -1569,7 +1558,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     );
   }
 
-  if (isContentLoading) {
+  const isInitialModalLoading = (loading || !profile) && !initialProfile;
+
+  if (isInitialModalLoading) {
     return createPortal(
       <div
         role="dialog"
@@ -1701,158 +1692,65 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           </div>
 
-          {/* EXPERT LEVEL INTERACTIVE SELECTION CARD */}
+          {/* EXPERT LEVEL SELECTION (1-Click, clean segmented cards) */}
           {expertLevels.length > 0 && (
-            <div
-              className="relative rounded-2xl bg-gradient-to-br from-[#EEF4FF] via-[#F8FAFF] to-[#EAF2FF] border border-blue-200/90 p-3.5 sm:p-4 shadow-[0_2px_14px_-4px_rgba(7,85,232,0.08)] space-y-2.5"
-              ref={dropdownRef}
-            >
-              {/* Decorative ambient background glows (isolated with overflow-hidden so dropdown won't be clipped) */}
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                <div className="absolute -right-8 -top-8 w-28 h-28 bg-blue-400/15 rounded-full blur-2xl" />
-                <div className="absolute -left-8 -bottom-8 w-28 h-28 bg-indigo-400/10 rounded-full blur-2xl" />
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-[#0755E8]" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                    Select Expert Tier
+                  </span>
+                </div>
+                <span className="text-[10.5px] font-bold text-[#0755E8] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60">
+                  {sessionDuration} Min Session
+                </span>
               </div>
 
-              {/* Header: Title + Subtitle */}
-              <div className="relative z-10 flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#0755E8] text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5">
-                  <Award className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <label className="text-xs sm:text-[13px] font-bold text-slate-900 block leading-snug">
-                    Click the level of expert you want:
-                  </label>
-                  <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
-                    Select the interview rigor & tier matching your target role
-                  </p>
-                </div>
-              </div>
-
-              {/* Main Interactive Dropdown Selector */}
-              <div className="relative z-10">
-                <button
-                  type="button"
-                  onClick={() => setIsLevelDropdownOpen((prev) => !prev)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                    isLevelDropdownOpen
-                      ? "border-[#0755E8] ring-3 ring-[#0755E8]/15 bg-white shadow-xs"
-                      : selectedLevel
-                      ? "border-blue-200 bg-white hover:border-[#0755E8] shadow-2xs"
-                      : "border-blue-200 bg-white hover:border-[#0755E8] shadow-2xs group"
-                  }`}
-                  aria-haspopup="listbox"
-                  aria-expanded={isLevelDropdownOpen}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedLevel ? "bg-[#0755E8] ring-4 ring-[#EAF2FF]" : "bg-[#0755E8]"}`} />
-                    {selectedLevel ? (
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
-                          {selectedLevel}
+              <div
+                className={`grid gap-1.5 sm:gap-2 ${
+                  expertLevels.length === 1
+                    ? "grid-cols-1"
+                    : expertLevels.length === 2
+                    ? "grid-cols-2"
+                    : expertLevels.length === 3
+                    ? "grid-cols-3"
+                    : "grid-cols-2 sm:grid-cols-4"
+                }`}
+              >
+                {expertLevels.map((lvl) => {
+                  const isSelected = selectedLevel === lvl;
+                  const lvlPrice = getPriceForLevel(lvl, sessionDuration);
+                  const shortName = lvl.replace(" Mentor", "");
+                  return (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setSelectedLevel(lvl)}
+                      className={`relative flex flex-col items-start p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-gradient-to-b from-[#EEF4FF] to-[#F8FAFF] border-[#0755E8] shadow-xs ring-2 ring-[#0755E8]/20"
+                          : "bg-white hover:bg-slate-50 border-slate-200/90 text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full gap-1">
+                        <span className={`text-[11px] sm:text-xs font-bold truncate ${isSelected ? "text-[#0755E8]" : "text-slate-800"}`}>
+                          {shortName}
                         </span>
-                        <span className="text-[9.5px] font-bold text-[#0755E8] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 shrink-0">
-                          Active Tier
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="font-bold text-xs sm:text-sm text-slate-700 group-hover:text-[#0755E8] transition-colors">
-                        Select one option
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {selectedLevel ? (
-                      <>
-                        <span className="text-xs font-bold text-[#0755E8] bg-[#EAF2FF] px-2.5 py-1 rounded-xl border border-[#93B8FF]/40 tabular-nums">
-                          ₹{getPriceForLevel(selectedLevel, sessionDuration)} ({sessionDuration}m)
-                        </span>
-                        <span className="text-xs font-semibold text-slate-500 group-hover:text-[#0755E8] flex items-center gap-1">
-                          <span>Change</span>
-                          {isLevelDropdownOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </span>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EAF2FF] text-[#0755E8] text-xs font-bold group-hover:bg-[#0755E8] group-hover:text-white transition-colors border border-[#93B8FF]/40 shadow-2xs">
-                        <span>Choose</span>
-                        {isLevelDropdownOpen ? (
-                          <ChevronUp size={13} className="stroke-[2.5]" />
+                        {isSelected ? (
+                          <span className="w-3.5 h-3.5 rounded-full bg-[#0755E8] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
                         ) : (
-                          <ChevronDown size={13} className="stroke-[2.5]" />
+                          <span className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
                         )}
                       </div>
-                    )}
-                  </div>
-                </button>
-
-                {/* Dropdown Menu displaying processes/levels and modifying them */}
-                {isLevelDropdownOpen && (
-                  <div
-                    role="listbox"
-                    className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_36px_-6px_rgba(0,0,0,0.18)] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-                  >
-                    <div className="px-4 py-2.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Select Expert Tier
+                      <span className={`text-xs sm:text-[13px] font-black mt-1 tabular-nums ${isSelected ? "text-[#0755E8]" : "text-slate-900"}`}>
+                        ₹{lvlPrice.toLocaleString("en-IN")}
                       </span>
-                      <span className="text-[11px] font-bold text-[#0755E8]">
-                        {sessionDuration} min session
-                      </span>
-                    </div>
-
-                    <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto overscroll-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                      {expertLevels.map((lvl) => {
-                        const isSelected = selectedLevel === lvl;
-                        const lvlPrice = getPriceForLevel(lvl, sessionDuration);
-                        const desc = LEVEL_DESCRIPTIONS[lvl] || "Targeted mock interview prep";
-                        return (
-                          <button
-                            key={lvl}
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            onClick={() => {
-                              setSelectedLevel(lvl);
-                              setIsLevelDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-blue-50 text-[#0755E8] font-bold border border-blue-200"
-                                : "hover:bg-slate-50 text-slate-700 border border-transparent"
-                            }`}
-                          >
-                            <div className="min-w-0 pr-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs sm:text-sm font-bold text-slate-900">
-                                  {lvl}
-                                </span>
-                                {isSelected && (
-                                  <span className="text-[10px] bg-[#0755E8] text-white font-bold px-1.5 py-0.5 rounded-full leading-none">
-                                    Selected
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                                {desc}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs font-bold text-[#0755E8] tabular-nums">
-                                ₹{lvlPrice}
-                              </span>
-                              {isSelected ? (
-                                <Check className="w-4 h-4 text-[#0755E8] stroke-[3]" />
-                              ) : (
-                                <div className="w-4 h-4" />
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1890,12 +1788,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           {/* 3. Date Carousel with drag-to-flick, mousewheel, and smooth centering */}
           {todayStatus.isCurrentMonth && !todayStatus.hasSlots && (
-            <div className="mb-3 p-3 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+            <div className="p-2 sm:p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 shadow-2xs">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                <span className="truncate">
+                <span className="text-[11px] sm:text-xs truncate font-medium">
                   No interview slots available today.
-                  {nextAvailableDateInfo ? ` Next available date: ${nextAvailableDateInfo.label}` : " No upcoming slots in this month."}
+                  {nextAvailableDateInfo ? ` Next: ${nextAvailableDateInfo.label}` : " No upcoming slots in this month."}
                 </span>
               </div>
               {nextAvailableDateInfo && (
@@ -1912,7 +1810,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       : "bg-amber-600 hover:bg-amber-700"
                   }`}
                 >
-                  {selectedDateStr === nextAvailableDateInfo.dateStr ? `Viewing slots for ${nextAvailableDateInfo.label}` : `View slots for ${nextAvailableDateInfo.label}`}
+                  {selectedDateStr === nextAvailableDateInfo.dateStr ? `Viewing ${nextAvailableDateInfo.label}` : `View ${nextAvailableDateInfo.label}`}
                 </button>
               )}
             </div>
@@ -2084,7 +1982,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ))}
                 </div>
               ) : currentSlots.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[220px] overflow-y-auto overscroll-contain p-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[190px] sm:max-h-[220px] overflow-y-auto overscroll-contain p-0.5 [scrollbar-width:thin] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
                   {currentSlots.map((slot) => {
                     const isSelected = selectedSlot?.time === slot.time;
                     const isUnavailable = !slot.available;

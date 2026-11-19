@@ -148,17 +148,17 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
       {/* ========================================================================= */}
       <aside
         aria-label="Expert Sidebar Navigation"
-        className={`hidden lg:block sidebar-main-card relative w-[260px] shrink-0 rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 space-y-4 overflow-hidden font-sans text-left shadow-xs sticky top-[88px] self-start ${className}`}
+        className={`hidden lg:block sidebar-main-card relative w-[235px] shrink-0 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3 space-y-3 overflow-hidden font-sans text-left shadow-xs sticky top-[80px] self-start ${className}`}
       >
         {/* Decorative ambient blue lighting matching user sidebar */}
         <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-2xl pointer-events-none" />
         <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
-        <div className="relative z-10 space-y-4">
+        <div className="relative z-10 space-y-3">
           {/* Primary Navigation Links */}
-          <div className="space-y-1">
-            <div className="px-2.5 pb-1">
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="space-y-0.5">
+            <div className="px-2 pb-0.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Main Menu
               </p>
             </div>
@@ -170,7 +170,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                   key={item.label}
                   to={item.to}
                   className={({ isActive }) =>
-                    `group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    `group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
                       isActive
                         ? "bg-[#EAF2FF] text-[#0755E8] shadow-2xs border border-blue-200/80 font-bold"
                         : "text-slate-600 hover:bg-slate-50/80 hover:text-slate-900 border border-transparent"
@@ -180,9 +180,9 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                 >
                   {({ isActive }) => (
                     <>
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <Icon
-                          className={`w-4.5 h-4.5 transition-colors shrink-0 ${
+                          className={`w-4 h-4 transition-colors shrink-0 ${
                             isActive ? "text-[#0755E8]" : "text-slate-400 group-hover:text-slate-600"
                           }`}
                           strokeWidth={isActive ? 2.5 : 2}
@@ -190,7 +190,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                         <span className="truncate">{item.label}</span>
                       </div>
                       {item.badge && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-2 ${item.badgeClass}`}>
+                        <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1.5 ${item.badgeClass}`}>
                           {item.badge}
                         </span>
                       )}
@@ -200,9 +200,9 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
               );
             })}
 
-            <div className="pt-3 pb-1">
-              <div className="px-2.5 pb-1">
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+            <div className="pt-2 pb-0.5">
+              <div className="px-2 pb-0.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Preferences
                 </p>
               </div>
@@ -210,7 +210,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
               <NavLink
                 to="/dashboard/settings"
                 className={({ isActive }) =>
-                  `group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  `group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
                     isActive
                       ? "bg-[#EAF2FF] text-[#0755E8] shadow-2xs border border-blue-200/80 font-bold"
                       : "text-slate-600 hover:bg-slate-50/80 hover:text-slate-900 border border-transparent"
@@ -218,9 +218,9 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                 }
               >
                 {({ isActive }) => (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <Settings
-                      className={`w-4.5 h-4.5 transition-colors shrink-0 ${
+                      className={`w-4 h-4 transition-colors shrink-0 ${
                         isActive ? "text-[#0755E8]" : "text-slate-400 group-hover:text-slate-600"
                       }`}
                       strokeWidth={isActive ? 2.5 : 2}
@@ -234,10 +234,10 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
 
           {/* Dynamic Upcoming Session or Booking Promotion Widget */}
           {upcomingSession ? (
-            <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-3 shadow-2xs space-y-2">
-              <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+            <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-xl p-2.5 shadow-2xs space-y-1.5">
+              <div className="flex items-center justify-between text-[9.5px] font-bold text-emerald-800 uppercase tracking-wider">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Upcoming Session
                 </span>
                 <span className="text-emerald-700 font-semibold">
@@ -246,14 +246,14 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-white border border-emerald-200 flex items-center justify-center font-bold text-xs text-emerald-700 shrink-0 shadow-2xs">
+                <div className="w-7 h-7 rounded-lg bg-white border border-emerald-200 flex items-center justify-center font-bold text-[11px] text-emerald-700 shrink-0 shadow-2xs">
                   {(upcomingSession.candidateId?.name || "C").charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-900 truncate leading-tight">
+                  <p className="text-[11.5px] font-bold text-slate-900 truncate leading-tight">
                     {upcomingSession.candidateId?.name || "Candidate"}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
+                  <p className="text-[9.5px] text-slate-500 truncate leading-tight mt-0.5">
                     {upcomingSession.topics?.[0] || "Mock Interview"}
                   </p>
                 </div>
@@ -261,60 +261,60 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
 
               <button
                 onClick={() => navigate(`/live-meeting?meetingId=${upcomingSession.sessionId || upcomingSession._id}`)}
-                className="w-full py-1.5 bg-[#00875A] hover:bg-[#00734D] text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-1.5 bg-[#00875A] hover:bg-[#00734D] text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Video size={13} />
+                <Video size={12} />
                 <span>Join Session</span>
               </button>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-blue-50/60 border border-blue-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5">
-              <div className="flex items-center gap-2 text-[#0755E8]">
-                <Sparkles size={15} />
-                <p className="text-xs font-bold text-slate-900">
+            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-blue-50/60 border border-blue-200/80 rounded-xl p-3 shadow-2xs space-y-2">
+              <div className="flex items-center gap-1.5 text-[#0755E8]">
+                <Sparkles size={13} />
+                <p className="text-[11.5px] font-bold text-slate-900">
                   Accepting Bookings
                 </p>
               </div>
-              <p className="text-[11.5px] text-slate-600 leading-relaxed">
+              <p className="text-[10.5px] text-slate-600 leading-snug">
                 Publish calendar slots to receive candidate mock interview requests.
               </p>
               <button
                 onClick={() => navigate("/dashboard/availability")}
-                className="w-full py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-1.5 bg-[#0755E8] hover:bg-[#0645C7] text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>+ Set Availability</span>
-                <ArrowRight size={13} />
+                <ArrowRight size={12} />
               </button>
             </div>
           )}
 
           {/* Bottom Authenticated Mentor Card & Sign Out */}
-          <div className="pt-2.5 border-t border-slate-200/80">
+          <div className="pt-2 border-t border-slate-200/80">
             <div className="flex items-center justify-between gap-2">
               <div
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate("/dashboard/profile")}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate("/dashboard/profile")}
-                className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1 select-none"
+                className="flex items-center gap-2 min-w-0 cursor-pointer group flex-1 select-none"
               >
                 <div className="relative shrink-0">
                   <img
                     src={getProfileImageUrl(user?.profilePhoto || (user as any)?.profileImage, user?.name)}
                     alt={user?.name || "Mentor"}
-                    className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-2xs group-hover:ring-2 group-hover:ring-blue-500/30 transition-all bg-white"
+                    className="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-2xs group-hover:ring-2 group-hover:ring-blue-500/30 transition-all bg-white"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Mentor')}&background=0755E8&color=fff&bold=true`;
                     }}
                   />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border-2 border-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-slate-900 truncate group-hover:text-[#0755E8] transition-colors leading-tight capitalize">
+                  <p className="text-xs font-bold text-slate-900 truncate group-hover:text-[#0755E8] transition-colors leading-tight capitalize">
                     {formatDisplayName(user?.name || "Expert Mentor")}
                   </p>
-                  <p className="text-[10.5px] text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#0755E8]" />
+                  <p className="text-[9.5px] text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-[#0755E8]" />
                     Verified Mentor
                   </p>
                 </div>
@@ -323,9 +323,9 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
               <button
                 onClick={handleSignOut}
                 title="Sign Out"
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs border border-transparent hover:border-red-200/70"
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer shrink-0 shadow-2xs border border-transparent hover:border-red-200/70"
               >
-                <LogOut className="w-4 h-4" strokeWidth={2.2} />
+                <LogOut className="w-3.5 h-3.5" strokeWidth={2.2} />
               </button>
             </div>
           </div>

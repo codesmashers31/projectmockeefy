@@ -158,44 +158,44 @@ const ViewExpertAvailability = () => {
   );
 
   return (
-    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left animate-in fade-in duration-200">
+    <div className="sidebar-main-card relative w-full rounded-2xl border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 md:p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-4 animate-in fade-in duration-200">
       {/* Decorative ambient blue lighting */}
       <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
       {/* Content Layer */}
-      <div className="relative z-10 space-y-6">
+      <div className="relative z-10 space-y-4">
       {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
               Availability &amp; Scheduling
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-xs font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-[11px] font-bold shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>{totalWeeklySlots > 0 ? "Accepting Bookings" : "Schedule Inactive"}</span>
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             View your weekly hours and session preferences.
           </p>
         </div>
 
         <button
           onClick={() => navigate('/dashboard/availability/edit')}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-sm shadow-[#0755E8]/25 hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 sm:py-2 bg-[#0755E8] hover:bg-[#0645C7] text-white text-xs font-bold rounded-lg transition-all shadow-sm shadow-[#0755E8]/25 hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto"
         >
           <span>Edit Availability</span>
         </button>
       </div>
 
       {/* 2. Main 2-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* Left Column: Settings & Blocked Dates */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Session Settings Card */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-blue-50 text-[#0755E8] rounded-xl border border-blue-100">
