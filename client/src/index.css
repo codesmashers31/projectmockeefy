@@ -490,4 +490,38 @@ body.modal-open {
     animation: wave 10s ease-in-out infinite;
 }
 
+@keyframes waveSlow {
+    0% {
+        transform: translateX(0) scaleY(1);
+    }
+    50% {
+        transform: translateX(-25%) scaleY(1.08);
+    }
+    100% {
+        transform: translateX(0) scaleY(1);
+    }
+}
+
+@keyframes waveFast {
+    0% {
+        transform: translateX(-25%) scaleY(1.06);
+    }
+    50% {
+        transform: translateX(0%) scaleY(0.94);
+    }
+    100% {
+        transform: translateX(-25%) scaleY(1.06);
+    }
+}
+
+.animate-wave-slow {
+    animation: waveSlow 8s ease-in-out infinite;
+    will-change: transform;
+}
+
+.animate-wave-fast {
+    animation: waveFast 5s ease-in-out infinite;
+    will-change: transform;
+}
+
 

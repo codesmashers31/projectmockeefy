@@ -35,6 +35,7 @@ import {
   ArrowRight,
   Crown,
   Star,
+  ShieldCheck,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
@@ -403,7 +404,8 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
       const response = await axios.get("/api/expert/verified");
       return Array.isArray(response.data) ? response.data : response.data.data || [];
     },
-    staleTime: 30 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   // Real-time synchronization when any mentor availability or session changes
@@ -430,7 +432,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
   const allMentors = useMemo<MentorProfile[]>(() => {
     if (!Array.isArray(expertsData)) return [];
 
-    return expertsData.map((expert: any) => {
+    const mapped = expertsData.map((expert: any) => {
       const cat =
         expert.personalInformation?.category ||
         expert.category ||
@@ -438,14 +440,17 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         "Software Engineering";
 
       const skills = (() => {
-        if (Array.isArray(expert.skillsAndExpertise?.tools) && expert.skillsAndExpertise.tools.length) {
-          return expert.skillsAndExpertise.tools;
-        }
-        if (Array.isArray(expert.expertSkills) && expert.expertSkills.length) {
-          return expert.expertSkills.map((s: any) => (typeof s === "string" ? s : s.skillName)).filter(Boolean);
-        }
-        if (Array.isArray(expert.skills) && expert.skills.length) {
-          return expert.skills;
+        const rawDomains = Array.isArray(expert.skillsAndExpertise?.domains) ? expert.skillsAndExpertise.domains : [];
+        const rawTools = Array.isArray(expert.skillsAndExpertise?.tools) ? expert.skillsAndExpertise.tools : [];
+        const rawExpertSkills = Array.isArray(expert.expertSkills)
+          ? expert.expertSkills.map((s: any) => (typeof s === "string" ? s : s.skillName)).filter(Boolean)
+          : [];
+        const rawSkills = Array.isArray(expert.skills) ? expert.skills : [];
+
+        const combined = Array.from(new Set([...rawDomains, ...rawTools, ...rawExpertSkills, ...rawSkills])).filter(Boolean);
+        if (combined.length) return combined;
+        if (cat.toLowerCase().includes("mern")) {
+          return ["React.js", "Node.js", "MongoDB", "Express.js", "System Design"];
         }
         return [cat, "Interview Prep", "System Design"];
       })();
@@ -494,53 +499,192 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         rawExpert: expert,
       };
     });
+
+    // Feature Joel (MERN Stack Expert) prominently at the top
+    return [...mapped].sort((a, b) => {
+      const isJoelA = a.name?.toLowerCase() === "joel" || a.category?.toLowerCase().includes("mern");
+      const isJoelB = b.name?.toLowerCase() === "joel" || b.category?.toLowerCase().includes("mern");
+      if (isJoelA && !isJoelB) return -1;
+      if (!isJoelA && isJoelB) return 1;
+      return 0;
+    });
   }, [expertsData]);
 
-  // Scroll to target expert card if navigated back from booking
+  // Curated hero avatars ensuring real team experts (Joel, Darvin, Godson, Sudalai, Kishore, Sudhan, Bala)
+  const heroAvatars = useMemo(() => {
+    if (!allMentors || allMentors.length === 0) return [];
+
+    const realProfiles = [
+      {
+        keyword: "joel",
+        fallbackAvatar: getProfileImageUrl("/uploads/profileImages/1794415573959-579427472.jpg"),
+        name: "Joel",
+      },
+      {
+        keyword: "darvin",
+        fallbackAvatar: "https://res.cloudinary.com/dbzun4bbt/image/upload/v1793617811/mockeefy/profiles/krgl2xkm2mczesijdaoy.jpg",
+        name: "Darvin Michael",
+      },
+      {
+        keyword: "godson",
+        fallbackAvatar: getProfileImageUrl("/uploads/profileImages/1793018584207-446260922.jpg"),
+        name: "Godson Arockia Raj",
+      },
+      {
+        keyword: "sudalai",
+        fallbackAvatar: "https://res.cloudinary.com/dbzun4bbt/image/upload/v1782811992/mockeefy/profiles/rxmfx8cautygzwgsqxys.jpg",
+        name: "Sudalaimani Kannan",
+      },
+      {
+        keyword: "kishore",
+        fallbackAvatar: "https://res.cloudinary.com/dbzun4bbt/image/upload/v1782738936/mockeefy/profiles/fd2gapze56dykmdjvsit.jpg",
+        name: "KishoreKumar A",
+      },
+      {
+        keyword: "sudhan",
+        fallbackAvatar: "https://res.cloudinary.com/dbzun4bbt/image/upload/v1793295363/mockeefy/profiles/j6n4doq6eqfhpli5nxsl.jpg",
+        name: "Sudhan",
+      },
+      {
+        keyword: "bala",
+        fallbackAvatar: "https://res.cloudinary.com/dbzun4bbt/image/upload/v1782806158/mockeefy/profiles/qkb6vlzqgbezvsw2xweq.jpg",
+        name: "BalaMugunthan S",
+      },
+    ];
+
+    const curated: { name: string; avatar: string }[] = [];
+    const usedAvatars = new Set<string>();
+    const usedNames = new Set<string>();
+
+    for (const item of realProfiles) {
+      const match = allMentors.find((m) => {
+        const n = (m.name || "").toLowerCase();
+        return n.includes(item.keyword);
+      });
+
+      let avatar = match?.avatar;
+      if (
+        !avatar ||
+        avatar.toLowerCase().includes("placementx") ||
+        avatar.toLowerCase().includes("ui-avatars") ||
+        avatar.toLowerCase().includes("default-avatar")
+      ) {
+        avatar = item.fallbackAvatar;
+      }
+
+      const displayName = match?.name || item.name;
+      const lowerName = displayName.toLowerCase();
+
+      // Guard: strictly ensure only one Joel appears
+      if (lowerName.includes("joel") && usedNames.has("joel")) continue;
+      if (lowerName.includes("joel")) usedNames.add("joel");
+
+      if (avatar && !usedAvatars.has(avatar)) {
+        usedAvatars.add(avatar);
+        curated.push({
+          name: displayName,
+          avatar,
+        });
+      }
+    }
+
+    // Fill up to 7 with other genuine real mentor headshots if any slot is missing
+    if (curated.length < 7) {
+      for (const m of allMentors) {
+        const av = m.avatar || "";
+        const n = (m.name || "").toLowerCase();
+        if (n.includes("joel") && usedNames.has("joel")) continue;
+        if (
+          av &&
+          !usedAvatars.has(av) &&
+          !av.toLowerCase().includes("placementx") &&
+          !av.toLowerCase().includes("ui-avatars")
+        ) {
+          usedAvatars.add(av);
+          curated.push({ name: m.name, avatar: av });
+          if (curated.length >= 7) break;
+        }
+      }
+    }
+
+    return curated;
+  }, [allMentors]);
+
+  // Scroll smoothly to target expert card if navigated back from profile or booking
   useEffect(() => {
     const state = location.state as any;
-    const targetExpertId = state?.scrollToExpertId;
-    const targetExpertName = state?.scrollToExpertName;
+    let targetExpertId = state?.scrollToExpertId;
+    let targetExpertName = state?.scrollToExpertName;
+
+    try {
+      if (!targetExpertId && typeof window !== "undefined") {
+        targetExpertId = sessionStorage.getItem("lastViewedExpertId");
+      }
+      if (!targetExpertName && typeof window !== "undefined") {
+        targetExpertName = sessionStorage.getItem("lastViewedExpertName");
+      }
+    } catch {
+      // ignore
+    }
 
     if (!targetExpertId && !targetExpertName) return;
-    if (isLoading) return;
 
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
-      const el = (targetExpertId ? document.getElementById(`expert-card-${targetExpertId}`) : null) ||
-        (targetExpertName ? document.querySelector(`[data-expert-name="${targetExpertName}"]`) : null);
+      const el =
+        (targetExpertId ? document.getElementById(`expert-card-${targetExpertId}`) : null) ||
+        (targetExpertId ? document.querySelector(`[data-expert-id="${targetExpertId}"]`) : null) ||
+        (targetExpertName ? document.querySelector(`[data-expert-name="${targetExpertName}"]`) : null) ||
+        (targetExpertName ? document.querySelector(`[data-expert-name*="${targetExpertName.split(" ")[0]}"]`) : null);
 
       if (el) {
         clearInterval(interval);
-        // Smoothly bring the card into view centered vertically
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        try {
+          sessionStorage.removeItem("lastViewedExpertId");
+          sessionStorage.removeItem("lastViewedExpertName");
+        } catch {}
+
+        // Calculate card position and smoothly scroll window to center the card vertically
+        const rect = el.getBoundingClientRect();
+        const absoluteElementTop = rect.top + window.pageYOffset;
+        const middle = absoluteElementTop - (window.innerHeight / 2) + (rect.height / 2);
+
+        window.scrollTo({
+          top: Math.max(0, middle),
+          behavior: "smooth",
+        });
 
         // If card is inside a horizontal scroll container, also scroll container
         const horizontalParent = el.closest(".overflow-x-auto") as HTMLElement | null;
         if (horizontalParent) {
-          const cardLeft = (el as HTMLElement).offsetLeft;
+          const cardLeft = (el.parentElement as HTMLElement || el).offsetLeft;
           horizontalParent.scrollTo({
             left: Math.max(0, cardLeft - 20),
             behavior: "smooth",
           });
         }
 
+        // Add a gentle highlight pulse to visually confirm the selected expert
+        el.classList.add("ring-4", "ring-[#0755E8]/40", "shadow-xl");
+        setTimeout(() => {
+          el.classList.remove("ring-4", "ring-[#0755E8]/40", "shadow-xl");
+        }, 2200);
+
         // Clean up navigation state so it doesn't linger
         window.history.replaceState({}, document.title);
-      } else if (attempts >= 15) {
+      } else if (attempts >= 25) {
         clearInterval(interval);
+        try {
+          sessionStorage.removeItem("lastViewedExpertId");
+          sessionStorage.removeItem("lastViewedExpertName");
+        } catch {}
         window.history.replaceState({}, document.title);
-        // Fallback: scroll to all experts container if specific card not found
-        const container = document.getElementById("all-experts-categories");
-        if (container) {
-          container.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
       }
-    }, 100);
+    }, 80);
 
     return () => clearInterval(interval);
-  }, [location.state, isLoading]);
+  }, [location.state, allMentors]);
 
   // Categories and dynamic counts strictly from MongoDB categories and expert relationships
   const categories = useMemo(() => {
@@ -1357,47 +1501,67 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                 </div>
               </div>
 
-              {/* Right Compact Stats Card */}
-              <div className="shrink-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 sm:p-3 space-y-2 min-w-[190px] shadow-xs">
-                {/* Stacked Avatars */}
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2 overflow-hidden">
-                    {allMentors.slice(0, 4).map((m, idx) => (
-                      <img
+              {/* Right Sleek Frosted Glass Social Proof Card */}
+              <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-white/[0.14] via-white/[0.08] to-white/[0.04] backdrop-blur-xl border border-white/25 rounded-2xl p-3 sm:p-3.5 space-y-2.5 w-full md:w-auto md:min-w-[250px] shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
+                {/* Top Glossy Highlight Line */}
+                <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+                {/* Ambient Soft Blur */}
+                <div className="absolute -top-8 -right-8 w-24 h-24 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+                {/* Top Row: Overlapping Avatars + Count Badge - Full Width */}
+                <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                  <div className="flex -space-x-2 sm:-space-x-2.5">
+                    {heroAvatars.map((m, idx) => (
+                      <div
                         key={idx}
-                        src={m.avatar}
-                        alt={m.name}
-                        className="inline-block h-6 w-6 rounded-full ring-2 ring-white/50 object-cover object-top"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=0D8ABC&color=fff`;
-                        }}
-                      />
+                        title={m.name}
+                        className="relative inline-block h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-full ring-2 ring-white/95 shadow-sm overflow-hidden bg-white/20 shrink-0 group/avatar cursor-pointer"
+                      >
+                        <img
+                          src={m.avatar}
+                          alt={m.name}
+                          className="w-full h-full object-cover object-top transition-transform duration-200 group-hover/avatar:scale-110"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || "Mentor")}&background=0755E8&color=fff&bold=true`;
+                          }}
+                        />
+                      </div>
                     ))}
                   </div>
-                  <span className="text-[10px] font-extrabold text-white bg-white/20 px-2 py-0.5 rounded-full border border-white/30">
-                    +{Math.max(1, (allMentors.length || 74) - 4)}
+                  <span className="text-[11px] font-black text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/35 shadow-2xs leading-none shrink-0">
+                    +{Math.max(1, (allMentors.length || 74) - heroAvatars.length)}
                   </span>
                 </div>
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-white/15 text-center">
-                  <div>
-                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
-                      {allMentors.length || 74}
+                {/* Bottom Row: 3 Frosted Glass Metrics */}
+                <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-white/15 relative z-10">
+                  <div className="bg-white/[0.08] hover:bg-white/[0.14] rounded-xl py-1.5 px-1 border border-white/10 text-center transition-all">
+                    <div className="text-xs sm:text-sm font-black text-white leading-tight">
+                      {allMentors.length || 74}+
                     </div>
-                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Experts</div>
+                    <div className="text-[9px] font-bold text-blue-200/90 uppercase tracking-wider mt-0.5">
+                      Experts
+                    </div>
                   </div>
-                  <div className="border-x border-white/15">
-                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
-                      4.9★
+                  
+                  {/* Metric 2: 100% Vetted & Verified Credential */}
+                  <div className="bg-white/[0.08] hover:bg-white/[0.14] rounded-xl py-1.5 px-1 border border-white/10 text-center transition-all">
+                    <div className="text-xs sm:text-sm font-black text-white leading-tight flex items-center justify-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-300 shrink-0 drop-shadow-xs" />
+                      <span>100%</span>
                     </div>
-                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Rating</div>
+                    <div className="text-[9px] font-bold text-blue-200/90 uppercase tracking-wider mt-0.5">
+                      Verified
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs sm:text-[13px] font-black text-white leading-none">
-                      {categories.filter((c) => c !== "All").length || 8}
+
+                  <div className="bg-white/[0.08] hover:bg-white/[0.14] rounded-xl py-1.5 px-1 border border-white/10 text-center transition-all">
+                    <div className="text-xs sm:text-sm font-black text-white leading-tight">
+                      {categories.filter((c) => c !== "All").length || 21}
                     </div>
-                    <div className="text-[9px] text-blue-200 font-medium mt-0.5">Tracks</div>
+                    <div className="text-[9px] font-bold text-blue-200/90 uppercase tracking-wider mt-0.5">
+                      Tracks
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1622,7 +1786,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             <div className="relative z-10">
               {/* Mentors Grid / Empty / Error States */}
-              {isLoading ? (
+              {isLoading && allMentors.length === 0 ? (
                 <div className="space-y-6">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="space-y-3">

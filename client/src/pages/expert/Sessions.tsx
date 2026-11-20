@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+
+import CardFloatingWave from '../../components/CardFloatingWave';
 
 import {
 
@@ -240,6 +242,8 @@ export default function Sessions() {
 
     const [searchParams] = useSearchParams();
 
+    const params = useParams<{ sessionId?: string }>();
+
     const hasHandledActionRef = useRef<string | null>(null);
 
 
@@ -254,29 +258,51 @@ export default function Sessions() {
 
 
 
-    // Auto-open review modal when navigated from feedback request notification
+    // Auto-open modal when navigated with sessionId and/or action (e.g. from Dashboard Dossier or Scorecard)
 
     useEffect(() => {
 
         const action = searchParams.get('action');
 
-        const sid = searchParams.get('sessionId');
+        const sid = searchParams.get('sessionId') || params.sessionId;
 
-        if (action === 'feedback' && sid && allSessions.length > 0 && hasHandledActionRef.current !== sid) {
+        const actionKey = `${sid}-${action || 'view'}`;
+
+        if (sid && allSessions.length > 0 && hasHandledActionRef.current !== actionKey) {
 
             const target = allSessions.find(s => s.sessionId === sid || s._id === sid);
 
             if (target) {
 
-                hasHandledActionRef.current = sid;
+                hasHandledActionRef.current = actionKey;
 
-                openReviewModal(target);
+                if (action === 'dossier' || action === 'profile' || action === 'candidate') {
+
+                    setSelectedCandidateProfile(target);
+
+                } else if (action === 'feedback' || action === 'scorecard' || action === 'review') {
+
+                    if (isSessionEnded(target)) {
+
+                        openReviewModal(target);
+
+                    } else {
+
+                        setSelectedSessionModal(target);
+
+                    }
+
+                } else {
+
+                    setSelectedSessionModal(target);
+
+                }
 
             }
 
         }
 
-    }, [allSessions, searchParams]);
+    }, [allSessions, searchParams, params.sessionId]);
 
 
 
@@ -287,6 +313,27 @@ export default function Sessions() {
     const [selectedCandidateProfile, setSelectedCandidateProfile] = useState<Session | null>(null);
 
     const [reviewSession, setReviewSession] = useState<Session | null>(null);
+
+    const handleCloseCandidateProfile = () => {
+        setSelectedCandidateProfile(null);
+        if (searchParams.get('sessionId') || searchParams.get('action') || params.sessionId) {
+            navigate('/dashboard/sessions', { replace: true });
+        }
+    };
+
+    const handleCloseSessionModal = () => {
+        setSelectedSessionModal(null);
+        if (searchParams.get('sessionId') || searchParams.get('action') || params.sessionId) {
+            navigate('/dashboard/sessions', { replace: true });
+        }
+    };
+
+    const handleCloseReviewModal = () => {
+        setReviewSession(null);
+        if (searchParams.get('sessionId') || searchParams.get('action') || params.sessionId) {
+            navigate('/dashboard/sessions', { replace: true });
+        }
+    };
 
     const [noShowModalSession, setNoShowModalSession] = useState<Session | null>(null);
 
@@ -1514,6 +1561,9 @@ export default function Sessions() {
                 }
 
                 setReviewSession(null);
+                if (searchParams.get('sessionId') || searchParams.get('action') || params.sessionId) {
+                    navigate('/dashboard/sessions', { replace: true });
+                }
 
 
 
@@ -1849,7 +1899,7 @@ export default function Sessions() {
 
     return (
 
-        <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-6 animate-in fade-in duration-200">
+        <div className="sidebar-main-card relative w-full rounded-2xl border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 md:p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-4 animate-in fade-in duration-200">
 
             {/* Decorative ambient blue lighting */}
 
@@ -1859,7 +1909,7 @@ export default function Sessions() {
 
 
 
-            <div className="relative z-10 space-y-6">
+            <div className="relative z-10 space-y-4">
 
                 {/* ======================================================== */}
 
@@ -1867,15 +1917,15 @@ export default function Sessions() {
 
                 {/* ======================================================== */}
 
-                <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200/70">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
-                            <CalendarDays className="w-5 h-5 stroke-[2.2]" />
+                <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-slate-200/70">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+                            <CalendarDays className="w-4 h-4 stroke-[2.2]" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-2.5">
-                                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Interview Sessions</h1>
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-[#0755E8] border border-blue-200/80">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Interview Sessions</h1>
+                                <span className="px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase tracking-wider bg-blue-50 text-[#0755E8] border border-blue-200/80">
                                     Sessions
                                 </span>
                             </div>
@@ -1944,203 +1994,128 @@ export default function Sessions() {
 
 
                 {/* ======================================================== */}
-
-                {/* --- 2. OPTION 4 MODERN KPI CARDS --- */}
-
+                {/* --- 2. 4 BALANCED MODERN KPI CARDS (Full Width, Zero Empty Space) --- */}
                 {/* ======================================================== */}
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-
-                    {/* Upcoming Sessions */}
-
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 w-full">
+                    {/* Card 1: Upcoming Sessions */}
                     <div
-
                         onClick={() => { setStatusFilter('upcoming'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
-
-                        className={`relative overflow-hidden p-5 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer ${
-
+                        className={`relative overflow-hidden p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
                             statusFilter === 'upcoming'
-
                                 ? 'bg-gradient-to-b from-[#EBF3FF] via-white to-white border-blue-400 shadow-md ring-2 ring-blue-500/15'
-
                                 : 'bg-gradient-to-b from-[#F5F8FF] via-white to-white border-blue-100/90 hover:border-blue-300 shadow-2xs hover:shadow-xs'
-
                         }`}
-
                     >
-
-                        <div className="flex items-center justify-between mb-3 relative z-10">
-
-                            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-
-                                <CalendarCheck className="w-4 h-4" />
-
+                        <div className="flex items-center justify-between mb-1.5 relative z-10">
+                            <div className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                                <CalendarCheck className="w-3.5 h-3.5" />
                             </div>
-
-                            <div className="w-6 h-6 rounded-full bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600">
-
-                                <ChevronRight className="w-3.5 h-3.5" />
-
+                            <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600">
+                                <ChevronRight className="w-3 h-3" />
                             </div>
-
                         </div>
 
                         <div className="relative z-10 space-y-0.5">
-
-                            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">Upcoming</span>
-
-                            <div className="flex items-baseline gap-2">
-
-                                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{upcomingSessionsCount}</span>
-
-                                <span className="text-xs text-slate-500 font-medium">Interviews</span>
-
+                            <span className="text-[10.5px] font-bold text-blue-700 uppercase tracking-wider block">Upcoming</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{upcomingSessionsCount}</span>
+                                <span className="text-[11px] text-slate-500 font-medium">Interviews</span>
                             </div>
-
                         </div>
 
-                        {/* Option 4 Decorative Bottom Wave */}
-
-                        <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none opacity-40">
-
-                            <svg viewBox="0 0 400 60" preserveAspectRatio="none" className="w-full h-full text-blue-500 fill-current">
-
-                                <path d="M0,32 C120,55 240,10 400,32 L400,60 L0,60 Z" />
-
-                            </svg>
-
-                        </div>
-
+                        {/* Floating Undulating Wave */}
+                        <CardFloatingWave colorClass="text-blue-400/50" heightClass="h-8 sm:h-9" />
                     </div>
 
-
-
-                    {/* Today's Agenda */}
-
+                    {/* Card 2: Today's Agenda */}
                     <div
-
                         onClick={() => { setDateQuickFilter('today'); setCustomDateFilter(''); }}
-
-                        className={`relative overflow-hidden p-5 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer ${
-
+                        className={`relative overflow-hidden p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
                             dateQuickFilter === 'today'
-
                                 ? 'bg-gradient-to-b from-[#ECFDF5] via-white to-white border-emerald-400 shadow-md ring-2 ring-emerald-500/15'
-
                                 : 'bg-gradient-to-b from-[#F2FBF7] via-white to-white border-emerald-100/90 hover:border-emerald-300 shadow-2xs hover:shadow-xs'
-
                         }`}
-
                     >
-
-                        <div className="flex items-center justify-between mb-3 relative z-10">
-
-                            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-
-                                <Clock className="w-4 h-4" />
-
+                        <div className="flex items-center justify-between mb-1.5 relative z-10">
+                            <div className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                <Clock className="w-3.5 h-3.5" />
                             </div>
-
-                            <div className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600">
-
-                                <ChevronRight className="w-3.5 h-3.5" />
-
+                            <div className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600">
+                                <ChevronRight className="w-3 h-3" />
                             </div>
-
                         </div>
 
                         <div className="relative z-10 space-y-0.5">
-
-                            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Today's Agenda</span>
-
-                            <div className="flex items-baseline gap-2">
-
-                                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{todaySessionsCount}</span>
-
-                                <span className="text-xs text-slate-500 font-medium">Scheduled today</span>
-
+                            <span className="text-[10.5px] font-bold text-emerald-700 uppercase tracking-wider block">Today's Agenda</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{todaySessionsCount}</span>
+                                <span className="text-[11px] text-slate-500 font-medium">Scheduled today</span>
                             </div>
-
                         </div>
 
-                        {/* Option 4 Decorative Bottom Wave */}
-
-                        <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none opacity-40">
-
-                            <svg viewBox="0 0 400 60" preserveAspectRatio="none" className="w-full h-full text-emerald-500 fill-current">
-
-                                <path d="M0,32 C120,55 240,10 400,32 L400,60 L0,60 Z" />
-
-                            </svg>
-
-                        </div>
-
+                        {/* Floating Undulating Wave */}
+                        <CardFloatingWave colorClass="text-emerald-400/50" heightClass="h-8 sm:h-9" />
                     </div>
 
-
-
-                    {/* Completed Sessions */}
-
+                    {/* Card 3: Completed Sessions */}
                     <div
-
                         onClick={() => { setStatusFilter('completed'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
-
-                        className={`relative overflow-hidden p-5 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer ${
-
+                        className={`relative overflow-hidden p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
                             statusFilter === 'completed'
-
                                 ? 'bg-gradient-to-b from-[#FAF5FF] via-white to-white border-purple-400 shadow-md ring-2 ring-purple-500/15'
-
                                 : 'bg-gradient-to-b from-[#FBF8FF] via-white to-white border-purple-100/90 hover:border-purple-300 shadow-2xs hover:shadow-xs'
-
                         }`}
-
                     >
-
-                        <div className="flex items-center justify-between mb-3 relative z-10">
-
-                            <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
-
-                                <CheckCircle2 className="w-4 h-4" />
-
+                        <div className="flex items-center justify-between mb-1.5 relative z-10">
+                            <div className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
                             </div>
-
-                            <div className="w-6 h-6 rounded-full bg-purple-50 border border-purple-200/80 flex items-center justify-center text-purple-600">
-
-                                <ChevronRight className="w-3.5 h-3.5" />
-
+                            <div className="w-5 h-5 rounded-full bg-purple-50 border border-purple-200/80 flex items-center justify-center text-purple-600">
+                                <ChevronRight className="w-3 h-3" />
                             </div>
-
                         </div>
 
                         <div className="relative z-10 space-y-0.5">
-
-                            <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider block">Completed</span>
-
-                            <div className="flex items-baseline gap-2">
-
-                                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{completedSessionsCount}</span>
-
-                                <span className="text-xs text-slate-500 font-medium">Total interviews</span>
-
+                            <span className="text-[10.5px] font-bold text-purple-700 uppercase tracking-wider block">Completed</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{completedSessionsCount}</span>
+                                <span className="text-[11px] text-slate-500 font-medium">Total interviews</span>
                             </div>
-
                         </div>
 
-                        {/* Option 4 Decorative Bottom Wave */}
-
-                        <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none opacity-40">
-
-                            <svg viewBox="0 0 400 60" preserveAspectRatio="none" className="w-full h-full text-purple-500 fill-current">
-
-                                <path d="M0,32 C120,55 240,10 400,32 L400,60 L0,60 Z" />
-
-                            </svg>
-
-                        </div>
-
+                        {/* Floating Undulating Wave */}
+                        <CardFloatingWave colorClass="text-purple-400/50" heightClass="h-8 sm:h-9" />
                     </div>
 
+                    {/* Card 4: All Sessions (Fills the 4th column evenly, eliminating right whitespace) */}
+                    <div
+                        onClick={() => { setStatusFilter('all'); setDateQuickFilter('all'); setCustomDateFilter(''); }}
+                        className={`relative overflow-hidden p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
+                            statusFilter === 'all' && dateQuickFilter === 'all'
+                                ? 'bg-gradient-to-b from-[#FEF3C7] via-white to-white border-amber-400 shadow-md ring-2 ring-amber-500/15'
+                                : 'bg-gradient-to-b from-[#FFFBEB] via-white to-white border-amber-100/90 hover:border-amber-300 shadow-2xs hover:shadow-xs'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-1.5 relative z-10">
+                            <div className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                                <Award className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="w-5 h-5 rounded-full bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600">
+                                <ChevronRight className="w-3 h-3" />
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 space-y-0.5">
+                            <span className="text-[10.5px] font-bold text-amber-800 uppercase tracking-wider block">All Sessions</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{allSessions.length}</span>
+                                <span className="text-[11px] text-slate-500 font-medium">Total bookings</span>
+                            </div>
+                        </div>
+
+                        {/* Floating Undulating Wave */}
+                        <CardFloatingWave colorClass="text-amber-400/50" heightClass="h-8 sm:h-9" />
+                    </div>
                 </div>
 
 
@@ -3129,7 +3104,7 @@ export default function Sessions() {
 
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
 
-                        onClick={() => setSelectedSessionModal(null)}
+                        onClick={handleCloseSessionModal}
 
                     ></div>
 
@@ -3155,7 +3130,7 @@ export default function Sessions() {
 
                             <button
 
-                                onClick={() => setSelectedSessionModal(null)}
+                                onClick={handleCloseSessionModal}
 
                                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
 
@@ -3873,7 +3848,7 @@ export default function Sessions() {
 
                         <div className="p-4 border-t border-slate-100 flex items-center justify-end bg-slate-50/50">
 
-                            <SecondaryButton onClick={() => setSelectedSessionModal(null)}>Close</SecondaryButton>
+                            <SecondaryButton onClick={handleCloseSessionModal}>Close</SecondaryButton>
 
                         </div>
 
@@ -3899,7 +3874,7 @@ export default function Sessions() {
 
                         className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
 
-                        onClick={() => setSelectedCandidateProfile(null)}
+                        onClick={handleCloseCandidateProfile}
 
                     ></div>
 
@@ -3921,7 +3896,7 @@ export default function Sessions() {
 
                             <button
 
-                                onClick={() => setSelectedCandidateProfile(null)}
+                                onClick={handleCloseCandidateProfile}
 
                                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
 
@@ -4137,7 +4112,7 @@ export default function Sessions() {
 
                             </button>
 
-                            <SecondaryButton onClick={() => setSelectedCandidateProfile(null)}>Close</SecondaryButton>
+                            <SecondaryButton onClick={handleCloseCandidateProfile}>Close</SecondaryButton>
 
                         </div>
 
@@ -4449,7 +4424,7 @@ export default function Sessions() {
 
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
 
-                        onClick={() => setReviewSession(null)}
+                        onClick={handleCloseReviewModal}
 
                     ></div>
 
@@ -4475,7 +4450,7 @@ export default function Sessions() {
 
                             <button
 
-                                onClick={() => setReviewSession(null)}
+                                onClick={handleCloseReviewModal}
 
                                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
 
@@ -4975,7 +4950,7 @@ export default function Sessions() {
 
                             <div className="flex items-center gap-2">
 
-                                <SecondaryButton onClick={() => setReviewSession(null)}>Cancel</SecondaryButton>
+                                <SecondaryButton onClick={handleCloseReviewModal}>Cancel</SecondaryButton>
 
                                 <PrimaryButton
 

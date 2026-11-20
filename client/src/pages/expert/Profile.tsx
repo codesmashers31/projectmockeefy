@@ -216,38 +216,38 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-6 animate-in fade-in duration-200">
+    <div className="sidebar-main-card relative w-full rounded-2xl border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 md:p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left space-y-4 animate-in fade-in duration-200">
       {/* Decorative ambient blue lighting */}
       <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
 
       {/* Content Layer */}
-      <div className="relative z-10 space-y-6">
+      <div className="relative z-10 space-y-4">
       {/* 1. Page Title & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1 border-b border-slate-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
               Expert Profile &amp; Mentorship Hub
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-xs font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-[11px] font-bold shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {status === "Active" ? "Verified Mentor" : `${completion}% Complete`}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Manage your executive credentials, coaching tracks, hourly pricing, and verified background details.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {user?.id && (
             <button
               onClick={() => window.open(`/expert-profile/${user.id}`, "_blank")}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-blue-50/80 border border-blue-200/90 text-[#0755E8] text-xs sm:text-sm font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-blue-50/80 border border-blue-200/90 text-[#0755E8] text-xs font-bold rounded-lg transition-all shadow-2xs cursor-pointer"
               title="Preview how candidates view your profile"
             >
-              <ExternalLink className="w-4 h-4 text-[#0755E8]" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#0755E8]" />
               Preview Public Profile
             </button>
           )}
@@ -255,9 +255,9 @@ export default function ProfilePage() {
       </div>
 
       {/* 2. Main Executive 2-Column Layout */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 items-start">
         {/* Left Navigation Card */}
-        <aside className="w-full lg:w-60 shrink-0 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs p-3.5 sm:p-4 flex flex-col justify-between space-y-3 lg:space-y-4">
+        <aside className="w-full lg:w-52 shrink-0 bg-white rounded-2xl border border-slate-200/90 shadow-xs p-3 flex flex-col justify-between space-y-2.5">
           <div className="space-y-2 lg:space-y-3">
             <div className="px-2 pt-1 pb-2 border-b border-slate-100 flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">

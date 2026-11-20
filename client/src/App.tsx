@@ -97,7 +97,7 @@ if (
 
 function MentorsRedirect() {
   const location = useLocation();
-  return <Navigate to={{ pathname: "/", search: location.search }} replace />;
+  return <Navigate to={{ pathname: "/", search: location.search }} state={location.state} replace />;
 }
 
 // Lightweight route transition fallback
@@ -192,8 +192,8 @@ function AppRoutes() {
           <Route path="/help" element={<DashboardLayout><HelpSupportPage /></DashboardLayout>} />
 
           {/* PUBLIC & SHARED AVAILABLE EXPERT PROFILE ROUTES */}
-          <Route path="/expert-profile/:expertId" element={<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>} />
-          <Route path="/expert/:expertId" element={<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>} />
+          <Route path="/expert-profile/:expertId" element={<ErrorBoundary><ExpertProfilePage /></ErrorBoundary>} />
+          <Route path="/expert/:expertId" element={<ErrorBoundary><ExpertProfilePage /></ErrorBoundary>} />
 
           {/* SHARED PROTECTED ROUTES */}
           <Route element={<RoleBasedRoute allowedRoles={['expert', 'candidate', 'user']} />}>
@@ -228,6 +228,7 @@ function AppRoutes() {
               <Route index element={<DashboardIndex />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="sessions" element={<SessionsPage />} />
+              <Route path="sessions/:sessionId" element={<SessionsPage />} />
               <Route path="availability" element={<ErrorBoundary><AvailabilityPage /></ErrorBoundary>} />
               <Route path="availability/edit" element={<ErrorBoundary><EditAvailabilityPage /></ErrorBoundary>} />
               <Route path="skills" element={<SkillsPage />} />

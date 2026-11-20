@@ -58,6 +58,7 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
   const navigate = useNavigate();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
 
   const mentorId = mentor.expertID || mentor.id || (mentor as any)._id;
 
@@ -81,11 +82,19 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/expert-profile/${mentorId}`);
+    navigate(`/expert-profile/${mentorId}`, {
+      state: {
+        initialExpert: mentor.rawExpert || mentor,
+      },
+    });
   };
 
   const handleCardClick = () => {
-    navigate(`/expert-profile/${mentorId}`);
+    navigate(`/expert-profile/${mentorId}`, {
+      state: {
+        initialExpert: mentor.rawExpert || mentor,
+      },
+    });
   };
 
   const toggleSave = (e: React.MouseEvent) => {
@@ -147,13 +156,22 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
 
   const locationDisplay = mentor.location || "Chennai";
 
-  const skillsList =
-    mentor.skills && mentor.skills.length > 0
-      ? mentor.skills
-      : ["A/B Testing", "Computer Vision"];
+  const skillsList = React.useMemo(() => {
+    const rawDomains = Array.isArray(mentor.rawExpert?.skillsAndExpertise?.domains)
+      ? mentor.rawExpert.skillsAndExpertise.domains
+      : [];
+    const rawTools = Array.isArray(mentor.rawExpert?.skillsAndExpertise?.tools)
+      ? mentor.rawExpert.skillsAndExpertise.tools
+      : [];
+    const combined = Array.from(
+      new Set([...(mentor.skills || []), ...rawDomains, ...rawTools])
+    ).filter(Boolean);
 
-  const displaySkills = skillsList.slice(0, 2);
-  const moreSkillsCount = skillsList.length > 2 ? skillsList.length - 2 : 14;
+    return combined.length > 0 ? combined : ["Interview Prep", "System Design"];
+  }, [mentor.skills, mentor.rawExpert]);
+
+  const displayedSkills = showAllSkills ? skillsList : skillsList.slice(0, 2);
+  const remainingCount = skillsList.length - 2;
 
   const getSkillIcon = (skill: string) => {
     const s = skill.toLowerCase();
@@ -184,19 +202,68 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#0755E8]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       <div className="space-y-2.5 sm:space-y-3 flex-1 flex flex-col relative z-10">
-        {/* 0. Top Badges Row: Top Rated / Verified Badge + Bookmark */}
-        <div className="flex items-center justify-between gap-2">
-          {mentor.rating >= 4.8 ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 border border-amber-200/80 text-amber-700 text-[10px] font-extrabold shadow-2xs">
-              <span>🏆</span>
-              <span>Top rated</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0755E8] text-[10px] font-extrabold shadow-2xs">
-              <BadgeCheck className="w-3.5 h-3.5 text-[#0755E8]" />
-              <span>Verified Expert</span>
-            </span>
-          )}
+        {/* 1. Profile Header with Spark Accent & Bookmark */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            {/* Avatar Frame with Spark Accents & Online Dot */}
+            <div className="relative shrink-0">
+              {/* Three blue spark rays on top-left of avatar container */}
+              <div className="absolute -top-1 -left-1 w-3 h-3 pointer-events-none select-none text-[#2563EB]">
+                <svg viewBox="0 0 16 16" fill="none" className="w-full h-full stroke-current" strokeWidth="2.2" strokeLinecap="round">
+                  <line x1="2" y1="9" x2="0.5" y2="9" />
+                  <line x1="3.5" y1="4.5" x2="1.5" y2="2.5" />
+                  <line x1="9" y1="2" x2="9" y2="0.5" />
+                </svg>
+              </div>
+
+              {/* Glowing light-blue border wrapper with rounded square corners */}
+              <div className="p-0.5 rounded-[14px] border-2 border-[#D3E4FF] bg-white shadow-2xs">
+                <div className="w-[40px] h-[40px] sm:w-[42px] sm:h-[42px] rounded-[11px] bg-slate-100 overflow-hidden flex items-center justify-center">
+                  {avatarFailed || !avatarUrl ? (
+                    <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
+                      {initials}
+                    </span>
+                  ) : (
+                    <img
+                      src={avatarUrl}
+                      alt={nameDisplay}
+                      className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                      onError={() => setAvatarFailed(true)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Online Green Indicator Dot at bottom right of frame */}
+              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#10B981] border-2 border-white shadow-2xs" />
+            </div>
+
+            {/* Name & Designation */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3
+                  title={nameDisplay}
+                  className="text-[14px] sm:text-[15px] font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors tracking-tight truncate leading-tight capitalize"
+                >
+                  {nameDisplay}
+                </h3>
+                <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
+                  <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
+                </span>
+              </div>
+
+              {/* Designation: "Senior Agile & Project Management Lead • Google" */}
+              <p className="text-[11px] sm:text-[11.5px] text-slate-500 font-medium leading-snug mt-0.5 truncate">
+                <span>{roleDisplay}</span>
+                {companyDisplay && (
+                  <>
+                    <span className="text-slate-300 font-normal mx-1">•</span>
+                    <span className="text-slate-700 font-semibold">{companyDisplay}</span>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
 
           {/* Bookmark Button */}
           <button
@@ -211,59 +278,6 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
               }`}
             />
           </button>
-        </div>
-
-        {/* 1. Profile Header */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          {/* Avatar Frame with Online Pulse Dot */}
-          <div className="relative shrink-0">
-            <div className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-[13px] bg-slate-100 ring-2 ring-blue-100/90 group-hover:ring-[#0755E8]/30 transition-all overflow-hidden flex items-center justify-center shadow-2xs">
-              {avatarFailed || !avatarUrl ? (
-                <span className="text-xs sm:text-sm font-extrabold tracking-tight text-[#0755E8] bg-[#EAF2FF] w-full h-full flex items-center justify-center select-none">
-                  {initials}
-                </span>
-              ) : (
-                <img
-                  src={avatarUrl}
-                  alt={nameDisplay}
-                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
-                  onError={() => setAvatarFailed(true)}
-                />
-              )}
-            </div>
-
-            {/* Glowing Pulse Online Indicator */}
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
-            </span>
-          </div>
-
-          {/* Name & Designation */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <h3
-                title={nameDisplay}
-                className="text-[14px] sm:text-[15px] font-bold text-slate-900 group-hover:text-[#0755E8] transition-colors tracking-tight truncate leading-tight capitalize"
-              >
-                {nameDisplay}
-              </h3>
-              <span title="Verified Interview Expert" className="inline-flex items-center shrink-0">
-                <BadgeCheck className="w-4 h-4 text-white fill-[#0755E8]" />
-              </span>
-            </div>
-
-            {/* Designation: "Senior Agile & Project Management Lead • Google" */}
-            <p className="text-[11px] sm:text-[11.5px] text-slate-500 font-medium leading-snug mt-0.5 truncate">
-              <span>{roleDisplay}</span>
-              {companyDisplay && (
-                <>
-                  <span className="text-slate-300 font-normal mx-1">•</span>
-                  <span className="text-slate-700 font-semibold">{companyDisplay}</span>
-                </>
-              )}
-            </p>
-          </div>
         </div>
 
         {/* 2. Statistics Row: Rating | Experience | Location */}
@@ -297,37 +311,49 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
         </div>
 
         {/* Professional Domain Section */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 font-bold text-[11px] sm:text-[11.5px] text-slate-800">
-              <Briefcase className="w-3.5 h-3.5 text-[#0755E8] stroke-[2.5]" />
+            <div className="flex items-center gap-1 font-bold text-[10px] sm:text-[10.5px] text-slate-800">
+              <Briefcase className="w-3 h-3 text-[#0755E8] stroke-[2.5]" />
               <span>Professional Domain</span>
             </div>
           </div>
 
           {/* Domain Badges */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 flex-wrap">
             <span
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[10.5px] font-bold border border-[#BFDBFE] shadow-2xs"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EAF2FF] text-[#0755E8] text-[9.5px] font-bold border border-[#BFDBFE] shadow-2xs"
             >
               Domain: {mentor.category || "IT"}
             </span>
-            {displaySkills.map((skill, idx) => (
+            {displayedSkills.map((skill, idx) => (
               <span
                 key={idx}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/70 text-[#0755E8] text-[10px] font-semibold border border-blue-200/60"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50/70 text-[#0755E8] text-[9px] font-medium border border-blue-200/60"
               >
                 {skill}
               </span>
             ))}
+            {skillsList.length > 2 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAllSkills((prev) => !prev);
+                }}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 hover:bg-blue-100 text-[#0755E8] hover:text-[#0645C7] text-[8.5px] font-bold border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer select-none"
+              >
+                {showAllSkills ? "Show less" : `+${remainingCount} more`}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Area: Pricing & Availability + Action Buttons */}
+      {/* Bottom Area: Pricing + Action Buttons */}
       <div className="space-y-2.5 pt-2 relative z-10 border-t border-slate-100">
-        {/* Pricing and Availability Row */}
-        <div className="flex items-center justify-between gap-2 px-0.5">
+        {/* Pricing Row */}
+        <div className="flex items-center justify-between px-0.5">
           {/* Price */}
           <div className="flex flex-col shrink-0">
             <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 leading-none">
@@ -335,17 +361,6 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
             </span>
             <span className="text-[15px] sm:text-[16px] font-black text-slate-900 leading-tight mt-0.5">
               ₹{priceNum.toLocaleString("en-IN")}
-            </span>
-          </div>
-
-          {/* Availability Status */}
-          <div className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 shadow-2xs">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-[10.5px] font-bold text-emerald-700 whitespace-nowrap">
-              {mentor.activeTime || "Available Today"}
             </span>
           </div>
         </div>
@@ -356,9 +371,9 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           <button
             type="button"
             onClick={handleViewProfile}
-            className="w-full h-[35px] sm:h-[36px] rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="w-full h-[31px] sm:h-[32px] rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] text-slate-700 font-bold text-[10.5px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <User className="w-3.5 h-3.5 text-slate-500 stroke-[2.2]" />
+            <User className="w-3 h-3 text-slate-500 stroke-[2.2]" />
             <span>View Profile</span>
           </button>
 
@@ -366,9 +381,9 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
           <button
             type="button"
             onClick={handleBookNow}
-            className="group w-full h-[35px] sm:h-[36px] rounded-xl bg-gradient-to-r from-[#0755E8] to-[#0440B3] hover:from-[#0645C7] hover:to-[#033496] active:scale-[0.98] text-white font-bold text-[11px] shadow-[0_3px_10px_rgba(7,85,232,0.25)] hover:shadow-[0_6px_18px_rgba(7,85,232,0.35)] transition-all flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
+            className="group w-full h-[31px] sm:h-[32px] rounded-xl bg-gradient-to-r from-[#0755E8] to-[#0440B3] hover:from-[#0645C7] hover:to-[#033496] active:scale-[0.98] text-white font-bold text-[10.5px] shadow-[0_2px_8px_rgba(7,85,232,0.22)] hover:shadow-[0_4px_14px_rgba(7,85,232,0.32)] transition-all flex items-center justify-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <Calendar className="w-3.5 h-3.5 text-white shrink-0" />
+            <Calendar className="w-3 h-3 text-white shrink-0" />
             <span className="whitespace-nowrap">Book Session</span>
             <ArrowRight className="w-3 h-3 text-white shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
           </button>

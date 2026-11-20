@@ -6,22 +6,39 @@ const ScrollToTop = () => {
   const navigationType = useNavigationType();
 
   useLayoutEffect(() => {
-    // If navigation state specifically indicates not to scroll to top (e.g. returning to expert card)
-    const state = location.state as any;
-    if (state?.scrollToExpertId || state?.preventScrollTop || state?.preserveScroll) {
-      return;
+    const isDiscoveryPage =
+      location.pathname === "/" ||
+      location.pathname === "/find-mentor" ||
+      location.pathname === "/mentors";
+
+    // ONLY suppress scroll-to-top when on discovery page returning to an expert card!
+    if (isDiscoveryPage) {
+      const state = location.state as any;
+      let hasExpertTarget = Boolean(
+        state?.scrollToExpertId ||
+        state?.preventScrollTop ||
+        state?.preserveScroll
+      );
+
+      try {
+        if (!hasExpertTarget && typeof window !== "undefined") {
+          hasExpertTarget = Boolean(sessionStorage.getItem("lastViewedExpertId"));
+        }
+      } catch {
+        // ignore storage access errors
+      }
+
+      if (hasExpertTarget) {
+        return;
+      }
     }
 
-    if (navigationType === "PUSH" || navigationType === "REPLACE") {
-      if ("scrollRestoration" in window.history) {
-        window.history.scrollRestoration = "manual";
-      }
-      window.scrollTo(0, 0);
-    } else if (navigationType === "POP") {
-      if ("scrollRestoration" in window.history) {
-        window.history.scrollRestoration = "auto";
-      }
+    // For ALL other pages (specifically /expert-profile/:id, /dashboard, etc.):
+    // ALWAYS reset scroll to the top (0, 0) immediately!
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
     }
+    window.scrollTo(0, 0);
   }, [location, navigationType]);
 
   return null;
