@@ -251,18 +251,19 @@ export default function DashboardIndex() {
   if (isAuthLoading || loading) return <ExpertPageSkeleton variant="dashboard" />;
 
   return (
-    <div className="sidebar-main-card relative w-full rounded-2xl border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 sm:p-5 md:p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] overflow-hidden font-sans text-left animate-in fade-in duration-200">
-      {/* Decorative ambient blue lighting */}
-      <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
+    <div className="sidebar-main-card relative w-full rounded-2xl border border-blue-200/80 bg-gradient-to-b from-[#DCEBFF] via-[#F4F8FF] to-white p-3.5 sm:p-5 md:p-6 shadow-[0_8px_32px_-12px_rgba(7,85,232,0.08)] overflow-hidden font-sans text-left animate-in fade-in duration-200">
+      {/* Decorative ambient blue lighting - Vivid & clearly visible */}
+      <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-blue-400/35 via-indigo-300/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -top-12 -left-12 w-64 h-64 rounded-full bg-gradient-to-br from-sky-400/25 via-blue-200/20 to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-blue-200/30 via-blue-100/10 to-transparent pointer-events-none" />
 
       {/* Content Layer */}
       <div className="relative z-10 space-y-4 sm:space-y-5">
         {/* 1. Executive Mentor Header Banner with Luminous Soft Gradient (Theme Matched, Non-Collapsing) */}
-        <div className="relative rounded-2xl border border-blue-200/90 bg-gradient-to-r from-[#EBF3FF] via-[#F6F9FF] to-white p-4 sm:p-5 shadow-xs overflow-hidden">
+        <div className="relative rounded-2xl border border-blue-200/90 bg-gradient-to-r from-[#D8E9FF] via-[#EFF6FF] to-white p-4 sm:p-5 shadow-xs overflow-hidden">
           {/* Subtle ambient lighting glows */}
-          <div className="absolute -top-10 -right-10 w-60 h-60 rounded-full bg-blue-300/25 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-indigo-200/20 blur-2xl pointer-events-none" />
+          <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-blue-400/30 to-indigo-300/20 blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-52 h-52 rounded-full bg-gradient-to-tr from-sky-300/25 to-blue-200/15 blur-xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 sm:gap-4">
             {/* Left: Mentor Identity & Status with Clean Alignment */}
@@ -291,15 +292,19 @@ export default function DashboardIndex() {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Accepting Bookings
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200/90 rounded-full shadow-2xs text-[10px] font-bold text-[#0755E8] shrink-0">
-                    <ShieldCheck className="w-3 h-3 text-[#0755E8]" />
-                    Verified Mentor
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full shadow-2xs text-[10px] font-bold shrink-0 border ${
+                    Boolean(user?.isExpertVerified || expertProfile?.status === "Active" || expertProfile?.status === "approved")
+                      ? "bg-blue-50 border-blue-200/90 text-[#0755E8]"
+                      : "bg-amber-50 border-amber-200/90 text-amber-700"
+                  }`}>
+                    <ShieldCheck className={`w-3 h-3 ${Boolean(user?.isExpertVerified || expertProfile?.status === "Active" || expertProfile?.status === "approved") ? "text-[#0755E8]" : "text-amber-600"}`} />
+                    {Boolean(user?.isExpertVerified || expertProfile?.status === "Active" || expertProfile?.status === "approved") ? "Verified Mentor" : "Mentor In Setup"}
                   </span>
                 </div>
 
                 <div className="text-xs text-slate-600 font-medium flex items-center gap-2 flex-wrap">
                   <span className="text-slate-800 font-bold capitalize">
-                    {expertProfile?.title || "Senior Software Engineer"}
+                    {expertProfile?.title || (user?.title ? user.title : "") || "Mentor Profile"}
                   </span>
                   {expertProfile?.company && (
                     <>
@@ -416,19 +421,19 @@ export default function DashboardIndex() {
               tabIndex={0}
               onClick={() => navigate("/dashboard/sessions")}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate("/dashboard/sessions")}
-              className="relative bg-[#F0F6FF] border border-blue-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
+              className="relative bg-gradient-to-b from-[#EFF6FF] via-[#F8FAFF] to-[#DBEAFE]/40 border border-blue-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
             >
               <div className="flex items-center justify-between relative z-10 mb-1">
-                <div className="w-7.5 h-7.5 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/30 group-hover:scale-105 transition-transform">
+                <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/25 group-hover:scale-105 transition-transform">
                   <Box className="w-3.5 h-3.5 stroke-[2.2]" />
                 </div>
-                <div className="w-5 h-5 rounded-full bg-white shadow-xs border border-blue-100 flex items-center justify-center text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                <div className="w-5 h-5 rounded-full bg-white/90 shadow-xs border border-blue-100 flex items-center justify-center text-blue-600 group-hover:translate-x-0.5 transition-transform">
                   <ChevronRight size={11} className="stroke-[2.5]" />
                 </div>
               </div>
 
               <div className="relative z-10">
-                <h4 className="text-[11px] font-bold text-blue-700 tracking-tight">
+                <h4 className="text-[11px] font-bold text-blue-800 tracking-tight">
                   Total Sessions
                 </h4>
                 <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight my-0.5">
@@ -439,28 +444,28 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-blue-300/80" />
+              <CardFloatingWave colorClass="text-blue-300/50" />
             </div>
 
-            {/* Card 2: Upcoming Sessions (Green) */}
+            {/* Card 2: Upcoming Sessions (Soft Emerald / Mint) */}
             <div
               role="button"
               tabIndex={0}
               onClick={() => navigate("/dashboard/sessions")}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate("/dashboard/sessions")}
-              className="relative bg-[#F0FDF4] border border-emerald-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
+              className="relative bg-gradient-to-b from-[#ECFDF5] via-[#F7FCF9] to-[#D1FAE5]/40 border border-emerald-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
             >
               <div className="flex items-center justify-between relative z-10 mb-1">
-                <div className="w-7.5 h-7.5 rounded-lg bg-emerald-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/30 group-hover:scale-105 transition-transform">
+                <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/25 group-hover:scale-105 transition-transform">
                   <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.2]" />
                 </div>
-                <div className="w-5 h-5 rounded-full bg-white shadow-xs border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:translate-x-0.5 transition-transform">
+                <div className="w-5 h-5 rounded-full bg-white/90 shadow-xs border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:translate-x-0.5 transition-transform">
                   <ChevronRight size={11} className="stroke-[2.5]" />
                 </div>
               </div>
 
               <div className="relative z-10">
-                <h4 className="text-[11px] font-bold text-emerald-700 tracking-tight">
+                <h4 className="text-[11px] font-bold text-emerald-800 tracking-tight">
                   Upcoming
                 </h4>
                 <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight my-0.5">
@@ -471,7 +476,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-emerald-300/80" />
+              <CardFloatingWave colorClass="text-emerald-300/40" />
             </div>
 
             {/* Card 3: Wallet Balance (Amber) */}
@@ -480,13 +485,13 @@ export default function DashboardIndex() {
               tabIndex={0}
               onClick={() => navigate("/dashboard/withdraw")}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate("/dashboard/withdraw")}
-              className="relative bg-[#FFFBEB] border border-amber-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
+              className="relative bg-gradient-to-b from-[#FFFBEB] via-[#FFFEFA] to-[#FEF3C7]/40 border border-amber-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
             >
               <div className="flex items-center justify-between relative z-10 mb-1">
-                <div className="w-7.5 h-7.5 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-sm shadow-amber-500/30 group-hover:scale-105 transition-transform">
+                <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-sm shadow-amber-500/25 group-hover:scale-105 transition-transform">
                   <Wallet className="w-3.5 h-3.5 stroke-[2.2]" />
                 </div>
-                <div className="w-5 h-5 rounded-full bg-white shadow-xs border border-amber-200 flex items-center justify-center text-amber-600 group-hover:translate-x-0.5 transition-transform">
+                <div className="w-5 h-5 rounded-full bg-white/90 shadow-xs border border-amber-200 flex items-center justify-center text-amber-600 group-hover:translate-x-0.5 transition-transform">
                   <ChevronRight size={11} className="stroke-[2.5]" />
                 </div>
               </div>
@@ -503,7 +508,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-amber-300/80" />
+              <CardFloatingWave colorClass="text-amber-300/50" />
             </div>
 
             {/* Card 4: Total Earnings (Rose) */}
@@ -512,19 +517,19 @@ export default function DashboardIndex() {
               tabIndex={0}
               onClick={() => navigate("/dashboard/reports")}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate("/dashboard/reports")}
-              className="relative bg-[#FFF1F2] border border-rose-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-rose-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
+              className="relative bg-gradient-to-b from-[#FFF1F2] via-[#FFF8F8] to-[#FFE4E6]/40 border border-rose-200/80 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-rose-300 transition-all duration-200 cursor-pointer min-h-[118px] group text-left select-none"
             >
               <div className="flex items-center justify-between relative z-10 mb-1">
-                <div className="w-7.5 h-7.5 rounded-lg bg-rose-500 text-white flex items-center justify-center shadow-sm shadow-rose-500/30 group-hover:scale-105 transition-transform">
+                <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-rose-500 to-rose-600 text-white flex items-center justify-center shadow-sm shadow-rose-500/25 group-hover:scale-105 transition-transform">
                   <IndianRupee className="w-3.5 h-3.5 stroke-[2.2]" />
                 </div>
-                <div className="w-5 h-5 rounded-full bg-white shadow-xs border border-rose-100 flex items-center justify-center text-rose-600 group-hover:translate-x-0.5 transition-transform">
+                <div className="w-5 h-5 rounded-full bg-white/90 shadow-xs border border-rose-100 flex items-center justify-center text-rose-600 group-hover:translate-x-0.5 transition-transform">
                   <ChevronRight size={11} className="stroke-[2.5]" />
                 </div>
               </div>
 
               <div className="relative z-10">
-                <h4 className="text-[11px] font-bold text-rose-700 tracking-tight">
+                <h4 className="text-[11px] font-bold text-rose-800 tracking-tight">
                   Total Earnings
                 </h4>
                 <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight my-0.5">
@@ -535,7 +540,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-rose-300/80" />
+              <CardFloatingWave colorClass="text-rose-300/50" />
             </div>
           </div>
 

@@ -25,7 +25,7 @@ export default function CategoryAndLevelSection({ onUpdate, profileData, isMissi
   
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(profileData?.category || profileData?.personalInformation?.category || "");
-  const [selectedLevels, setSelectedLevels] = useState<string[]>(["Rising Mentor"]);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,15 +43,18 @@ export default function CategoryAndLevelSection({ onUpdate, profileData, isMissi
       const catList = Array.isArray(catRes.data) ? catRes.data : [];
       setCategories(catList.filter((c: any) => c.name).map((c: any) => ({ _id: c._id, name: c.name })));
 
-      if (personalRes.data.success && personalRes.data.data) {
-        setSelectedCategory(personalRes.data.data.category || profileData?.category || "");
+      let resolvedCat = profileData?.category || "";
+      if (personalRes.data?.success && personalRes.data.data) {
+        resolvedCat = personalRes.data.data.category || resolvedCat;
       }
-      if (profRes.data.success && profRes.data.data) {
+      setSelectedCategory(resolvedCat);
+
+      if (profRes.data?.success && profRes.data.data) {
         const data = profRes.data.data;
         const initialLevels = data.levels && data.levels.length > 0
           ? data.levels
-          : [data.level || "Rising Mentor"];
-        setSelectedLevels(initialLevels);
+          : (data.level ? [data.level] : []);
+        setSelectedLevels(resolvedCat ? initialLevels : []);
       }
     } catch (err) {
       console.error("Failed to load Category & Level data:", err);
@@ -114,7 +117,7 @@ export default function CategoryAndLevelSection({ onUpdate, profileData, isMissi
     return <ExpertPageSkeleton variant="form" />;
   }
 
-  const isCompleted = Boolean(selectedCategory);
+  const isCompleted = Boolean(selectedCategory) && selectedLevels.length > 0;
 
   return (
     <div className="w-full space-y-6">
@@ -151,12 +154,16 @@ export default function CategoryAndLevelSection({ onUpdate, profileData, isMissi
             <div className="bg-slate-50/70 border border-slate-200/70 rounded-xl p-4 sm:p-5 space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Expert Levels</label>
               <div className="flex flex-wrap gap-2 pt-0.5">
-                {selectedLevels.map((level) => (
-                  <span key={level} className="bg-blue-50 text-blue-700 border border-blue-200/80 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs inline-flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                    {level}
-                  </span>
-                ))}
+                {selectedLevels.length > 0 ? (
+                  selectedLevels.map((level) => (
+                    <span key={level} className="bg-blue-50 text-blue-700 border border-blue-200/80 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs inline-flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                      {level}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400 italic">No levels selected yet</span>
+                )}
               </div>
               <p className="text-xs text-slate-500">Tiers candidates can select when booking an interview with you.</p>
             </div>

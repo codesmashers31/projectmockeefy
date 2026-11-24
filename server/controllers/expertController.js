@@ -645,6 +645,7 @@ export const getExpertProfile = async (req, res) => {
     }
 
     const expertLean = expert.toObject ? expert.toObject() : expert;
+    const resolvedCategory = expertLean.personalInformation?.category || expertLean.category || expertLean.domain || (Array.isArray(expertLean.skillsAndExpertise?.domains) && expertLean.skillsAndExpertise.domains[0]) || "";
 
     const profile = {
       // Identity from User
@@ -661,8 +662,8 @@ export const getExpertProfile = async (req, res) => {
       company: expertLean.professionalDetails?.company || "",
       totalExperience: expertLean.professionalDetails?.totalExperience ?? "",
       industry: expertLean.professionalDetails?.industry || "",
-      level: expertLean.professionalDetails?.level || "Intermediate",
-      levels: expertLean.professionalDetails?.levels || [],
+      level: resolvedCategory ? (expertLean.professionalDetails?.level || "") : "",
+      levels: resolvedCategory ? (expertLean.professionalDetails?.levels || []) : [],
       previous: expertLean.professionalDetails?.previous || [],
       education: expertLean.education || [],
       skillsAndExpertise: expertLean.skillsAndExpertise || { mode: "Online", domains: [], tools: [], languages: [] },
@@ -680,7 +681,7 @@ export const getExpertProfile = async (req, res) => {
       originalPhotoUrl: user.originalProfileImage || expertLean.originalProfileImage || user.profileImage || "",
 
       // Category from Expert (Personal Info legacy with fallback to root or skills domain)
-      category: expertLean.personalInformation?.category || expertLean.category || expertLean.domain || (Array.isArray(expertLean.skillsAndExpertise?.domains) && expertLean.skillsAndExpertise.domains[0]) || ""
+      category: resolvedCategory
     };
 
     const completion = computeCompletion(expertLean, user);
@@ -1185,9 +1186,20 @@ export const getProfessional = async (req, res) => {
     const queryUserId = toObjectId(userIdRaw);
 
     const expert = await ExpertDetails.findOne({ userId: queryUserId });
-    if (expert && expert.professionalDetails) return res.status(200).json({ success: true, data: expert.professionalDetails });
+    if (expert && expert.professionalDetails) {
+      const cat = expert.personalInformation?.category || expert.category;
+      const pd = expert.professionalDetails.toObject ? expert.professionalDetails.toObject() : expert.professionalDetails;
+      return res.status(200).json({
+        success: true,
+        data: {
+          ...pd,
+          level: cat ? (pd.level || "") : "",
+          levels: cat ? (pd.levels || []) : []
+        }
+      });
+    }
 
-    return res.status(200).json({ success: true, data: { title: "", company: "", totalExperience: "", totalExperienceMonths: "0", industry: "", level: "Intermediate", previous: [] } });
+    return res.status(200).json({ success: true, data: { title: "", company: "", totalExperience: "", totalExperienceMonths: "0", industry: "", level: "", levels: [], previous: [] } });
   } catch (err) {
     console.error("getProfessional error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -1526,7 +1538,9 @@ export const getExpertStats = async (req, res) => {
         revenue,
         rating: avgRating,
         completionRate,
-        walletBalance
+        walletBalance,
+        status: expert.status || "pending",
+        isVerified: expert.status === "Active" || expert.status === "approved"
       }
     });
 

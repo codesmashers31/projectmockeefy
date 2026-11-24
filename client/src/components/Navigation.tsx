@@ -763,7 +763,9 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                       </p>
                       <p className="text-[10.5px] font-bold leading-none mt-0.5">
                         {isExpert ? (
-                          <span className="text-[#0755E8] font-bold">Verified Expert</span>
+                          <span className={user?.isExpertVerified ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
+                            {user?.isExpertVerified ? "Verified Expert" : "Mentor In Setup"}
+                          </span>
                         ) : user.isPremium ? (
                           <span className={`inline-flex items-center gap-1 ${
                             user.premiumPlan === 'ultimate-419' ? 'text-amber-600' : 'text-[#0755E8]'
@@ -822,7 +824,9 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
                             <p className="text-[9px] uppercase font-bold text-blue-500 tracking-wider">Account Role</p>
                             <div className="flex items-center gap-1 mt-0.5">
                               <Compass size={12} className="text-[#0755E8]" />
-                              <p className="text-xs font-bold text-slate-800">Verified Expert Mentor</p>
+                              <p className="text-xs font-bold text-slate-800">
+                                {user?.isExpertVerified ? "Verified Expert Mentor" : "Expert Mentor (In Setup)"}
+                              </p>
                             </div>
                           </div>
                           <Link

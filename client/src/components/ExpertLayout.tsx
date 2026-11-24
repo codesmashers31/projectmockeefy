@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import SideNav from "./SideNav";
 import TopNav from "./TopNav";
 import { LayoutGrid, Calendar, CalendarDays, Wallet, User } from "lucide-react";
 
 export default function ExpertLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -21,23 +19,17 @@ export default function ExpertLayout() {
   const isProfileActive = location.pathname.startsWith("/dashboard/profile");
 
   return (
-    <div className="min-h-screen bg-[#F5F8FF] flex flex-col font-sans text-slate-900 antialiased selection:bg-[#EAF2FF] selection:text-[#0755E8]">
+    <div className="min-h-screen bg-gradient-to-b from-[#EEF4FF] via-[#F6F9FF] to-[#FAF8FF] flex flex-col font-sans text-slate-900 antialiased selection:bg-[#EAF2FF] selection:text-[#0755E8]">
       {/* Top Navigation - Full Width Sticky */}
       <header className="sticky top-0 z-50 bg-white shadow-xs">
-        <TopNav onOpenSidebar={() => setSidebarOpen(true)} showLogo={true} />
+        <TopNav showLogo={true} />
       </header>
 
-      {/* Main Layout Container - matching candidate max-w-[1400px] centered container */}
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-3 sm:px-5 lg:px-6 pt-4 pb-20 lg:pb-12 text-[13.5px]">
-        <div className="flex items-start gap-3.5 lg:gap-4.5 w-full">
-          {/* Left Floating Sidebar Navigation */}
-          <SideNav isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-          {/* Central Main Content Area */}
-          <section className="flex-1 min-w-0 w-full animate-in fade-in duration-300">
-            <Outlet />
-          </section>
-        </div>
+      {/* Main Layout Container - Full Width Content (No cramped double sidebar) */}
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-8 pt-5 sm:pt-6 pb-20 lg:pb-12 text-[13.5px]">
+        <section className="w-full min-w-0 animate-in fade-in duration-300">
+          <Outlet />
+        </section>
       </main>
 
       {/* Mobile Bottom Quick-Access Bar (visible on < lg screens) */}

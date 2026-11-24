@@ -215,8 +215,27 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     }
   };
 
-  const isVerificationDocDone = !missingSections.includes("Verification Documents");
-  const isAgreementDone = !missingSections.includes("Service Agreement");
+  const isPersonalDone = Boolean(profile.name || user?.name) && Boolean(profile.phone || profile.mobile) && !missingSections.includes("Personal Information");
+  const isCategoryDone = Boolean(profile.category) && !missingSections.includes("Skills & Expertise");
+  const isEducationDone = Array.isArray(profile.education) && profile.education.length > 0 && !missingSections.includes("Education");
+  const isExperienceDone = (Boolean(profile.title) || Boolean(profile.company)) && !missingSections.includes("Professional Details");
+  const isVerificationDocDone = !missingSections.includes("Verification Documents") && Boolean(
+    profile.verification?.companyId?.url ||
+    profile.verification?.aadhar?.isVerified ||
+    profile.verification?.aadhar?.url ||
+    profile.verification?.aadhar?.number
+  );
+  const isAgreementDone = !missingSections.includes("Service Agreement") && Boolean(profile.agreement?.isSigned);
+
+  const completedModulesCount = [
+    isPersonalDone,
+    isCategoryDone,
+    isEducationDone,
+    isExperienceDone,
+    isVerificationDocDone,
+    isAgreementDone,
+  ].filter(Boolean).length;
+
   const isEligibleForVerification = completion >= 80 && isVerificationDocDone && isAgreementDone;
 
   const handleRequestVerification = async () => {
@@ -343,9 +362,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   return (
     <div className="w-full space-y-6">
       {/* 1. Executive Top Hero Header Card with Clean Non-Overlaying Layout */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs space-y-5 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#D8E9FF] via-[#EFF6FF] to-white border border-blue-200/90 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs space-y-5 relative overflow-hidden">
         {/* Subtle ambient gradient mesh */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-gradient-to-br from-blue-100/35 via-indigo-100/20 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
 
         {/* Identity Row */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0 text-center sm:text-left relative z-10">
@@ -436,7 +455,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
             </div>
 
             <div className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-              <span>{profile.title || "Senior Software Engineer"}</span>
+              <span>{profile.title || (user?.title ? user.title : "") || "Title in Setup"}</span>
               {profile.company && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-xs font-bold border border-slate-200/80">
                   <Building2 className="w-3 h-3 text-slate-500" />
@@ -466,10 +485,12 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 </span>
               )}
 
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/80">
-                <Briefcase className="w-3.5 h-3.5 text-purple-600" />
-                {profile.totalExperience ? `${profile.totalExperience} Yrs Exp` : "MNC Specialist"}
-              </span>
+              {profile.totalExperience ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/80">
+                  <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+                  {profile.totalExperience} Yrs Exp
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -601,7 +622,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
         </div>
       </div>
 
-      {/* 2. PROFILE MODULES & CREDENTIALS (RICH CONTENT - NO MORE EMPTY SPACE!) */}
+      {/* 2. PROFILE MODULES & CREDENTIALS (RICH CONTENT - DYNAMIC DATA) */}
       <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-xs space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
           <div>
@@ -612,25 +633,35 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
               Review and configure all active credentials, verification files, and coaching tracks.
             </p>
           </div>
-          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 shadow-2xs">
-            All 6 Modules Active
+          <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${
+            completedModulesCount === 6
+              ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+              : "text-amber-700 bg-amber-50 border-amber-200"
+          }`}>
+            {completedModulesCount === 6 ? "All 6 Modules Active" : `${completedModulesCount} of 6 Modules Configured`}
           </span>
         </div>
 
-        {/* 6 Rich Module Cards in a 3x2 Grid */}
+        {/* 6 Dynamic Module Cards in a 3x2 Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Module 1: Personal Information */}
           <div
             onClick={() => onNavigate?.("personal")}
-            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-blue-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+            className={`group p-5 rounded-2xl border ${
+              isPersonalDone ? "border-slate-200/90 hover:border-blue-300" : "border-amber-200/80 bg-amber-50/10 hover:border-amber-300"
+            } hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left`}
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="p-2.5 rounded-xl border bg-blue-50 text-[#0755E8] border-blue-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                <div className={`p-2.5 rounded-xl border ${
+                  isPersonalDone ? "bg-blue-50 text-[#0755E8] border-blue-200/80" : "bg-amber-50 text-amber-600 border-amber-200/80"
+                } group-hover:scale-105 transition-transform shadow-2xs`}>
                   <User className="w-5 h-5 stroke-[2.2]" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ✓ Configured
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isPersonalDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}>
+                  {isPersonalDone ? "✓ Configured" : "Incomplete"}
                 </span>
               </div>
 
@@ -641,31 +672,41 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 <p className="text-xs text-slate-500 mt-0.5">Contact details, phone number &amp; location</p>
               </div>
 
-              {/* Real Content Chips (Eliminates Emptiness!) */}
+              {/* Dynamic Content Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  <User className="w-3 h-3 text-slate-400" />
-                  {profile.name || "test expert"}
-                </span>
-                {profile.phone && (
+                {(profile.name || user?.name) && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                    <Phone className="w-3 h-3 text-slate-400" />
-                    {profile.phone}
+                    <User className="w-3 h-3 text-slate-400" />
+                    {formatDisplayName(profile.name || user?.name || "")}
                   </span>
                 )}
-                {(profile.city || profile.country) && (
+                {(profile.phone || profile.mobile) ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                    <Phone className="w-3 h-3 text-slate-400" />
+                    {profile.phone || profile.mobile}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-medium text-amber-700">
+                    Phone Required
+                  </span>
+                )}
+                {(profile.city || profile.country) ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
                     <MapPin className="w-3 h-3 text-slate-400" />
                     {[profile.city, profile.country].filter(Boolean).join(", ")}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-medium text-amber-700">
+                    Location Required
                   </span>
                 )}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-              <span className="text-[11px] font-semibold text-slate-400">Settings Active</span>
+              <span className="text-[11px] font-semibold text-slate-400">{isPersonalDone ? "Settings Active" : "Setup Required"}</span>
               <span className="font-bold text-[#0755E8] group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                Edit Information ➜
+                {isPersonalDone ? "Edit Information ➜" : "Complete Setup ➜"}
               </span>
             </div>
           </div>
@@ -673,15 +714,21 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           {/* Module 2: Category & Coaching Tier */}
           <div
             onClick={() => onNavigate?.("tier")}
-            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+            className={`group p-5 rounded-2xl border ${
+              isCategoryDone ? "border-slate-200/90 hover:border-indigo-300" : "border-amber-200/80 bg-amber-50/10 hover:border-amber-300"
+            } hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left`}
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="p-2.5 rounded-xl border bg-indigo-50 text-indigo-600 border-indigo-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                <div className={`p-2.5 rounded-xl border ${
+                  isCategoryDone ? "bg-indigo-50 text-indigo-600 border-indigo-200/80" : "bg-amber-50 text-amber-600 border-amber-200/80"
+                } group-hover:scale-105 transition-transform shadow-2xs`}>
                   <Award className="w-5 h-5 stroke-[2.2]" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ✓ Active Tier
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isCategoryDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}>
+                  {isCategoryDone ? "✓ Active Tier" : "Not Selected"}
                 </span>
               </div>
 
@@ -692,26 +739,36 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 <p className="text-xs text-slate-500 mt-0.5">Seniority level, domain &amp; mock session rates</p>
               </div>
 
-              {/* Real Content Chips */}
+              {/* Dynamic Content Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50/70 border border-indigo-100 text-[11px] font-bold text-indigo-700">
-                  <Code className="w-3 h-3 text-indigo-500" />
-                  {profile.category || "Software Development"}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  <Award className="w-3 h-3 text-slate-400" />
-                  {profile.level || "Rising Mentor"}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700">
-                  ₹999 / session
-                </span>
+                {profile.category ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50/70 border border-indigo-100 text-[11px] font-bold text-indigo-700">
+                    <Code className="w-3 h-3 text-indigo-500" />
+                    {profile.category}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-medium text-amber-700">
+                    Domain Not Selected
+                  </span>
+                )}
+                {profile.category && profile.level ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                    <Award className="w-3 h-3 text-slate-400" />
+                    {profile.level}
+                  </span>
+                ) : null}
+                {!profile.category && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+                    Pricing Tiers Unset
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-              <span className="text-[11px] font-semibold text-slate-400">Pricing Active</span>
+              <span className="text-[11px] font-semibold text-slate-400">{isCategoryDone ? "Pricing Active" : "Setup Required"}</span>
               <span className="font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                Manage Rates ➜
+                {isCategoryDone ? "Manage Rates ➜" : "Configure Domain ➜"}
               </span>
             </div>
           </div>
@@ -719,15 +776,21 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           {/* Module 3: Education & Degrees */}
           <div
             onClick={() => onNavigate?.("education")}
-            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-emerald-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+            className={`group p-5 rounded-2xl border ${
+              isEducationDone ? "border-slate-200/90 hover:border-emerald-300" : "border-amber-200/80 bg-amber-50/10 hover:border-amber-300"
+            } hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left`}
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="p-2.5 rounded-xl border bg-emerald-50 text-emerald-600 border-emerald-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                <div className={`p-2.5 rounded-xl border ${
+                  isEducationDone ? "bg-emerald-50 text-emerald-600 border-emerald-200/80" : "bg-amber-50 text-amber-600 border-amber-200/80"
+                } group-hover:scale-105 transition-transform shadow-2xs`}>
                   <GraduationCap className="w-5 h-5 stroke-[2.2]" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ✓ Verified
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isEducationDone ? `✓ ${profile.education?.length || 1} Verified` : "Not Added"
+                }`}>
+                  {isEducationDone ? `✓ ${profile.education?.length || 1} Verified` : "Not Added"}
                 </span>
               </div>
 
@@ -738,22 +801,32 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 <p className="text-xs text-slate-500 mt-0.5">Colleges, academic degrees &amp; graduations</p>
               </div>
 
-              {/* Real Content Chips */}
+              {/* Dynamic Content Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50/70 border border-emerald-100 text-[11px] font-semibold text-emerald-800">
-                  <GraduationCap className="w-3 h-3 text-emerald-600" />
-                  B.Tech / B.E. Computer Science
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  Academic Record Verified
-                </span>
+                {Array.isArray(profile.education) && profile.education.length > 0 ? (
+                  profile.education.slice(0, 2).map((edu: any, idx: number) => (
+                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50/70 border border-emerald-100 text-[11px] font-semibold text-emerald-800">
+                      <GraduationCap className="w-3 h-3 text-emerald-600" />
+                      {[edu.degree, edu.institution || edu.college].filter(Boolean).join(" • ") || "Academic Degree"}
+                    </span>
+                  ))
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-medium text-amber-700">
+                      No Degrees Added
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+                      Add College / Graduation
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-              <span className="text-[11px] font-semibold text-slate-400">Credentials Active</span>
+              <span className="text-[11px] font-semibold text-slate-400">{isEducationDone ? "Credentials Active" : "Action Required"}</span>
               <span className="font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                Manage Degrees ➜
+                {isEducationDone ? "Manage Degrees ➜" : "+ Add Education ➜"}
               </span>
             </div>
           </div>
@@ -761,15 +834,21 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           {/* Module 4: Professional Experience */}
           <div
             onClick={() => onNavigate?.("profession")}
-            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-purple-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+            className={`group p-5 rounded-2xl border ${
+              isExperienceDone ? "border-slate-200/90 hover:border-purple-300" : "border-amber-200/80 bg-amber-50/10 hover:border-purple-300"
+            } hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left`}
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="p-2.5 rounded-xl border bg-purple-50 text-purple-600 border-purple-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                <div className={`p-2.5 rounded-xl border ${
+                  isExperienceDone ? "bg-purple-50 text-purple-600 border-purple-200/80" : "bg-amber-50 text-amber-600 border-amber-200/80"
+                } group-hover:scale-105 transition-transform shadow-2xs`}>
                   <Briefcase className="w-5 h-5 stroke-[2.2]" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ✓ Active
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isExperienceDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}>
+                  {isExperienceDone ? "✓ Active" : "Not Added"}
                 </span>
               </div>
 
@@ -780,25 +859,41 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 <p className="text-xs text-slate-500 mt-0.5">Current role, corporate tenure &amp; companies</p>
               </div>
 
-              {/* Real Content Chips */}
+              {/* Dynamic Content Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50/70 border border-purple-100 text-[11px] font-bold text-purple-800">
-                  <Building2 className="w-3 h-3 text-purple-600" />
-                  {profile.company || "unipro"}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  {profile.title || "Senior Software Engineer"}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  {profile.totalExperience ? `${profile.totalExperience} Yrs Exp.` : "2+ Years Exp."}
-                </span>
+                {profile.company ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50/70 border border-purple-100 text-[11px] font-bold text-purple-800">
+                    <Building2 className="w-3 h-3 text-purple-600" />
+                    {profile.company}
+                  </span>
+                ) : null}
+                {profile.title ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                    {profile.title}
+                  </span>
+                ) : null}
+                {profile.totalExperience !== "" && profile.totalExperience !== undefined && profile.totalExperience !== null ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                    {profile.totalExperience} Yrs Exp.
+                  </span>
+                ) : null}
+                {!profile.company && !profile.title && (
+                  <>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-medium text-amber-700">
+                      No Experience Added
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+                      Add Current Role &amp; Company
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-              <span className="text-[11px] font-semibold text-slate-400">History Verified</span>
+              <span className="text-[11px] font-semibold text-slate-400">{isExperienceDone ? "History Verified" : "Action Required"}</span>
               <span className="font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                Update Experience ➜
+                {isExperienceDone ? "Update Experience ➜" : "+ Add Experience ➜"}
               </span>
             </div>
           </div>
@@ -806,15 +901,23 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           {/* Module 5: Verification Documents */}
           <div
             onClick={() => onNavigate?.("verification")}
-            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-amber-300 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+            className={`group p-5 rounded-2xl border ${
+              isVerificationDocDone ? "border-slate-200/90 hover:border-amber-300" : "border-rose-200/80 bg-rose-50/10 hover:border-rose-300"
+            } hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left`}
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="p-2.5 rounded-xl border bg-amber-50 text-amber-700 border-amber-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                <div className={`p-2.5 rounded-xl border ${
+                  isVerificationDocDone ? "bg-amber-50 text-amber-700 border-amber-200/80" : "bg-rose-50 text-rose-600 border-rose-200/80"
+                } group-hover:scale-105 transition-transform shadow-2xs`}>
                   <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ✓ Approved
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isVerificationDocDone
+                    ? (profile.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200")
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}>
+                  {isVerificationDocDone ? (profile.status === "Active" ? "✓ Approved" : "✓ Uploaded") : "Required"}
                 </span>
               </div>
 
@@ -825,24 +928,38 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 <p className="text-xs text-slate-500 mt-0.5">Government ID, Corporate ID &amp; LinkedIn</p>
               </div>
 
-              {/* Real Content Chips */}
+              {/* Dynamic Content Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
-                  ✓ Aadhaar Verified
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
-                  ✓ {profile.company || "Corporate"} Work ID
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[11px] font-semibold text-blue-700">
-                  ✓ LinkedIn Linked
-                </span>
+                {profile.verification?.aadhar?.isVerified || profile.verification?.aadhar?.url || profile.verification?.aadhar?.number ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+                    ✓ Aadhaar Added
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[11px] font-medium text-rose-700">
+                    Aadhaar Pending
+                  </span>
+                )}
+                {profile.verification?.companyId?.url ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+                    ✓ Work ID Uploaded
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[11px] font-medium text-rose-700">
+                    Work ID Pending
+                  </span>
+                )}
+                {profile.verification?.linkedin?.url && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[11px] font-semibold text-blue-700">
+                    ✓ LinkedIn Linked
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-              <span className="text-[11px] font-semibold text-slate-400">Security Cleared</span>
+              <span className="text-[11px] font-semibold text-slate-400">{isVerificationDocDone ? "Security Submitted" : "Verification Required"}</span>
               <span className="font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                Inspect Credentials ➜
+                {isVerificationDocDone ? "Inspect Credentials ➜" : "Upload Documents ➜"}
               </span>
             </div>
           </div>
@@ -850,15 +967,21 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           {/* Module 6: Master Service Agreement */}
           <div
             onClick={() => onNavigate?.("agreement")}
-            className="group p-5 rounded-2xl border border-slate-200/90 hover:border-slate-400 hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left"
+            className={`group p-5 rounded-2xl border ${
+              isAgreementDone ? "border-slate-200/90 hover:border-slate-400" : "border-rose-200/80 bg-rose-50/10 hover:border-rose-300"
+            } hover:shadow-md hover:-translate-y-1 transition-all bg-white cursor-pointer flex flex-col justify-between gap-4 text-left`}
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="p-2.5 rounded-xl border bg-slate-100 text-slate-700 border-slate-200/80 group-hover:scale-105 transition-transform shadow-2xs">
+                <div className={`p-2.5 rounded-xl border ${
+                  isAgreementDone ? "bg-slate-100 text-slate-700 border-slate-200/80" : "bg-rose-50 text-rose-600 border-rose-200/80"
+                } group-hover:scale-105 transition-transform shadow-2xs`}>
                   <FileText className="w-5 h-5 stroke-[2.2]" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ✓ Signed
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isAgreementDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}>
+                  {isAgreementDone ? "✓ Signed" : "Required"}
                 </span>
               </div>
 
@@ -869,24 +992,35 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 <p className="text-xs text-slate-500 mt-0.5">Signed coach terms &amp; candidate confidentiality</p>
               </div>
 
-              {/* Real Content Chips */}
+              {/* Dynamic Content Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  Mockeefy Coach Terms
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
-                  ✓ Digitally Signed &amp; Active
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
-                  Candidate NDA Active
-                </span>
+                {isAgreementDone ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      Digitally Signed &amp; Active
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700">
+                      Candidate NDA Active
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[11px] font-medium text-rose-700">
+                      Agreement Pending Signature
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+                      Sign Terms to Activate
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-              <span className="text-[11px] font-semibold text-slate-400">Legal Standard Met</span>
+              <span className="text-[11px] font-semibold text-slate-400">{isAgreementDone ? "Legal Standard Met" : "Mandatory Signature"}</span>
               <span className="font-bold text-slate-700 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                Review Agreement ➜
+                {isAgreementDone ? "Review Agreement ➜" : "Sign Agreement ➜"}
               </span>
             </div>
           </div>
