@@ -38,6 +38,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
     totalSessions: 0,
     upcomingSessions: 0,
     walletBalance: 0,
+    isVerified: false,
+    status: "pending",
   });
   const [upcomingSession, setUpcomingSession] = useState<any>(null);
 
@@ -56,6 +58,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
           totalSessions: s.totalSessions ?? 0,
           upcomingSessions: s.upcomingSessions ?? 0,
           walletBalance: s.walletBalance ?? 0,
+          isVerified: Boolean(s.isVerified),
+          status: s.status || "pending",
         });
       }
 
@@ -96,6 +100,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
     return `₹${rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
 
+  const isExpertVerified = Boolean(user?.isExpertVerified || sidebarStats.isVerified);
+
   const navItems = [
     {
       id: "dashboard",
@@ -108,8 +114,10 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
       icon: User,
       label: "Profile",
       to: "/dashboard/profile",
-      badge: "Verified",
-      badgeClass: "bg-blue-50 text-[#0755E8] border border-blue-200/80",
+      badge: isExpertVerified ? "Verified" : "In Setup",
+      badgeClass: isExpertVerified
+        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+        : "bg-amber-50 text-amber-700 border border-amber-200/80",
     },
     {
       id: "availability",
@@ -314,8 +322,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                     {formatDisplayName(user?.name || "Expert Mentor")}
                   </p>
                   <p className="text-[9.5px] text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-[#0755E8]" />
-                    Verified Mentor
+                    <ShieldCheck className={`w-3 h-3 ${isExpertVerified ? "text-emerald-600" : "text-amber-500"}`} />
+                    {isExpertVerified ? "Verified Mentor" : "Mentor In Setup"}
                   </p>
                 </div>
               </div>
@@ -554,8 +562,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                       {formatDisplayName(user?.name || "Expert Mentor")}
                     </p>
                     <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-[#0755E8]" />
-                      Verified Mentor
+                      <ShieldCheck className={`w-3 h-3 ${isExpertVerified ? "text-emerald-600" : "text-amber-500"}`} />
+                      {isExpertVerified ? "Verified Mentor" : "Mentor In Setup"}
                     </p>
                   </div>
                 </div>

@@ -24,6 +24,9 @@ export interface User {
   premiumPlan?: string;
   premiumExpiry?: string;
   freeInterviewsCount?: number;
+  isExpertVerified?: boolean;
+  expertStatus?: string;
+  completion?: number;
 }
 
 interface AuthContextType {
@@ -120,6 +123,8 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         role: userData.userType || (userData as any).role,
         isPremium: userData.isPremium || (userData as any).isPremium || false,
         freeInterviewsCount: userData.freeInterviewsCount ?? (userData as any).freeInterviewsCount ?? 0,
+        isExpertVerified: expertData?.status?.toLowerCase() === "active" || expertData?.status?.toLowerCase() === "approved",
+        expertStatus: expertData?.status || "pending",
       };
 
       try {

@@ -159,7 +159,7 @@ const BottomNav = () => {
                       </h3>
                       <p className="text-sm text-gray-500 truncate">{user.email}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-0.5 bg-gray-900 text-white rounded-full font-medium">{isExpert ? "Verified Expert" : "Premium"}</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-gray-900 text-white rounded-full font-medium">{isExpert ? (user?.isExpertVerified ? "Verified Expert" : "Mentor In Setup") : "Premium"}</span>
                       </div>
                     </div>
                   </div>
