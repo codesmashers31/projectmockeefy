@@ -10,6 +10,7 @@ import {
   Sparkles,
   Award,
   Heart,
+  Lock,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -32,6 +33,15 @@ export default function Sidebar() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [savedCount, setSavedCount] = useState<number>(0);
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+
+  // Real-time ticker to auto-unlock session button exactly 15 minutes before meeting start
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 10000);
+    return () => clearInterval(ticker);
+  }, []);
 
   // Fetch verified active experts for expert count badge
   const { data: expertsData = [] } = useQuery({
@@ -191,6 +201,56 @@ export default function Sidebar() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const isSessionToday = (startTime: string | Date) => {
+    if (!startTime) return false;
+    const d = new Date(startTime);
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  };
+
+  const isSessionJoinable = (session: any, nowMs: number) => {
+    if (!session || !session.startTime) return false;
+    const st = (session.status || "").toLowerCase();
+    if (["completed", "cancelled", "no-show", "candidate_no_show", "no_show", "candidate_absent"].includes(st)) {
+      return false;
+    }
+    const startMs = new Date(session.startTime).getTime();
+    if (isNaN(startMs)) return false;
+
+    const endMs = session.endTime
+      ? new Date(session.endTime).getTime()
+      : startMs + (session.duration || 60) * 60 * 1000;
+
+    // Opens 15 minutes before meeting startTime and remains active until session endTime
+    const openFromMs = startMs - 15 * 60 * 1000;
+    return nowMs >= openFromMs && nowMs <= endMs;
+  };
+
+  const getSessionOpenTimeLabel = (session: any) => {
+    if (!session?.startTime) return "";
+    const startMs = new Date(session.startTime).getTime();
+    if (isNaN(startMs)) return "";
+    const openDate = new Date(startMs - 15 * 60 * 1000);
+    const timeStr = openDate.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    if (isSessionToday(session.startTime)) {
+      return timeStr;
+    }
+    const dateStr = openDate.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      month: "short",
+      day: "numeric",
+    });
+    return `${dateStr}, ${timeStr}`;
   };
 
   const navItems = [
@@ -385,16 +445,48 @@ export default function Sidebar() {
             );
           })()}
 
-          {/* Action Button: Join Session */}
-          <button
-            onClick={() =>
-              navigate(`/live-meeting/${currentSession.sessionId || currentSession._id}`)
-            }
-            className="w-full py-1.5 sm:py-2 bg-[#00875A] hover:bg-[#00734D] active:bg-[#005E3E] text-white rounded-xl text-[12px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7FE3C3]"
-          >
-            <Video size={14} />
-            <span>Join Session</span>
-          </button>
+          {/* Action Button: Join Session (Unlocked 15 mins before start time) */}
+          {(() => {
+            const isJoinable = isSessionJoinable(currentSession, currentTime);
+            const openTimeStr = getSessionOpenTimeLabel(currentSession);
+
+            return (
+              <div className="space-y-1 pt-0.5">
+                <button
+                  type="button"
+                  disabled={!isJoinable}
+                  onClick={() => {
+                    if (isJoinable) {
+                      navigate(`/live-meeting/${currentSession.sessionId || currentSession._id}`);
+                    }
+                  }}
+                  className={`w-full py-1.5 sm:py-2 rounded-xl text-[12px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 ${
+                    isJoinable
+                      ? "bg-[#00875A] hover:bg-[#00734D] active:bg-[#005E3E] text-white cursor-pointer focus-visible:ring-[#7FE3C3]"
+                      : "bg-slate-200/90 text-slate-400 border border-slate-300/80 cursor-not-allowed select-none"
+                  }`}
+                  title={
+                    isJoinable
+                      ? "Click to join live meeting"
+                      : `Session opens 15 mins before meeting (${openTimeStr})`
+                  }
+                >
+                  {isJoinable ? (
+                    <Video size={14} />
+                  ) : (
+                    <Lock size={12} className="text-slate-400" />
+                  )}
+                  <span>Join Session</span>
+                </button>
+
+                {!isJoinable && (
+                  <p className="text-[10px] text-[#065F46]/80 text-center font-semibold leading-tight">
+                    Opens 15 mins before session ({openTimeStr})
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Multi-Session Compact Pagination / Indicators */}
           {upcomingSessions.length > 1 &&
@@ -475,7 +567,7 @@ export default function Sidebar() {
       {user && (
         <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-[#EAF2FF] border border-[#93B8FF] overflow-hidden flex items-center justify-center shrink-0 text-[#0755E8] font-bold text-xs shadow-2xs">
+            <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-gradient-to-tr from-[#0755E8] to-[#0440B3] border border-[#93B8FF] overflow-hidden flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-2xs">
               {profileImg ? (
                 <img
                   src={getProfileImageUrl(profileImg)}

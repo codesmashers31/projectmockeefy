@@ -1,0 +1,46 @@
+[
+  {
+    "page": "Home Landing Page",
+    "path": "/",
+    "ttfbMs": 3,
+    "fcpMs": 332,
+    "domContentLoadedMs": 286,
+    "totalLoadMs": 298,
+    "jsHeapUsedMb": 8.88,
+    "layoutCount": 13,
+    "recalcStyleCount": 23
+  },
+  {
+    "page": "Browse Mentors",
+    "path": "/find-mentor",
+    "ttfbMs": 3,
+    "fcpMs": 268,
+    "domContentLoadedMs": 29,
+    "totalLoadMs": 36,
+    "jsHeapUsedMb": 13.4,
+    "layoutCount": 5,
+    "recalcStyleCount": 19
+  },
+  {
+    "page": "Subscription Plans",
+    "path": "/pricing",
+    "ttfbMs": 2,
+    "fcpMs": 36,
+    "domContentLoadedMs": 18,
+    "totalLoadMs": 25,
+    "jsHeapUsedMb": 16.36,
+    "layoutCount": 3,
+    "recalcStyleCount": 3
+  },
+  {
+    "page": "Candidate Sessions Dashboard",
+    "path": "/my-sessions",
+    "ttfbMs": 2,
+    "fcpMs": 36,
+    "domContentLoadedMs": 21,
+    "totalLoadMs": 24,
+    "jsHeapUsedMb": 21.77,
+    "layoutCount": 6,
+    "recalcStyleCount": 44
+  }
+]

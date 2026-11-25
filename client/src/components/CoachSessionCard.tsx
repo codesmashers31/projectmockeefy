@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Video,
+  Lock,
   User,
   Users,
   Code2,
@@ -846,15 +847,41 @@ export default function CoachSessionCard() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() =>
-                      navigate(`/live-meeting/${session.sessionId || session._id}`)
-                    }
-                    className="w-full sm:w-auto px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white rounded-xl text-[13px] font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
-                  >
-                    <Video size={14} />
-                    <span>Join Session</span>
-                  </button>
+                  {(() => {
+                    const nowMs = Date.now();
+                    const startMs = session.startTime ? new Date(session.startTime).getTime() : 0;
+                    const endMs = session.endTime ? new Date(session.endTime).getTime() : startMs + (session.duration || 60) * 60 * 1000;
+                    const isJoinable = Boolean(startMs && nowMs >= startMs - 15 * 60 * 1000 && nowMs <= endMs);
+                    const openDate = new Date(startMs - 15 * 60 * 1000);
+                    const openTimeStr = openDate.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
+
+                    return (
+                      <div className="flex flex-col items-center sm:items-end gap-1 w-full sm:w-auto">
+                        <button
+                          disabled={!isJoinable}
+                          onClick={() => {
+                            if (isJoinable) {
+                              navigate(`/live-meeting/${session.sessionId || session._id}`);
+                            }
+                          }}
+                          className={`w-full sm:w-auto px-4 py-2 rounded-xl text-[13px] font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 ${
+                            isJoinable
+                              ? "bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#073AA3] text-white cursor-pointer focus-visible:ring-[#93B8FF]"
+                              : "bg-slate-200 text-slate-400 border border-slate-300/80 cursor-not-allowed select-none"
+                          }`}
+                          title={isJoinable ? "Join Session" : `Opens 15 mins before session (${openTimeStr})`}
+                        >
+                          {isJoinable ? <Video size={14} /> : <Lock size={13} className="text-slate-400" />}
+                          <span>Join Session</span>
+                        </button>
+                        {!isJoinable && (
+                          <span className="text-[10px] text-slate-500 font-medium text-center sm:text-right">
+                            Opens 15 mins before ({openTimeStr})
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}

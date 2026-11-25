@@ -725,3 +725,78 @@ export const sendProductUpdateEmail = async ({ expertId, expertEmail, expertName
         return { success: false, error: err.message };
     }
 };
+
+/**
+ * Send congratulations and approval notification email when admin approves an expert.
+ */
+export const sendExpertApprovalEmail = async ({ expertEmail, expertName, category }) => {
+    try {
+        if (!expertEmail) {
+            return { success: false, message: 'Expert email is required' };
+        }
+
+        const displayName = expertName || 'Mentor';
+        const clientBase = process.env.CLIENT_URL || 'http://localhost:5173';
+        const dashboardUrl = `${clientBase}/dashboard`;
+        const emailSubject = '🎉 Congratulations! Your Mockeefy Expert Profile has been Approved';
+
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f1f5f9; }
+    .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(7, 85, 232, 0.08); }
+    .header { background: linear-gradient(135deg, #0755E8 0%, #053eb0 100%); padding: 36px 30px; text-align: center; color: #ffffff; }
+    .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .title { font-size: 20px; font-weight: 700; margin: 0; color: #ffffff; }
+    .body { padding: 32px 30px; }
+    .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+    .badge { display: inline-block; background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 9999px; padding: 4px 14px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+    .message { font-size: 14px; color: #334155; line-height: 1.7; margin-bottom: 20px; }
+    .steps-box { background: #f8faff; border: 1px solid #dbeafe; border-radius: 12px; padding: 20px; margin: 24px 0; }
+    .steps-title { font-size: 13px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .step-item { font-size: 13px; color: #334155; margin-bottom: 10px; }
+    .btn { display: inline-block; background: #0755E8; color: #ffffff !important; font-weight: 700; font-size: 14px; padding: 14px 28px; border-radius: 10px; text-decoration: none; text-align: center; margin: 12px 0; }
+    .footer { background: #f8fafc; padding: 20px 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">Mockeefy</div>
+      <h1 class="title">You're Officially Verified &amp; Approved!</h1>
+    </div>
+    <div class="body">
+      <div class="greeting">Hello ${displayName},</div>
+      <div class="badge">✓ Verified Mentor Status Active</div>
+      <p class="message">
+        We are thrilled to let you know that your expert profile and documentation have been reviewed and <strong>approved by our admin team</strong>! Your profile is now officially live on the Mockeefy platform${category ? ` in ${category}` : ''}.
+      </p>
+      <div class="steps-box">
+        <div class="steps-title">Next Steps to Start Mentoring:</div>
+        <div class="step-item">📅 <strong>Set Your Availability:</strong> Publish your weekly calendar slots so aspiring candidates can schedule mock interviews.</div>
+        <div class="step-item">⚡ <strong>Showcase Skills:</strong> Highlight your core engineering technologies, tools, and domain expertise.</div>
+        <div class="step-item">💼 <strong>Conduct Interviews:</strong> Deliver high-impact coaching and earn instant wallet payouts upon session completion.</div>
+      </div>
+      <div style="text-align: center;">
+        <a href="${dashboardUrl}" class="btn">Go to Expert Dashboard</a>
+      </div>
+      <p class="message" style="margin-top: 24px; font-size: 13px; color: #64748b;">
+        Welcome to the Mockeefy mentor community! If you have any questions or need support, our mentor success team is here for you.
+      </p>
+    </div>
+    <div class="footer">
+      &copy; ${new Date().getFullYear()} Mockeefy Inc. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>`;
+
+        return await sendEmail({ to: expertEmail, subject: emailSubject, html });
+    } catch (err) {
+        console.error("[EmailService] Error sending expert approval email:", err);
+        return { success: false, error: err.message };
+    }
+};

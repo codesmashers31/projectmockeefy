@@ -32,6 +32,7 @@ import { formatDisplayName } from "../lib/utils";
 import { BookingModal } from "../components/BookingModal";
 import { useAuth } from "../context/AuthContext";
 import MockeefyLogo from "../components/MockeefyLogo";
+import { getPendingBooking, clearPendingBooking, PendingBookingIntent } from "../lib/pendingBooking";
 
 interface ReviewItem {
   id: string;
@@ -104,7 +105,16 @@ export default function ExpertProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState<boolean>(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return false;
+      const pending = getPendingBooking();
+      const resume = new URLSearchParams(window.location.search).get("resumeBooking") === "true";
+      return Boolean(pending || resume);
+    } catch {
+      return false;
+    }
+  });
 
   // Check if current logged-in user is viewing their own profile (Unconditional hook)
   const isOwnProfile = useMemo(() => {
@@ -127,6 +137,41 @@ export default function ExpertProfilePage() {
     }
     return false;
   }, [user, expertId, profile, rawExpert]);
+
+  const hasResumedBookingRef = useRef(false);
+  const [pendingBookingData, setPendingBookingData] = useState<PendingBookingIntent | null>(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      return getPendingBooking();
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (!user || hasResumedBookingRef.current) return;
+    const pending = getPendingBooking();
+    const resumeParam = new URLSearchParams(location.search).get("resumeBooking") === "true";
+    if (pending || resumeParam) {
+      const targetId = pending?.expertId;
+      if (
+        !targetId ||
+        String(targetId) === String(expertId) ||
+        String(targetId) === String(profile?.id) ||
+        String(targetId) === String(rawExpert?._id)
+      ) {
+        hasResumedBookingRef.current = true;
+        setPendingBookingData(pending);
+        setIsBookingModalOpen(true);
+        if (resumeParam) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        toast.success(
+          `Welcome back, ${user.name?.split(" ")[0] || "there"}! Resuming your booking with ${profile?.name || pending?.expertName || "your mentor"}.`
+        );
+      }
+    }
+  }, [user, expertId, profile, rawExpert, location.search]);
 
   // Immediately force scroll to top (0, 0) before paint
   useLayoutEffect(() => {
@@ -1146,9 +1191,14 @@ export default function ExpertProfilePage() {
       {isBookingModalOpen && (
         <BookingModal
           isOpen={isBookingModalOpen}
-          onClose={() => setIsBookingModalOpen(false)}
+          onClose={() => {
+            setIsBookingModalOpen(false);
+            setPendingBookingData(null);
+            clearPendingBooking();
+          }}
           expertId={expertId}
           initialProfile={profile}
+          initialPendingBooking={pendingBookingData}
         />
       )}
     </div>

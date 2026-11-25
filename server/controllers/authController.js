@@ -3,6 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import ExpertDetails from "../models/expertModel.js";
 import Otp from "../models/Otp.js";
 import { OAuth2Client } from "google-auth-library";
 
@@ -454,10 +455,29 @@ export const getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    let isExpertVerified = Boolean(user.isExpertVerified);
+    let expertStatus = "pending";
+    let verificationRequested = false;
+
+    if (user.userType === 'expert') {
+      const expert = await ExpertDetails.findOne({ userId: user._id }).lean();
+      if (expert) {
+        expertStatus = expert.status || "pending";
+        verificationRequested = Boolean(expert.verificationRequested);
+        if (expert.status === 'Active' || expert.status === 'approved') {
+          isExpertVerified = true;
+        }
+      }
+    }
+
     res.json({
       user: {
         ...user.toObject(),
         id: user._id,
+        isExpertVerified,
+        expertStatus,
+        verificationRequested,
         password: undefined, // Strip password hash
         googleId: undefined, // Strip internal identifiers
         isPremium: user.isPremium || false,

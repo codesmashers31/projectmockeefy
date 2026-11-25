@@ -89,7 +89,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex items-start gap-5 lg:gap-6 w-full">
           {/* Left Sidebar - Desktop (Sticky Command Center) */}
           {showLeftSidebar && (
-            <aside aria-label="Desktop Sidebar" className="hidden lg:block w-[250px] shrink-0 sticky top-[80px] self-start">
+            <aside
+              aria-label="Desktop Sidebar"
+              className="hidden lg:block w-[250px] shrink-0 sticky top-[76px] self-start max-h-[calc(100vh-86px)] overflow-y-auto overflow-x-hidden custom-scrollbar overscroll-contain pr-1 pb-6"
+            >
               {showSkeletons ? <SkeletonSidebar /> : <Sidebar />}
             </aside>
           )}

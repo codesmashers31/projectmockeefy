@@ -180,7 +180,9 @@ function AppRoutes() {
           <Route path="/find-mentor" element={<MentorsRedirect />} />
 
           <Route path="/signin" element={<ErrorBoundary><GuestRoute><Login /></GuestRoute></ErrorBoundary>} />
+          <Route path="/login" element={<Navigate to="/signin" replace />} />
           <Route path="/signup" element={<GuestRoute><Register /></GuestRoute>} />
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
           <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/terms" element={<TermsConditions />} />

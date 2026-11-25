@@ -1,0 +1,242 @@
+[
+  {
+    "path": "/demo/booking",
+    "elementSnippet": "<BookingSearch />"
+  },
+  {
+    "path": "/",
+    "elementSnippet": "user ? (\r\n              (user.userType?.toLowerCase() === \"expert\") ? <Navigate to=\"/dashboard\" replace /> :\r\n                (user.userType?.toLowerCase() === \"admin\") ? <Navigate to=\"/admin\" replace /> :\r\n                  <Index />\r\n            ) : (\r\n              <Index />\r\n            )"
+  },
+  {
+    "path": "/mentors",
+    "elementSnippet": "<MentorsRedirect />"
+  },
+  {
+    "path": "/find-mentor",
+    "elementSnippet": "<MentorsRedirect />"
+  },
+  {
+    "path": "/signin",
+    "elementSnippet": "<ErrorBoundary><GuestRoute><Login /></GuestRoute></ErrorBoundary>"
+  },
+  {
+    "path": "/signup",
+    "elementSnippet": "<GuestRoute><Register /></GuestRoute>"
+  },
+  {
+    "path": "/forgot-password",
+    "elementSnippet": "<GuestRoute><ForgotPassword /></GuestRoute>"
+  },
+  {
+    "path": "/complete-profile",
+    "elementSnippet": "<CompleteProfile />"
+  },
+  {
+    "path": "/terms",
+    "elementSnippet": "<TermsConditions />"
+  },
+  {
+    "path": "/privacy",
+    "elementSnippet": "<PrivacyPolicy />"
+  },
+  {
+    "path": "/refund-cancellation",
+    "elementSnippet": "<RefundCancellation />"
+  },
+  {
+    "path": "/return-policy",
+    "elementSnippet": "<ReturnPolicy />"
+  },
+  {
+    "path": "/shipping-policy",
+    "elementSnippet": "<ShippingPolicy />"
+  },
+  {
+    "path": "/plans",
+    "elementSnippet": "<SubscriptionPlans />"
+  },
+  {
+    "path": "/expert-profile/:expertId",
+    "elementSnippet": "<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>"
+  },
+  {
+    "path": "/expert/:expertId",
+    "elementSnippet": "<DashboardLayout><ErrorBoundary><ExpertProfilePage /></ErrorBoundary></DashboardLayout>"
+  },
+  {
+    "path": "/watch-mock",
+    "elementSnippet": "<WatchMock />"
+  },
+  {
+    "path": "/payment",
+    "elementSnippet": "<Navigate to=\"/my-sessions\" replace />"
+  },
+  {
+    "path": "/live-meeting/:sessionId?",
+    "elementSnippet": "<ErrorBoundary><LiveMeeting /></ErrorBoundary>"
+  },
+  {
+    "path": "/book-session",
+    "elementSnippet": "<ErrorBoundary><BookSessionPage /></ErrorBoundary>"
+  },
+  {
+    "path": "/ai-video",
+    "elementSnippet": "<AiInterview />"
+  },
+  {
+    "path": "/ai-mock",
+    "elementSnippet": "<AiInterview />"
+  },
+  {
+    "path": "/ai-mock-interview",
+    "elementSnippet": "<AiInterview />"
+  },
+  {
+    "path": "/resume-builder",
+    "elementSnippet": "<ResumeBuilderPage />"
+  },
+  {
+    "path": "/mentors",
+    "elementSnippet": "<MentorsRedirect />"
+  },
+  {
+    "path": "/find-mentor",
+    "elementSnippet": "<MentorsRedirect />"
+  },
+  {
+    "path": "/my-sessions",
+    "elementSnippet": "<MySessions key=\"my-sessions\" />"
+  },
+  {
+    "path": "/saved-experts",
+    "elementSnippet": "<MySessions key=\"saved-experts\" initialViewOverride=\"saved\" />"
+  },
+  {
+    "path": "/liked-mentors",
+    "elementSnippet": "<MySessions key=\"liked-mentors\" initialViewOverride=\"saved\" />"
+  },
+  {
+    "path": "/tips",
+    "elementSnippet": "<TipsPage />"
+  },
+  {
+    "path": "/certificates",
+    "elementSnippet": "<CertificatesPage />"
+  },
+  {
+    "path": "/wallet",
+    "elementSnippet": "<CandidateWalletPage />"
+  },
+  {
+    "path": "/profile",
+    "elementSnippet": "<UserProfile />"
+  },
+  {
+    "path": "/notifications",
+    "elementSnippet": "<Notifications />"
+  },
+  {
+    "path": "/dashboard/*",
+    "elementSnippet": "<RoleBasedRoute allowedRoles={['expert']"
+  },
+  {
+    "path": "profile",
+    "elementSnippet": "<ProfilePage />"
+  },
+  {
+    "path": "sessions",
+    "elementSnippet": "<SessionsPage />"
+  },
+  {
+    "path": "availability",
+    "elementSnippet": "<ErrorBoundary><AvailabilityPage /></ErrorBoundary>"
+  },
+  {
+    "path": "availability/edit",
+    "elementSnippet": "<ErrorBoundary><EditAvailabilityPage /></ErrorBoundary>"
+  },
+  {
+    "path": "skills",
+    "elementSnippet": "<SkillsPage />"
+  },
+  {
+    "path": "withdraw",
+    "elementSnippet": "<WithdrawalPage />"
+  },
+  {
+    "path": "agreement",
+    "elementSnippet": "<AgreementPage />"
+  },
+  {
+    "path": "reports",
+    "elementSnippet": "<ReportsPage />"
+  },
+  {
+    "path": "settings",
+    "elementSnippet": "<SettingsPage />"
+  },
+  {
+    "path": "/admin/*",
+    "elementSnippet": "<RoleBasedRoute allowedRoles={['admin']"
+  },
+  {
+    "path": "sessions",
+    "elementSnippet": "<SessionManagement />"
+  },
+  {
+    "path": "experts/pending",
+    "elementSnippet": "<PendingExpertsTable />"
+  },
+  {
+    "path": "experts/verified",
+    "elementSnippet": "<VerifiedExpertsTable />"
+  },
+  {
+    "path": "experts/rejected",
+    "elementSnippet": "<RejectedExpertsTable />"
+  },
+  {
+    "path": "agreements",
+    "elementSnippet": "<AdminAgreements />"
+  },
+  {
+    "path": "users",
+    "elementSnippet": "<UsersTable />"
+  },
+  {
+    "path": "jobs",
+    "elementSnippet": "<JobManagement />"
+  },
+  {
+    "path": "categories",
+    "elementSnippet": "<CategoriesPanel />"
+  },
+  {
+    "path": "reports",
+    "elementSnippet": "<Reports />"
+  },
+  {
+    "path": "certifications",
+    "elementSnippet": "<CertificationRules />"
+  },
+  {
+    "path": "pricing",
+    "elementSnippet": "<PricingRules />"
+  },
+  {
+    "path": "hr-contacts",
+    "elementSnippet": "<HrContacts />"
+  },
+  {
+    "path": "payouts",
+    "elementSnippet": "<PayoutManagement />"
+  },
+  {
+    "path": "skills",
+    "elementSnippet": "<SkillManagement />"
+  },
+  {
+    "path": "*",
+    "elementSnippet": "<NotFound />"
+  }
+]

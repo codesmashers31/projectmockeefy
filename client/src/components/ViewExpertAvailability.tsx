@@ -282,7 +282,7 @@ const ViewExpertAvailability = () => {
           </div>
 
           {/* Blocked Dates Card */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-4 text-left">
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4 text-left">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
@@ -321,7 +321,7 @@ const ViewExpertAvailability = () => {
 
         {/* Right Column: Weekly Schedule */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-4 text-left">
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 space-y-4 text-left">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 flex-wrap gap-2">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">Weekly Schedule</h3>

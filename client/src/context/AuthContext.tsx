@@ -26,6 +26,7 @@ export interface User {
   freeInterviewsCount?: number;
   isExpertVerified?: boolean;
   expertStatus?: string;
+  verificationRequested?: boolean;
   completion?: number;
 }
 
@@ -123,8 +124,9 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         role: userData.userType || (userData as any).role,
         isPremium: userData.isPremium || (userData as any).isPremium || false,
         freeInterviewsCount: userData.freeInterviewsCount ?? (userData as any).freeInterviewsCount ?? 0,
-        isExpertVerified: expertData?.status?.toLowerCase() === "active" || expertData?.status?.toLowerCase() === "approved",
-        expertStatus: expertData?.status || "pending",
+        isExpertVerified: Boolean(userData.isExpertVerified || expertData?.status?.toLowerCase() === "active" || expertData?.status?.toLowerCase() === "approved" || expertData?.isVerified),
+        expertStatus: expertData?.status || userData.expertStatus || "pending",
+        verificationRequested: Boolean(expertData?.verificationRequested ?? userData.verificationRequested),
       };
 
       try {
@@ -292,6 +294,8 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('mockeefy_user_cache');
+    localStorage.removeItem('profile_status');
+    localStorage.removeItem('verification_requested');
     delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);

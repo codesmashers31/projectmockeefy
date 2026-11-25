@@ -4,6 +4,7 @@ import { Eye, EyeOff, Check, Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "./auth/AuthLayout";
 import MockeefyLogo from "./MockeefyLogo";
+import { getPendingBooking } from "../lib/pendingBooking";
 
 interface LocationState {
   email?: string;
@@ -11,6 +12,7 @@ interface LocationState {
   googleId?: string;
   name?: string;
   isExisting?: boolean;
+  returnUrl?: string | null;
 }
 
 /**
@@ -255,6 +257,12 @@ export default function CompleteProfile() {
   const { user, register } = useAuth();
   const state = (location.state || {}) as LocationState;
 
+  const searchParams = new URLSearchParams(location.search);
+  const queryReturnUrl = state?.returnUrl || searchParams.get("returnUrl") || searchParams.get("redirect");
+  const safeReturnUrl = queryReturnUrl && queryReturnUrl.startsWith("/") && !queryReturnUrl.startsWith("//") ? queryReturnUrl : null;
+  const pendingBooking = getPendingBooking();
+  const effectiveReturnUrl = safeReturnUrl || (pendingBooking ? (pendingBooking.sourceUrl || `/?resumeBooking=true&expertId=${pendingBooking.expertId}`) : null);
+
   const effectiveEmail = state?.email || user?.email || "";
   const effectiveName = state?.name || user?.name || "";
   const effectiveUserType = state?.userType || user?.userType || (user as any)?.role || "";
@@ -336,6 +344,8 @@ export default function CompleteProfile() {
       );
       if (formData.userType === "expert") {
         navigate("/dashboard", { replace: true });
+      } else if (effectiveReturnUrl) {
+        navigate(effectiveReturnUrl, { replace: true });
       } else {
         navigate("/", { replace: true });
       }

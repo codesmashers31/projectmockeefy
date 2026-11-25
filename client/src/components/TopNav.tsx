@@ -16,7 +16,6 @@ import {
   LogOut,
   CreditCard,
   Calendar,
-  CalendarDays,
   HelpCircle,
   ChevronDown,
   CheckCheck,
@@ -31,11 +30,7 @@ import {
   Check,
   ExternalLink,
   BookOpen,
-  LifeBuoy,
-  LayoutGrid,
-  Award,
-  Grid2X2,
-  Wallet
+  LifeBuoy
 } from "lucide-react";
 import { useSocketEvent, useDataSync } from "../context/SocketContext";
 
@@ -68,11 +63,11 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expertStats, setExpertStats] = useState({
     totalSessions: 0,
     walletBalance: 0,
     isVerified: false,
+    verificationRequested: false,
     status: "pending",
   });
   const notificationsRef = useRef<HTMLDivElement | null>(null);
@@ -111,6 +106,7 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
           totalSessions: d.totalSessions ?? 0,
           walletBalance: d.walletBalance ?? 0,
           isVerified: Boolean(d.isVerified),
+          verificationRequested: Boolean(d.verificationRequested),
           status: d.status || "pending",
         });
       }
@@ -125,7 +121,7 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
     }
   }, [user, fetchExpertStats, location.pathname]);
 
-  useDataSync(["WALLET_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "STATUS_UPDATED", "RECONNECTED"], () => {
+  useDataSync(["WALLET_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "RECONNECTED"], () => {
     if (user?.userType === 'expert') {
       fetchExpertStats();
     }
@@ -248,67 +244,25 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
     return `₹${rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
 
-  const isExpertVerified = Boolean(user?.isExpertVerified || expertStats.isVerified);
+  const isExpertApproved = Boolean(
+    user?.isExpertVerified || 
+    user?.expertStatus?.toLowerCase() === "active" ||
+    user?.expertStatus?.toLowerCase() === "approved" ||
+    expertStats.isVerified || 
+    expertStats.status?.toLowerCase() === "active" || 
+    expertStats.status?.toLowerCase() === "approved"
+  );
 
-  const expertNavItems = [
-    {
-      id: "dashboard",
-      icon: LayoutGrid,
-      label: "Dashboard",
-      to: "/dashboard",
-    },
-    {
-      id: "profile",
-      icon: User,
-      label: "Profile",
-      to: "/dashboard/profile",
-      badge: isExpertVerified ? "Verified" : "In Setup",
-      badgeClass: isExpertVerified
-        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-        : "bg-amber-50 text-amber-700 border-amber-200",
-    },
-    {
-      id: "availability",
-      icon: CalendarDays,
-      label: "Availability",
-      to: "/dashboard/availability",
-    },
-    {
-      id: "skills",
-      icon: Award,
-      label: "Skills & Experience",
-      to: "/dashboard/skills",
-    },
-    {
-      id: "sessions",
-      icon: Grid2X2,
-      label: "Sessions",
-      to: "/dashboard/sessions",
-      badge: expertStats.totalSessions > 0 ? String(expertStats.totalSessions) : undefined,
-      badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
-    },
-    {
-      id: "withdraw",
-      icon: Wallet,
-      label: "Payouts",
-      to: "/dashboard/withdraw",
-      badge: formatBadgeBalance(expertStats.walletBalance),
-      badgeClass: "bg-amber-50 text-amber-800 border-amber-200",
-    },
-    {
-      id: "settings",
-      icon: Settings,
-      label: "Settings",
-      to: "/dashboard/settings",
-    },
-  ];
+  const isUnderReview = !isExpertApproved && Boolean(
+    user?.verificationRequested ||
+    expertStats.verificationRequested
+  );
 
-  const isLinkActive = (to: string) => {
-    if (to === "/dashboard") {
-      return location.pathname === "/dashboard" || location.pathname === "/dashboard/";
-    }
-    return location.pathname.startsWith(to);
-  };
+  const expertMentorStatusLabel = isExpertApproved
+    ? "Approved Mentor"
+    : isUnderReview
+    ? "Waiting for Admin Approval"
+    : "Mentor In Setup";
 
   const avatarSrc = getProfileImageUrl(user?.profileImage || (user as any)?.photoUrl);
 
@@ -344,37 +298,6 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
             </Link>
           )}
         </div>
-
-        {/* Center: Expert Horizontal Navigation Bar (Visible on lg+ screens) */}
-        {user?.userType === 'expert' && (
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full py-3.5 flex-1 justify-center max-w-4xl mx-2">
-            {expertNavItems.map((item) => {
-              const active = isLinkActive(item.to);
-              return (
-                <Link
-                  key={item.id}
-                  to={item.to}
-                  className={`relative h-full flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 text-xs xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-                    active
-                      ? "text-[#0755E8] bg-blue-50/90 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
-                >
-                  <item.icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-[#0755E8]" : "text-slate-400"}`} />
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shadow-2xs leading-none ${item.badgeClass}`}>
-                      {item.badge}
-                    </span>
-                  )}
-                  {active && (
-                    <span className="absolute bottom-0 inset-x-2 h-[2.5px] bg-[#0755E8] rounded-t-full" />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        )}
 
         {/* Right Zone: Notifications + Help + Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3 shrink-0 ml-auto">
@@ -780,16 +703,16 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
               </p>
               <p className={`text-[11px] font-bold mt-1 flex items-center gap-0.5 ${
                 user?.userType === 'expert'
-                  ? (user.isExpertVerified ? "text-emerald-600" : "text-amber-600")
+                  ? (isExpertApproved ? "text-emerald-600" : isUnderReview ? "text-blue-600" : "text-amber-600")
                   : "text-[#0755E8]"
               }`}>
                 <ShieldCheck size={11} className={
                   user?.userType === 'expert'
-                    ? (user.isExpertVerified ? "text-emerald-600" : "text-amber-500")
+                    ? (isExpertApproved ? "text-emerald-600" : isUnderReview ? "text-blue-600" : "text-amber-500")
                     : "text-[#0755E8]"
                 } />
                 {user?.userType === 'expert'
-                  ? (user.isExpertVerified ? "Verified Mentor" : "Mentor In Setup")
+                  ? expertMentorStatusLabel
                   : user?.userType === 'admin' ? "Admin" : "Member"}
               </p>
             </div>
@@ -856,87 +779,6 @@ export default function TopNav({ onOpenSidebar, showLogo = true }: TopNavProps) 
         </div>
       </div>
       </div>
-
-      {/* Mobile Slide-Over Drawer for Expert Navigation (< lg) */}
-      {user?.userType === 'expert' && isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden animate-in fade-in duration-200">
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <div className="relative w-72 max-w-[85vw] h-full bg-white shadow-2xl flex flex-col justify-between p-4 z-10 animate-in slide-in-from-left duration-200 font-sans">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <MockeefyLogo className="h-7 w-7" variant="brand" />
-                  <span className="text-base font-extrabold text-[#0755E8]">Expert Terminal</span>
-                </div>
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
-                  aria-label="Close menu"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <nav className="space-y-1">
-                {expertNavItems.map((item) => {
-                  const active = isLinkActive(item.to);
-                  return (
-                    <Link
-                      key={item.id}
-                      to={item.to}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        active
-                          ? "bg-[#0755E8] text-white shadow-sm"
-                          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <item.icon className={`w-4 h-4 ${active ? "text-white" : "text-slate-400"}`} />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          active ? "bg-white/20 text-white" : item.badgeClass
-                        }`}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src={avatarSrc}
-                  alt={user?.name || "Mentor"}
-                  className="w-8 h-8 rounded-lg object-cover border border-slate-200"
-                />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate capitalize">{formatDisplayName(user?.name)}</p>
-                  <p className="text-[10px] text-slate-500 truncate flex items-center gap-1">
-                    <ShieldCheck className={`w-3 h-3 ${isExpertVerified ? "text-emerald-600" : "text-amber-500"}`} />
-                    {isExpertVerified ? "Verified Mentor" : "Mentor In Setup"}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                title="Sign Out"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

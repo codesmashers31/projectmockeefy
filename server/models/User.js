@@ -66,6 +66,11 @@ const userSchema = new mongoose.Schema({
     default: 'Active'
   },
 
+  isExpertVerified: {
+    type: Boolean,
+    default: false
+  },
+
   /* ----------------- Profile Fields ------------------ */
   profileImage: {
     type: String,

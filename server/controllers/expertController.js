@@ -14,6 +14,7 @@ import User from "../models/User.js";
 import { sendAadhaarOtp, verifyAadhaarOtp, maskAadhaar, checkAadhaarRateLimit, recordAadhaarOtpSend, validateAadhaarFormat } from "../services/sandboxAadhaarService.js";
 import { compareNames, hashAadhaar, normalizeName } from "../utils/nameMatcher.js";
 import { syncDataChange, emitToUser, emitToAdmin, isUserOnline } from "../services/socketService.js";
+import { sendExpertApprovalEmail } from "../services/emailService.js";
 
 /* -------------------- Helpers -------------------- */
 const resolveUserIdFromReq = (req) => {
@@ -76,50 +77,32 @@ const getMissingSections = (expert, user) => {
 
   const missing = [];
 
-  // Personal Info (Source: User)
+  // 1. Personal Info (Source: User) - Mandatory (20%)
   const uName = user?.name;
-  const uPhone = user?.personalInfo?.phone;
-  const uCity = user?.personalInfo?.city;
-  const uState = user?.personalInfo?.state;
-  const uCountry = user?.personalInfo?.country;
-  const uGender = user?.personalInfo?.gender;
+  const uPhone = user?.personalInfo?.phone || user?.phone || expert?.personalInfo?.phone || expert?.mobile;
+  const uCity = user?.personalInfo?.city || user?.city || expert?.personalInfo?.city;
+  const uCountry = user?.personalInfo?.country || user?.country || expert?.personalInfo?.country;
 
-  const personalFilled = uName && uPhone && uGender && uCity && uCountry;
+  const personalFilled = Boolean(uName && uPhone && (uCity || uCountry));
   if (!personalFilled) missing.push("Personal Information");
 
-  // Education (Source: Expert)
+  // 2. Education (Source: Expert) - Mandatory (15%)
   if (!Array.isArray(expert.education) || !expert.education.length) missing.push("Education");
 
-  // Professional Details (Source: Expert)
+  // 3. Professional Details (Source: Expert) - Mandatory (15%)
   const pd = expert.professionalDetails || {};
-  const proFilled = pd.title && pd.company && pd.industry && (typeof pd.totalExperience === "number");
+  const proFilled = Boolean((pd.title || expert.title) && (pd.company || expert.company));
   if (!proFilled) missing.push("Professional Details");
 
-  // Skills & Category (Source: Expert)
-  const sk = expert.skillsAndExpertise || {};
+  // 4. Skills & Category (Source: Expert) - Mandatory (15%)
   const hasCategory = Boolean(
     expert.personalInformation?.category ||
     expert.category ||
     expert.domain
   );
-  // Check category, skills fields OR the new expertSkills array OR if already Active
-  const hasSkills = hasCategory || Boolean(sk.domains?.length || sk.tools?.length || sk.languages?.length) || Boolean(expert.expertSkills && expert.expertSkills.length > 0) || isExpertActive(expert);
-  if (!hasSkills) missing.push("Skills & Expertise");
+  if (!hasCategory) missing.push("Skills & Expertise");
 
-  // Availability (Source: Expert)
-  const av = expert.availability || {};
-  let weeklyObj = av.weekly || {};
-  if (weeklyObj instanceof Map) {
-    weeklyObj = Object.fromEntries(weeklyObj);
-  }
-  const weeklyHasSlots = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0) || isExpertActive(expert);
-  if (!weeklyHasSlots) missing.push("Availability");
-
-  // Profile Photo (Source: User)
-  const hasUserPhoto = user?.profileImage || (user?.name && isExpertActive(expert));
-  if (!hasUserPhoto) missing.push("Profile Photo");
-
-  // Verification (Source: Expert)
+  // 5. Verification (Source: Expert) - Mandatory (10%)
   const v = expert.verification || {};
   const hasAadhaar = Boolean(
     v.aadhar?.isVerified ||
@@ -137,7 +120,7 @@ const getMissingSections = (expert, user) => {
     missing.push("Verification Documents");
   }
 
-  // Service Agreement (Source: Expert) - Mandatory
+  // 6. Service Agreement (Source: Expert) - Mandatory (5%)
   const ag = expert.agreement || {};
   const hasAgreement = Boolean((ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms)) || isExpertActive(expert));
   if (!hasAgreement) missing.push("Service Agreement");
@@ -151,49 +134,30 @@ const computeCompletion = (expert, user) => {
 
   let score = 0;
 
-  // Personal Info (20%) - From User
+  // 1. Personal Info (20%) - From User/Expert
   const uName = user?.name;
-  const uPhone = user?.personalInfo?.phone;
-  const uCity = user?.personalInfo?.city;
-  const uState = user?.personalInfo?.state;
-  const uCountry = user?.personalInfo?.country;
+  const uPhone = user?.personalInfo?.phone || user?.phone || expert?.personalInfo?.phone || expert?.mobile;
+  const uCity = user?.personalInfo?.city || user?.city || expert?.personalInfo?.city;
+  const uCountry = user?.personalInfo?.country || user?.country || expert?.personalInfo?.country;
+  if (uName && uPhone && (uCity || uCountry)) score += 20;
 
-  // Basic check for personal info completeness
-  const uGender = user?.personalInfo?.gender;
-  if (uName && uPhone && uGender && uCity && uCountry) score += 20;
-
-  // Education (15%) - From Expert
-  if (Array.isArray(expert.education) && expert.education.length) score += 15;
-
-  // Professional Details (15%) - From Expert
-  const pd = expert.professionalDetails || {};
-  const proFilled = pd.title && pd.company && pd.industry && (typeof pd.totalExperience === "number");
-  if (proFilled) score += 15;
-
-  // Category & Skills (15%) - From Expert
-  const sk = expert.skillsAndExpertise || {};
+  // 2. Category & Pricing Tier (20%) - From Expert
   const hasCategory = Boolean(
     expert.personalInformation?.category ||
     expert.category ||
     expert.domain
   );
-  const hasSkills = hasCategory || Boolean(sk.domains?.length || sk.tools?.length || sk.languages?.length) || Boolean(expert.expertSkills && expert.expertSkills.length > 0) || isExpertActive(expert);
-  if (hasSkills) score += 15;
+  if (hasCategory) score += 20;
 
-  // Availability (15%) - From Expert
-  const av = expert.availability || {};
-  let weeklyObj = av.weekly || {};
-  if (weeklyObj instanceof Map) {
-    weeklyObj = Object.fromEntries(weeklyObj);
-  }
-  const weeklyHasSlots = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0) || isExpertActive(expert);
-  if (weeklyHasSlots) score += 15;
+  // 3. Education (15%) - From Expert
+  if (Array.isArray(expert.education) && expert.education.length) score += 15;
 
-  // Profile Photo (5%) - Check both User (source of truth) and Expert (legacy)
-  const hasPhoto = user?.profileImage || expert.profileImage || (user?.name && isExpertActive(expert));
-  if (hasPhoto && (!hasPhoto.includes || !hasPhoto.includes('default-avatar.png'))) score += 5;
+  // 4. Professional Details / Experience (15%) - From Expert
+  const pd = expert.professionalDetails || {};
+  const proFilled = Boolean((pd.title || expert.title) && (pd.company || expert.company));
+  if (proFilled) score += 15;
 
-  // Verification (10%) - From Expert
+  // 5. Verification Documents (20%) - From Expert
   const v = expert.verification || {};
   const hasAadhaar = Boolean(
     v.aadhar?.isVerified ||
@@ -207,12 +171,12 @@ const computeCompletion = (expert, user) => {
   const verificationFilled = Boolean(
     hasCompanyId || hasAadhaar || isExpertActive(expert)
   );
-  if (verificationFilled) score += 10;
+  if (verificationFilled) score += 20;
 
-  // Service Agreement (5%) - From Expert
+  // 6. Service Agreement (10%) - From Expert
   const ag = expert.agreement || {};
   const hasAgreement = Boolean((ag.isSigned && (ag.agreementPdf?.url || ag.signatureFile?.url || ag.agreedTerms)) || isExpertActive(expert));
-  if (hasAgreement) score += 5;
+  if (hasAgreement) score += 10;
 
   return Math.min(score, 100);
 };
@@ -341,7 +305,7 @@ export const getExpertProfileImage = async (req, res) => {
     return res.json({ success: true, image });
   } catch (err) {
     console.error("getExpertProfileImage error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -516,7 +480,7 @@ export const requestVerification = async (req, res) => {
     });
   } catch (err) {
     console.error("requestVerification error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -607,7 +571,7 @@ export const resubmitProfile = async (req, res) => {
     });
   } catch (err) {
     console.error("resubmitProfile error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -686,6 +650,23 @@ export const getExpertProfile = async (req, res) => {
 
     const completion = computeCompletion(expertLean, user);
     const missingSections = getMissingSections(expertLean, user);
+
+    const av = expertLean.availability || {};
+    let weeklyObj = av.weekly || {};
+    if (weeklyObj instanceof Map) {
+      weeklyObj = Object.fromEntries(weeklyObj);
+    }
+    const hasAvailability = Object.values(weeklyObj || {}).some(arr => Array.isArray(arr) && arr.length > 0) || isExpertActive(expertLean);
+
+    const sk = expertLean.skillsAndExpertise || {};
+    const hasSkills = Boolean(
+      (Array.isArray(expertLean.expertSkills) && expertLean.expertSkills.length > 0) ||
+      sk.tools?.length > 0 ||
+      sk.domains?.length > 0 ||
+      sk.languages?.length > 0 ||
+      (Array.isArray(expertLean.skills) && expertLean.skills.length > 0)
+    ) || isExpertActive(expertLean);
+
     return res.json({
       success: true,
       completion,
@@ -975,7 +956,7 @@ export const getPersonalInfo = async (req, res) => {
     return res.status(200).json({ success: true, data });
   } catch (err) {
     console.error("getPersonalInfo error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1079,7 +1060,7 @@ export const updatePersonalInfo = async (req, res) => {
     return res.status(200).json({ success: true, message: "Personal info updated successfully", data: responseData });
   } catch (error) {
     console.error("❌ updatePersonalInfo error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1095,7 +1076,7 @@ export const getEducation = async (req, res) => {
     return res.status(200).json({ success: true, data: [] });
   } catch (err) {
     console.error("getEducation error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1137,7 +1118,7 @@ export const updateEducation = async (req, res) => {
     return res.status(200).json({ success: true, message: "Education updated", data: expert.education });
   } catch (err) {
     console.error("updateEducation error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1174,7 +1155,7 @@ export const deleteEducationEntry = async (req, res) => {
     return res.status(200).json({ success: true, message: "Education entry deleted", data: expert.education });
   } catch (err) {
     console.error("deleteEducationEntry error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1202,7 +1183,7 @@ export const getProfessional = async (req, res) => {
     return res.status(200).json({ success: true, data: { title: "", company: "", totalExperience: "", totalExperienceMonths: "0", industry: "", level: "", levels: [], previous: [] } });
   } catch (err) {
     console.error("getProfessional error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1255,7 +1236,7 @@ export const updateProfessional = async (req, res) => {
     return res.status(200).json({ success: true, message: "Professional details updated", data: expert.professionalDetails });
   } catch (err) {
     console.error("updateProfessional error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1292,7 +1273,7 @@ export const deletePreviousExperience = async (req, res) => {
     return res.status(200).json({ success: true, message: "Previous experience deleted", data: expert.professionalDetails.previous });
   } catch (err) {
     console.error("deletePreviousExperience error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1313,7 +1294,7 @@ export const getSkillsAndExpertise = async (req, res) => {
     });
   } catch (err) {
     console.error("getSkillsAndExpertise error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1361,7 +1342,7 @@ export const updateSkillsAndExpertise = async (req, res) => {
     return res.status(200).json({ success: true, message: "Skills updated", data: expert.skillsAndExpertise });
   } catch (err) {
     console.error("updateSkillsAndExpertise error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1446,7 +1427,7 @@ export const updateCategoryAndLevel = async (req, res) => {
     });
   } catch (err) {
     console.error("updateCategoryAndLevel error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1540,13 +1521,14 @@ export const getExpertStats = async (req, res) => {
         completionRate,
         walletBalance,
         status: expert.status || "pending",
+        verificationRequested: Boolean(expert.verificationRequested),
         isVerified: expert.status === "Active" || expert.status === "approved"
       }
     });
 
   } catch (err) {
     console.error("getExpertStats error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 export const formatAvailabilityForResponse = (availability) => {
@@ -1593,7 +1575,7 @@ export const getAvailability = async (req, res) => {
     return res.status(200).json({ success: true, data: { sessionDuration: 30, allowedDurations: [30], maxPerDay: 4, weekly: {}, breakDates: [] } });
   } catch (err) {
     console.error("getAvailability error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1764,7 +1746,7 @@ export const updateAvailability = async (req, res) => {
     expert.markModified('availability');
     expert.markModified('availability.weekly');
 
-    await expert.save();
+    await expert.save({ validateBeforeSave: false });
 
     if (expert.availability?.defaultMeetingLink) {
       try {
@@ -1829,7 +1811,7 @@ export const updateAvailability = async (req, res) => {
     return res.status(200).json({ success: true, message: "Availability updated", data: formattedAvailability });
   } catch (err) {
     console.error("updateAvailability error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1854,7 +1836,7 @@ export const deleteBreakDate = async (req, res) => {
       }
     });
 
-    await expert.save();
+    await expert.save({ validateBeforeSave: false });
 
     clearVerifiedExpertsCache();
     const formattedAvailability = formatAvailabilityForResponse(expert.availability);
@@ -1885,7 +1867,7 @@ export const deleteBreakDate = async (req, res) => {
     return res.status(200).json({ success: true, message: "Break date removed", data: expert.availability.breakDates });
   } catch (err) {
     console.error("deleteBreakDate error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -1911,7 +1893,7 @@ export const deleteWeeklySlot = async (req, res) => {
       weekly[day] = slots.filter(slot => slot.from !== from);
     }
 
-    await expert.save();
+    await expert.save({ validateBeforeSave: false });
     const resultSlots = weekly && typeof weekly.get === 'function' ? weekly.get(day) : (weekly ? weekly[day] : []);
 
     clearVerifiedExpertsCache();
@@ -1943,7 +1925,7 @@ export const deleteWeeklySlot = async (req, res) => {
     return res.status(200).json({ success: true, message: "Slot removed", data: resultSlots });
   } catch (err) {
     console.error("deleteWeeklySlot error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
@@ -2532,25 +2514,51 @@ export const approveExpert = async (req, res) => {
     const { id } = req.params;
     const { category, level } = req.body;
 
-    const updateObj = { status: "Active", verificationRequested: false };
-    if (category) {
-      updateObj["personalInformation.category"] = category;
+    let expert = null;
+    if (isValidObjectId(id)) {
+      expert = await ExpertDetails.findById(id);
+      if (!expert) {
+        expert = await ExpertDetails.findOne({ userId: id });
+      }
     }
-    if (level) {
-      updateObj["professionalDetails.level"] = level;
-    }
-
-    const expert = await ExpertDetails.findByIdAndUpdate(
-      id,
-      updateObj,
-      { new: true }
-    );
 
     if (!expert) {
       return res.status(404).json({ success: false, message: "Expert not found" });
     }
 
+    expert.status = "Active";
+    expert.verificationRequested = false;
+    if (category) {
+      expert.personalInformation = expert.personalInformation || {};
+      expert.personalInformation.category = category;
+    }
+    if (level) {
+      expert.professionalDetails = expert.professionalDetails || {};
+      expert.professionalDetails.level = level;
+    }
+
+    await expert.save({ validateBeforeSave: false });
+
+    // Mark user as verified expert
+    await User.findByIdAndUpdate(expert.userId, { isExpertVerified: true });
+
     clearVerifiedExpertsCache();
+
+    // Send congratulatory approval email to the expert
+    try {
+      const expertUser = await User.findById(expert.userId).lean();
+      const targetEmail = expertUser?.email || expert.personalInformation?.email;
+      const targetName = expertUser?.name || expert.name || expert.personalInformation?.name;
+      if (targetEmail) {
+        await sendExpertApprovalEmail({
+          expertEmail: targetEmail,
+          expertName: targetName,
+          category: expert.personalInformation?.category || expert.category
+        });
+      }
+    } catch (mailErr) {
+      console.error("[approveExpert] Failed to send approval email:", mailErr);
+    }
 
     syncDataChange({
       type: "EXPERT_STATUS_UPDATED",
@@ -2584,19 +2592,24 @@ export const rejectExpert = async (req, res) => {
       return res.status(400).json({ success: false, message: "Rejection reason is required" });
     }
 
-    const expert = await ExpertDetails.findByIdAndUpdate(
-      id,
-      {
-        status: "rejected",
-        verificationRequested: false,
-        rejectionReason: reason
-      },
-      { new: true }
-    );
+    let expert = null;
+    if (isValidObjectId(id)) {
+      expert = await ExpertDetails.findById(id);
+      if (!expert) {
+        expert = await ExpertDetails.findOne({ userId: id });
+      }
+    }
 
     if (!expert) {
       return res.status(404).json({ success: false, message: "Expert not found" });
     }
+
+    expert.status = "rejected";
+    expert.verificationRequested = false;
+    expert.rejectionReason = reason;
+    await expert.save({ validateBeforeSave: false });
+
+    await User.findByIdAndUpdate(expert.userId, { isExpertVerified: false });
 
     clearVerifiedExpertsCache();
 
@@ -3223,7 +3236,7 @@ export const getExpertAgreement = async (req, res) => {
     });
   } catch (err) {
     console.error("getExpertAgreement error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 };
 
