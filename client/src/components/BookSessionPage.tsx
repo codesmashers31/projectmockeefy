@@ -26,6 +26,7 @@ import {
 import { AVAILABLE_LEVELS } from "./BookingModal";
 import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
 import { showBookingSuccessAlert } from "../lib/bookingSuccessAlert";
+import { showBookingAuthAlert } from "../lib/bookingAuthAlert";
 
 /**
  * Skeleton Loader matching Mockeefy clean design
@@ -901,17 +902,21 @@ export default function BookSessionPage() {
     }
 
     if (!user) {
-      Swal.fire({
-        title: "Sign In Required",
-        text: "Please sign in to confirm your session booking.",
-        icon: "info",
-        showCancelButton: true,
-        confirmButtonText: "Sign In",
-        confirmButtonColor: "#0755E8",
-      }).then((res) => {
-        if (res.isConfirmed) {
+      const dateText = activeDate
+        ? activeDate.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+        : "";
+
+      showBookingAuthAlert({
+        mentorName: profile.name,
+        dateStr: dateText,
+        timeSlot: selectedSlot.time,
+        duration: sessionDuration,
+        onLogin: () => {
           navigate("/signin", { state: { returnUrl: `/book-session?expertId=${expertId}` } });
-        }
+        },
+        onSignUp: () => {
+          navigate("/signup", { state: { returnUrl: `/book-session?expertId=${expertId}` } });
+        },
       });
       return;
     }

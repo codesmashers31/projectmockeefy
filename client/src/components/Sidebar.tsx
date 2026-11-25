@@ -330,6 +330,19 @@ export default function Sidebar() {
             return (
               <button
                 key={item.label}
+                onMouseEnter={() => {
+                  try {
+                    if (item.path === "/profile") {
+                      import("../pages/UserProfile");
+                    } else if (item.path === "/certificates") {
+                      import("../pages/CertificatesPage");
+                    } else if (item.path === "/my-sessions" || item.path === "/saved-experts") {
+                      import("./MySessions");
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }}
                 onClick={() => {
                   if (location.pathname === item.path && !location.search) {
                     window.scrollTo({ top: 0, behavior: "smooth" });

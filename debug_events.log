@@ -1,5 +1,0 @@
-[2026-11-15T07:54:13.121Z] RESUMES REQ: GET / - Auth: true - UserId: 6af949c5c1f74678411935eb - CT: undefined
-[2026-11-15T07:54:21.449Z] DEBUG LOG: {"event":"resume_upload_start","fileName":"Mockeefy_Expert_Agreement_test_expert.pdf","fileSize":614415,"hasUserId":true,"hasToken":true}
-[2026-11-15T07:54:21.453Z] RESUMES REQ: POST /upload - Auth: true - UserId: 6af949c5c1f74678411935eb - CT: multipart/form-data; boundary=----WebKitFormBoundaryHZZfJalcMxFyBUBF
-[2026-11-15T07:54:21.613Z] RESUMES REQ: GET / - Auth: true - UserId: 6af949c5c1f74678411935eb - CT: undefined
-[2026-11-15T07:54:26.089Z] RESUMES REQ: GET /6af9652da431c91c38fc9871/file?mode=view - Auth: false - UserId: undefined - CT: undefined

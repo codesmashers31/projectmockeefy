@@ -25,6 +25,7 @@ import { MentorProfile } from "./MentorJobCard";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
 import { showBookingSuccessAlert } from "../lib/bookingSuccessAlert";
+import { showBookingAuthAlert } from "../lib/bookingAuthAlert";
 import { PendingBookingIntent, savePendingBooking, clearPendingBooking } from "../lib/pendingBooking";
 
 export const AVAILABLE_LEVELS = [
@@ -1215,7 +1216,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const mentorAvatar = profile?.avatar || (initialProfile as any)?.avatar || "";
     const slotTime = selectedSlot?.time || "";
     const dateText = selectedDateStr
-      ? new Date(selectedDateStr).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+      ? new Date(selectedDateStr).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
       : "";
 
     const currentExpertId = String(targetExpertId || expertId);
@@ -1252,38 +1253,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
-    Swal.fire({
-      title: "Login or Sign Up Required",
-      html: `
-        <div style="font-family: inherit; text-align: center; padding: 4px 0 10px;">
-          <p style="font-size: 14.5px; color: #475569; margin-bottom: 14px; line-height: 1.5;">
-            To confirm your mock interview session with <strong>${mentorName}</strong>${dateText && slotTime ? ` on <strong style="color: #0755E8;">${dateText} at ${slotTime}</strong>` : ""}, please sign in or create an account.
-          </p>
-          <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; color: #1E40AF; text-align: left; display: flex; align-items: center; gap: 8px;">
-            <span>⚡</span>
-            <span><strong>Your booking choices are saved.</strong> This booking session will automatically open right back up as soon as you log in or register!</span>
-          </div>
-        </div>
-      `,
-      icon: "info",
-      showCancelButton: true,
-      showDenyButton: true,
-      confirmButtonText: "Log In",
-      denyButtonText: "Sign Up (New User)",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#0755E8",
-      denyButtonColor: "#0F172A",
-      cancelButtonColor: "#94A3B8",
-    }).then((res) => {
-      if (res.isConfirmed) {
+    showBookingAuthAlert({
+      mentorName,
+      dateStr: dateText,
+      timeSlot: slotTime,
+      duration: sessionDuration,
+      onLogin: () => {
         navigate(`/signin?returnUrl=${encodeURIComponent(returnUrl)}`, {
           state: { returnUrl, pendingBooking: pendingIntent },
         });
-      } else if (res.isDenied) {
+      },
+      onSignUp: () => {
         navigate(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`, {
           state: { returnUrl, pendingBooking: pendingIntent },
         });
-      }
+      },
     });
   };
 

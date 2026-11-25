@@ -1,7 +1,7 @@
 import Swal from 'sweetalert2';
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Upload,
   Camera,
@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
+import { useUserProfile } from "../hooks/useUserProfile";
 import { toast } from "sonner";
 import { getProfileImageUrl, compressImage, compressOriginalImage } from "../lib/imageUtils";
 import { Link, Navigate } from "react-router-dom";
@@ -51,13 +52,16 @@ interface ResumeItem {
 
 export default function UserProfile() {
   const { user, fetchProfile, updateUser } = useAuth();
+  const { data: userProfile } = useUserProfile();
+  const queryClient = useQueryClient();
 
   // If logged-in user is an expert, seamlessly redirect to expert dashboard profile
   if (user?.userType?.toLowerCase() === "expert") {
     return <Navigate to="/dashboard/profile" replace />;
   }
 
-  const userId = user?.id || user?._id || user?.userId;
+  const userId = user?.id || user?._id || user?.userId || userProfile?._id;
+  const effectiveUserId = userId || (user as any)?.userId;
 
   // Image Upload & Cropper States
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -75,9 +79,24 @@ export default function UserProfile() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Resume Management States
-  const [resumes, setResumes] = useState<ResumeItem[]>([]);
-  const [isLoadingResumes, setIsLoadingResumes] = useState(true);
+  // Resume Management States with React Query Cache for instant frame-0 navigation
+  const {
+    data: resumes = [],
+    isLoading: isLoadingResumes,
+    refetch: refetchResumes,
+  } = useQuery<ResumeItem[]>({
+    queryKey: ["candidateResumes", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId && !localStorage.getItem("token")) return [];
+      const res = await axios.get("/api/user/resumes", {
+        headers: effectiveUserId ? { userid: String(effectiveUserId) } : {},
+      });
+      return res.data?.success && Array.isArray(res.data.data) ? res.data.data : [];
+    },
+    enabled: !!effectiveUserId || !!localStorage.getItem("token"),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [resumeTitle, setResumeTitle] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -85,44 +104,16 @@ export default function UserProfile() {
   const [isDragging, setIsDragging] = useState(false);
   const resumeInputRef = useRef<HTMLInputElement>(null);
 
-  // Stop global loader on mount
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("page-loading-state", { detail: { loading: false } }));
-  }, []);
-
-  // Fetch Resumes
-  const loadResumes = async () => {
-    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
-    if (!effectiveUserId && !localStorage.getItem("token")) return;
-    try {
-      setIsLoadingResumes(true);
-      const res = await axios.get("/api/user/resumes", {
-        headers: effectiveUserId ? { userid: String(effectiveUserId) } : {},
-      });
-      if (res.data?.success) {
-        setResumes(res.data.data || []);
-      }
-    } catch (err: any) {
-      console.error("Failed to load resumes:", err);
-    } finally {
-      setIsLoadingResumes(false);
-    }
-  };
-
-  useEffect(() => {
-    loadResumes();
-  }, [userId]);
-
   // Fetch candidate sessions to calculate finished interviews and stats
   const { data: candidateSessions = [], isLoading: isLoadingSessions } = useQuery({
-    queryKey: ["candidateProfileSessions", userId],
+    queryKey: ["candidateProfileSessions", effectiveUserId],
     queryFn: async () => {
-      if (!userId) return [];
-      const res = await axios.get(`/api/sessions/candidate/${userId}`);
+      if (!effectiveUserId) return [];
+      const res = await axios.get(`/api/sessions/candidate/${effectiveUserId}`);
       return Array.isArray(res.data) ? res.data : [];
     },
-    enabled: !!userId,
-    staleTime: 60 * 1000,
+    enabled: !!effectiveUserId,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Calculate Finished / Completed Interviews
@@ -397,7 +388,7 @@ export default function UserProfile() {
         setResumeTitle("");
         setUploadError(null);
         if (resumeInputRef.current) resumeInputRef.current.value = "";
-        await loadResumes();
+        await refetchResumes();
       } else {
         const msg = data?.message || `Upload failed with status ${response.status}.`;
         setUploadError(msg);
@@ -436,7 +427,6 @@ export default function UserProfile() {
 
   // Set Default Resume
   const handleSetDefault = async (resumeId: string) => {
-    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
     if (!effectiveUserId && !localStorage.getItem("token")) return;
     try {
       const res = await axios.patch(`/api/user/resumes/${resumeId}/default`, {}, {
@@ -444,7 +434,7 @@ export default function UserProfile() {
       });
       if (res.data?.success) {
         toast.success("Default resume updated for mock interviews!");
-        setResumes((prev) =>
+        queryClient.setQueryData<ResumeItem[]>(["candidateResumes", effectiveUserId], (prev = []) =>
           prev.map((r) => ({
             ...r,
             isDefault: r._id === resumeId,
@@ -459,7 +449,6 @@ export default function UserProfile() {
 
   // Delete Resume
   const handleDeleteResume = async (resumeId: string) => {
-    const effectiveUserId = userId || user?.id || user?._id || (user as any)?.userId;
     if (!effectiveUserId && !localStorage.getItem("token")) return;
     const confirmDelete = await Swal.fire({
       title: "Delete Resume?",
@@ -478,7 +467,9 @@ export default function UserProfile() {
       });
       if (res.data?.success) {
         toast.success("Resume deleted.");
-        setResumes((prev) => prev.filter((r) => r._id !== resumeId));
+        queryClient.setQueryData<ResumeItem[]>(["candidateResumes", effectiveUserId], (prev = []) =>
+          prev.filter((r) => r._id !== resumeId)
+        );
       }
     } catch (err: any) {
       console.error("Failed to delete resume:", err);
@@ -486,8 +477,10 @@ export default function UserProfile() {
     }
   };
 
-  // User display initials
-  const initials = (user?.name || "Candidate")
+  // User display name, photo, and initials synchronized with userProfile
+  const effectiveUser = userProfile || user;
+  const displayName = effectiveUser?.name || user?.name || "Candidate Name";
+  const initials = displayName
     .trim()
     .split(" ")
     .map((n) => n[0])
@@ -495,11 +488,19 @@ export default function UserProfile() {
     .slice(0, 2)
     .toUpperCase();
 
-  const currentPhoto = imagePreview || (user?.profileImage ? getProfileImageUrl(user.profileImage) : null);
-  const hasPhoto = !!currentPhoto && !currentPhoto.includes("mockeefy.png") && !currentPhoto.includes("default-avatar.png");
+  const currentPhoto = imagePreview || (
+    effectiveUser?.profileImage
+      ? getProfileImageUrl(effectiveUser.profileImage)
+      : (user?.profileImage ? getProfileImageUrl(user.profileImage) : null)
+  );
+  const hasPhoto = Boolean(
+    currentPhoto &&
+    !currentPhoto.includes("mockeefy.png") &&
+    !currentPhoto.includes("default-avatar.png")
+  );
 
   return (
-    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 overflow-hidden pb-16 font-sans text-left">
+    <div className="sidebar-main-card relative w-full rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-4 sm:p-6 md:p-8 overflow-hidden pb-16 font-sans text-left animate-in fade-in duration-200">
       {/* Decorative ambient blue lighting */}
       <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
@@ -556,7 +557,7 @@ export default function UserProfile() {
                     {hasPhoto ? (
                       <img
                         src={currentPhoto!}
-                        alt={user?.name || "Profile Photo"}
+                        alt={displayName}
                         className="w-full h-full object-cover object-top rounded-xl"
                       />
                     ) : (
@@ -592,7 +593,7 @@ export default function UserProfile() {
                 <div className="min-w-0 flex-1 leading-snug space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">
-                      {user?.name || "Candidate Name"}
+                      {displayName}
                     </h2>
                     <span title="Verified Candidate" className="inline-flex items-center shrink-0">
                       <BadgeCheck className="w-5 h-5 text-white fill-[#0755E8]" />

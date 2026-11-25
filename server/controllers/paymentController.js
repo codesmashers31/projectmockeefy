@@ -1202,8 +1202,10 @@ export const verifyPayment = async (req, res) => {
                     await createNotification({
                         userId: expertUserId,
                         type: 'booking_confirmed',
-                        title: 'New Interview Booking 🎯',
-                        message: `New booking: ${candidateName} has booked a ${duration}-min ${domainName} interview with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
+                        title: sessionData.meetingLink ? 'New Interview Booking 🎯' : 'Action Required: Add Google Meet Link ⚠️',
+                        message: sessionData.meetingLink
+                            ? `New booking: ${candidateName} has booked a ${duration}-min ${domainName} interview with you on ${dt.dateStr} at ${dt.timeSlotStr}.`
+                            : `New booking: ${candidateName} booked a ${duration}-min ${domainName} interview with you on ${dt.dateStr} at ${dt.timeSlotStr}. Please add your Google Meet link so the candidate can join!`,
                         metadata: {
                             sessionId: session.sessionId,
                             link: '/dashboard/sessions',
@@ -1390,9 +1392,11 @@ export const usePremiumCredit = async (req, res) => {
         await createNotification({
             userId: expertUserId,
             type: 'booking_confirmed',
-            title: 'New Session Booked!',
-            message: `A candidate (${bookingDetails.candidateName || user?.name || "Candidate"}) has booked a session with you using Premium Credit on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-            metadata: { sessionId: createdSession.sessionId, link: '/expert/dashboard' }
+            title: sessionData.meetingLink ? 'New Session Booked!' : 'Action Required: Add Google Meet Link ⚠️',
+            message: sessionData.meetingLink
+                ? `A candidate (${bookingDetails.candidateName || user?.name || "Candidate"}) has booked a session with you using Premium Credit on ${dt.dateStr} at ${dt.timeSlotStr}.`
+                : `A candidate (${bookingDetails.candidateName || user?.name || "Candidate"}) booked a session on ${dt.dateStr} at ${dt.timeSlotStr}. Please add your Google Meet link so the candidate can join!`,
+            metadata: { sessionId: createdSession.sessionId, link: '/dashboard/sessions' }
         });
 
         // Notify User
@@ -1546,9 +1550,11 @@ export const createFreeBooking = async (req, res) => {
             await createNotification({
                 userId: expertUserId,
                 type: 'booking_confirmed',
-                title: 'New Session Booked!',
-                message: `A candidate (${bookingDetails.candidateName || 'Candidate'}) has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`,
-                metadata: { sessionId: session.sessionId, link: '/expert/dashboard' }
+                title: sessionData.meetingLink ? 'New Session Booked!' : 'Action Required: Add Google Meet Link ⚠️',
+                message: sessionData.meetingLink
+                    ? `A candidate (${bookingDetails.candidateName || 'Candidate'}) has booked a session with you on ${dt.dateStr} at ${dt.timeSlotStr}.`
+                    : `A candidate (${bookingDetails.candidateName || 'Candidate'}) booked a session on ${dt.dateStr} at ${dt.timeSlotStr}. Please add your Google Meet link so the candidate can join!`,
+                metadata: { sessionId: session.sessionId, link: '/dashboard/sessions' }
             });
 
             // Notify User

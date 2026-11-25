@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useDataSync } from "../../context/SocketContext";
 import axios from "../../lib/axios";
+import { toast } from "sonner";
 import ExpertPageSkeleton from "../../components/ExpertPageSkeleton";
 import { getProfileImageUrl } from "../../lib/imageUtils";
 import { formatDisplayName } from "../../lib/utils";
@@ -22,6 +23,9 @@ import {
   Sparkles,
   Wallet,
   AlertCircle,
+  AlertTriangle,
+  Link2,
+  X,
   FileText,
   ExternalLink,
   ShieldCheck,
@@ -144,6 +148,59 @@ export default function DashboardIndex() {
   const SESSIONS_PER_PAGE = 4;
   const [currentPage, setCurrentPage] = useState<number>(1);
 
+  // Google Meet Modal state & handlers
+  const [meetModalSession, setMeetModalSession] = useState<any | null>(null);
+  const [meetLinkInput, setMeetLinkInput] = useState<string>("");
+  const [saveAsDefaultMeet, setSaveAsDefaultMeet] = useState<boolean>(true);
+  const [isSavingMeetLink, setIsSavingMeetLink] = useState<boolean>(false);
+
+  const isValidGoogleMeetUrl = (url: string) => {
+    return /^https?:\/\/meet\.google\.com\/[a-z0-9-]+/i.test((url || "").trim());
+  };
+
+  const openMeetModal = (session: any) => {
+    setMeetModalSession(session);
+    setMeetLinkInput(session.meetingLink || expertProfile?.availability?.defaultMeetingLink || "");
+    setSaveAsDefaultMeet(true);
+  };
+
+  const handleSaveMeetLink = async () => {
+    if (!meetModalSession) return;
+    const raw = meetLinkInput.trim();
+    if (!isValidGoogleMeetUrl(raw)) {
+      toast.error("Please enter a valid Google Meet link (e.g. https://meet.google.com/xxx-xxxx-xxx)");
+      return;
+    }
+    setIsSavingMeetLink(true);
+    try {
+      const sId = meetModalSession.sessionId || meetModalSession._id;
+      const res = await axios.patch(`/api/sessions/${sId}/meeting-link`, { meetingLink: raw });
+      if (res.data?.success || res.status === 200) {
+        toast.success("Google Meet link attached successfully! Candidate can now join.");
+        if (saveAsDefaultMeet) {
+          try {
+            await axios.put("/api/expert/availability/schedule", {
+              defaultMeetingLink: raw
+            });
+          } catch {
+            // Non-blocking fallback
+          }
+        }
+        setAllSessions((prev) =>
+          prev.map((s) =>
+            (s.sessionId === sId || s._id === sId) ? { ...s, meetingLink: raw } : s
+          )
+        );
+        setMeetModalSession(null);
+        setMeetLinkInput("");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to update Google Meet link");
+    } finally {
+      setIsSavingMeetLink(false);
+    }
+  };
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -201,9 +258,25 @@ export default function DashboardIndex() {
     if (user) fetchData();
   }, [user, fetchData]);
 
-  // Real-time synchronization
-  useDataSync(["WALLET_UPDATED", "SESSION_UPDATED", "SESSION_CREATED", "STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "RECONNECTED"], () => {
-    if (user) fetchData();
+  // Real-time synchronization & booking alerts
+  useDataSync(["WALLET_UPDATED", "SESSION_UPDATED", "SESSION_CREATED", "STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "RECONNECTED"], (payload: any) => {
+    if (user) {
+      fetchData();
+      if (payload?.type === "SESSION_CREATED") {
+        const sess = payload?.data;
+        const hasMeet = sess?.meetingLink && isValidGoogleMeetUrl(sess.meetingLink);
+        toast.info("New Interview Booking! 🎯", {
+          description: hasMeet
+            ? `New mock interview booked for ${sess?.startTime ? new Date(sess.startTime).toLocaleDateString() : 'upcoming schedule'}.`
+            : `New booking received! Action required: Please attach your Google Meet link so the candidate can join.`,
+          duration: 9000,
+          action: !hasMeet && sess ? {
+            label: "Add Meet Link",
+            onClick: () => openMeetModal(sess)
+          } : undefined
+        });
+      }
+    }
   });
 
   const formatCurrency = (amount: number) => {
@@ -218,6 +291,10 @@ export default function DashboardIndex() {
   const upcomingSessions = allSessions
     .filter((s) => new Date(s.startTime) > now && s.status !== "cancelled")
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+  const upcomingMissingMeet = upcomingSessions.filter(
+    (s) => !s.meetingLink || !isValidGoogleMeetUrl(s.meetingLink)
+  );
 
   const completedSessions = allSessions
     .filter((s) => s.status === "completed" || new Date(s.endTime) < now || s.status === "confirmed")
@@ -441,6 +518,55 @@ export default function DashboardIndex() {
             </button>
           </div>
         ) : null}
+
+        {/* Missing Google Meet Link Alert Banner */}
+        {upcomingMissingMeet.length > 0 && (
+          <div className="relative overflow-hidden bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50/60 border-2 border-amber-400/90 rounded-2xl p-4 sm:p-5 shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+            {/* Ambient amber glow */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                  <Video className="w-5 h-5 stroke-[2.2]" />
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white animate-ping" />
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center text-[8px] font-black text-white">!</span>
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-1.5">
+                      <span>Action Required: Google Meet Link Missing</span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-200/80 border border-amber-300 text-amber-900 text-[10px] font-black uppercase tracking-wider">
+                        {upcomingMissingMeet.length} {upcomingMissingMeet.length === 1 ? "Session" : "Sessions"}
+                      </span>
+                    </h3>
+                  </div>
+                  <p className="text-xs sm:text-[13px] text-amber-900/85 leading-snug">
+                    You have {upcomingMissingMeet.length === 1 ? "an upcoming interview booking" : `${upcomingMissingMeet.length} upcoming interview bookings`} with no Google Meet link attached. Candidates cannot join until you attach a valid Google Meet link!
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 self-start md:self-center">
+                <button
+                  onClick={() => openMeetModal(upcomingMissingMeet[0])}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-amber-600/30 cursor-pointer whitespace-nowrap active:scale-95"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>+ Add Meet Link Now</span>
+                </button>
+
+                <button
+                  onClick={() => navigate("/dashboard/availability")}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-amber-100/50 text-amber-900 border border-amber-300 text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer whitespace-nowrap active:scale-95"
+                  title="Configure default link so future bookings automatically inherit it"
+                >
+                  <span>Set Default Link</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 3. OPTION 4: KPI CARDS (MODERN LOOK) WITH FLOATING WAVE DESIGN */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
@@ -729,6 +855,7 @@ export default function DashboardIndex() {
                   {currentSessions.map((session: any) => {
                     const timing = getSessionTimingInfo(session.startTime, session.endTime);
                     const isCompleted = session.status === "completed" || timing.isPast;
+                    const isMissingMeet = !isCompleted && (!session.meetingLink || !isValidGoogleMeetUrl(session.meetingLink));
                     const candidateName = session.candidateId?.name || "Candidate";
                     const candidatePhoto = session.candidateId?.profileImage || null;
                     const topic = session.topics?.[0] || session.domain || session.categoryNameSnapshot || "Technical Mock Interview";
@@ -749,6 +876,8 @@ export default function DashboardIndex() {
                         className={`group relative bg-white hover:bg-blue-50/25 border border-slate-200/90 hover:border-blue-400 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer select-none ${
                           isCompleted
                             ? "border-l-[3.5px] border-l-emerald-500"
+                            : isMissingMeet
+                            ? "border-l-[3.5px] border-l-amber-500 ring-1 ring-amber-400/30"
                             : timing.isLive
                             ? "border-l-[3.5px] border-l-emerald-400 ring-2 ring-emerald-500/20"
                             : "border-l-[3.5px] border-l-[#0755E8]"
@@ -790,8 +919,17 @@ export default function DashboardIndex() {
                               </span>
                             </div>
 
-                            <p className="text-[11px] text-slate-500 font-medium">
-                              1:1 Live Mock Session • 45 Mins Google Meet
+                            <p className="text-[11px] font-medium flex items-center gap-1.5">
+                              {isMissingMeet ? (
+                                <span className="text-amber-700 flex items-center gap-1 font-bold">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>Google Meet link missing — Candidate cannot join</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-500">
+                                  1:1 Live Mock Session • 45 Mins Google Meet
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -828,6 +966,23 @@ export default function DashboardIndex() {
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </button>
                             </>
+                          ) : isMissingMeet ? (
+                            <>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs animate-pulse">
+                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>No Meet Link</span>
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openMeetModal(session);
+                                }}
+                                className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm shadow-amber-600/25 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                                <span>+ Add Meet Link</span>
+                              </button>
+                            </>
                           ) : timing.isLive ? (
                             <button
                               onClick={(e) => {
@@ -854,6 +1009,16 @@ export default function DashboardIndex() {
                               >
                                 <Video className="w-3.5 h-3.5" />
                                 <span>Join Call</span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openMeetModal(session);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-[#0755E8] hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200 cursor-pointer"
+                                title="Edit Google Meet Link"
+                              >
+                                <Link2 className="w-3.5 h-3.5" />
                               </button>
                             </>
                           )}
@@ -1215,6 +1380,142 @@ export default function DashboardIndex() {
           </div>
         </div>
       </div>
+
+      {/* Google Meet Attach / Edit Modal */}
+      {meetModalSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 text-left">
+            {/* Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-[#0755E8] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center">
+                  <Video className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    {meetModalSession.meetingLink ? "Update Google Meet Link" : "Attach Google Meet Link"}
+                  </h3>
+                  <p className="text-[11px] text-blue-100">
+                    Session with {meetModalSession.candidateId?.name || "Candidate"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMeetModalSession(null)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* Session Info Summary */}
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-bold text-slate-800 block">
+                    {meetModalSession.topics?.[0] || meetModalSession.domain || "Mock Interview"}
+                  </span>
+                  <span className="text-slate-500 text-[11px]">
+                    {new Date(meetModalSession.startTime).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric"
+                    })} • {new Date(meetModalSession.startTime).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0755E8] font-bold text-[10px]">
+                  45 Mins
+                </span>
+              </div>
+
+              {/* Input Field */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  Google Meet Meeting URL <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={meetLinkInput}
+                    onChange={(e) => setMeetLinkInput(e.target.value)}
+                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                    className="w-full pl-3.5 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:border-[#0755E8] focus:ring-2 focus:ring-blue-100 outline-hidden font-mono"
+                  />
+                  {isValidGoogleMeetUrl(meetLinkInput) && (
+                    <span className="absolute right-3 top-2.5 text-emerald-500">
+                      <Check className="w-4 h-4" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Must be a valid Google Meet URL starting with <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-[#0755E8]">https://meet.google.com/</code>
+                </p>
+              </div>
+
+              {/* Create room helper */}
+              <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#0755E8] shrink-0" />
+                  <span className="text-slate-700 font-medium text-[11.5px]">Need to create a new meeting room?</span>
+                </div>
+                <a
+                  href="https://meet.google.com/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-bold text-[#0755E8] hover:text-[#0645C7] hover:underline flex items-center gap-1 shrink-0"
+                >
+                  <span>Create on Meet</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              {/* Save as default checkbox */}
+              <label className="flex items-center gap-2.5 cursor-pointer pt-1 select-none">
+                <input
+                  type="checkbox"
+                  checked={saveAsDefaultMeet}
+                  onChange={(e) => setSaveAsDefaultMeet(e.target.checked)}
+                  className="w-4 h-4 rounded text-[#0755E8] border-slate-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="text-xs text-slate-600 font-medium">
+                  Save as my default Google Meet link for future candidate bookings
+                </span>
+              </label>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setMeetModalSession(null)}
+                className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMeetLink}
+                disabled={isSavingMeetLink || !isValidGoogleMeetUrl(meetLinkInput)}
+                className="px-4 py-2 bg-[#0755E8] hover:bg-[#0645C7] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-[#0755E8]/20 flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                {isSavingMeetLink ? (
+                  <span>Saving...</span>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save &amp; Notify Candidate</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
