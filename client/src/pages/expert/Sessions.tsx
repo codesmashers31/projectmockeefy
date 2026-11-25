@@ -2022,7 +2022,7 @@ export default function Sessions() {
                         </div>
 
                         {/* Floating Undulating Wave */}
-                        <CardFloatingWave colorClass="text-blue-400/50" heightClass="h-8 sm:h-9" />
+                        <CardFloatingWave colorClass="text-blue-500/70" />
                     </div>
 
                     {/* Card 2: Today's Agenda */}
@@ -2052,7 +2052,7 @@ export default function Sessions() {
                         </div>
 
                         {/* Floating Undulating Wave */}
-                        <CardFloatingWave colorClass="text-emerald-300/40" heightClass="h-8 sm:h-9" />
+                        <CardFloatingWave colorClass="text-emerald-500/70" />
                     </div>
 
                     {/* Card 3: Completed Sessions */}
@@ -2082,7 +2082,7 @@ export default function Sessions() {
                         </div>
 
                         {/* Floating Undulating Wave */}
-                        <CardFloatingWave colorClass="text-purple-400/50" heightClass="h-8 sm:h-9" />
+                        <CardFloatingWave colorClass="text-purple-500/70" />
                     </div>
 
                     {/* Card 4: All Sessions (Fills the 4th column evenly, eliminating right whitespace) */}
@@ -2112,7 +2112,7 @@ export default function Sessions() {
                         </div>
 
                         {/* Floating Undulating Wave */}
-                        <CardFloatingWave colorClass="text-amber-400/50" heightClass="h-8 sm:h-9" />
+                        <CardFloatingWave colorClass="text-amber-500/70" />
                     </div>
                 </div>
 

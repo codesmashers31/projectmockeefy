@@ -71,6 +71,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     education: [] as any[],
     verification: {} as any,
     agreement: {} as any,
+    availability: {} as any,
+    expertSkills: [] as any[],
+    skillsAndExpertise: {} as any,
   });
   const [completion, setCompletion] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -163,6 +166,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
           education: p.education || [],
           verification: p.verification || {},
           agreement: p.agreement || {},
+          availability: p.availability || {},
+          expertSkills: p.expertSkills || [],
+          skillsAndExpertise: p.skillsAndExpertise || {},
         });
         setCompletion(res.data.completion || 0);
         setMissingSections(res.data.missingSections || []);
@@ -236,11 +242,23 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
     isAgreementDone,
   ].filter(Boolean).length;
 
-  const isEligibleForVerification = completion >= 80 && isVerificationDocDone && isAgreementDone;
+  const isApproved = Boolean(
+    user?.isExpertVerified ||
+    user?.expertStatus?.toLowerCase() === "active" ||
+    user?.expertStatus?.toLowerCase() === "approved" ||
+    profile.status?.toLowerCase() === "active" || 
+    profile.status?.toLowerCase() === "approved" ||
+    profile.isVerified
+  );
+  const isUnderReview = !isApproved && Boolean(
+    user?.verificationRequested ||
+    profile.verificationRequested
+  );
+  const isEligibleForVerification = (completion >= 80 || completedModulesCount >= 5) && isVerificationDocDone && isAgreementDone;
 
   const handleRequestVerification = async () => {
-    if (completion < 80) {
-      toast.error(`Please reach at least 80% profile completion before requesting verification (currently ${completion}%).`);
+    if (completion < 80 && completedModulesCount < 5) {
+      toast.error(`Please complete profile modules to reach at least 80% before submitting for admin verification.`);
       return;
     }
     if (!isVerificationDocDone) {
@@ -303,18 +321,11 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
   };
 
   const getStatusConfig = (status: string, isRequested: boolean, isEligible: boolean) => {
-    if (status === "Active") {
+    if (status === "Active" || status === "approved" || isApproved) {
       return {
-        label: "Verified Expert",
+        label: "Approved Mentor",
         icon: ShieldCheck,
         color: "text-emerald-700 bg-emerald-50 border-emerald-200",
-      };
-    }
-    if (status === "approved") {
-      return {
-        label: "Approved",
-        icon: CheckCircle2,
-        color: "text-blue-700 bg-blue-50 border-blue-200",
       };
     }
     if (status === "rejected") {
@@ -324,11 +335,11 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
         color: "text-rose-700 bg-rose-50 border-rose-200",
       };
     }
-    if (isRequested) {
+    if (isRequested || isUnderReview) {
       return {
-        label: "Under Review",
-        icon: completion >= 100 ? CheckCircle2 : Clock,
-        color: completion >= 100 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-blue-700 bg-blue-50 border-blue-200",
+        label: "Waiting for Admin Approval",
+        icon: Clock,
+        color: "text-blue-700 bg-blue-50 border-blue-200",
       };
     }
     if (completion >= 100) {
@@ -346,9 +357,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
       };
     }
     return {
-      label: "In Setup",
+      label: "Mentor In Setup",
       icon: Clock,
-      color: "text-slate-700 bg-slate-100 border-slate-200",
+      color: "text-amber-700 bg-amber-50 border-amber-200",
     };
   };
 
@@ -446,9 +457,9 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate capitalize">
                 {formatDisplayName(profile.name || user?.name || "Expert Mentor")}
               </h1>
-              {profile.status === "Active" && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold text-[#0755E8] bg-blue-50 border border-blue-200/90 shadow-2xs">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#0755E8]" />
+              {isApproved && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/90 shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   MOCKEEFY VERIFIED
                 </span>
               )}
@@ -497,7 +508,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
 
         {/* Verification Status Card - Full width & clean flow, preventing any overlay */}
         <div className="w-full pt-3 border-t border-slate-100 relative z-10">
-          {profile.status === "Active" ? (
+          {isApproved ? (
             <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -505,8 +516,8 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-emerald-950">Verified Expert Status</h3>
-                    <p className="text-[11px] text-emerald-700 font-medium">Credentials Approved &amp; Live</p>
+                    <h3 className="text-sm font-bold text-emerald-950">Approved Mentor Status</h3>
+                    <p className="text-[11px] text-emerald-700 font-medium">Credentials Approved &amp; Live on Platform</p>
                   </div>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
@@ -549,27 +560,68 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 </button>
               </div>
             </div>
+          ) : isUnderReview ? (
+            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-white border border-blue-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-[#0755E8] text-white rounded-xl shadow-xs">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-blue-950">Waiting for Admin Approval</h3>
+                    <p className="text-[11px] font-medium text-blue-700">
+                      Profile 100% Complete • Submitted for Admin Review
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-[#0755E8] border border-blue-200 flex items-center gap-1 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0755E8] animate-pulse" />
+                  Under Review
+                </span>
+              </div>
+
+              <p className="text-xs text-blue-900/80 leading-relaxed font-normal">
+                Your profile credentials and verification documents have been submitted to our administrative team. Once verified, you will receive an approval confirmation email and your public profile will go live immediately.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-blue-900/90 font-medium pt-1">
+                <div className="flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>All 6 Modules Completed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>Aadhaar &amp; Work ID Submitted</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>Service Agreement Executed</span>
+                </div>
+              </div>
+            </div>
           ) : isEligibleForVerification ? (
-            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-white border border-blue-200 rounded-2xl p-5 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-white border border-blue-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-blue-950">Ready for Verification</h3>
+                    <h3 className="text-sm font-bold text-blue-950">Ready for Admin Approval</h3>
                     <p className="text-[11px] font-medium text-blue-700">
-                      {completion}% Completed • Criteria Met
+                      100% Completed • All 6 Modules Active
                     </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
-                  Eligible
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                  Ready to Submit
                 </span>
               </div>
+
               <p className="text-xs text-blue-900/80 leading-relaxed font-normal">
-                You have fulfilled all verification requirements. Submit your credentials to go live on the platform.
+                You have fulfilled all 6 mandatory profile modules and documentation (100% complete). Submit your profile now for admin approval to activate your live mentorship hub.
               </p>
+
               <button
                 onClick={handleRequestVerification}
                 disabled={requesting}
@@ -580,7 +632,7 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                 ) : (
                   <ShieldCheck className="w-4 h-4" />
                 )}
-                {requesting ? "Submitting..." : "Verify Profile Now"}
+                {requesting ? "Submitting for Approval..." : "Submit for Admin Approval"}
               </button>
             </div>
           ) : (
@@ -592,22 +644,34 @@ const ExpertProfileHeader = memo(({ onRefresh, onNavigate }: ExpertProfileHeader
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-slate-900">Verification Criteria</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Need 80% + Mandatory Sections</p>
+                    <p className="text-[11px] text-slate-500 font-medium">Complete all 6 mandatory profile modules (100%)</p>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold text-[#0755E8]">{completion}%</span>
+                <span className="text-xs font-extrabold text-[#0755E8]">{completion}% / 100%</span>
               </div>
               <div className="space-y-1 text-xs">
                 <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-600">Completion Score</span>
-                  <span className={`font-bold ${completion >= 80 ? "text-emerald-600" : "text-slate-500"}`}>
-                    {completion}% / 80%
+                  <span className="text-slate-600">Personal Information</span>
+                  <span className={`font-bold ${isPersonalDone ? "text-emerald-600" : "text-amber-600"}`}>
+                    {isPersonalDone ? "✓ Done" : "Required"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-600">Verification Docs</span>
+                  <span className="text-slate-600">Category &amp; Pricing Tier</span>
+                  <span className={`font-bold ${isCategoryDone ? "text-emerald-600" : "text-amber-600"}`}>
+                    {isCategoryDone ? "✓ Done" : "Required"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                  <span className="text-slate-600">Education &amp; Experience</span>
+                  <span className={`font-bold ${isEducationDone && isExperienceDone ? "text-emerald-600" : "text-amber-600"}`}>
+                    {isEducationDone && isExperienceDone ? "✓ Done" : "Required"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+                  <span className="text-slate-600">Verification Documents (Aadhaar &amp; Work ID)</span>
                   <span className={`font-bold ${isVerificationDocDone ? "text-emerald-600" : "text-rose-600"}`}>
-                    {isVerificationDocDone ? "✓ Done" : "Required"}
+                    {isVerificationDocDone ? "✓ Uploaded" : "Required"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1">

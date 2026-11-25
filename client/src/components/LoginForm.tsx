@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import AuthLayout from "./auth/AuthLayout";
 import { GoogleAuthButton } from "./auth/GoogleAuthButton";
 import MockeefyLogo from "./MockeefyLogo";
+import { getPendingBooking } from "../lib/pendingBooking";
 
 export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +19,8 @@ export const LoginForm = () => {
   const searchParams = new URLSearchParams(location.search);
   const queryReturnUrl = searchParams.get("returnUrl") || searchParams.get("redirect") || (location.state as any)?.returnUrl;
   const safeReturnUrl = queryReturnUrl && queryReturnUrl.startsWith("/") && !queryReturnUrl.startsWith("//") ? queryReturnUrl : null;
+  const pendingBooking = getPendingBooking();
+  const effectiveReturnUrl = safeReturnUrl || (pendingBooking ? (pendingBooking.sourceUrl || `/?resumeBooking=true&expertId=${pendingBooking.expertId}`) : null);
   const from = (location.state as any)?.from?.pathname ? (location.state as any).from : null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,13 +48,13 @@ export const LoginForm = () => {
         return;
       }
       const role = finalUser.userType?.toLowerCase();
-      if (safeReturnUrl) {
-        if (role === "expert" && safeReturnUrl === "/my-sessions") {
+      if (effectiveReturnUrl) {
+        if (role === "expert" && effectiveReturnUrl === "/my-sessions") {
           navigate("/dashboard/sessions", { replace: true });
-        } else if (role !== "expert" && safeReturnUrl.startsWith("/dashboard")) {
+        } else if (role !== "expert" && effectiveReturnUrl.startsWith("/dashboard")) {
           navigate("/my-sessions", { replace: true });
         } else {
-          navigate(safeReturnUrl, { replace: true });
+          navigate(effectiveReturnUrl, { replace: true });
         }
       } else if (from?.pathname) {
         navigate(from.pathname + (from.search || ""), { replace: true });
@@ -79,13 +82,13 @@ export const LoginForm = () => {
 
       if (isExisting && user) {
         const role = (user.userType || user.role)?.toLowerCase();
-        if (safeReturnUrl) {
-          if (role === "expert" && safeReturnUrl === "/my-sessions") {
+        if (effectiveReturnUrl) {
+          if (role === "expert" && effectiveReturnUrl === "/my-sessions") {
             navigate("/dashboard/sessions", { replace: true });
-          } else if (role !== "expert" && safeReturnUrl.startsWith("/dashboard")) {
+          } else if (role !== "expert" && effectiveReturnUrl.startsWith("/dashboard")) {
             navigate("/my-sessions", { replace: true });
           } else {
-            navigate(safeReturnUrl, { replace: true });
+            navigate(effectiveReturnUrl, { replace: true });
           }
         } else if (from?.pathname) {
           navigate(from.pathname + (from.search || ""), { replace: true });
@@ -112,6 +115,7 @@ export const LoginForm = () => {
             googleId,
             userType,
             isExisting: false,
+            returnUrl: effectiveReturnUrl,
           },
           replace: true,
         });
@@ -143,7 +147,7 @@ export const LoginForm = () => {
                 Account not found. Please click{" "}
                 <button
                   type="button"
-                  onClick={() => navigate("/register")}
+                  onClick={() => navigate("/signup" + location.search, { state: location.state })}
                   className="underline font-bold text-red-800 hover:text-red-900"
                 >
                   Create Account
@@ -237,7 +241,7 @@ export const LoginForm = () => {
 
         <p className="text-center text-sm text-slate-500 mt-6">
           Don't have an account?{" "}
-          <Link to="/signup" className="font-semibold text-[#0755E8] hover:text-[#0645C7] hover:underline">
+          <Link to={"/signup" + location.search} state={location.state} className="font-semibold text-[#0755E8] hover:text-[#0645C7] hover:underline">
             Create account
           </Link>
         </p>

@@ -136,6 +136,9 @@ export default function DashboardIndex() {
     revenue: 0,
     rating: 0,
     completionRate: 100,
+    status: "",
+    verificationRequested: false,
+    isVerified: false,
   });
   const [allSessions, setAllSessions] = useState<any[]>([]);
   const SESSIONS_PER_PAGE = 4;
@@ -161,6 +164,9 @@ export default function DashboardIndex() {
           revenue: s.revenue ?? 0,
           rating: s.rating ?? 0,
           completionRate: s.completionRate ?? 100,
+          status: s.status || "pending",
+          verificationRequested: Boolean(s.verificationRequested),
+          isVerified: Boolean(s.isVerified),
         }));
       }
 
@@ -171,7 +177,7 @@ export default function DashboardIndex() {
         const missing = profileRes.value.data.missingSections || [];
         setProfileCompletion(comp);
         setMissingSections(missing);
-        const currentStatus = p.status || localStorage.getItem("profile_status") || "pending";
+        const currentStatus = p.status || "pending";
         setProfileStatus(currentStatus);
         setIsProfileComplete(
           comp !== null
@@ -196,7 +202,7 @@ export default function DashboardIndex() {
   }, [user, fetchData]);
 
   // Real-time synchronization
-  useDataSync(["WALLET_UPDATED", "SESSION_UPDATED", "SESSION_CREATED", "RECONNECTED"], () => {
+  useDataSync(["WALLET_UPDATED", "SESSION_UPDATED", "SESSION_CREATED", "STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "RECONNECTED"], () => {
     if (user) fetchData();
   });
 
@@ -234,16 +240,30 @@ export default function DashboardIndex() {
     (s) => s !== "Availability" && s !== "Profile Photo"
   );
 
+  const isExpertApproved = Boolean(
+    user?.isExpertVerified ||
+    user?.expertStatus?.toLowerCase() === "active" ||
+    user?.expertStatus?.toLowerCase() === "approved" ||
+    profileStatus?.toLowerCase() === "approved" ||
+    profileStatus?.toLowerCase() === "active" ||
+    profileStatus?.toLowerCase() === "verified" ||
+    stats.isVerified ||
+    stats.status?.toLowerCase() === "active" ||
+    stats.status?.toLowerCase() === "approved" ||
+    expertProfile?.status?.toLowerCase() === "active" ||
+    expertProfile?.status?.toLowerCase() === "approved" ||
+    expertProfile?.isVerified
+  );
+
+  const isUnderReview = !isExpertApproved && Boolean(
+    user?.verificationRequested ||
+    expertProfile?.verificationRequested ||
+    stats.verificationRequested
+  );
+
   const isProfileFullyComplete = Boolean(
-    profileStatus === "approved" ||
-    profileStatus === "active" ||
-    profileStatus === "verified" ||
-    localStorage.getItem("profile_status") === "approved" ||
-    localStorage.getItem("profile_status") === "active" ||
-    (profileCompletion !== null && profileCompletion >= 80 && profilePageMissing.length === 0) ||
-    (profileCompletion !== null && profileCompletion >= 85) ||
-    (profileCompletion !== null && profileCompletion >= 100) ||
-    (profileCompletion !== null && profilePageMissing.length === 0) ||
+    isExpertApproved ||
+    (profileCompletion !== null && profileCompletion >= 100 && profilePageMissing.length === 0) ||
     stats.totalSessions > 0 ||
     stats.upcomingSessions > 0
   );
@@ -293,12 +313,14 @@ export default function DashboardIndex() {
                     Accepting Bookings
                   </span>
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full shadow-2xs text-[10px] font-bold shrink-0 border ${
-                    Boolean(user?.isExpertVerified || expertProfile?.status === "Active" || expertProfile?.status === "approved")
+                    isExpertApproved
+                      ? "bg-emerald-50 border-emerald-200/90 text-emerald-700"
+                      : isUnderReview
                       ? "bg-blue-50 border-blue-200/90 text-[#0755E8]"
                       : "bg-amber-50 border-amber-200/90 text-amber-700"
                   }`}>
-                    <ShieldCheck className={`w-3 h-3 ${Boolean(user?.isExpertVerified || expertProfile?.status === "Active" || expertProfile?.status === "approved") ? "text-[#0755E8]" : "text-amber-600"}`} />
-                    {Boolean(user?.isExpertVerified || expertProfile?.status === "Active" || expertProfile?.status === "approved") ? "Verified Mentor" : "Mentor In Setup"}
+                    <ShieldCheck className={`w-3 h-3 ${isExpertApproved ? "text-emerald-600" : isUnderReview ? "text-[#0755E8]" : "text-amber-600"}`} />
+                    {isExpertApproved ? "Approved Mentor" : isUnderReview ? "Waiting for Admin Approval" : "Mentor In Setup"}
                   </span>
                 </div>
 
@@ -359,8 +381,37 @@ export default function DashboardIndex() {
           </div>
         </div>
 
-        {/* Incomplete Profile Alert (if applicable) */}
-        {!isProfileFullyComplete && (
+        {/* Under Review or Incomplete Profile Alert */}
+        {isUnderReview ? (
+          <div className="bg-gradient-to-r from-blue-50/95 via-indigo-50/50 to-blue-50/40 border border-blue-200/90 rounded-2xl p-4 sm:px-5 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/25">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm font-bold text-blue-950">
+                    Profile Submitted • Waiting for Admin Approval
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                    Under Review
+                  </span>
+                </div>
+                <p className="text-xs sm:text-[13px] text-blue-800/80 leading-snug">
+                  Your profile is 100% complete and undergoing admin verification. You will receive an email notification as soon as your account is approved.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate("/dashboard/profile")}
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-white hover:bg-blue-50/80 text-[#0755E8] border border-blue-200 text-xs font-bold rounded-xl transition-all duration-200 shadow-2xs cursor-pointer whitespace-nowrap self-start md:self-center group"
+            >
+              View Profile Status
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        ) : !isProfileFullyComplete ? (
           <div className="bg-gradient-to-r from-amber-50/90 via-rose-50/40 to-white border border-amber-200/90 rounded-2xl p-4 sm:px-5 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
             <div className="flex items-start sm:items-center gap-3.5 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/25">
@@ -389,7 +440,7 @@ export default function DashboardIndex() {
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
-        )}
+        ) : null}
 
         {/* 3. OPTION 4: KPI CARDS (MODERN LOOK) WITH FLOATING WAVE DESIGN */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
@@ -444,7 +495,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-blue-300/50" />
+              <CardFloatingWave colorClass="text-blue-500/70" />
             </div>
 
             {/* Card 2: Upcoming Sessions (Soft Emerald / Mint) */}
@@ -476,7 +527,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-emerald-300/40" />
+              <CardFloatingWave colorClass="text-emerald-500/70" />
             </div>
 
             {/* Card 3: Wallet Balance (Amber) */}
@@ -508,7 +559,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-amber-300/50" />
+              <CardFloatingWave colorClass="text-amber-500/70" />
             </div>
 
             {/* Card 4: Total Earnings (Rose) */}
@@ -540,7 +591,7 @@ export default function DashboardIndex() {
                 </p>
               </div>
 
-              <CardFloatingWave colorClass="text-rose-300/50" />
+              <CardFloatingWave colorClass="text-rose-500/70" />
             </div>
           </div>
 

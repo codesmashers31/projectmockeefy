@@ -1,0 +1,156 @@
+[
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/",
+    "role": "public",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/browse",
+    "role": "public",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/pricing",
+    "role": "public",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/how-it-works",
+    "role": "public",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/signin",
+    "role": "public",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/candidate/dashboard",
+    "role": "candidate",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Small (360px)",
+    "width": 360,
+    "height": 740,
+    "route": "/expert/dashboard",
+    "role": "expert",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/",
+    "role": "public",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/browse",
+    "role": "public",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/pricing",
+    "role": "public",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/how-it-works",
+    "role": "public",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/signin",
+    "role": "public",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/candidate/dashboard",
+    "role": "candidate",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  },
+  {
+    "viewport": "Mobile Large (430px)",
+    "width": 430,
+    "height": 932,
+    "route": "/expert/dashboard",
+    "role": "expert",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "hasHorizontalOverflow": false,
+    "status": "PASS"
+  }
+]

@@ -12,6 +12,7 @@ import {
   Sparkles,
   Wallet,
   Video,
+  Lock,
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
@@ -39,9 +40,61 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
     upcomingSessions: 0,
     walletBalance: 0,
     isVerified: false,
+    verificationRequested: false,
     status: "pending",
   });
   const [upcomingSession, setUpcomingSession] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+
+  // Real-time ticker to auto-unlock session button exactly 15 minutes before meeting start
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 10000);
+    return () => clearInterval(ticker);
+  }, []);
+
+  const isSessionJoinable = (session: any, nowMs: number) => {
+    if (!session || !session.startTime) return false;
+    const st = (session.status || "").toLowerCase();
+    if (["completed", "cancelled", "no-show", "candidate_no_show", "no_show", "candidate_absent"].includes(st)) {
+      return false;
+    }
+    const startMs = new Date(session.startTime).getTime();
+    if (isNaN(startMs)) return false;
+
+    const endMs = session.endTime
+      ? new Date(session.endTime).getTime()
+      : startMs + (session.duration || 60) * 60 * 1000;
+
+    const openFromMs = startMs - 15 * 60 * 1000;
+    return nowMs >= openFromMs && nowMs <= endMs;
+  };
+
+  const getSessionOpenTimeLabel = (session: any) => {
+    if (!session?.startTime) return "";
+    const startMs = new Date(session.startTime).getTime();
+    if (isNaN(startMs)) return "";
+    const openDate = new Date(startMs - 15 * 60 * 1000);
+    const now = new Date();
+    const isToday =
+      openDate.getDate() === now.getDate() &&
+      openDate.getMonth() === now.getMonth() &&
+      openDate.getFullYear() === now.getFullYear();
+
+    const timeStr = openDate.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    if (isToday) return timeStr;
+    const dateStr = openDate.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      month: "short",
+      day: "numeric",
+    });
+    return `${dateStr}, ${timeStr}`;
+  };
 
   // Fetch expert stats & upcoming sessions for sidebar live badges and widgets
   const fetchSidebarData = useCallback(async () => {
@@ -59,6 +112,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
           upcomingSessions: s.upcomingSessions ?? 0,
           walletBalance: s.walletBalance ?? 0,
           isVerified: Boolean(s.isVerified),
+          verificationRequested: Boolean(s.verificationRequested),
           status: s.status || "pending",
         });
       }
@@ -83,7 +137,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
   }, [fetchSidebarData, location.pathname]);
 
   // Live real-time sync across sockets
-  useDataSync(["WALLET_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "RECONNECTED"], () => {
+  useDataSync(["WALLET_UPDATED", "SESSION_CREATED", "SESSION_UPDATED", "STATUS_UPDATED", "EXPERT_STATUS_UPDATED", "RECONNECTED"], () => {
     fetchSidebarData();
   });
 
@@ -100,7 +154,37 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
     return `₹${rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
 
-  const isExpertVerified = Boolean(user?.isExpertVerified || sidebarStats.isVerified);
+  const isExpertApproved = Boolean(
+    user?.isExpertVerified || 
+    user?.expertStatus?.toLowerCase() === "active" ||
+    user?.expertStatus?.toLowerCase() === "approved" ||
+    sidebarStats.isVerified || 
+    sidebarStats.status?.toLowerCase() === "active" || 
+    sidebarStats.status?.toLowerCase() === "approved"
+  );
+
+  const isUnderReview = !isExpertApproved && Boolean(
+    user?.verificationRequested ||
+    sidebarStats.verificationRequested
+  );
+
+  const profileBadge = isExpertApproved
+    ? "Approved"
+    : isUnderReview
+    ? "Under Review"
+    : "In Setup";
+
+  const profileBadgeClass = isExpertApproved
+    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold"
+    : isUnderReview
+    ? "bg-blue-50 text-[#0755E8] border border-blue-200/80 font-bold"
+    : "bg-amber-50 text-amber-700 border border-amber-200/80 font-bold";
+
+  const expertMentorStatusLabel = isExpertApproved
+    ? "Approved Mentor"
+    : isUnderReview
+    ? "Waiting for Admin Approval"
+    : "Mentor In Setup";
 
   const navItems = [
     {
@@ -114,10 +198,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
       icon: User,
       label: "Profile",
       to: "/dashboard/profile",
-      badge: isExpertVerified ? "Verified" : "In Setup",
-      badgeClass: isExpertVerified
-        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
-        : "bg-amber-50 text-amber-700 border border-amber-200/80",
+      badge: profileBadge,
+      badgeClass: profileBadgeClass,
     },
     {
       id: "availability",
@@ -156,12 +238,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
       {/* ========================================================================= */}
       <aside
         aria-label="Expert Sidebar Navigation"
-        className={`hidden lg:block sidebar-main-card relative w-[235px] shrink-0 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3 space-y-3 overflow-hidden font-sans text-left shadow-xs sticky top-[80px] self-start ${className}`}
+        className={`hidden lg:block sidebar-nav-card relative w-[240px] shrink-0 rounded-2xl p-3 space-y-3 overflow-hidden font-sans text-left shadow-xs sticky top-[80px] self-start ${className}`}
       >
-        {/* Decorative ambient blue lighting matching user sidebar */}
-        <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-300/35 via-indigo-200/25 to-transparent blur-2xl pointer-events-none" />
-        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-blue-200/25 to-transparent pointer-events-none" />
-
         <div className="relative z-10 space-y-3">
           {/* Primary Navigation Links */}
           <div className="space-y-0.5">
@@ -267,13 +345,47 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                 </div>
               </div>
 
-              <button
-                onClick={() => navigate(`/live-meeting?meetingId=${upcomingSession.sessionId || upcomingSession._id}`)}
-                className="w-full py-1.5 bg-[#00875A] hover:bg-[#00734D] text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Video size={12} />
-                <span>Join Session</span>
-              </button>
+              {(() => {
+                const isJoinable = isSessionJoinable(upcomingSession, currentTime);
+                const openTimeStr = getSessionOpenTimeLabel(upcomingSession);
+
+                return (
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      disabled={!isJoinable}
+                      onClick={() => {
+                        if (isJoinable) {
+                          navigate(`/live-meeting?meetingId=${upcomingSession.sessionId || upcomingSession._id}`);
+                        }
+                      }}
+                      className={`w-full py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 ${
+                        isJoinable
+                          ? "bg-[#00875A] hover:bg-[#00734D] text-white cursor-pointer"
+                          : "bg-slate-200/90 text-slate-400 border border-slate-300/80 cursor-not-allowed select-none"
+                      }`}
+                      title={
+                        isJoinable
+                          ? "Click to join live meeting"
+                          : `Session opens 15 mins before start (${openTimeStr})`
+                      }
+                    >
+                      {isJoinable ? (
+                        <Video size={12} />
+                      ) : (
+                        <Lock size={11} className="text-slate-400" />
+                      )}
+                      <span>Join Session</span>
+                    </button>
+
+                    {!isJoinable && (
+                      <p className="text-[9.5px] text-[#065F46]/80 text-center font-semibold leading-tight">
+                        Opens 15 mins before ({openTimeStr})
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-blue-50/60 border border-blue-200/80 rounded-xl p-3 shadow-2xs space-y-2">
@@ -322,8 +434,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                     {formatDisplayName(user?.name || "Expert Mentor")}
                   </p>
                   <p className="text-[9.5px] text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
-                    <ShieldCheck className={`w-3 h-3 ${isExpertVerified ? "text-emerald-600" : "text-amber-500"}`} />
-                    {isExpertVerified ? "Verified Mentor" : "Mentor In Setup"}
+                    <ShieldCheck className={`w-3 h-3 ${isExpertApproved ? "text-emerald-600" : isUnderReview ? "text-[#0755E8]" : "text-amber-500"}`} />
+                    {expertMentorStatusLabel}
                   </p>
                 </div>
               </div>
@@ -360,7 +472,7 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
             isOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="sidebar-main-card relative h-full w-full rounded-[24px] border border-slate-200/90 bg-gradient-to-b from-[#EBF3FF] via-white to-white p-3.5 space-y-3.5 overflow-y-auto font-sans shadow-2xl flex flex-col justify-between">
+          <div className="sidebar-nav-card relative h-full w-full rounded-[24px] p-3.5 space-y-3.5 overflow-y-auto font-sans shadow-2xl flex flex-col justify-between">
             <div>
               {/* Mobile Header with Logo & Close button */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 mb-3">
@@ -491,16 +603,48 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        if (onClose) onClose();
-                        navigate(`/live-meeting?meetingId=${upcomingSession.sessionId || upcomingSession._id}`);
-                      }}
-                      className="w-full py-1.5 bg-[#00875A] hover:bg-[#00734D] text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Video size={13} />
-                      <span>Join Session</span>
-                    </button>
+                    {(() => {
+                      const isJoinable = isSessionJoinable(upcomingSession, currentTime);
+                      const openTimeStr = getSessionOpenTimeLabel(upcomingSession);
+
+                      return (
+                        <div className="space-y-1">
+                          <button
+                            type="button"
+                            disabled={!isJoinable}
+                            onClick={() => {
+                              if (isJoinable) {
+                                if (onClose) onClose();
+                                navigate(`/live-meeting?meetingId=${upcomingSession.sessionId || upcomingSession._id}`);
+                              }
+                            }}
+                            className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 ${
+                              isJoinable
+                                ? "bg-[#00875A] hover:bg-[#00734D] text-white cursor-pointer"
+                                : "bg-slate-200/90 text-slate-400 border border-slate-300/80 cursor-not-allowed select-none"
+                            }`}
+                            title={
+                              isJoinable
+                                ? "Click to join live meeting"
+                                : `Session opens 15 mins before start (${openTimeStr})`
+                            }
+                          >
+                            {isJoinable ? (
+                              <Video size={13} />
+                            ) : (
+                              <Lock size={12} className="text-slate-400" />
+                            )}
+                            <span>Join Session</span>
+                          </button>
+
+                          {!isJoinable && (
+                            <p className="text-[10px] text-[#065F46]/80 text-center font-semibold leading-tight">
+                              Opens 15 mins before ({openTimeStr})
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-blue-50/60 border border-blue-200/80 rounded-2xl p-3 shadow-2xs space-y-2">
@@ -562,8 +706,8 @@ export default function SideNav({ isOpen = false, onClose, className = "" }: Sid
                       {formatDisplayName(user?.name || "Expert Mentor")}
                     </p>
                     <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
-                      <ShieldCheck className={`w-3 h-3 ${isExpertVerified ? "text-emerald-600" : "text-amber-500"}`} />
-                      {isExpertVerified ? "Verified Mentor" : "Mentor In Setup"}
+                      <ShieldCheck className={`w-3 h-3 ${isExpertApproved ? "text-emerald-600" : isUnderReview ? "text-[#0755E8]" : "text-amber-500"}`} />
+                      {expertMentorStatusLabel}
                     </p>
                   </div>
                 </div>

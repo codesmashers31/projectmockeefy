@@ -1,0 +1,261 @@
+[
+  {
+    "id": "ROUTE_PUBLIC_Home",
+    "desc": "Loaded /",
+    "verdict": "PASS",
+    "details": "Length: 0 chars, Title: \"Mockeefy - Practice Interviews\"",
+    "timestamp": "2026-11-16T10:22:03.750Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_FindMentor",
+    "desc": "Loaded /find-mentor",
+    "verdict": "PASS",
+    "details": "Length: 24237 chars, Title: \"Mockeefy - Practice Interviews\"",
+    "timestamp": "2026-11-16T10:22:05.384Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_SignIn",
+    "desc": "Loaded /signin",
+    "verdict": "PASS",
+    "details": "Length: 175 chars, Title: \"Sign In - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:06.942Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_SignUp",
+    "desc": "Loaded /signup",
+    "verdict": "PASS",
+    "details": "Length: 184 chars, Title: \"Sign Up - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:08.504Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_ForgotPassword",
+    "desc": "Loaded /forgot-password",
+    "verdict": "PASS",
+    "details": "Length: 151 chars, Title: \"Reset Password - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:10.068Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_Terms",
+    "desc": "Loaded /terms",
+    "verdict": "PASS",
+    "details": "Length: 7099 chars, Title: \"Terms & Conditions - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:11.666Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_Privacy",
+    "desc": "Loaded /privacy",
+    "verdict": "PASS",
+    "details": "Length: 10655 chars, Title: \"Privacy Policy - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:13.259Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_RefundPolicy",
+    "desc": "Loaded /refund-cancellation",
+    "verdict": "PASS",
+    "details": "Length: 2918 chars, Title: \"Refund & Cancellation - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:14.848Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_SubscriptionPlans",
+    "desc": "Loaded /plans",
+    "verdict": "PASS",
+    "details": "Length: 2324 chars, Title: \"Subscription Plans - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:16.439Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_WatchMock",
+    "desc": "Loaded /watch-mock",
+    "verdict": "PASS",
+    "details": "Length: 175 chars, Title: \"Sign In - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:17.990Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_Tips",
+    "desc": "Loaded /tips",
+    "verdict": "PASS",
+    "details": "Length: 175 chars, Title: \"Sign In - Mockeefy\"",
+    "timestamp": "2026-11-16T10:22:19.561Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_DemoBooking",
+    "desc": "Loaded /demo/booking",
+    "verdict": "PASS",
+    "details": "Length: 1152 chars, Title: \"Mockeefy - Practice Interviews\"",
+    "timestamp": "2026-11-16T10:22:21.124Z"
+  },
+  {
+    "id": "ROUTE_PUBLIC_NotFound404",
+    "desc": "Loaded /non-existent-404-check",
+    "verdict": "PASS",
+    "details": "Length: 41 chars, Title: \"Mockeefy - Practice Interviews\"",
+    "timestamp": "2026-11-16T10:22:22.677Z"
+  },
+  {
+    "id": "CTRL_FIND_MENTOR_SEARCH",
+    "desc": "Typed search \"Staff\" and observed dynamic filter",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:22:25.798Z"
+  },
+  {
+    "id": "CTRL_SORT_DROPDOWN",
+    "desc": "Opened sort dropdown menu",
+    "verdict": "PASS",
+    "details": "Listbox detected: true",
+    "timestamp": "2026-11-16T10:22:26.731Z"
+  },
+  {
+    "id": "CTRL_SIGNIN_VALIDATION",
+    "desc": "Submitted empty form and verified required field triggers",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:22:29.189Z"
+  },
+  {
+    "id": "CANDIDATE_ROUTE_MySessions",
+    "desc": "Navigated to /my-sessions as Candidate",
+    "verdict": "PASS",
+    "details": "Content length: 2663",
+    "timestamp": "2026-11-16T10:22:32.355Z"
+  },
+  {
+    "id": "CANDIDATE_ROUTE_Wallet",
+    "desc": "Navigated to /wallet as Candidate",
+    "verdict": "PASS",
+    "details": "Content length: 2676",
+    "timestamp": "2026-11-16T10:22:34.458Z"
+  },
+  {
+    "id": "CANDIDATE_ROUTE_Profile",
+    "desc": "Navigated to /profile as Candidate",
+    "verdict": "PASS",
+    "details": "Content length: 2290",
+    "timestamp": "2026-11-16T10:22:36.559Z"
+  },
+  {
+    "id": "CANDIDATE_ROUTE_Certificates",
+    "desc": "Navigated to /certificates as Candidate",
+    "verdict": "PASS",
+    "details": "Content length: 3576",
+    "timestamp": "2026-11-16T10:22:38.698Z"
+  },
+  {
+    "id": "CANDIDATE_ROUTE_Notifications",
+    "desc": "Navigated to /notifications as Candidate",
+    "verdict": "PASS",
+    "details": "Content length: 4337",
+    "timestamp": "2026-11-16T10:22:40.787Z"
+  },
+  {
+    "id": "EXPERT_ROUTE_Dashboard",
+    "desc": "Navigated to /dashboard as Expert",
+    "verdict": "PASS",
+    "details": "Content length: 175",
+    "timestamp": "2026-11-16T10:22:42.838Z"
+  },
+  {
+    "id": "EXPERT_ROUTE_Sessions",
+    "desc": "Navigated to /dashboard/sessions as Expert",
+    "verdict": "PASS",
+    "details": "Content length: 175",
+    "timestamp": "2026-11-16T10:22:44.891Z"
+  },
+  {
+    "id": "EXPERT_ROUTE_Availability",
+    "desc": "Navigated to /dashboard/availability as Expert",
+    "verdict": "PASS",
+    "details": "Content length: 175",
+    "timestamp": "2026-11-16T10:22:46.949Z"
+  },
+  {
+    "id": "EXPERT_ROUTE_Withdraw",
+    "desc": "Navigated to /dashboard/withdraw as Expert",
+    "verdict": "PASS",
+    "details": "Content length: 175",
+    "timestamp": "2026-11-16T10:22:49.001Z"
+  },
+  {
+    "id": "EXPERT_ROUTE_Skills",
+    "desc": "Navigated to /dashboard/skills as Expert",
+    "verdict": "PASS",
+    "details": "Content length: 175",
+    "timestamp": "2026-11-16T10:22:51.051Z"
+  },
+  {
+    "id": "ADMIN_ROUTE_Overview",
+    "desc": "Navigated to /admin as Admin",
+    "verdict": "PASS",
+    "details": "Content length: 24265",
+    "timestamp": "2026-11-16T10:22:53.168Z"
+  },
+  {
+    "id": "ADMIN_ROUTE_Sessions",
+    "desc": "Navigated to /admin/sessions as Admin",
+    "verdict": "PASS",
+    "details": "Content length: 24265",
+    "timestamp": "2026-11-16T10:22:55.289Z"
+  },
+  {
+    "id": "ADMIN_ROUTE_Categories",
+    "desc": "Navigated to /admin/categories as Admin",
+    "verdict": "PASS",
+    "details": "Content length: 24265",
+    "timestamp": "2026-11-16T10:22:57.454Z"
+  },
+  {
+    "id": "ADMIN_ROUTE_Pricing",
+    "desc": "Navigated to /admin/pricing as Admin",
+    "verdict": "PASS",
+    "details": "Content length: 24265",
+    "timestamp": "2026-11-16T10:22:59.601Z"
+  },
+  {
+    "id": "ADMIN_ROUTE_Payouts",
+    "desc": "Navigated to /admin/payouts as Admin",
+    "verdict": "PASS",
+    "details": "Content length: 24265",
+    "timestamp": "2026-11-16T10:23:01.739Z"
+  },
+  {
+    "id": "VIEWPORT_DESKTOP",
+    "desc": "Rendered at 1280x900",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:23:03.546Z"
+  },
+  {
+    "id": "VIEWPORT_TABLET",
+    "desc": "Rendered at 768x1024",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:23:05.366Z"
+  },
+  {
+    "id": "VIEWPORT_MOBILE_SMALL",
+    "desc": "Rendered at 375x667",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:23:07.631Z"
+  },
+  {
+    "id": "VIEWPORT_MOBILE_LARGE",
+    "desc": "Rendered at 390x844",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:23:09.257Z"
+  },
+  {
+    "id": "DB_INTEGRITY_CLEANUP",
+    "desc": "Confirmed zero Integrity records across all collections",
+    "verdict": "PASS",
+    "details": "",
+    "timestamp": "2026-11-16T10:23:09.783Z"
+  },
+  {
+    "id": "CONSOLE_ERROR_CHECK",
+    "desc": "Evaluated live browser console error output",
+    "verdict": "WARN",
+    "details": "Errors: 3",
+    "timestamp": "2026-11-16T10:23:09.785Z"
+  }
+]

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import ExpertProfileHeader from "../../components/ExpertProfileHeader";
 import PersonalInfo from "../../components/PersonalInfo";
 import ExpertEducation from "../../components/ExpertEducation";
@@ -23,6 +23,7 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
+  Clock,
 } from "lucide-react";
 
 // Define the tabs with icons and identifiers
@@ -38,6 +39,7 @@ const TABS = [
 
 export default function ProfilePage() {
   const { user, isLoading: isAuthLoading } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabQuery = searchParams.get("tab");
@@ -60,7 +62,39 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<any>(null);
   const [completion, setCompletion] = useState<number>(0);
   const [missingSections, setMissingSections] = useState<string[]>([]);
+  const [bonusBreakdown, setBonusBreakdown] = useState<any>(null);
   const hasLoadedRef = useRef(false);
+
+  const hasAvailability = Boolean(
+    bonusBreakdown?.availability?.completed ?? (
+      profileData?.availability?.weekly &&
+      Object.values(profileData.availability.weekly).some((arr: any) => Array.isArray(arr) && arr.length > 0)
+    )
+  );
+
+  const hasSkills = Boolean(
+    bonusBreakdown?.skills?.completed ?? (
+      (Array.isArray(profileData?.expertSkills) && profileData.expertSkills.length > 0) ||
+      (Array.isArray(profileData?.skillsAndExpertise?.tools) && profileData.skillsAndExpertise.tools.length > 0) ||
+      (Array.isArray(profileData?.skillsAndExpertise?.domains) && profileData.skillsAndExpertise.domains.length > 0)
+    )
+  );
+
+  const isApproved = Boolean(
+    user?.isExpertVerified ||
+    user?.expertStatus?.toLowerCase() === "active" ||
+    user?.expertStatus?.toLowerCase() === "approved" ||
+    status === "Active" ||
+    status === "approved" ||
+    profileData?.isVerified ||
+    profileData?.status?.toLowerCase() === "active" ||
+    profileData?.status?.toLowerCase() === "approved"
+  );
+
+  const isUnderReview = !isApproved && Boolean(
+    user?.verificationRequested ||
+    profileData?.verificationRequested
+  );
 
   // Derived state to check if a specific section is missing
   const isSectionMissing = (tabId: string) => {
@@ -128,6 +162,10 @@ export default function ProfilePage() {
     return isSectionMissing(tabId);
   };
 
+  const completedModulesCount = TABS.filter(
+    (t) => t.id !== "overview" && !isTabIncomplete(t.id)
+  ).length;
+
   const fetchProfileData = useCallback(async () => {
     if (!user) return;
 
@@ -143,13 +181,11 @@ export default function ProfilePage() {
         setProfileData(p);
         setCompletion(res.data.completion || 0);
         setMissingSections(res.data.missingSections || []);
-        localStorage.setItem('profile_status', newStatus);
+        setBonusBreakdown(res.data.bonusBreakdown || null);
         hasLoadedRef.current = true;
       }
     } catch (err) {
       console.error("Failed to fetch profile", err);
-      const cached = localStorage.getItem('profile_status');
-      if (cached) setStatus(cached);
     } finally {
       setLoading(false);
     }
@@ -167,6 +203,7 @@ export default function ProfilePage() {
       "PROFILE_UPDATED",
       "PERSONAL_INFO_UPDATED",
       "STATUS_UPDATED",
+      "EXPERT_STATUS_UPDATED",
       "VERIFICATION_UPDATED",
       "EDUCATION_UPDATED",
       "EXPERIENCE_UPDATED",
@@ -176,9 +213,8 @@ export default function ProfilePage() {
       "RECONNECTED",
     ],
     (payload) => {
-      if (payload.type === "STATUS_UPDATED" && payload.data?.status) {
+      if ((payload.type === "STATUS_UPDATED" || payload.type === "EXPERT_STATUS_UPDATED") && payload.data?.status) {
         setStatus(payload.data.status);
-        localStorage.setItem("profile_status", payload.data.status);
       }
       fetchProfileData();
     }
@@ -231,9 +267,15 @@ export default function ProfilePage() {
             <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
               Expert Profile &amp; Mentorship Hub
             </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-[11px] font-bold shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {status === "Active" ? "Verified Mentor" : `${completion}% Complete`}
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-2xs border ${
+              isApproved
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200/90"
+                : isUnderReview
+                ? "bg-blue-50 text-[#0755E8] border-blue-200/90"
+                : "bg-amber-50 text-amber-700 border-amber-200/90"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isApproved ? "bg-emerald-500 animate-pulse" : isUnderReview ? "bg-blue-500 animate-pulse" : "bg-amber-500"}`} />
+              {isApproved ? "Approved Mentor" : isUnderReview ? "Waiting for Admin Approval" : `${completion}% Complete`}
             </span>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -307,14 +349,14 @@ export default function ProfilePage() {
 
           {/* Bottom Mentor Status Card */}
           <div className="pt-3 border-t border-slate-100">
-            {status === "Active" ? (
+            {isApproved ? (
               <div className="bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/90 rounded-2xl p-3.5 space-y-2">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-emerald-950 truncate">Verified Mentor</p>
+                    <p className="text-xs font-bold text-emerald-950 truncate">Approved Mentor</p>
                     <p className="text-[11px] text-emerald-700 font-medium">100% Discoverable</p>
                   </div>
                 </div>
@@ -323,21 +365,106 @@ export default function ProfilePage() {
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
               </div>
+            ) : isUnderReview ? (
+              <div className="bg-gradient-to-br from-blue-50/90 to-indigo-50/50 border border-blue-200/90 rounded-2xl p-3.5 space-y-2 text-left">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#0755E8] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-blue-950 truncate">Under Admin Review</p>
+                    <p className="text-[11px] text-[#0755E8] font-medium">100% Profile Complete</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-blue-200/60 font-semibold text-blue-800">
+                  <span>Waiting for Approval</span>
+                  <span className="w-2 h-2 rounded-full bg-[#0755E8] animate-pulse" />
+                </div>
+              </div>
             ) : (
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+              <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3 sm:p-3.5 space-y-2.5 text-left">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                   <span>Profile Progress</span>
-                  <span className="text-[#0755E8] font-black">{completion}%</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[#0755E8] font-black text-sm">{completion}%</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">/ 100%</span>
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#0755E8] rounded-full transition-all duration-500"
-                    style={{ width: `${completion}%` }}
-                  />
+
+                {/* Progress bar */}
+                <div className="space-y-1">
+                  <div className="relative h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-600 to-[#0755E8] rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(completion, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] font-semibold text-slate-400 px-0.5">
+                    <span>0%</span>
+                    <span className="text-blue-600 font-bold">{completedModulesCount} of 6 Modules</span>
+                    <span>100%</span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500">
-                  {completion >= 80 ? "Ready for verification" : "Target: 80% to request review"}
-                </p>
+
+                {/* Qualification Status */}
+                <div className={`p-2 rounded-xl border text-[11px] space-y-0.5 ${
+                  isApproved
+                    ? "bg-emerald-50/90 border-emerald-200/90 text-emerald-950"
+                    : isUnderReview
+                    ? "bg-blue-50/90 border-blue-200/90 text-blue-950"
+                    : completion >= 80
+                    ? "bg-blue-50/90 border-blue-200/90 text-blue-950"
+                    : "bg-amber-50/80 border-amber-200/80 text-amber-950"
+                }`}>
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-1.5 truncate">
+                      {isApproved ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      ) : isUnderReview ? (
+                        <Clock className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                      ) : completion >= 80 ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      )}
+                      <span className="truncate">
+                        {isApproved
+                          ? "Approved Mentor"
+                          : isUnderReview
+                          ? "Waiting for Admin Approval"
+                          : completion >= 80
+                          ? "Ready for Verification"
+                          : "Mentor In Setup"}
+                      </span>
+                    </span>
+                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full shrink-0 ${
+                      isApproved
+                        ? "bg-emerald-200/80 text-emerald-800"
+                        : isUnderReview
+                        ? "bg-blue-200/80 text-blue-800"
+                        : completion >= 80
+                        ? "bg-blue-200/80 text-blue-800"
+                        : "bg-amber-200/80 text-amber-800"
+                    }`}>
+                      {isApproved
+                        ? "Approved"
+                        : isUnderReview
+                        ? "Under Review"
+                        : completion >= 80
+                        ? "Eligible"
+                        : "In Progress"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    {isApproved
+                      ? "Your mentor account is approved and active on the platform."
+                      : isUnderReview
+                      ? "Your credentials have been submitted and are undergoing admin review."
+                      : completion >= 80
+                      ? "Requirements fulfilled (80%+). Ready to submit for admin approval."
+                      : "Complete required profile modules to submit for approval."}
+                  </p>
+                </div>
               </div>
             )}
           </div>

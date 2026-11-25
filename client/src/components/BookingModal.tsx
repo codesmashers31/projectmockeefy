@@ -25,6 +25,7 @@ import { MentorProfile } from "./MentorJobCard";
 import { getProfileImageUrl } from "../lib/imageUtils";
 import { ConfirmationLoadingModal, BookingFlowState } from "./ConfirmationLoadingModal";
 import { showBookingSuccessAlert } from "../lib/bookingSuccessAlert";
+import { PendingBookingIntent, savePendingBooking, clearPendingBooking } from "../lib/pendingBooking";
 
 export const AVAILABLE_LEVELS = [
   "Rising Mentor",
@@ -182,13 +183,15 @@ interface BookingModalProps {
   onClose: () => void;
   expertId: string;
   initialProfile?: MentorProfile | Profile | null;
+  initialPendingBooking?: PendingBookingIntent | null;
 }
 
 export const BookingModal: React.FC<BookingModalProps> = ({
   isOpen,
   onClose,
   expertId,
-  initialProfile
+  initialProfile,
+  initialPendingBooking,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -237,9 +240,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [bookedSessions, setBookedSessions] = useState<any[]>([]);
   const [isSessionsLoading, setIsSessionsLoading] = useState<boolean>(true);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<Date>(getInitialKolkataMonth());
-  const [selectedDateStr, setSelectedDateStr] = useState<string>("");
-  const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
+    if (initialPendingBooking?.selectedDateStr) {
+      const d = new Date(initialPendingBooking.selectedDateStr);
+      if (!isNaN(d.getTime())) {
+        return new Date(d.getFullYear(), d.getMonth(), 1);
+      }
+    }
+    return getInitialKolkataMonth();
+  });
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(
+    initialPendingBooking?.selectedDateStr || ""
+  );
+  const [selectedSlot, setSelectedSlot] = useState<{ time: string; available: boolean } | null>(
+    initialPendingBooking?.selectedSlot || null
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingFlowState, setBookingFlowState] = useState<BookingFlowState>("selecting");
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -291,12 +306,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setBookingFlowState("selecting");
-      setSelectedLevel("");
+      if (!initialPendingBooking?.selectedLevel) {
+        setSelectedLevel("");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialPendingBooking]);
 
   // Mentor Tier Level Selection (starts as "" so selecting field shows "Select one option")
-  const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const [selectedLevel, setSelectedLevel] = useState<string>(
+    initialPendingBooking?.selectedLevel || ""
+  );
   const modalDialogRef = useRef<HTMLDivElement>(null);
   const modalBodyRef = useRef<HTMLDivElement>(null);
 
@@ -319,6 +338,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // Duration & Pricing (default 30m / 60m matching UI image)
   const [sessionDuration, setSessionDuration] = useState<number>(() => {
+    if (initialPendingBooking?.selectedDuration) {
+      return initialPendingBooking.selectedDuration;
+    }
     const rawDur =
       (initialProfile as any)?.sessionDuration ||
       (initialProfile as any)?.rawExpert?.sessionDuration ||
@@ -514,9 +536,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Synchronously invalidate and reset state when target expert changes
   useEffect(() => {
     fetchReqIdRef.current += 1;
-    userExplicitlySelectedDateRef.current = null;
-    setSelectedDateStr("");
-    setSelectedSlot(null);
+    if (initialPendingBooking?.selectedDateStr) {
+      userExplicitlySelectedDateRef.current = initialPendingBooking.selectedDateStr;
+      setSelectedDateStr(initialPendingBooking.selectedDateStr);
+      if (initialPendingBooking.selectedSlot) {
+        setSelectedSlot(initialPendingBooking.selectedSlot);
+      }
+    } else {
+      userExplicitlySelectedDateRef.current = null;
+      setSelectedDateStr("");
+      setSelectedSlot(null);
+    }
     setBookedSessions([]);
     setIsSessionsLoading(true);
 
@@ -531,7 +561,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     } else {
       setProfile(null);
     }
-  }, [targetExpertId]);
+  }, [targetExpertId, initialPendingBooking]);
 
   // Dedicated effect: ALWAYS fetch booked sessions & authoritative expert profile when modal opens
   useEffect(() => {
@@ -741,10 +771,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // Keep selectedLevel strictly within this mentor's supported levels if one is chosen
   useEffect(() => {
-    if (expertLevels.length > 0 && (!selectedLevel || !expertLevels.includes(selectedLevel))) {
+    if (initialPendingBooking?.selectedLevel && expertLevels.includes(initialPendingBooking.selectedLevel)) {
+      setSelectedLevel(initialPendingBooking.selectedLevel);
+    } else if (expertLevels.length > 0 && (!selectedLevel || !expertLevels.includes(selectedLevel))) {
       setSelectedLevel(expertLevels[0]);
     }
-  }, [expertLevels, selectedLevel]);
+  }, [expertLevels, selectedLevel, initialPendingBooking]);
 
   // Dynamic Level Prices loading from API (only for this mentor's levels)
   useEffect(() => {
@@ -930,7 +962,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     });
   }, [currentMonth, activeAvailability, sessionDuration, bookedSessions, currentTick, isContentLoading]);
 
-  const userExplicitlySelectedDateRef = useRef<string | null>(null);
+  const userExplicitlySelectedDateRef = useRef<string | null>(
+    initialPendingBooking?.selectedDateStr || null
+  );
 
   // Derived active date (eliminates index desynchronization and array out-of-bounds flickers)
   const activeDate = useMemo(() => {
@@ -1004,10 +1038,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         }
       }
     } else {
-      setSelectedDateStr("");
-      setSelectedSlot(null);
+      if (!initialPendingBooking?.selectedDateStr) {
+        setSelectedDateStr("");
+        setSelectedSlot(null);
+      }
     }
-  }, [dates]);
+  }, [dates, isContentLoading, initialPendingBooking]);
 
   // If opening modal and current month has 0 openings, auto-navigate to the first month with available openings
   const hasAutoSelectedMonth = useRef(false);
@@ -1054,12 +1090,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return generateAvailableSlotsForDate(activeDate, activeAvailability, sessionDuration, bookedSessions, new Date());
   }, [activeDate, activeAvailability, sessionDuration, bookedSessions, currentTick]);
 
-  // Auto-deselect if the selected slot becomes unavailable or was booked
+  // Auto-deselect if the selected slot becomes unavailable or was booked (only after content is fully loaded)
   useEffect(() => {
+    if (isContentLoading || !activeAvailability || currentSlots.length === 0) return;
     if (selectedSlot && !currentSlots.some((s) => s.time === selectedSlot.time)) {
       setSelectedSlot(null);
     }
-  }, [currentSlots, selectedSlot]);
+  }, [currentSlots, selectedSlot, isContentLoading, activeAvailability]);
+
+  // Re-anchor slot if initialPendingBooking specified one and slots have loaded
+  useEffect(() => {
+    if (initialPendingBooking?.selectedSlot && currentSlots.length > 0) {
+      if (!selectedSlot || selectedSlot.time !== initialPendingBooking.selectedSlot.time) {
+        const match = currentSlots.find((s) => s.time === initialPendingBooking.selectedSlot?.time);
+        if (match) {
+          setSelectedSlot(match);
+        }
+      }
+    }
+  }, [currentSlots, initialPendingBooking, selectedSlot]);
 
   // Real-time listener for booked sessions across browser tabs / windows
   useEffect(() => {
@@ -1161,6 +1210,83 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     };
   };
 
+  const triggerAuthPrompt = (defaultAction?: "login" | "signup") => {
+    const mentorName = profile?.name || (initialProfile as any)?.name || "your mentor";
+    const mentorAvatar = profile?.avatar || (initialProfile as any)?.avatar || "";
+    const slotTime = selectedSlot?.time || "";
+    const dateText = selectedDateStr
+      ? new Date(selectedDateStr).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+      : "";
+
+    const currentExpertId = String(targetExpertId || expertId);
+
+    const pendingIntent: PendingBookingIntent = {
+      expertId: currentExpertId,
+      expertName: mentorName,
+      expertRole: profile?.role || (initialProfile as any)?.role,
+      expertAvatar: mentorAvatar,
+      selectedLevel: selectedLevel || undefined,
+      selectedDuration: sessionDuration,
+      selectedDateStr: selectedDateStr || undefined,
+      selectedSlot: selectedSlot || undefined,
+      selectedDomain: (profile as any)?.category || (initialProfile as any)?.category || undefined,
+      cachedProfile: profile || initialProfile || undefined,
+      rawExpert: (profile as any)?.rawExpert || (initialProfile as any)?.rawExpert || undefined,
+      sourceUrl: window.location.pathname + (window.location.search ? window.location.search : ""),
+      timestamp: Date.now(),
+    };
+    savePendingBooking(pendingIntent);
+
+    const returnUrl = `${window.location.pathname}?resumeBooking=true&expertId=${currentExpertId}`;
+
+    if (defaultAction === "login") {
+      navigate(`/signin?returnUrl=${encodeURIComponent(returnUrl)}`, {
+        state: { returnUrl, pendingBooking: pendingIntent },
+      });
+      return;
+    }
+    if (defaultAction === "signup") {
+      navigate(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`, {
+        state: { returnUrl, pendingBooking: pendingIntent },
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: "Login or Sign Up Required",
+      html: `
+        <div style="font-family: inherit; text-align: center; padding: 4px 0 10px;">
+          <p style="font-size: 14.5px; color: #475569; margin-bottom: 14px; line-height: 1.5;">
+            To confirm your mock interview session with <strong>${mentorName}</strong>${dateText && slotTime ? ` on <strong style="color: #0755E8;">${dateText} at ${slotTime}</strong>` : ""}, please sign in or create an account.
+          </p>
+          <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; color: #1E40AF; text-align: left; display: flex; align-items: center; gap: 8px;">
+            <span>⚡</span>
+            <span><strong>Your booking choices are saved.</strong> This booking session will automatically open right back up as soon as you log in or register!</span>
+          </div>
+        </div>
+      `,
+      icon: "info",
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: "Log In",
+      denyButtonText: "Sign Up (New User)",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#0755E8",
+      denyButtonColor: "#0F172A",
+      cancelButtonColor: "#94A3B8",
+    }).then((res) => {
+      if (res.isConfirmed) {
+        navigate(`/signin?returnUrl=${encodeURIComponent(returnUrl)}`, {
+          state: { returnUrl, pendingBooking: pendingIntent },
+        });
+      } else if (res.isDenied) {
+        navigate(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`, {
+          state: { returnUrl, pendingBooking: pendingIntent },
+        });
+      }
+    });
+  };
+
   const handleBooking = async () => {
     if (isProcessing || !selectedSlot) return;
 
@@ -1170,18 +1296,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     if (!user) {
-      Swal.fire({
-        title: "Login Required",
-        text: "Please sign in to complete your booking.",
-        icon: "info",
-        showCancelButton: true,
-        confirmButtonText: "Sign In",
-        confirmButtonColor: "#0755E8",
-      }).then((res) => {
-        if (res.isConfirmed) {
-          navigate("/signin", { state: { returnUrl: `/book-session?expertId=${expertId}` } });
-        }
-      });
+      triggerAuthPrompt();
       return;
     }
 
@@ -1226,6 +1341,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       toast.success("Interview booked successfully.");
 
       // 4. Mark confirmed, close modal, and navigate to /my-sessions
+      clearPendingBooking();
       setBookingFlowState("confirmed");
       onClose();
       navigate("/my-sessions");
@@ -1656,6 +1772,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           ref={modalBodyRef}
           className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-4.5 space-y-3.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
+          {!user && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-3.5 bg-blue-50/80 border border-blue-200/90 rounded-2xl text-xs text-blue-950 animate-in fade-in shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Sparkles className="w-4 h-4 text-[#0755E8] shrink-0" />
+                <span className="leading-snug">
+                  Choose your slot below. You'll be prompted to sign in or create an account to finalize your booking.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => triggerAuthPrompt("login")}
+                  className="px-3 py-1 rounded-xl bg-white border border-blue-200/90 text-[#0755E8] hover:bg-blue-50/80 text-[11.5px] font-bold shadow-2xs transition-colors cursor-pointer"
+                >
+                  Log In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => triggerAuthPrompt("signup")}
+                  className="px-3 py-1 rounded-xl bg-[#0755E8] hover:bg-[#0645C7] text-white text-[11.5px] font-bold shadow-2xs transition-colors cursor-pointer"
+                >
+                  Sign Up
+                </button>
+              </div>
+            </div>
+          )}
           <div>
             <div className="flex items-start justify-between flex-wrap gap-3">
               <div>

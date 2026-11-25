@@ -1344,7 +1344,7 @@ export default function CertificatesPage() {
           {/* ================================================================== */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#EAF2FF] border border-[#93B8FF]/40 flex items-center justify-center text-[#0755E8] shrink-0 shadow-xs">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shrink-0 shadow-xs">
                 <Award className="w-6 h-6 text-[#0755E8]" />
               </div>
               <div className="min-w-0">
@@ -1635,10 +1635,12 @@ export default function CertificatesPage() {
 
                           {/* Progress Bar & Numeric Milestone Indicators */}
                           <div className="space-y-1.5 pt-0.5">
-                            <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden border border-slate-300/60">
+                            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/90 shadow-inner">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${
-                                  currentProg.isEligibleForNext ? "bg-emerald-600" : "bg-[#0755E8]"
+                                  currentProg.isEligibleForNext
+                                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                                    : "bg-gradient-to-r from-[#0755E8] via-[#2563EB] to-[#38BDF8] shadow-[0_0_10px_rgba(7,85,232,0.35)]"
                                 }`}
                                 style={{ width: `${Math.min(100, (currentProg.progressInMilestone / 3) * 100)}%` }}
                               />
@@ -1748,9 +1750,9 @@ export default function CertificatesPage() {
 
                       {/* Progress Bar & Indicators */}
                       <div className="space-y-1.5 pt-0.5">
-                        <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden border border-slate-300/60">
+                        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/90 shadow-inner">
                           <div
-                            className="h-full rounded-full bg-[#0755E8] transition-all duration-500"
+                            className="h-full rounded-full bg-gradient-to-r from-[#0755E8] to-[#38BDF8] transition-all duration-500"
                             style={{ width: "0%" }}
                           />
                         </div>
@@ -1786,7 +1788,7 @@ export default function CertificatesPage() {
                       setPreviewModalDomain(selectedDomain);
                       setIsPreviewModalOpen(true);
                     }}
-                    className="w-[210px] sm:w-[230px] md:w-[245px] aspect-[1682/935] rounded-xl overflow-hidden border border-[#93C5FD] shadow-xs hover:border-[#0755E8] hover:shadow-md transition-all cursor-pointer bg-[#FFFEFA] relative group"
+                    className="w-[210px] sm:w-[230px] md:w-[245px] aspect-[1682/935] rounded-2xl overflow-hidden border border-[#93C5FD]/80 shadow-[0_8px_24px_-4px_rgba(7,85,232,0.16)] hover:border-[#0755E8] hover:shadow-[0_16px_36px_-6px_rgba(7,85,232,0.24)] hover:scale-[1.02] transition-all duration-300 cursor-pointer bg-[#FFFEFA] relative group ring-1 ring-blue-100/60"
                     title="Click to preview certificate design"
                   >
                     <CertificateThumbnail mode="preview" domain={selectedDomain || undefined} />
@@ -1944,9 +1946,15 @@ export default function CertificatesPage() {
             className="w-full space-y-4 pt-2"
           >
             {issuedCertificates.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-red-200 bg-red-50/60 p-6 text-center">
-                <p className="text-xs sm:text-sm font-semibold text-red-600">
-                  <span className="font-bold text-red-600">No certificates issued yet.</span> Complete 3 qualifying mock interviews in any domain to earn your first official credential.
+              <div className="rounded-2xl border border-dashed border-slate-200/90 bg-gradient-to-b from-slate-50/60 to-white p-7 text-center shadow-2xs">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] mx-auto mb-2.5 shadow-2xs">
+                  <Award className="w-5 h-5 text-[#0755E8]" />
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800">
+                  No certificates issued yet.
+                </p>
+                <p className="text-xs text-slate-500 font-normal mt-0.5 max-w-md mx-auto">
+                  Complete 3 qualifying mock interviews in any domain to earn your first official credential.
                 </p>
               </div>
             ) : (

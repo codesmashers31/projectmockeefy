@@ -1,12 +1,13 @@
 // src/components/RegisterForm.tsx
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../lib/axios";
 import { isAxiosError } from "axios";
 import AuthLayout from "./auth/AuthLayout";
 import { useAuth } from "../context/AuthContext";
 import { GoogleAuthButton } from "./auth/GoogleAuthButton";
 import MockeefyLogo from "./MockeefyLogo";
+import { getPendingBooking } from "../lib/pendingBooking";
 
 interface FormData {
   email: string;
@@ -30,7 +31,14 @@ export const RegisterForm = () => {
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const { googleLogin } = useAuth();
+
+  const searchParams = new URLSearchParams(location.search);
+  const queryReturnUrl = searchParams.get("returnUrl") || searchParams.get("redirect") || (location.state as any)?.returnUrl;
+  const safeReturnUrl = queryReturnUrl && queryReturnUrl.startsWith("/") && !queryReturnUrl.startsWith("//") ? queryReturnUrl : null;
+  const pendingBooking = getPendingBooking();
+  const effectiveReturnUrl = safeReturnUrl || (pendingBooking ? (pendingBooking.sourceUrl || `/?resumeBooking=true&expertId=${pendingBooking.expertId}`) : null);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -45,9 +53,17 @@ export const RegisterForm = () => {
       const user = result?.user;
 
       if (isExisting && user) {
-        // If already registered/logged-in user clicks Google on Create Account -> Navigate to dashboard
+        // If already registered/logged-in user clicks Google on Create Account -> Navigate to return url or dashboard
         const role = (user.userType || user.role)?.toLowerCase();
-        if (role === "expert") {
+        if (effectiveReturnUrl) {
+          if (role === "expert" && effectiveReturnUrl === "/my-sessions") {
+            navigate("/dashboard/sessions", { replace: true });
+          } else if (role !== "expert" && effectiveReturnUrl.startsWith("/dashboard")) {
+            navigate("/my-sessions", { replace: true });
+          } else {
+            navigate(effectiveReturnUrl, { replace: true });
+          }
+        } else if (role === "expert") {
           navigate("/dashboard", { replace: true });
         } else if (role === "admin") {
           navigate("/admin", { replace: true });
@@ -70,6 +86,7 @@ export const RegisterForm = () => {
             name,
             userType,
             isExisting: false,
+            returnUrl: effectiveReturnUrl,
           },
           replace: true,
         });
@@ -133,7 +150,7 @@ export const RegisterForm = () => {
     setIsLoading(true);
     try {
       await api.post("/api/auth/verify-otp", { email: formData.email, otp: formData.otp });
-      navigate("/complete-profile", { state: { email: formData.email } });
+      navigate("/complete-profile", { state: { email: formData.email, returnUrl: effectiveReturnUrl } });
     } catch (err) {
       setError(isAxiosError(err) ? err.response?.data?.message || "Invalid code" : "Invalid code");
     } finally {
@@ -267,7 +284,7 @@ export const RegisterForm = () => {
 
         <p className="text-center text-sm text-slate-500 mt-6">
           Already have an account?{" "}
-          <Link to="/signin" className="font-semibold text-[#0755E8] hover:text-[#0645C7] hover:underline">
+          <Link to={"/signin" + location.search} state={location.state} className="font-semibold text-[#0755E8] hover:text-[#0645C7] hover:underline">
             Sign in
           </Link>
         </p>

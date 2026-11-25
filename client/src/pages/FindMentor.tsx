@@ -11,6 +11,11 @@ import {
   getJobTitle,
 } from "../lib/expertUtils";
 import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
+import { BookingModal } from "../components/BookingModal";
+import { getPendingBooking, clearPendingBooking, PendingBookingIntent } from "../lib/pendingBooking";
+import { mapExpertToProfile } from "../lib/bookSessionUtils";
 import {
   Search,
   Users,
@@ -291,12 +296,69 @@ interface FindMentorProps {
 }
 
 export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMentorProps = {}) {
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(initialQ);
   const deferredSearch = useDeferredValue(searchQuery);
+
+  const [activeResumeBookingMentor, setActiveResumeBookingMentor] = useState<MentorProfile | null>(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      const params = new URLSearchParams(window.location.search);
+      const isResume = params.get("resumeBooking") === "true";
+      const targetId = params.get("expertId");
+      const pending = getPendingBooking();
+
+      if (!isResume && !pending) return null;
+      const expId = targetId || pending?.expertId;
+      if (!expId) return null;
+
+      if (pending?.cachedProfile) {
+        return pending.cachedProfile as MentorProfile;
+      }
+
+      return {
+        id: expId,
+        name: pending?.expertName || "Interview Expert",
+        role: pending?.expertRole || "Senior Mentor",
+        avatar: pending?.expertAvatar || "",
+        category: pending?.selectedDomain || "IT",
+        level: pending?.selectedLevel || "Rising Mentor",
+        levels: pending?.selectedLevel ? [pending.selectedLevel] : ["Rising Mentor"],
+        sessionDuration: pending?.selectedDuration || 30,
+        rawExpert: pending?.rawExpert || {
+          _id: expId,
+          userId: expId,
+          name: pending?.expertName || "Interview Expert",
+          role: pending?.expertRole || "Senior Mentor",
+          avatar: pending?.expertAvatar || "",
+          sessionDuration: pending?.selectedDuration || 30,
+        },
+      } as any;
+    } catch {
+      return null;
+    }
+  });
+
+  const [activeResumePendingBooking, setActiveResumePendingBooking] = useState<PendingBookingIntent | null>(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      const pending = getPendingBooking();
+      if (pending) return pending;
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("expertId");
+      if (targetId && params.get("resumeBooking") === "true") {
+        return { expertId: targetId, timestamp: Date.now() };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
+  const hasResumedBookingRef = useRef(false);
 
   // Sync when URL query param changes
   useEffect(() => {
@@ -612,6 +674,17 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
   // Scroll smoothly to target expert card if navigated back from profile or booking
   useEffect(() => {
+    // Suppress scroll-to-card and pulse if a booking modal is being resumed
+    try {
+      const pending = getPendingBooking();
+      const isResume = searchParams.get("resumeBooking") === "true";
+      if (pending || isResume || activeResumeBookingMentor) {
+        sessionStorage.removeItem("lastViewedExpertId");
+        sessionStorage.removeItem("lastViewedExpertName");
+        return;
+      }
+    } catch {}
+
     const state = location.state as any;
     let targetExpertId = state?.scrollToExpertId;
     let targetExpertName = state?.scrollToExpertName;
@@ -685,6 +758,51 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
     return () => clearInterval(interval);
   }, [location.state, allMentors]);
+
+  // Auto-resume booking flow after successful login or signup (smooth, frame-0 ready)
+  useEffect(() => {
+    if (!user || hasResumedBookingRef.current) return;
+
+    const resumeParam = searchParams.get("resumeBooking") === "true";
+    const paramExpertId = searchParams.get("expertId");
+    const pending = getPendingBooking();
+
+    const targetId = paramExpertId || pending?.expertId;
+    if (!targetId && !resumeParam && !pending) return;
+
+    hasResumedBookingRef.current = true;
+
+    // Clean URL query params quietly in the browser history without triggering React Router re-renders
+    if (resumeParam || paramExpertId) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const mentorNameToGreet = activeResumeBookingMentor?.name || pending?.expertName;
+    if (mentorNameToGreet) {
+      toast.success(
+        `Welcome back, ${user.name?.split(" ")[0] || "there"}! Resuming your booking with ${mentorNameToGreet}.`
+      );
+    }
+
+    // If allMentors has loaded from the API, enrich activeResumeBookingMentor with latest live data
+    if (allMentors.length > 0 && targetId) {
+      const foundMentor = allMentors.find(
+        (m) =>
+          String(m.id) === String(targetId) ||
+          String(m.rawExpert?._id) === String(targetId) ||
+          String(m.rawExpert?.userId) === String(targetId)
+      );
+
+      if (foundMentor) {
+        setActiveResumeBookingMentor((prev) => {
+          if (!prev || !prev.rawExpert?.availability) {
+            return foundMentor;
+          }
+          return prev;
+        });
+      }
+    }
+  }, [user, allMentors]);
 
   // Categories and dynamic counts strictly from MongoDB categories and expert relationships
   const categories = useMemo(() => {
@@ -1184,7 +1302,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             {expandedSections.track && (
               <div className="space-y-1">
-                <div className={`space-y-1 ${isTrackExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                <div className={`space-y-1 ${isTrackExpanded ? "max-h-72 overflow-y-auto custom-scrollbar pr-1" : ""}`}>
                   {visibleCategories.map((cat) => {
                     const isSelected = selectedCategory === cat;
                     const count = cat === "All" ? allMentors.length : categoryCounts[cat] || 0;
@@ -1272,7 +1390,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             {expandedSections.experience && (
               <div className="space-y-1">
-                <div className={`space-y-1 ${isExpExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                <div className={`space-y-1 ${isExpExpanded ? "max-h-72 overflow-y-auto custom-scrollbar pr-1" : ""}`}>
                   {visibleExpOptions.map((item) => {
                     const checked = selectedExpRanges.includes(item.id);
                     return (
@@ -1344,7 +1462,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             {expandedSections.price && (
               <div className="space-y-1">
-                <div className={`space-y-1 ${isPriceExpanded ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+                <div className={`space-y-1 ${isPriceExpanded ? "max-h-72 overflow-y-auto custom-scrollbar pr-1" : ""}`}>
                   {visiblePriceOptions.map((item) => {
                     const checked = selectedPriceRanges.includes(item.id);
                     return (
@@ -1486,15 +1604,15 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                       const el = document.getElementById("all-experts-categories");
                       el?.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-[#0755E8] font-bold text-xs shadow-xs hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#0755E8] font-bold text-xs shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
                   >
                     <span>Browse experts</span>
-                    <ArrowRight size={12} />
+                    <ArrowRight size={13} />
                   </button>
                   <button
                     type="button"
                     onClick={() => navigate("/help")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/12 hover:bg-white/20 border border-white/25 text-white font-semibold text-xs transition-all active:scale-95 cursor-pointer backdrop-blur-xs"
                   >
                     <span>How it works</span>
                   </button>
@@ -1817,16 +1935,20 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
                   </button>
                 </div>
               ) : filteredCategoryGroups.length > 0 ? (
-                <div className="space-y-7">
-                  {filteredCategoryGroups.map((group) => (
-                    <MentorCategoryScrollRow
-                      key={group.id}
-                      id={group.id}
-                      title={group.title}
-                      subtitle={group.subtitle}
-                      icon={group.icon}
-                      mentors={group.mentors}
-                    />
+                <div className="space-y-6 sm:space-y-7">
+                  {filteredCategoryGroups.map((group, index) => (
+                    <div key={group.id} className="space-y-6 sm:space-y-7">
+                      <MentorCategoryScrollRow
+                        id={group.id}
+                        title={group.title}
+                        subtitle={group.subtitle}
+                        icon={group.icon}
+                        mentors={group.mentors}
+                      />
+                      {index < filteredCategoryGroups.length - 1 && (
+                        <div className="h-[1px] bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -1850,8 +1972,11 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Sticky Filter Sidebar (Desktop xl+ screens) */}
-        <aside aria-label="Filters Panel" className="hidden xl:block w-[250px] shrink-0 sticky top-[80px] self-start space-y-4">
+        {/* RIGHT COLUMN: Sticky & Independently Scrollable Filter Sidebar (Desktop xl+ screens) */}
+        <aside
+          aria-label="Filters Panel"
+          className="hidden xl:block w-[250px] shrink-0 sticky top-[76px] self-start max-h-[calc(100vh-86px)] overflow-y-auto overflow-x-hidden custom-scrollbar overscroll-contain space-y-4 pr-1 pb-8"
+        >
           {renderFilterPanel()}
 
           {/* Finding the right expert - 3 step guide (matching mockup) */}
@@ -1947,6 +2072,21 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
             </div>
           </div>
         </div>
+      )}
+
+      {/* Auto-resume booking modal when redirected back after login/register */}
+      {activeResumeBookingMentor && (
+        <BookingModal
+          isOpen={true}
+          onClose={() => {
+            setActiveResumeBookingMentor(null);
+            setActiveResumePendingBooking(null);
+            clearPendingBooking();
+          }}
+          expertId={String(activeResumeBookingMentor.id || (activeResumeBookingMentor as any).rawExpert?._id || (activeResumeBookingMentor as any).rawExpert?.userId)}
+          initialProfile={activeResumeBookingMentor}
+          initialPendingBooking={activeResumePendingBooking}
+        />
       )}
     </div>
   );

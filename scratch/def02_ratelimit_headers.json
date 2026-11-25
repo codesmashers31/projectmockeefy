@@ -1,0 +1,42 @@
+[
+  {
+    "attempt": 1,
+    "statusCode": 401,
+    "rateLimitLimit": "99999",
+    "rateLimitRemaining": "99988",
+    "rateLimitReset": "1794829822",
+    "body": "{\"message\":\"Invalid credentials\"}"
+  },
+  {
+    "attempt": 2,
+    "statusCode": 401,
+    "rateLimitLimit": "99999",
+    "rateLimitRemaining": "99987",
+    "rateLimitReset": "1794829822",
+    "body": "{\"message\":\"Invalid credentials\"}"
+  },
+  {
+    "attempt": 3,
+    "statusCode": 401,
+    "rateLimitLimit": "99999",
+    "rateLimitRemaining": "99986",
+    "rateLimitReset": "1794829822",
+    "body": "{\"message\":\"Invalid credentials\"}"
+  },
+  {
+    "attempt": 4,
+    "statusCode": 401,
+    "rateLimitLimit": "99999",
+    "rateLimitRemaining": "99985",
+    "rateLimitReset": "1794829822",
+    "body": "{\"message\":\"Invalid credentials\"}"
+  },
+  {
+    "attempt": 5,
+    "statusCode": 401,
+    "rateLimitLimit": "99999",
+    "rateLimitRemaining": "99984",
+    "rateLimitReset": "1794829822",
+    "body": "{\"message\":\"Invalid credentials\"}"
+  }
+]

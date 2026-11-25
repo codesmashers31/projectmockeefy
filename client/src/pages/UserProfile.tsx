@@ -509,7 +509,7 @@ export default function UserProfile() {
         {/* 1. Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-xs shrink-0">
               <UserIcon className="w-5 h-5 text-[#0755E8]" />
             </div>
             <div>
@@ -529,7 +529,7 @@ export default function UserProfile() {
                 {isLoadingSessions ? "..." : `${completedCount} ${completedCount === 1 ? "Interview Finished" : "Interviews Finished"}`}
               </span>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#0755E8] border border-blue-200/80 text-xs font-bold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF2FF] text-[#0755E8] border border-[#93B8FF]/70 text-xs font-bold shadow-2xs">
               <ShieldCheck className="w-3.5 h-3.5 text-[#0755E8]" />
               <span>Verified Candidate</span>
             </span>
@@ -550,7 +550,7 @@ export default function UserProfile() {
                 <div className="relative group shrink-0">
                   <div
                     onClick={openEditProfileModal}
-                    className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-white border-2 border-slate-200/80 overflow-hidden shadow-xs flex items-center justify-center shrink-0 cursor-pointer hover:border-[#0755E8] transition-all group-hover:shadow-md"
+                    className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-white border-2 border-slate-200/90 overflow-hidden shadow-xs flex items-center justify-center shrink-0 cursor-pointer hover:border-[#0755E8] transition-all group-hover:shadow-md"
                     title="Click to edit profile & photo"
                   >
                     {hasPhoto ? (
@@ -582,7 +582,7 @@ export default function UserProfile() {
                     type="button"
                     onClick={openEditProfileModal}
                     disabled={isUploadingImage}
-                    className="absolute -bottom-1 -right-1 w-6.5 h-6.5 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center shadow-xs border-2 border-white transition-all active:scale-90 cursor-pointer"
+                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#0755E8] hover:bg-[#0645C7] text-white flex items-center justify-center shadow-xs border-2 border-white transition-all active:scale-90 cursor-pointer"
                     title="Edit profile photo and name"
                   >
                     <Camera className="w-3.5 h-3.5" />
@@ -618,7 +618,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   onClick={openEditProfileModal}
-                  className="h-10 px-4 sm:px-5 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#053BA8] text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
+                  className="h-10 px-4 sm:px-5 bg-[#0755E8] hover:bg-[#0645C7] active:bg-[#053BA8] text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_4px_14px_rgba(7,85,232,0.3)] active:scale-95 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
                   title="Edit your display name and profile photo"
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -630,7 +630,7 @@ export default function UserProfile() {
             {/* Bottom 3-Card Metrics Ribbon */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-100">
               {/* Stat 1: Interviews Finished */}
-              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3">
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-xs transition-all">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
@@ -643,7 +643,7 @@ export default function UserProfile() {
               </div>
 
               {/* Stat 2: Active Resume */}
-              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3">
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-xs transition-all">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0755E8] flex items-center justify-center shrink-0 border border-blue-100">
                   <FileText className="w-5 h-5" />
                 </div>
@@ -658,7 +658,7 @@ export default function UserProfile() {
               </div>
 
               {/* Stat 3: Candidate Verification */}
-              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3">
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-xs transition-all">
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
@@ -679,7 +679,7 @@ export default function UserProfile() {
         <section className="space-y-5">
           <div className="flex items-center justify-between gap-3 pb-1">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-xs shrink-0">
                 <FileCheck className="w-5 h-5 text-[#0755E8]" />
               </div>
               <div>

@@ -136,6 +136,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
                 if (Object.keys(updates).length > 0) {
                     updateUser(updates);
                 }
+            } else if (payload.type === 'STATUS_UPDATED' || payload.type === 'EXPERT_STATUS_UPDATED') {
+                const d = payload.data || {};
+                const isApproved = d.status?.toLowerCase() === 'active' || d.status?.toLowerCase() === 'approved';
+                updateUser({
+                    isExpertVerified: isApproved,
+                    expertStatus: d.status || (isApproved ? 'Active' : 'pending'),
+                    verificationRequested: Boolean(d.verificationRequested),
+                });
             } else if (payload.type === 'PROFILE_PHOTO_UPDATED') {
                 const photoUrl = payload.data?.photoUrl || payload.data?.profile?.photoUrl;
                 if (photoUrl) {

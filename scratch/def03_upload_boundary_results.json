@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "test": "Extension spoofing (.html with image/jpeg MIME)",
+      "statusCode": 200,
+      "response": "{\"success\":true,\"message\":\"Profile image uploaded successfully\",\"imageUrl\":\"/uploads/userProfileImages/1794829027030-780800585.html\",\"originalImageUrl\":\"/uploads/userProfileImages/1794829027030-780800585.html\",\"profileCompletion\":16}"
+    },
+    {
+      "test": "MIME spoofing (.sh extension with application/x-sh MIME)",
+      "statusCode": 200,
+      "response": "{\"success\":true,\"message\":\"Profile image uploaded successfully\",\"imageUrl\":\"/uploads/userProfileImages/1794829027167-685265067.sh\",\"originalImageUrl\":\"/uploads/userProfileImages/1794829027167-685265067.sh\",\"profileCompletion\":16}"
+    }
+  ],
+  "savedFiles": [
+    "1765440251511-384554174.jpg",
+    "1765440383841-483397127.jpg",
+    "1765524116709-148014679.jpg",
+    "1766245852264-878489875.jpeg",
+    "1766249559888-895671474.png"
+  ]
+}

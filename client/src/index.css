@@ -466,12 +466,19 @@ body.modal-open {
     background-color: #0645C7 !important;
 }
 
-/* Sidebar and container navigation card with refined blue outline, subtle elevation, vivid top blue gradient and clean white bottom */
+/* Sidebar Floating Navigation Card - Crisp, distinct white command center with clean slate border */
+.sidebar-nav-card {
+    border: 1px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Main Content Workspace Card - Elevated with brand blue atmosphere, distinct from sidebar */
 .sidebar-main-card,
 .elevated-main-card {
-    border: 1px solid rgba(191, 219, 254, 0.85) !important;
-    background: linear-gradient(180deg, #DCEBFF 0%, #EDF4FF 22%, #F8FAFF 48%, #FFFFFF 100%) !important;
-    box-shadow: 0 4px 20px -4px rgba(7, 85, 232, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
+    border: 1px solid #BFDBFE !important;
+    background: linear-gradient(180deg, #E6F0FD 0%, #F1F6FE 20%, #F8FAFD 50%, #FFFFFF 100%) !important;
+    box-shadow: 0 8px 30px -8px rgba(7, 85, 232, 0.08), 0 2px 8px -1px rgba(0, 0, 0, 0.03) !important;
 }
 
 @keyframes wave {
@@ -519,9 +526,29 @@ body.modal-open {
     will-change: transform;
 }
 
-.animate-wave-fast {
-    animation: waveFast 5s ease-in-out infinite;
-    will-change: transform;
+/* Sleek, unobtrusive custom scrollbar for sidebars & cards */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
 
 

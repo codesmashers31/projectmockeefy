@@ -415,14 +415,14 @@ const SessionCard: React.FC<{
                     e.stopPropagation();
                     handleOpenReviewModal(session);
                   }}
-                  className="group/rate w-full h-9 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/90 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
+                  className="group/rate w-full h-9.5 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
                 >
                   <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 group-hover/rate:scale-110 transition-transform shrink-0" />
                   <span className="truncate">Rate Expert</span>
                 </button>
               ) : (
                 <div
-                  className="w-full h-9 px-2.5 sm:px-3 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs min-w-0"
+                  className="w-full h-9.5 px-2.5 sm:px-3 bg-emerald-50 text-emerald-800 border border-emerald-200/90 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs min-w-0"
                   title={session.candidateReview.feedback ? `Your feedback: ${session.candidateReview.feedback}` : "Review submitted"}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -437,7 +437,7 @@ const SessionCard: React.FC<{
                 <button
                   type="button"
                   onClick={() => setCertificateModalSession(session)}
-                  className="group/view w-full h-9 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
+                  className="group/view w-full h-9.5 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-[#0755E8] group-hover/view:scale-110 transition-transform shrink-0" />
                   <span className="truncate">View Feedback</span>
@@ -461,7 +461,7 @@ const SessionCard: React.FC<{
                       type="button"
                       disabled={requestingFeedbackId === session.sessionId}
                       onClick={() => handleRequestFeedback(session.sessionId)}
-                      className="group/req w-full h-9 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/70 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="group/req w-full h-9.5 px-2.5 sm:px-3 bg-[#EAF2FF] hover:bg-[#D9E8FF] text-[#0755E8] border border-[#93B8FF]/80 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {requestingFeedbackId === session.sessionId ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0755E8] shrink-0" /> : <Send className="w-3.5 h-3.5 text-[#0755E8] shrink-0" />}
                       <span className="truncate">{requestingFeedbackId === session.sessionId ? "Requesting..." : "Request Feedback"}</span>
@@ -483,7 +483,7 @@ const SessionCard: React.FC<{
                       <button
                         disabled
                         title={`You can send another reminder in ${remH}h ${remM}m`}
-                        className="w-full h-9 px-2 sm:px-2.5 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
+                        className="w-full h-9.5 px-2 sm:px-2.5 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
                       >
                         <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="truncate text-[11px]">Reminder in {timeStr}</span>
@@ -496,7 +496,7 @@ const SessionCard: React.FC<{
                         type="button"
                         disabled={requestingFeedbackId === session.sessionId}
                         onClick={() => handleRequestFeedback(session.sessionId)}
-                        className="group/rem w-full h-9 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group/rem w-full h-9.5 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {requestingFeedbackId === session.sessionId ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" /> : <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0 group-hover/rem:scale-110 transition-transform" />}
                         <span className="truncate">{requestingFeedbackId === session.sessionId ? "Sending..." : "Send Reminder"}</span>
@@ -515,7 +515,7 @@ const SessionCard: React.FC<{
                   <button
                     disabled
                     title={`Max 2 requests per 24 hours. Resets in ${rem24H}h ${rem24M}m`}
-                    className="w-full h-9 px-2 sm:px-2.5 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
+                    className="w-full h-9.5 px-2 sm:px-2.5 bg-slate-50 border border-slate-200/80 text-slate-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed min-w-0"
                   >
                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span className="truncate text-[11px]">Feedback Requested</span>
@@ -606,9 +606,9 @@ const SessionCard: React.FC<{
                     });
                   }
                 }}
-                className={`w-full h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs min-w-0 ${
+                className={`w-full h-9.5 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs min-w-0 ${
                   session.allocatedCertificateId
-                    ? "bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 cursor-pointer active:scale-95"
+                    ? "bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/90 cursor-pointer active:scale-95"
                     : "bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200/80 cursor-pointer"
                 }`}
                 title={
@@ -625,7 +625,7 @@ const SessionCard: React.FC<{
               <button
                 type="button"
                 onClick={() => session.expertId ? navigate(`/book-session?expertId=${session.expertId}`) : navigate('/find-mentor')}
-                className="group/book w-full h-9 px-2.5 sm:px-3 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95 min-w-0"
+                className="group/book w-full h-9.5 px-2.5 sm:px-3 bg-slate-50 hover:bg-[#EAF2FF] text-slate-700 hover:text-[#0755E8] border border-slate-200/80 hover:border-[#93B8FF] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95 min-w-0"
               >
                 <span className="truncate">Book Again</span>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/book:text-[#0755E8] group-hover/book:translate-x-0.5 transition-all shrink-0" />
@@ -689,7 +689,7 @@ const SessionCard: React.FC<{
           </button>
         ) : countdown ? (
           <div className="w-full flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 min-w-0">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-600 min-w-0">
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -699,10 +699,10 @@ const SessionCard: React.FC<{
             <button
               type="button"
               onClick={() => session.expertId && navigate(expertProfileUrl)}
-              className="group/exp h-9 px-4 bg-[#EAF2FF] hover:bg-[#0755E8] active:bg-[#0645C7] text-[#0755E8] hover:text-white border border-[#93B8FF]/80 hover:border-[#0755E8] rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-[#0755E8]/25 active:scale-95 flex items-center gap-1.5"
+              className="group/exp h-9.5 px-4 bg-[#EAF2FF] hover:bg-[#0755E8] active:bg-[#0645C7] text-[#0755E8] hover:text-white border border-[#93B8FF]/80 hover:border-[#0755E8] rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 flex items-center gap-1.5"
             >
               <span>View Expert</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#0755E8] group-hover/exp:text-white group-hover/exp:translate-x-1 transition-all duration-200 stroke-[2.5]" />
+              <ChevronRight className="w-3.5 h-3.5 text-[#0755E8] group-hover/exp:text-white group-hover/exp:translate-x-0.5 transition-all duration-200 stroke-[2.5]" />
             </button>
           </div>
         ) : (
@@ -1347,24 +1347,24 @@ const MySessions = ({
             {/* Clean Executive Header for Bookings Hub */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-xs shrink-0">
                   <Sparkles className="w-5 h-5 text-[#0755E8]" />
                 </div>
                 <div>
                   <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">
                     My Bookings
                   </h1>
-                  <p className="text-xs text-slate-500 font-normal">
+                  <p className="text-xs text-slate-500 font-normal mt-0.5">
                     Real-time sessions, countdowns, and expert feedback
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-full bg-blue-50/80 border border-blue-200/60 text-[#0755E8] font-bold text-[10px] tracking-wider uppercase">
+                <span className="px-2.5 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF]/70 text-[#0755E8] font-black text-[10.5px] tracking-wider uppercase shadow-2xs">
                   BOOKINGS
                 </span>
-                <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs">
+                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-800 font-bold text-xs shadow-2xs">
                   Total: {sessions.length}
                 </span>
               </div>
@@ -1399,7 +1399,7 @@ const MySessions = ({
             {/* Filter Tabs & Quick Search Control Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
               {/* Status Filter Tabs - Modern Segmented Control */}
-              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
+              <div className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
                 {[
                   {
                     id: 'all',
@@ -1429,16 +1429,16 @@ const MySessions = ({
                       key={tab.id}
                       type="button"
                       onClick={() => setStatusFilter(tab.id as any)}
-                      className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                      className={`group inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap active:scale-95 ${
                         isActive
-                          ? 'bg-[#0755E8] text-white shadow-xs'
-                          : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-[#0755E8] border border-slate-200/90 shadow-2xs'
+                          ? 'bg-[#0755E8] text-white shadow-[0_2px_10px_-2px_rgba(7,85,232,0.35)]'
+                          : 'bg-white hover:bg-blue-50/50 text-slate-700 hover:text-[#0755E8] border border-slate-200/90 hover:border-blue-300 shadow-2xs'
                       }`}
                     >
                       {tab.hasDot && (
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
-                            isActive ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'
+                            isActive ? 'bg-emerald-300 animate-pulse' : 'bg-emerald-500'
                           }`}
                         />
                       )}
@@ -1447,7 +1447,7 @@ const MySessions = ({
                         className={`px-1.5 py-0.5 rounded-md text-[10px] font-black tabular-nums transition-colors ${
                           isActive
                             ? 'bg-white/20 text-white'
-                            : 'bg-slate-100 text-slate-600'
+                            : 'bg-slate-100 text-slate-600 group-hover:bg-blue-100/70 group-hover:text-[#0755E8]'
                         }`}
                       >
                         {tab.count}
@@ -1458,14 +1458,14 @@ const MySessions = ({
               </div>
 
               {/* In-page session search bar */}
-              <div className="relative w-full sm:w-56 shrink-0">
+              <div className="relative w-full sm:w-60 shrink-0">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={liveSearchQuery}
                   onChange={(e) => setLiveSearchQuery(e.target.value)}
                   placeholder="Filter sessions..."
-                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-blue-100 transition-all"
+                  className="w-full h-9.5 pl-8.5 pr-7 text-xs bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/25 shadow-2xs transition-all"
                 />
                 {liveSearchQuery && (
                   <button
@@ -1606,14 +1606,14 @@ const MySessions = ({
             {/* Clean Executive Header for Saved Shortlist */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0755E8] shadow-2xs shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-center justify-center text-[#0755E8] shadow-xs shrink-0">
                   <Bookmark className="w-5 h-5 fill-current text-[#0755E8]" />
                 </div>
                 <div>
                   <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">
                     Saved Interview Experts
                   </h1>
-                  <p className="text-xs text-slate-500 font-normal">
+                  <p className="text-xs text-slate-500 font-normal mt-0.5">
                     Your shortlisted interview experts. Book a session or view profile anytime.
                   </p>
                 </div>
@@ -1621,12 +1621,12 @@ const MySessions = ({
 
               <div className="flex items-center gap-2">
                 {availableNowCount > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold text-xs">
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 font-bold text-xs shadow-2xs">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>{availableNowCount} Ready</span>
                   </span>
                 )}
-                <span className="px-3 py-1 rounded-full bg-blue-50/80 border border-blue-200/60 text-[#0755E8] font-black text-[11px] tracking-wide uppercase">
+                <span className="px-3 py-1 rounded-full bg-[#EAF2FF] border border-[#93B8FF]/70 text-[#0755E8] font-black text-[11px] tracking-wide uppercase shadow-2xs">
                   {savedExperts.length} SAVED
                 </span>
               </div>
@@ -1635,22 +1635,22 @@ const MySessions = ({
             {/* Filter Pills, Search & Sort Control Bar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-0.5">
               {/* Left: Domain / Track Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
+              <div className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x">
                 <button
                   type="button"
                   onClick={() => setSavedCategoryFilter("All")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                  className={`group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap active:scale-95 ${
                     savedCategoryFilter === "All"
-                      ? "bg-[#0755E8] text-white shadow-xs"
-                      : "bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      ? "bg-[#0755E8] text-white shadow-[0_2px_10px_-2px_rgba(7,85,232,0.35)]"
+                      : "bg-white border border-slate-200/90 text-slate-700 hover:border-blue-300 hover:bg-blue-50/40 hover:text-[#0755E8] shadow-2xs"
                   }`}
                 >
                   <span>All Tracks</span>
                   <span
-                    className={`text-[10.5px] px-1.5 py-0.2 rounded-full ${
+                    className={`text-[10.5px] px-2 py-0.5 rounded-full font-black tabular-nums transition-colors ${
                       savedCategoryFilter === "All"
                         ? "bg-white/20 text-white"
-                        : "bg-slate-100 text-slate-500"
+                        : "bg-slate-100 text-slate-600 group-hover:bg-blue-100/70 group-hover:text-[#0755E8]"
                     }`}
                   >
                     {savedExperts.length}
@@ -1664,18 +1664,18 @@ const MySessions = ({
                       key={category}
                       type="button"
                       onClick={() => setSavedCategoryFilter(category)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                      className={`group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap active:scale-95 ${
                         isSelected
-                          ? "bg-[#0755E8] text-white shadow-xs"
-                          : "bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                          ? "bg-[#0755E8] text-white shadow-[0_2px_10px_-2px_rgba(7,85,232,0.35)]"
+                          : "bg-white border border-slate-200/90 text-slate-700 hover:border-blue-300 hover:bg-blue-50/40 hover:text-[#0755E8] shadow-2xs"
                       }`}
                     >
                       <span>{category}</span>
                       <span
-                        className={`text-[10.5px] px-1.5 py-0.2 rounded-full ${
+                        className={`text-[10.5px] px-2 py-0.5 rounded-full font-black tabular-nums transition-colors ${
                           isSelected
                             ? "bg-white/20 text-white"
-                            : "bg-slate-100 text-slate-500"
+                            : "bg-slate-100 text-slate-600 group-hover:bg-blue-100/70 group-hover:text-[#0755E8]"
                         }`}
                       >
                         {count}
@@ -1686,16 +1686,16 @@ const MySessions = ({
               </div>
 
               {/* Right: Search & Sort Bar */}
-              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+              <div className="flex items-center gap-2.5 shrink-0 w-full md:w-auto">
                 {/* In-page search input */}
-                <div className="relative flex-1 md:w-52">
+                <div className="relative flex-1 md:w-56">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     value={localSavedSearch}
                     onChange={(e) => setLocalSavedSearch(e.target.value)}
-                    placeholder="Filter shortlist..."
-                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-blue-100 transition-all"
+                    placeholder="Search shortlisted experts..."
+                    className="w-full h-9.5 pl-8.5 pr-7 text-xs bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/25 shadow-2xs transition-all"
                   />
                   {localSavedSearch && (
                     <button
@@ -1714,7 +1714,7 @@ const MySessions = ({
                     value={savedSortBy}
                     onChange={(e) => setSavedSortBy(e.target.value)}
                     aria-label="Sort saved interview experts"
-                    className="text-xs font-semibold bg-white border border-slate-200/90 rounded-xl pl-3 pr-7 py-1.5 text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#0755E8] cursor-pointer shadow-2xs appearance-none"
+                    className="h-9.5 text-xs font-bold bg-white border border-slate-200/90 rounded-xl pl-3 pr-8 text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#0755E8] focus:ring-2 focus:ring-[#93B8FF]/25 cursor-pointer shadow-2xs appearance-none transition-all"
                   >
                     <option value="default">Sort: Recently Saved</option>
                     <option value="rating">Sort: Highest Rating</option>
