@@ -280,7 +280,7 @@ function MentorCategoryScrollRow({
           {mentors.map((mentor) => (
             <div
               key={mentor.id}
-              className="w-[calc(50%-6px)] sm:w-[calc(50%-7px)] shrink-0 flex flex-col h-auto snap-start"
+              className="w-[285px] sm:w-[calc(50%-7px)] shrink-0 flex flex-col h-auto snap-start"
             >
               <MentorJobCard mentor={mentor} />
             </div>

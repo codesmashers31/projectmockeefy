@@ -299,7 +299,7 @@ const SessionCard: React.FC<{
   const expertProfileUrl = session.expertId ? `/expert-profile/${session.expertId}` : `/book-session?expertId=${session.expertId || ""}`;
 
   return (
-    <article className="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-[#0755E8]/60 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(7,85,232,0.14),0_4px_10px_-2px_rgba(7,85,232,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 p-4.5 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border">
+    <article className="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 hover:border-[#0755E8]/60 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_-4px_rgba(7,85,232,0.12)] transition-all duration-300 ease-out hover:-translate-y-0.5 p-4.5 sm:p-5 flex flex-col justify-between h-full w-full text-left box-border">
       <div className="space-y-3.5 flex-1 flex flex-col">
         {/* 1. Header: Avatar + Expert Name & Role/Company + Status Badge */}
         <div className="flex items-start justify-between gap-3">

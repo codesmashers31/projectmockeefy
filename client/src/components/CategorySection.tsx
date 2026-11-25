@@ -120,7 +120,7 @@ export const CategorySection = ({ title, profiles }: CategorySectionProps) => {
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
                 {profiles.map((profile) => (
-                    <div key={profile.id} className="w-[calc(50%-6px)] sm:w-[calc(50%-7px)] shrink-0 snap-start flex flex-col">
+                    <div key={profile.id} className="w-[285px] sm:w-[calc(50%-7px)] shrink-0 snap-start flex flex-col">
                         <MentorJobCard mentor={profile} />
                     </div>
                 ))}

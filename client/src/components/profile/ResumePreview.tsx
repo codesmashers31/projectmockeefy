@@ -194,82 +194,59 @@ function getResumeHeadline(resumeData: any) {
   return "Professional Candidate";
 }
 
-function getCleanedResumeData(originalData: any) {
+function getCleanedResumeData(originalData: any, user: any) {
   if (!originalData) return null;
   const data = JSON.parse(JSON.stringify(originalData));
   
   if (!data.personalInfo) {
     data.personalInfo = { 
-      name: "Barathi", 
-      email: "balaabirami1997@gmail.com", 
-      phone: "6379607758", 
-      location: "Chennai, Tamil Nadu" 
+      name: user?.name || "Candidate", 
+      email: user?.email || "", 
+      phone: user?.phone || "", 
+      location: user?.location || "" 
     };
   } else {
-    if (!data.personalInfo.name) data.personalInfo.name = "Barathi";
-    if (!data.personalInfo.email) data.personalInfo.email = "balaabirami1997@gmail.com";
-    if (!data.personalInfo.phone) data.personalInfo.phone = "6379607758";
-    if (!data.personalInfo.location) data.personalInfo.location = "Chennai, Tamil Nadu";
+    if (!data.personalInfo.name) data.personalInfo.name = user?.name || "Candidate";
+    if (!data.personalInfo.email) data.personalInfo.email = user?.email || "";
+    if (!data.personalInfo.phone) data.personalInfo.phone = user?.phone || "";
+    if (!data.personalInfo.location) data.personalInfo.location = user?.location || "";
   }
 
-  // Dummy Bio Objective if empty or generic
-  if (!data.personalInfo.bio || getCleanBio(data.personalInfo.bio) === "") {
-    data.personalInfo.bio = "Dedicated Professional combining analytical thinking with hands-on expertise to solve complex problems and deliver exceptional value. Brings a proactive approach to team collaboration and success.";
+  // Bio Objective - only clean if generic
+  if (data.personalInfo.bio && getCleanBio(data.personalInfo.bio) === "") {
+    data.personalInfo.bio = "";
   }
   
-  // Dummy Skills
-  const hasSkills = (data.skills?.technical?.length || 0) + (data.skills?.soft?.length || 0) + (data.skills?.languages?.length || 0);
-  if (hasSkills === 0) {
+  // Real skills from user database record
+  if (!data.skills) {
     data.skills = {
-      technical: ["react", "html", "skill", "leaders", "tamil", "enmgilsh", "malayalam"],
-      soft: ["Team Collaboration", "Problem Solving", "Time Management"],
-      languages: ["English", "Tamil", "Malayalam"]
+      technical: [],
+      soft: [],
+      languages: []
     };
   }
 
-  // Dummy Education
-  if (!data.education || data.education.length === 0) {
-    data.education = [
-      {
-        degree: "MCA",
-        institution: "EGS",
-        startYear: "2022",
-        endYear: "2024"
-      }
-    ];
+  // Real education from user database record
+  if (!data.education) {
+    data.education = [];
   }
 
-  // Dummy Experience
-  if (!data.experience || data.experience.length === 0) {
-    data.experience = [
-      {
-        position: "Entry Level Candidate",
-        company: "Fresher",
-        startDate: "2024-01-01",
-        endDate: null,
-        current: true,
-        description: "Fresher profile. Open to entry-level opportunities and actively building practical interview skills."
-      }
-    ];
+  // Real experience from user database record
+  if (!data.experience) {
+    data.experience = [];
   }
 
-  // Dummy Certifications
-  if (!data.certifications || data.certifications.length === 0) {
-    data.certifications = [
-      {
-        name: "Web Developer",
-        issuer: "SLA",
-        issueDate: "2024-01-01"
-      }
-    ];
+  // Real certifications from user database record
+  if (!data.certifications) {
+    data.certifications = [];
   }
 
-  // Dummy Performance Ratings if missing
+  // Performance Ratings
   if (!data.performance) {
     data.performance = {
       avgTechnical: 0,
       avgCommunication: 0,
-      highlights: ["Technical Core", "Problem Solving", "Team Alignment"]
+      highlights: []
     };
   }
 
@@ -294,7 +271,7 @@ export default function ResumePreview({ isOpen, onClose }: ResumePreviewProps) {
     enabled: isOpen && !!userId,
   });
 
-  const resumeData = getCleanedResumeData(rawResumeData);
+  const resumeData = getCleanedResumeData(rawResumeData, user);
 
   const handleClose = () => {
     setSelectedTemplateId(null);
