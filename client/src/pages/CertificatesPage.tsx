@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useParams, useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useDataSync } from "../context/SocketContext";
 import axios from "../lib/axios";
@@ -689,6 +690,7 @@ const CertificateModalPreview = ({ children }: { children: React.ReactNode }) =>
 export default function CertificatesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const routeParams = useParams();
   const location = useLocation();
@@ -1027,6 +1029,7 @@ export default function CertificatesPage() {
       // 2. Fetch candidate sessions
       const sessionsRes = await axios.get(`/api/sessions/candidate/${userId}`);
       const raw = Array.isArray(sessionsRes.data) ? sessionsRes.data : [];
+      queryClient.setQueryData(["candidateProfileSessions", userId], raw);
       const mapped: Session[] = raw.map((s: any) => ({
         id: s._id || s.sessionId,
         sessionId: s.sessionId,

@@ -214,6 +214,23 @@ export const updateMeetingLink = async (req, res) => {
 
         const updated = await sessionService.updateSessionMeetingLink(sessionId, rawLink, true);
 
+        try {
+            const { createNotification } = await import('./notificationController.js');
+            await createNotification({
+                userId: session.candidateId,
+                type: 'meeting_link_updated',
+                title: 'Google Meet Link Ready 🎥',
+                message: `Your interview expert has attached the Google Meet link for your upcoming session.`,
+                metadata: {
+                    sessionId: session.sessionId,
+                    meetingLink: rawLink,
+                    link: '/my-sessions'
+                }
+            });
+        } catch (notifErr) {
+            console.warn('[SessionController] Failed to send meet link candidate notification:', notifErr.message);
+        }
+
         syncDataChange({
             type: "SESSION_UPDATED",
             userId: session.candidateId,

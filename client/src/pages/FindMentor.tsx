@@ -1302,7 +1302,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             {expandedSections.track && (
               <div className="space-y-1">
-                <div className={`space-y-1 ${isTrackExpanded ? "max-h-72 overflow-y-auto custom-scrollbar pr-1" : ""}`}>
+                <div className={`space-y-1 ${isTrackExpanded ? "max-h-72 overflow-y-auto no-scrollbar scrollbar-none" : ""}`}>
                   {visibleCategories.map((cat) => {
                     const isSelected = selectedCategory === cat;
                     const count = cat === "All" ? allMentors.length : categoryCounts[cat] || 0;
@@ -1390,7 +1390,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             {expandedSections.experience && (
               <div className="space-y-1">
-                <div className={`space-y-1 ${isExpExpanded ? "max-h-72 overflow-y-auto custom-scrollbar pr-1" : ""}`}>
+                <div className={`space-y-1 ${isExpExpanded ? "max-h-72 overflow-y-auto no-scrollbar scrollbar-none" : ""}`}>
                   {visibleExpOptions.map((item) => {
                     const checked = selectedExpRanges.includes(item.id);
                     return (
@@ -1462,7 +1462,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
 
             {expandedSections.price && (
               <div className="space-y-1">
-                <div className={`space-y-1 ${isPriceExpanded ? "max-h-72 overflow-y-auto custom-scrollbar pr-1" : ""}`}>
+                <div className={`space-y-1 ${isPriceExpanded ? "max-h-72 overflow-y-auto no-scrollbar scrollbar-none" : ""}`}>
                   {visiblePriceOptions.map((item) => {
                     const checked = selectedPriceRanges.includes(item.id);
                     return (
@@ -1975,7 +1975,7 @@ export default function FindMentor({ showSkeletons: propShowSkeletons }: FindMen
         {/* RIGHT COLUMN: Sticky & Independently Scrollable Filter Sidebar (Desktop xl+ screens) */}
         <aside
           aria-label="Filters Panel"
-          className="hidden xl:block w-[250px] shrink-0 sticky top-[76px] self-start max-h-[calc(100vh-86px)] overflow-y-auto overflow-x-hidden custom-scrollbar overscroll-contain space-y-4 pr-1 pb-8"
+          className="hidden xl:block w-[250px] shrink-0 sticky top-[76px] self-start max-h-[calc(100vh-86px)] overflow-y-auto overflow-x-hidden no-scrollbar scrollbar-none overscroll-contain space-y-4 pb-8"
         >
           {renderFilterPanel()}
 
