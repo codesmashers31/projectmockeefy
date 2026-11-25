@@ -122,7 +122,7 @@ export const ExpertsCarousel = ({ title, subtitle, profiles, onSeeAll }: Experts
                     {profiles.map((profile) => (
                         <div
                             key={profile.id}
-                            className="flex-[0_0_50%] min-w-0 flex justify-center px-1.5"
+                            className="flex-[0_0_285px] sm:flex-[0_0_50%] min-w-0 flex justify-center px-1.5"
                         >
                             <MentorJobCard mentor={profile} />
                         </div>

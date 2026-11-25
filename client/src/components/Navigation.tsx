@@ -480,13 +480,13 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
           {/* CENTER EXPERTS ZONE: Nav Links start where the center experts section starts */}
           {/* ========================================================================= */}
           {showSkeletons ? (
-            <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
+            <div className="hidden lg:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
               <div className="h-4 w-20 rounded-md bg-slate-100 shimmer-shining" />
               <div className="h-4 w-32 rounded-md bg-slate-100 shimmer-shining" />
               <div className="h-4 w-28 rounded-md bg-slate-100 shimmer-shining" />
             </div>
           ) : (
-            <div className="hidden md:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
+            <div className="hidden lg:flex items-center justify-start gap-6 lg:gap-7 flex-1 h-full pl-3 lg:pl-7 xl:pl-8 pr-4">
               {navItems.map((item) => {
                 const active = isLinkActive(item.href);
                 return (
@@ -520,7 +520,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
           {/* ========================================================= */}
           {showSkeletons ? (
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              <div className="hidden md:flex items-center">
+              <div className="hidden lg:flex items-center">
                 <div className="h-8 w-36 sm:w-40 md:w-44 lg:w-48 rounded-full bg-slate-100 shimmer-shining" />
               </div>
               <div className="w-8.5 h-8.5 rounded-full bg-slate-100 shimmer-shining shrink-0" />
@@ -529,8 +529,8 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
           ) : (
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Small Compact Search Bar */}
-            <div className="hidden md:flex items-center">
-              <form onSubmit={handleSearchSubmit} className="relative w-40 sm:w-44 md:w-52 lg:w-60 focus-within:w-64 transition-all duration-200">
+            <div className="hidden lg:flex items-center">
+              <form onSubmit={handleSearchSubmit} className="relative w-44 lg:w-60 focus-within:w-64 transition-all duration-200">
                 <input
                   type="text"
                   value={searchQuery}
@@ -936,7 +936,7 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
             )}
 
             {/* Mobile Menu Hamburger */}
-            <div className="md:hidden flex items-center">
+            <div className="lg:hidden flex items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -957,10 +957,10 @@ export default function Navigation({ showSkeletons = false }: NavigationProps = 
       </div>
 
         {/* ========================================================= */}
-        {/* MOBILE DRAWER (For screen < md)                            */}
+        {/* MOBILE DRAWER (For screen < lg)                            */}
         {/* ========================================================= */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 w-full bg-white border-b border-slate-200 shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
+          <div className="lg:hidden absolute top-16 left-0 w-full bg-white border-b border-slate-200 shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
             <div className="p-4 space-y-3">
               {/* Mobile Search Input */}
               <form onSubmit={handleSearchSubmit} className="relative w-full">

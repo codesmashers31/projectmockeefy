@@ -194,12 +194,10 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
       data-expert-name={mentor.name}
       onClick={handleCardClick}
       aria-label={`Interview expert profile for ${nameDisplay}`}
-      className="group relative bg-white rounded-[22px] border border-slate-200/90 hover:border-[#0755E8]/40 shadow-[0_2px_12px_-4px_rgba(20,40,90,0.06)] hover:shadow-[0_12px_32px_-6px_rgba(7,85,232,0.14)] hover:-translate-y-1 transition-all duration-300 p-3 sm:p-3.5 flex flex-col justify-between gap-2.5 sm:gap-3 h-full w-full cursor-pointer text-left box-border overflow-hidden scroll-mt-28"
+      className="group relative bg-white rounded-[22px] border border-slate-200/90 hover:border-[#0755E8]/40 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_-4px_rgba(7,85,232,0.12)] hover:-translate-y-0.5 transition-all duration-300 p-3 sm:p-3.5 flex flex-col justify-between gap-2.5 sm:gap-3 h-full w-full cursor-pointer text-left box-border overflow-hidden scroll-mt-28"
     >
       {/* Decorative ambient blue wave in bottom-right corner */}
       <div className="absolute -bottom-3 -right-3 w-20 h-16 bg-gradient-to-tl from-blue-100/40 via-indigo-50/20 to-transparent rounded-br-[22px] pointer-events-none -z-0" />
-      {/* Subtle top ambient glow */}
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#0755E8]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       <div className="space-y-2.5 sm:space-y-3 flex-1 flex flex-col relative z-10">
         {/* 1. Profile Header with Spark Accent & Bookmark */}
@@ -373,8 +371,8 @@ export const MentorJobCard = React.memo(({ mentor }: MentorJobCardProps) => {
             onClick={handleViewProfile}
             className="w-full h-[33px] sm:h-[34px] rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93B8FF]"
           >
-            <User className="w-3.5 h-3.5 text-slate-500 stroke-[2.2]" />
-            <span>View Profile</span>
+            <User className="w-3.5 h-3.5 text-slate-500 stroke-[2.2] shrink-0" />
+            <span className="whitespace-nowrap">View Profile</span>
           </button>
 
           {/* Book Session Button */}
